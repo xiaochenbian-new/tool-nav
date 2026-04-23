@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Shell脚本生成器</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .container {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            .form-group {
+                margin-bottom: 12px;
+            }
+            label {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--text);
+            }
+            input,
+            textarea {
+                width: 100%;
+                padding: 8px 10px;
+                margin-bottom: 8px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                outline: none;
+                font-size: 13px;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            input:focus,
+            textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            button {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                padding: 7px 12px;
+                border: 0;
+                border-radius: 999px;
+                cursor: pointer;
+                margin: 4px 4px 4px 0;
+                font-size: 12px;
+                font-weight: 600;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 16px rgba(36, 90, 190, 0.25);
+            }
+            .danger-btn {
+                background: linear-gradient(135deg, var(--danger), #ff7979);
+            }
+            #result {
+                margin-top: 8px;
+                padding: 8px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                min-height: 100px;
+                overflow: auto;
+                max-height: 380px;
+            }
+            #result pre {
+                margin: 0;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            .model-container {
+                border: 1px solid #dbe7ff;
+                padding: 8px;
+                margin: 8px 0;
+                border-radius: 8px;
+                background: #f9fbff;
+            }
+            .model-header {
+                margin-bottom: 8px;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .config-item {
+                border: 1px solid #dbe7ff;
+                padding: 8px;
+                margin: 8px 0;
+                border-radius: 8px;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+            }
+            .config-item button {
+                margin-top: 5px;
+                align-self: flex-end;
+            }
+            .duplicate-key {
+                border-color: #ff8383 !important;
+                background-color: #fff0f0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="container">
+            <div id="models">
+                <div class="model-container">
+                    <div class="model-header">
+                        <span>模型 1</span>
+                        <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="model1-configFiles"
+                            >配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label
+                        >
+                        <input
+                            id="model1-configFiles"
+                            placeholder="例如：application-prd,site_cm_common"
+                        />
+                    </div>
+                    <div id="model1-configItems">
+                        <div class="config-item">
+                            <label>配置项 1:</label>
+                            <input
+                                placeholder="键（例如：common.dp.conf.esg.ocr）"
+                                class="configKey"
+                                onblur="checkDuplicateKey(this)"
+                            />
+                            <input
+                                placeholder="值（例如：Y）"
+                                class="configValue"
+                            />
+                            <button class="danger-btn" onclick="removeConfigItem(this)">
+                                删除配置项
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="addConfigItem(this)">添加配置项</button>
+                </div>
+            </div>
+            <button onclick="addModel()">添加模型</button>
+            <button onclick="generateScript()">生成脚本</button>
+            <button onclick="downloadScript()">下载脚本</button>
+            <div id="result"></div>
+            </div>
+        </div>
+        <script>
+		    let modelCount = 1; // 跟踪模型的数量
+let scriptContent = ''; // 用于保存生成的脚本内容
+let allKeys = new Set(); // 存储所有配置项 key，用于去重校验
+
+function addModel() {
+                const modelsDiv = document.getElementById('models');
+                modelCount++;
+                const newModel = document.createElement('div');
+                newModel.className = 'model-container';
+                newModel.innerHTML = `
+                    <div class="model-header">
+                        <span>模型 ${modelCount}</span>
+                            <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="model${modelCount}-configFiles">配置文件（多个文件用逗号分隔）:</label>
+                        <input type="text" id="model${modelCount}-configFiles" placeholder="例如：application-prd,site_cm_common">
+                    </div>
+                    <div id="model${modelCount}-configItems">
+                        <!-- 配置项将动态添加在此处 -->
+                        <div class="config-item">
+                            <label>配置项 1:</label>
+                            <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
+                            <input type="text" placeholder="值（例如：Y）" class="configValue">
+                            <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                        </div>
+                    </div>
+                    <button onclick="addConfigItem(this)">添加配置项</button>
+                `;
+                modelsDiv.appendChild(newModel);
+            }
+
+
+ function removeModel(button) {
+                const modelContainer = button.parentElement.parentElement;
+                modelContainer.remove();
+            }
+
+            function addConfigItem(button) {
+                const modelId = button.previousElementSibling.id.split('-')[0];
+                const configItemsDiv = document.getElementById(`${modelId}-configItems`);
+                const configItemCount = configItemsDiv.children.length + 1;
+                const newItem = document.createElement('div');
+                newItem.className = 'config-item';
+                newItem.innerHTML = `
+                    <label>配置项 ${configItemCount}:</label>
+                    <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
+                    <input type="text" placeholder="值（例如：Y）" class="configValue">
+                    <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                `;
+                configItemsDiv.appendChild(newItem);
+            }
+  function removeConfigItem(button) {
+                const configItem = button.parentElement;
+                const configItemsDiv = configItem.parentElement;
+                configItem.remove();
+            }
+
+function checkDuplicateKey(input) {
+                const key = input.value.trim();
+                if (!key) return;
+
+                const allKeyInputs = document.querySelectorAll('.configKey');
+                let isDuplicate = false;
+
+                allKeyInputs.forEach(otherInput => {
+                    if (otherInput !== input) {
+                        const otherKey = otherInput.value.trim();
+                        if (otherKey === key) {
+                            isDuplicate = true;
+                        }
+                    }
+                });
+
+                if (isDuplicate) {
+                    alert('警告：配置项 key 重复，请确保每个 key 唯一！');
+                    input.classList.add('duplicate-key');
+                } else {
+                    input.classList.remove('duplicate-key');
+                }
+            }
+
+function generateScript() {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '';
+                scriptContent = ''; // 重置脚本内容
+
+                const allKeyInputs = document.querySelectorAll('.configKey');
+                const allKeysSet = new Set();
+
+                // 检查是否有重复 key
+                for (let i = 0; i < allKeyInputs.length; i++) {
+                    const key = allKeyInputs[i].value.trim();
+                    if (key && allKeysSet.has(key)) {
+                        alert('存在重复的配置项 key，请先修正！');
+                        return;
+                    }
+                    if (key) allKeysSet.add(key);
+                }
+
+                const models = document.querySelectorAll('.model-container');
+
+                models.forEach(model => {
+                    const modelId = model.querySelector('input').id.split('-')[0];
+                    const configFilesInput = document.getElementById(`${modelId}-configFiles`);
+                    const configFiles = configFilesInput.value.split(',')
+                        .map(file => file.trim())
+                        .filter(file => file !== '')
+                        .map(file => {
+                            return file.endsWith('.properties') ? file : `${file}.properties`;
+                        });
+
+                    const configItems = model.querySelectorAll('.config-item');
+                    const configs = [];
+
+configItems.forEach(item => {
+                        const key = item.querySelector('.configKey').value.trim();
+                        const value = item.querySelector('.configValue').value.trim();
+                        if (key && value) {
+                            const escapedValue = value.includes('&') ? value.replace(/&/g, '\\&') : value;
+                            configs.push({ key, value: escapedValue });
+                        }
+                    });
+
+                    if (configFiles.length === 0 || configs.length === 0) {
+                        alert('请填写所有必填信息');
+                        return;
+                    }
+
+                    const filesWithConfigPath = configFiles.map(file => `config/${file}`);
+
+                    scriptContent += `# 处理模型 ${modelId}\n`;
+
+                    configs.forEach(config => {
+                        const { key, value } = config;
+                        filesWithConfigPath.forEach(file => {
+                            scriptContent += `grep -q '${key}' ${file} && sed -i 's#^${key}=.*#${key}=${value}#g' ${file}\n`;
+                            scriptContent += `grep -q '${key}' ${file} || echo '${key}=${value}' >> ${file}\n\n`;
+                        });
+                    });
+
+                    scriptContent += '\n# 更新文件时间戳\n';
+                    filesWithConfigPath.forEach(file => {
+                        scriptContent += `touch ${file}\n`;
+                    });
+
+                    scriptContent += '\n';
+                });
+
+                resultDiv.innerHTML = `<pre>${scriptContent}</pre>`;
+            }
+
+function downloadScript() {
+                // 先调用 generateScript() 以确保 scriptContent 是最新的
+                generateScript();
+
+                if (!scriptContent.trim()) {
+                    alert('请先生成脚本内容');
+                    return;
+                }
+
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const filename = `shell_${year}${month}${day}.sh`;
+
+                const blob = new Blob([scriptContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+		</script>
+    </body>
+</html>

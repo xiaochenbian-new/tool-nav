@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>工具大全</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            body,
+            html {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, #f3f7ff 80%);
+                color: var(--text);
+            }
+            .container {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                padding: 6px;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 5px 8px;
+                box-shadow: var(--shadow);
+            }
+            .brand-title {
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+            }
+            .tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                align-items: center;
+                justify-content: flex-end;
+            }
+            .tab {
+                padding: 4px 8px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+                color: #3c4f78;
+                background: #edf3ff;
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+            }
+            .tab.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                box-shadow: 0 6px 16px rgba(58, 110, 255, 0.35);
+            }
+            .tab:hover {
+                transform: translateY(-1px);
+            }
+            .tab[title] {
+                position: relative;
+            }
+            .tab-content {
+                display: none;
+                flex: 1;
+                overflow: hidden;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--card);
+                position: relative;
+                box-shadow: var(--shadow);
+            }
+            .tab-content.active {
+                display: block;
+            }
+            iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+                background-color: #fff;
+                display: block;
+                border-radius: 8px;
+            }
+            @media (max-width: 900px) {
+                .header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 4px;
+                }
+                .tabs {
+                    justify-content: flex-start;
+                }
+                .tab {
+                    font-size: 11px;
+                    padding: 4px 8px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="brand">
+                    <div class="brand-title">工具导航</div>
+                </div>
+                <div class="tabs">
+                    <div class="tab active" data-tab="tab1" title="MySQL / PostgreSQL / Oracle DDL 解析工具">DDL 解析</div>
+                    <div class="tab" data-tab="tab2" title="Java 实体转 JSON 工具">Java 转 JSON</div>
+                    <div class="tab" data-tab="tab3" title="JSON / Excel / SQL Insert 多向转换工具">JSON/Excel/SQL</div>
+                    <div class="tab" data-tab="tab4" title="Talend Tester JSON 文档解析工具">Tester 文档解析</div>
+                    <div class="tab" data-tab="tab5" title="Shell 配置脚本生成工具">Shell 脚本生成</div>
+                    <div class="tab" data-tab="tab6" title="Crontab 定时任务工具">Crontab</div>
+                    <div class="tab" data-tab="tab7" title="身份证号码生成器工具">身份证生成</div>
+                    <div class="tab" data-tab="tab8" title="JSON 格式化工具">JSON 格式化</div>
+                    <div class="tab" data-tab="tab9" title="Nginx 配置工具">Nginx 配置</div>
+                </div>
+            </div>
+            <div id="tab1" class="tab-content active">
+                <iframe src="pages/DDL.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab2" class="tab-content">
+                <iframe src="pages/JavaToJson.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab3" class="tab-content">
+                <iframe src="pages/JsonToExcel.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab4" class="tab-content">
+                <iframe src="pages/TesterJSON.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab5" class="tab-content">
+                <iframe src="pages/Shell脚本.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab6" class="tab-content">
+                <iframe src="pages/Crontab工具.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab7" class="tab-content">
+                <iframe src="pages/身份证号码生成器.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab8" class="tab-content">
+                <iframe src="pages/Json格式化.html" frameborder="0"></iframe>
+            </div>
+            <div id="tab9" class="tab-content">
+                <iframe src="pages/Nginx配置工具.html" frameborder="0"></iframe>
+            </div>
+        </div>
+
+        <script>
+            const STORAGE_PREFIX = 'form_data_';
+
+            function saveFormData(tabId) {
+                const iframe = document.querySelector(`#`+tabId + ` iframe`);
+                if (!iframe) return;
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const inputs = iframeDoc.querySelectorAll('input, textarea, select');
+                const data = {};
+                inputs.forEach(input => {
+                    const name = input.name || input.id;
+                    if (name) {
+                        data[name] = input.value;
+                    }
+                });
+
+                localStorage.setItem(STORAGE_PREFIX + tabId, JSON.stringify(data));
+            }
+
+            function restoreFormData(tabId) {
+                const iframe = document.querySelector(`#`+tabId + ` iframe`);
+                if (!iframe) return;
+
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const saved = localStorage.getItem(STORAGE_PREFIX + tabId);
+                if (!saved) return;
+
+                try {
+                    const data = JSON.parse(saved);
+                    const inputs = iframeDoc.querySelectorAll('input, textarea, select');
+
+                    inputs.forEach(input => {
+                        const name = input.name || input.id;
+                        if (name && data[name] !== undefined) {
+                            input.value = data[name];
+                        }
+                    });
+                } catch (e) {
+                    console.warn('恢复表单数据失败：',e);
+                }
+            }
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    tab.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+
+                    const currentTabId = document.querySelector('.tab.active').getAttribute('data-tab');
+                    saveFormData(currentTabId);
+
+                    const iframe = document.querySelector(`#`+tabId+ ` iframe`);
+                    iframe.onload = () => {
+                        restoreFormData(tabId);
+                    };
+
+                    if (iframe.contentDocument) {
+                        restoreFormData(tabId);
+                    }
+                });
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const initialTab = new URLSearchParams(window.location.hash.slice(1)).get('tab') || 'tab1';
+                const tabElement = document.querySelector(`.tab[data-tab="${initialTab}"]`);
+                if (tabElement) {
+                    tabElement.click();
+                } else {
+                    document.querySelector('.tab').click();
+                }
+                document.addEventListener('input', function (e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                        const currentTab = document.querySelector('.tab.active').getAttribute('data-tab');
+                        saveFormData(currentTab);
+                    }
+                });
+            });
+
+            window.addEventListener('hashchange', () => {
+                const tab = new URLSearchParams(window.location.hash.slice(1)).get('tab');
+                if (tab && document.querySelector(`.tab[data-tab="${tab}"]`)) {
+                    const tabElement = document.querySelector(`.tab[data-tab="${tab}"]`);
+                    if (!tabElement.classList.contains('active')) {
+                        tabElement.click();
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

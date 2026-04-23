@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>身份证号码生成器</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --danger: #f05656;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page { height: calc(100vh - 16px); display: flex; gap: 8px; }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                min-height: 0;
+            }
+            .panel h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); }
+            .row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+            label { font-size: 12px; }
+            input, select, textarea {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                outline: none;
+            }
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea { width: 100%; flex: 1; resize: none; line-height: 1.6; }
+            button {
+                border: 0;
+                border-radius: 999px;
+                padding: 6px 10px;
+                font-size: 12px;
+                color: #fff;
+                cursor: pointer;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            .result {
+                margin-top: 8px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.6;
+            }
+            .hint {
+                font-size: 12px;
+                color: #2f3d5d;
+                margin-bottom: 8px;
+                padding: 6px 8px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+            }
+            @media (max-width: 900px) { .page { flex-direction: column; } }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel">
+                <h3>批量生成</h3>
+                <div class="row">
+                    <label for="province">省</label>
+                    <select id="province"></select>
+                    <label for="city">市</label>
+                    <select id="city"></select>
+                    <label for="district">区</label>
+                    <select id="district"></select>
+                </div>
+                <div class="hint" id="codeHint">当前行政区码：--</div>
+                <div class="row">
+                    <label for="birthday">生日</label>
+                    <input id="birthday" type="date" />
+                </div>
+                <div class="row">
+                    <label for="gender">性别</label>
+                    <select id="gender">
+                        <option value="random">随机</option>
+                        <option value="male">男</option>
+                        <option value="female">女</option>
+                    </select>
+                    <label for="count">数量</label>
+                    <input id="count" type="number" min="1" max="100" value="10" />
+                    <button type="button" id="genBtn">生成</button>
+                    <button type="button" id="copyBtn">复制结果</button>
+                    <button type="button" class="danger" id="clearBtn">清空</button>
+                </div>
+                <textarea id="result" readonly></textarea>
+            </div>
+            <div class="panel">
+                <h3>号码校验</h3>
+                <div class="row">
+                    <label for="checkInput">身份证号码</label>
+                    <input id="checkInput" style="width: 280px" />
+                    <button type="button" id="checkBtn">校验</button>
+                </div>
+                <div id="checkResult" class="result">请输入号码后点击校验。</div>
+            </div>
+        </div>
+        <script>
+            const weight = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+            const checkMap = ["1", "0", "X", "9", "8", "7", "6", "5", "4", "3", "2"];
+            const AREA_TREE = [
+                { name: "北京市", cities: [{ name: "北京市", districts: [{ name: "东城区", code: "110101" }, { name: "西城区", code: "110102" }, { name: "朝阳区", code: "110105" }, { name: "海淀区", code: "110108" }] }] },
+                { name: "天津市", cities: [{ name: "天津市", districts: [{ name: "和平区", code: "120101" }, { name: "河西区", code: "120103" }, { name: "南开区", code: "120104" }] }] },
+                { name: "河北省", cities: [{ name: "石家庄市", districts: [{ name: "长安区", code: "130102" }, { name: "桥西区", code: "130104" }] }, { name: "唐山市", districts: [{ name: "路南区", code: "130202" }] }] },
+                { name: "山西省", cities: [{ name: "太原市", districts: [{ name: "小店区", code: "140105" }, { name: "迎泽区", code: "140106" }] }] },
+                { name: "内蒙古自治区", cities: [{ name: "呼和浩特市", districts: [{ name: "新城区", code: "150102" }, { name: "回民区", code: "150103" }] }] },
+                { name: "辽宁省", cities: [{ name: "沈阳市", districts: [{ name: "和平区", code: "210102" }, { name: "沈河区", code: "210103" }] }, { name: "大连市", districts: [{ name: "中山区", code: "210202" }] }] },
+                { name: "吉林省", cities: [{ name: "长春市", districts: [{ name: "南关区", code: "220102" }, { name: "宽城区", code: "220103" }] }] },
+                { name: "黑龙江省", cities: [{ name: "哈尔滨市", districts: [{ name: "道里区", code: "230102" }, { name: "南岗区", code: "230103" }] }] },
+                { name: "上海市", cities: [{ name: "上海市", districts: [{ name: "黄浦区", code: "310101" }, { name: "徐汇区", code: "310104" }, { name: "浦东新区", code: "310115" }] }] },
+                { name: "江苏省", cities: [{ name: "南京市", districts: [{ name: "玄武区", code: "320102" }, { name: "秦淮区", code: "320104" }] }, { name: "苏州市", districts: [{ name: "姑苏区", code: "320508" }] }] },
+                { name: "浙江省", cities: [{ name: "杭州市", districts: [{ name: "上城区", code: "330102" }, { name: "西湖区", code: "330106" }] }, { name: "宁波市", districts: [{ name: "海曙区", code: "330203" }] }] },
+                { name: "安徽省", cities: [{ name: "合肥市", districts: [{ name: "瑶海区", code: "340102" }, { name: "庐阳区", code: "340103" }] }] },
+                { name: "福建省", cities: [{ name: "福州市", districts: [{ name: "鼓楼区", code: "350102" }, { name: "台江区", code: "350103" }] }, { name: "厦门市", districts: [{ name: "思明区", code: "350203" }] }] },
+                { name: "江西省", cities: [{ name: "南昌市", districts: [{ name: "东湖区", code: "360102" }, { name: "西湖区", code: "360103" }] }] },
+                { name: "山东省", cities: [{ name: "济南市", districts: [{ name: "历下区", code: "370102" }, { name: "市中区", code: "370103" }] }, { name: "青岛市", districts: [{ name: "市南区", code: "370202" }] }] },
+                { name: "河南省", cities: [{ name: "郑州市", districts: [{ name: "中原区", code: "410102" }, { name: "二七区", code: "410103" }] }] },
+                { name: "湖北省", cities: [{ name: "武汉市", districts: [{ name: "江岸区", code: "420102" }, { name: "武昌区", code: "420106" }] }] },
+                { name: "湖南省", cities: [{ name: "长沙市", districts: [{ name: "芙蓉区", code: "430102" }, { name: "天心区", code: "430103" }] }] },
+                { name: "广东省", cities: [{ name: "广州市", districts: [{ name: "越秀区", code: "440104" }, { name: "天河区", code: "440106" }] }, { name: "深圳市", districts: [{ name: "罗湖区", code: "440303" }, { name: "南山区", code: "440305" }] }] },
+                { name: "广西壮族自治区", cities: [{ name: "南宁市", districts: [{ name: "兴宁区", code: "450102" }, { name: "青秀区", code: "450103" }] }] },
+                { name: "海南省", cities: [{ name: "海口市", districts: [{ name: "秀英区", code: "460105" }, { name: "龙华区", code: "460106" }] }] },
+                { name: "重庆市", cities: [{ name: "重庆市", districts: [{ name: "渝中区", code: "500103" }, { name: "江北区", code: "500105" }] }] },
+                { name: "四川省", cities: [{ name: "成都市", districts: [{ name: "锦江区", code: "510104" }, { name: "青羊区", code: "510105" }] }] },
+                { name: "贵州省", cities: [{ name: "贵阳市", districts: [{ name: "南明区", code: "520102" }, { name: "云岩区", code: "520103" }] }] },
+                { name: "云南省", cities: [{ name: "昆明市", districts: [{ name: "五华区", code: "530102" }, { name: "盘龙区", code: "530103" }] }] },
+                { name: "西藏自治区", cities: [{ name: "拉萨市", districts: [{ name: "城关区", code: "540102" }] }] },
+                { name: "陕西省", cities: [{ name: "西安市", districts: [{ name: "新城区", code: "610102" }, { name: "碑林区", code: "610103" }] }] },
+                { name: "甘肃省", cities: [{ name: "兰州市", districts: [{ name: "城关区", code: "620102" }, { name: "七里河区", code: "620103" }] }] },
+                { name: "青海省", cities: [{ name: "西宁市", districts: [{ name: "城东区", code: "630102" }, { name: "城中区", code: "630103" }] }] },
+                { name: "宁夏回族自治区", cities: [{ name: "银川市", districts: [{ name: "兴庆区", code: "640104" }, { name: "金凤区", code: "640106" }] }] },
+                { name: "新疆维吾尔自治区", cities: [{ name: "乌鲁木齐市", districts: [{ name: "天山区", code: "650102" }, { name: "沙依巴克区", code: "650103" }] }] },
+                { name: "香港特别行政区", cities: [{ name: "香港特别行政区", districts: [{ name: "中西区", code: "810001" }] }] },
+                { name: "澳门特别行政区", cities: [{ name: "澳门特别行政区", districts: [{ name: "花地玛堂区", code: "820001" }] }] }
+            ];
+
+            function randomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            function calcCheckCode(id17) {
+                let sum = 0;
+                for (let i = 0; i < 17; i++) sum += Number(id17[i]) * weight[i];
+                return checkMap[sum % 11];
+            }
+
+            function validDatePart(yyyymmdd) {
+                if (!/^\d{8}$/.test(yyyymmdd)) return false;
+                const y = Number(yyyymmdd.slice(0, 4));
+                const m = Number(yyyymmdd.slice(4, 6));
+                const d = Number(yyyymmdd.slice(6, 8));
+                const dt = new Date(y, m - 1, d);
+                return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+            }
+
+            function generateOne(region, birthday, gender) {
+                const seqBase = randomInt(0, 999);
+                let seq = String(seqBase).padStart(3, "0");
+                if (gender === "male" && Number(seq[2]) % 2 === 0) seq = seq.slice(0, 2) + ((Number(seq[2]) + 1) % 10);
+                if (gender === "female" && Number(seq[2]) % 2 === 1) seq = seq.slice(0, 2) + ((Number(seq[2]) + 1) % 10);
+                const id17 = region + birthday + seq;
+                return id17 + calcCheckCode(id17);
+            }
+
+            function validateId(id) {
+                const cleaned = String(id || "").trim().toUpperCase();
+                if (!/^\d{17}[\dX]$/.test(cleaned)) return { ok: false, message: "格式不正确，应为18位数字或最后一位X" };
+                if (!validDatePart(cleaned.slice(6, 14))) return { ok: false, message: "生日段无效" };
+                const check = calcCheckCode(cleaned.slice(0, 17));
+                if (check !== cleaned[17]) return { ok: false, message: "校验位错误，正确应为 " + check };
+                const gender = Number(cleaned[16]) % 2 === 1 ? "男" : "女";
+                return { ok: true, message: "校验通过，性别：" + gender + "，生日：" + cleaned.slice(6, 10) + "-" + cleaned.slice(10, 12) + "-" + cleaned.slice(12, 14) };
+            }
+
+            const provinceSelect = document.getElementById("province");
+            const citySelect = document.getElementById("city");
+            const districtSelect = document.getElementById("district");
+            const codeHint = document.getElementById("codeHint");
+            const birthdayInput = document.getElementById("birthday");
+            const genderInput = document.getElementById("gender");
+            const countInput = document.getElementById("count");
+            const result = document.getElementById("result");
+
+            function fillSelect(select, list, valueKey) {
+                select.innerHTML = "";
+                for (let i = 0; i < list.length; i++) {
+                    const item = list[i];
+                    const opt = document.createElement("option");
+                    opt.value = valueKey ? item[valueKey] : item.name;
+                    opt.textContent = item.name;
+                    select.appendChild(opt);
+                }
+            }
+
+            function getCurrentProvince() {
+                return AREA_TREE.find(function (p) { return p.name === provinceSelect.value; }) || AREA_TREE[0];
+            }
+
+            function getCurrentCity() {
+                const p = getCurrentProvince();
+                return p.cities.find(function (c) { return c.name === citySelect.value; }) || p.cities[0];
+            }
+
+            function updateCodeHint() {
+                const city = getCurrentCity();
+                const dist = city.districts.find(function (d) { return d.name === districtSelect.value; }) || city.districts[0];
+                codeHint.textContent = "当前行政区码：" + dist.code;
+            }
+
+            function refreshCities() {
+                const p = getCurrentProvince();
+                fillSelect(citySelect, p.cities);
+                refreshDistricts();
+            }
+
+            function refreshDistricts() {
+                const c = getCurrentCity();
+                fillSelect(districtSelect, c.districts);
+                updateCodeHint();
+            }
+
+            fillSelect(provinceSelect, AREA_TREE);
+            refreshCities();
+            provinceSelect.addEventListener("change", refreshCities);
+            citySelect.addEventListener("change", refreshDistricts);
+            districtSelect.addEventListener("change", updateCodeHint);
+
+            document.getElementById("genBtn").addEventListener("click", function () {
+                const city = getCurrentCity();
+                const district = city.districts.find(function (d) { return d.name === districtSelect.value; }) || city.districts[0];
+                const region = district.code;
+                const birth = birthdayInput.value ? birthdayInput.value.replace(/-/g, "") : "";
+                if (!validDatePart(birth)) {
+                    alert("请选择有效生日");
+                    return;
+                }
+                let count = Number(countInput.value);
+                if (!count || count < 1) count = 1;
+                if (count > 100) count = 100;
+
+                const lines = [];
+                for (let i = 0; i < count; i++) lines.push(generateOne(region, birth, genderInput.value));
+                result.value = lines.join("\n");
+            });
+
+            document.getElementById("copyBtn").addEventListener("click", function () {
+                if (!result.value.trim()) return;
+                navigator.clipboard.writeText(result.value);
+            });
+
+            document.getElementById("clearBtn").addEventListener("click", function () {
+                result.value = "";
+            });
+
+            document.getElementById("checkBtn").addEventListener("click", function () {
+                const input = document.getElementById("checkInput").value;
+                const r = validateId(input);
+                document.getElementById("checkResult").textContent = r.message;
+                document.getElementById("checkResult").style.color = r.ok ? "#1f7a3a" : "#d34848";
+            });
+
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>

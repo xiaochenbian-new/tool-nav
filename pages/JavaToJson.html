@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+        <title>Java 实体转 Json</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .container {
+                display: flex;
+                height: calc(100vh - 16px);
+            }
+            .workbench {
+                display: flex;
+                gap: 8px;
+                flex: 1;
+                min-height: 0;
+            }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow);
+                padding: 8px;
+                min-height: 0;
+            }
+            .panel h3 {
+                margin: 0 0 6px;
+                font-size: 13px;
+                color: var(--text);
+            }
+            .toolbar {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+            }
+            .toolbar label {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .toolbar select,
+            .toolbar input {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 5px 8px;
+                outline: none;
+                font-size: 12px;
+                min-width: 130px;
+            }
+            .toolbar select:focus,
+            .toolbar input:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea {
+                width: 100%;
+                flex: 1;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 10px;
+                resize: none;
+                font-size: 13px;
+                line-height: 1.6;
+                outline: none;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            @media (max-width: 900px) {
+                .workbench {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="workbench">
+                <div class="panel">
+                    <div class="toolbar">
+                        <label for="mode-select">模式</label>
+                        <select id="mode-select">
+                            <option value="java2json">Java -> JSON</option>
+                            <option value="json2java">JSON -> Java</option>
+                        </select>
+                        <label for="class-name">类名</label>
+                        <input id="class-name" type="text" value="DemoDTO" />
+                    </div>
+                    <h3 id="input-title">Java 实体</h3>
+                    <textarea
+                        id="java-input"
+                        placeholder="请复制 Java 实体，例如：
+public class UserPO {
+    private Long id;
+    private String nickName;
+    private Date createTime;
+}"
+                    ></textarea>
+                </div>
+                <div class="panel">
+                    <h3 id="output-title">JSON 输出</h3>
+                    <textarea id="json-output" readonly placeholder="输出结果"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function toPascalCase(name) {
+                const clean = String(name || "")
+                    .replace(/[^a-zA-Z0-9_]/g, " ")
+                    .trim();
+                if (!clean) return "DemoDTO";
+                return clean
+                    .split(/[\s_]+/)
+                    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                    .join("");
+            }
+
+            function getDefaultValue(typeName) {
+                const lowerType = typeName.toLowerCase();
+                if (lowerType === "boolean") return false;
+                if (["int", "integer", "short", "byte", "long", "float", "double", "bigdecimal"].includes(lowerType)) return 0;
+                if (lowerType.startsWith("list<") || lowerType.startsWith("set<")) return [];
+                if (lowerType.startsWith("map<")) return {};
+                return null;
+            }
+
+            function convertJavaToJson(inputText) {
+                const result = {};
+                const lines = inputText.split(/\r?\n/);
+                lines.forEach((line) => {
+                    const cleanLine = line.trim();
+                    if (!cleanLine || cleanLine.startsWith("@")) return;
+
+                    const match = cleanLine.match(/^private\s+([\w<>?,\s]+)\s+(\w+)\s*;/);
+                    if (!match) return;
+
+                    const typeName = match[1].replace(/\s+/g, "");
+                    const fieldName = match[2];
+                    result[fieldName] = getDefaultValue(typeName);
+                });
+                return JSON.stringify(result, null, 2);
+            }
+
+            function inferPrimitiveJavaType(value) {
+                if (value === null || value === undefined) return "Object";
+                if (typeof value === "string") return "String";
+                if (typeof value === "boolean") return "Boolean";
+                if (typeof value === "number") return Number.isInteger(value) ? "Integer" : "Double";
+                return "Object";
+            }
+
+            function convertJsonToJava(inputText, className) {
+                const parsed = JSON.parse(inputText);
+                let rootObj = parsed;
+                if (Array.isArray(parsed)) {
+                    const firstObj = parsed.find((v) => v && typeof v === "object" && !Array.isArray(v));
+                    if (!firstObj) {
+                        return "public class " + className + " {\n    // 数组中没有对象元素，无法生成字段\n}";
+                    }
+                    rootObj = firstObj;
+                }
+                if (typeof rootObj !== "object" || rootObj === null) {
+                    return "public class " + className + " {\n    // 当前 JSON 不是对象，无法直接生成字段\n}";
+                }
+
+                const imports = new Set();
+                const usedClassNames = new Set();
+
+                function allocateClassName(nameHint) {
+                    let base = toPascalCase(nameHint || "InnerClass");
+                    if (!base) base = "InnerClass";
+                    let candidate = base;
+                    let idx = 2;
+                    while (usedClassNames.has(candidate)) {
+                        candidate = base + idx;
+                        idx++;
+                    }
+                    usedClassNames.add(candidate);
+                    return candidate;
+                }
+
+                function createClassNode(classNodeName, obj) {
+                    const node = {
+                        name: classNodeName,
+                        fields: [],
+                        children: []
+                    };
+
+                    Object.keys(obj).forEach((key) => {
+                        const value = obj[key];
+                        let fieldType = "Object";
+
+                        if (Array.isArray(value)) {
+                            imports.add("List");
+                            const sample = value.find((v) => v !== null && v !== undefined);
+                            if (sample && typeof sample === "object" && !Array.isArray(sample)) {
+                                const childClassName = allocateClassName(key + "Item");
+                                const childNode = createClassNode(childClassName, sample);
+                                node.children.push(childNode);
+                                fieldType = "List<" + childClassName + ">";
+                            } else if (sample && Array.isArray(sample)) {
+                                fieldType = "List<Object>";
+                            } else {
+                                fieldType = "List<" + inferPrimitiveJavaType(sample) + ">";
+                            }
+                        } else if (value && typeof value === "object") {
+                            const childClassName = allocateClassName(key);
+                            const childNode = createClassNode(childClassName, value);
+                            node.children.push(childNode);
+                            fieldType = childClassName;
+                        } else {
+                            fieldType = inferPrimitiveJavaType(value);
+                        }
+
+                        node.fields.push({
+                            name: key,
+                            type: fieldType
+                        });
+                    });
+
+                    return node;
+                }
+
+                function renderNode(node, indentLevel, isRoot) {
+                    const indent = "    ".repeat(indentLevel);
+                    const lines = [];
+                    lines.push(indent + (isRoot ? "public class " : "public static class ") + node.name + " {");
+
+                    if (node.fields.length === 0) {
+                        lines.push(indent + "    // 无可用字段");
+                    } else {
+                        node.fields.forEach((field) => {
+                            lines.push(indent + "    private " + field.type + " " + field.name + ";");
+                        });
+                    }
+
+                    if (node.children.length > 0) {
+                        lines.push("");
+                        node.children.forEach((child, idx) => {
+                            const childLines = renderNode(child, indentLevel + 1, false);
+                            lines.push(childLines);
+                            if (idx < node.children.length - 1) lines.push("");
+                        });
+                    }
+
+                    lines.push(indent + "}");
+                    return lines.join("\n");
+                }
+
+                const rootClassName = allocateClassName(className);
+                const rootNode = createClassNode(rootClassName, rootObj);
+
+                const headerLines = [];
+                if (imports.has("List")) {
+                    headerLines.push("import java.util.List;");
+                    headerLines.push("");
+                }
+                headerLines.push(renderNode(rootNode, 0, true));
+                return headerLines.join("\n");
+            }
+
+            function updateModeUI() {
+                const mode = modeSelect.value;
+                if (mode === "java2json") {
+                    inputTitle.textContent = "Java 实体";
+                    outputTitle.textContent = "JSON 输出";
+                    input.placeholder = "请复制 Java 实体，例如：\npublic class UserPO {\n    private Long id;\n    private String nickName;\n}";
+                } else {
+                    inputTitle.textContent = "JSON 输入";
+                    outputTitle.textContent = "Java 输出";
+                    input.placeholder = '请输入 JSON，例如：\n{\n  "id": 1,\n  "name": "张三",\n  "active": true\n}';
+                }
+            }
+
+            function renderOutput() {
+                const text = input.value.trim();
+                if (!text) {
+                    output.value = "";
+                    return;
+                }
+                try {
+                    if (modeSelect.value === "java2json") {
+                        output.value = convertJavaToJson(text);
+                    } else {
+                        const className = toPascalCase(classNameInput.value);
+                        output.value = convertJsonToJava(text, className);
+                    }
+                } catch (error) {
+                    output.value = "转换失败: " + error.message;
+                }
+            }
+
+            const input = document.getElementById("java-input");
+            const output = document.getElementById("json-output");
+            const modeSelect = document.getElementById("mode-select");
+            const classNameInput = document.getElementById("class-name");
+            const inputTitle = document.getElementById("input-title");
+            const outputTitle = document.getElementById("output-title");
+            input.addEventListener("input", renderOutput);
+            classNameInput.addEventListener("input", renderOutput);
+            modeSelect.addEventListener("change", function () {
+                updateModeUI();
+                renderOutput();
+            });
+            updateModeUI();
+
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>

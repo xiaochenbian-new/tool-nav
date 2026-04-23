@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>JSON 格式化工具</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page { height: calc(100vh - 16px); display: flex; gap: 8px; }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                min-height: 0;
+            }
+            .panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--text); }
+            .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+            label { font-size: 12px; color: var(--muted); }
+            select, button {
+                border: 1px solid #cfdcf7;
+                border-radius: 999px;
+                padding: 6px 10px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            select { border-radius: 8px; }
+            button {
+                border: 0;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            textarea {
+                width: 100%;
+                flex: 1;
+                resize: none;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 10px;
+                outline: none;
+                font-size: 12px;
+                line-height: 1.6;
+            }
+            textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .status {
+                margin-top: 6px;
+                padding: 6px 8px;
+                border-radius: 6px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                font-size: 12px;
+                color: #2f3d5d;
+            }
+            @media (max-width: 900px) { .page { flex-direction: column; } }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel">
+                <h3>输入 JSON</h3>
+                <textarea id="input" placeholder='{"name":"张三","age":18}'></textarea>
+            </div>
+            <div class="panel">
+                <div class="toolbar">
+                    <label for="indent">缩进</label>
+                    <select id="indent">
+                        <option value="2">2 空格</option>
+                        <option value="4">4 空格</option>
+                        <option value="tab">Tab</option>
+                    </select>
+                    <button type="button" id="formatBtn">格式化</button>
+                    <button type="button" id="minifyBtn">压缩</button>
+                    <button type="button" id="validateBtn">校验</button>
+                    <button type="button" id="copyBtn">复制输出</button>
+                    <button type="button" id="swapBtn">输出转输入</button>
+                    <button type="button" class="danger" id="clearBtn">清空</button>
+                </div>
+                <textarea id="output" readonly></textarea>
+                <div id="status" class="status">等待操作。</div>
+            </div>
+        </div>
+        <script>
+            function setStatus(text, ok) {
+                status.textContent = text;
+                status.style.color = ok ? "#1f7a3a" : "#c43d3d";
+            }
+
+            function tryParse() {
+                const text = input.value.trim();
+                if (!text) throw new Error("请输入 JSON 内容");
+                return JSON.parse(text);
+            }
+
+            const input = document.getElementById("input");
+            const output = document.getElementById("output");
+            const status = document.getElementById("status");
+            const indent = document.getElementById("indent");
+
+            document.getElementById("formatBtn").addEventListener("click", function () {
+                try {
+                    const obj = tryParse();
+                    const sp = indent.value === "tab" ? "\t" : Number(indent.value);
+                    output.value = JSON.stringify(obj, null, sp);
+                    setStatus("格式化成功。", true);
+                } catch (error) {
+                    setStatus("格式化失败：" + error.message, false);
+                }
+            });
+
+            document.getElementById("minifyBtn").addEventListener("click", function () {
+                try {
+                    const obj = tryParse();
+                    output.value = JSON.stringify(obj);
+                    setStatus("压缩成功。", true);
+                } catch (error) {
+                    setStatus("压缩失败：" + error.message, false);
+                }
+            });
+
+            document.getElementById("validateBtn").addEventListener("click", function () {
+                try {
+                    tryParse();
+                    setStatus("JSON 校验通过。", true);
+                } catch (error) {
+                    setStatus("JSON 校验失败：" + error.message, false);
+                }
+            });
+
+            document.getElementById("copyBtn").addEventListener("click", function () {
+                if (!output.value.trim()) return;
+                navigator.clipboard.writeText(output.value);
+                setStatus("已复制输出内容。", true);
+            });
+
+            document.getElementById("swapBtn").addEventListener("click", function () {
+                if (!output.value.trim()) return;
+                input.value = output.value;
+                setStatus("已将输出内容填回输入框。", true);
+            });
+
+            document.getElementById("clearBtn").addEventListener("click", function () {
+                input.value = "";
+                output.value = "";
+                status.textContent = "已清空。";
+                status.style.color = "#2f3d5d";
+            });
+
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>

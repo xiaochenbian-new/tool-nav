@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+        <title>MySQL DDL Parse</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .container {
+                display: flex;
+                height: calc(100vh - 16px);
+            }
+            .workbench {
+                display: flex;
+                gap: 8px;
+                flex: 1;
+                min-height: 0;
+            }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow);
+                padding: 8px;
+                min-height: 0;
+            }
+            .panel h3 {
+                margin: 0 0 6px;
+                font-size: 13px;
+                color: var(--text);
+            }
+            .panel-tools {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 6px;
+            }
+            .panel-tools label {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            select {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 4px 8px;
+                font-size: 12px;
+                outline: none;
+                background: #fff;
+            }
+            select:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea {
+                width: 100%;
+                flex: 1;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 10px;
+                resize: none;
+                font-size: 13px;
+                line-height: 1.6;
+                outline: none;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            @media (max-width: 900px) {
+                .workbench {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="workbench">
+                <div class="panel">
+                    <div class="panel-tools">
+                        <h3>DDL 输入</h3>
+                        <label for="db-type">数据库</label>
+                        <select id="db-type">
+                            <option value="auto">自动识别</option>
+                            <option value="mysql">MySQL</option>
+                            <option value="pgsql">PostgreSQL</option>
+                            <option value="oracle">Oracle</option>
+                        </select>
+                    </div>
+                    <textarea
+                        id="ddl-input"
+                        placeholder="请复制 DDL 语句（支持 MySQL / PostgreSQL / Oracle），例如：
+CREATE TABLE users (
+  id BIGSERIAL PRIMARY KEY,
+  user_name VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP
+);"
+                    ></textarea>
+                </div>
+                <div class="panel">
+                    <h3>解析结果</h3>
+                    <textarea id="ddl-output" readonly placeholder="所有字段 / 查询SQL / 实体类 / mybatis"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function stripIdentifier(rawName) {
+                return rawName.replace(/^["`]+|["`]+$/g, "");
+            }
+
+            function toCamel(name) {
+                const normalized = name.toLowerCase();
+                return normalized.replace(/_([a-zA-Z0-9])/g, function (_, char) {
+                    return char.toUpperCase();
+                });
+            }
+
+            function toPascal(name) {
+                const camel = toCamel(name);
+                return camel ? camel.charAt(0).toUpperCase() + camel.slice(1) : "";
+            }
+
+            function detectDialect(inputText) {
+                const text = inputText.toLowerCase();
+                if (/\bserial\b|\bbigserial\b|\bjsonb\b|\bwithout time zone\b/.test(text)) return "pgsql";
+                if (/\bvarchar2\b|\bnumber\s*(\(|\b)|\bnvarchar2\b|\bclob\b|\bblob\b/.test(text)) return "oracle";
+                return "mysql";
+            }
+
+            function sqlTypeToJava(sqlType, dialect) {
+                const type = sqlType.toLowerCase();
+                if (type.includes("bigserial")) return "Long";
+                if (type.includes("serial")) return "Integer";
+                if (type.includes("bool")) return "Boolean";
+                if (type.includes("double precision") || type.startsWith("double") || type.includes("binary_double")) return "Double";
+                if (type.startsWith("float") || type.startsWith("real") || type.includes("binary_float")) return "Float";
+
+                if (
+                    /(char|text|clob|json|jsonb|xml|uuid|date|time|timestamp|year|blob|bytea)/.test(type) &&
+                    !/(int|number|numeric|decimal)/.test(type)
+                ) {
+                    return "String";
+                }
+
+                if (/(bigint|int8)/.test(type)) return "Long";
+                if (/(tinyint|smallint|mediumint|int|integer|int2|int4)/.test(type)) return "Integer";
+
+                if (/(decimal|numeric|number)/.test(type)) {
+                    const match = type.match(/\((\d+)\s*(,\s*(\d+))?\)/);
+                    if (match) {
+                        const scale = match[3] ? parseInt(match[3], 10) : 0;
+                        const precision = parseInt(match[1], 10);
+                        if (scale > 0) return "BigDecimal";
+                        if (precision >= 10) return "Long";
+                        return "Integer";
+                    }
+                    if (dialect === "oracle") return "BigDecimal";
+                    return "BigDecimal";
+                }
+                return "String";
+            }
+
+            function splitColumnDefinitions(segment) {
+                const items = [];
+                let current = "";
+                let depth = 0;
+                let inSingle = false;
+                let inDouble = false;
+                for (let i = 0; i < segment.length; i++) {
+                    const char = segment[i];
+                    const prev = i > 0 ? segment[i - 1] : "";
+                    if (char === "'" && !inDouble && prev !== "\\") inSingle = !inSingle;
+                    if (char === '"' && !inSingle && prev !== "\\") inDouble = !inDouble;
+                    if (!inSingle && !inDouble) {
+                        if (char === "(") depth++;
+                        if (char === ")") depth--;
+                        if (char === "," && depth === 0) {
+                            if (current.trim()) items.push(current.trim());
+                            current = "";
+                            continue;
+                        }
+                    }
+                    current += char;
+                }
+                if (current.trim()) items.push(current.trim());
+                return items;
+            }
+
+            function getTypeText(rest) {
+                let result = "";
+                let depth = 0;
+                const stopRegex = /^(not|null|default|primary|unique|references|check|constraint|comment|generated|collate)\b/i;
+                for (let i = 0; i < rest.length; i++) {
+                    const char = rest[i];
+                    if (char === "(") depth++;
+                    if (char === ")") depth--;
+
+                    if (depth <= 0 && /\s/.test(char)) {
+                        const remaining = rest.slice(i).trimStart();
+                        if (stopRegex.test(remaining)) break;
+                    }
+                    result += char;
+                }
+                return result.trim();
+            }
+
+            function parseColumns(ddlText, dialect) {
+                const createMatch = ddlText.match(/create\s+table[\s\S]*?\(/i);
+                if (!createMatch) return [];
+                const segmentStart = createMatch.index + createMatch[0].length;
+                const full = ddlText.slice(segmentStart);
+                let depth = 1;
+                let endIndex = -1;
+                for (let i = 0; i < full.length; i++) {
+                    if (full[i] === "(") depth++;
+                    if (full[i] === ")") depth--;
+                    if (depth === 0) {
+                        endIndex = i;
+                        break;
+                    }
+                }
+                if (endIndex === -1) return [];
+
+                const block = full.slice(0, endIndex);
+                const defs = splitColumnDefinitions(block);
+                const columns = [];
+                defs.forEach((item) => {
+                    if (!item) return;
+                    if (/^(primary|unique|key|constraint|index|foreign)\b/i.test(item)) return;
+                    const line = item.replace(/\r?\n/g, " ").trim();
+                    const match = line.match(/^("?[A-Za-z_][A-Za-z0-9_$]*"?|`[^`]+`)\s+(.+)$/);
+                    if (!match) return;
+
+                    const rawName = stripIdentifier(match[1]);
+                    const rest = match[2];
+                    const typeText = getTypeText(rest);
+                    if (!typeText) return;
+                    const commentMatch = line.match(/comment\s+'([^']*)'/i);
+                    columns.push({
+                        columnName: rawName,
+                        fieldName: toCamel(rawName),
+                        javaType: sqlTypeToJava(typeText, dialect),
+                        comment: commentMatch ? commentMatch[1] : "",
+                        sqlType: typeText
+                    });
+                });
+                return columns;
+            }
+
+            function parseTableName(ddlText) {
+                const match = ddlText.match(/create\s+table\s+(?:if\s+not\s+exists\s+)?((?:"?[\w$]+"?|`[\w$]+`)\.)?("?[\w$]+"?|`[\w$]+`)/i);
+                if (!match) return "table_name";
+                const tablePart = match[2] || match[0];
+                return stripIdentifier(tablePart);
+            }
+
+            function parseDDL(ddlText, selectedDialect) {
+                const dialect = selectedDialect === "auto" ? detectDialect(ddlText) : selectedDialect;
+                const tableName = parseTableName(ddlText);
+                const className = toPascal(tableName);
+                const columns = parseColumns(ddlText, dialect);
+
+                if (columns.length === 0) {
+                    return "";
+                }
+
+                const allFields = "所有字段：\n" + columns.map((c) => c.columnName).join(",");
+                const selectSql =
+                    "查询所有字段SQL：\nselect\n" +
+                    columns.map((c) => "    " + c.columnName + " as " + c.fieldName).join(",\n") +
+                    "\nfrom " +
+                    tableName;
+
+                const entity =
+                    "实体类：\npublic class " +
+                    className +
+                    " {\n" +
+                    columns
+                        .map((c) => "    private " + c.javaType + " " + c.fieldName + ";" + (c.comment ? " // " + c.comment : ""))
+                        .join("\n") +
+                    "\n}";
+
+                const baseColumn =
+                    "base_column:\n<sql id=\"base_column\">\n" +
+                    columns.map((c) => "    " + c.columnName).join(",\n") +
+                    "\n</sql>";
+
+                const resultMap =
+                    "resultMap:\n<resultMap id=\"base_column_map\" type=\"实体类\">\n" +
+                    columns.map((c) => "    <result column=\"" + c.columnName + "\" property=\"" + c.fieldName + "\" />").join("\n") +
+                    "\n</resultMap>";
+
+                const updateSql =
+                    "updateSql语句：\nupdate " +
+                    tableName +
+                    "\n<set>\n" +
+                    columns
+                        .map((c) => {
+                            if (c.javaType === "String") {
+                                return (
+                                    "    <if test=\"" +
+                                    c.fieldName +
+                                    " != null and " +
+                                    c.fieldName +
+                                    " != ''\">" +
+                                    c.columnName +
+                                    " = #{" +
+                                    c.fieldName +
+                                    "},</if>"
+                                );
+                            }
+                            return "    <if test=\"" + c.fieldName + " != null\">" + c.columnName + " = #{" + c.fieldName + "},</if>";
+                        })
+                        .join("\n") +
+                    "\n</set>\nwhere xxx条件";
+
+                const insertSql =
+                    "insertSql语句：\ninsert into " +
+                    tableName +
+                    "(" +
+                    columns.map((c) => c.columnName).join(",") +
+                    ")\nvalues\n<foreach collection=\"list\" item=\"em\" separator=\",\">\n    (" +
+                    columns.map((c) => "#{" + "em." + c.fieldName + "}").join(", ") +
+                    ")\n</foreach>";
+
+                return ["数据库类型：" + dialect.toUpperCase(), allFields, selectSql, entity, "===================== mybatis 相关 ====================\n" + baseColumn + "\n\n" + resultMap + "\n\n" + updateSql + "\n\n" + insertSql].join(
+                    "\n\n"
+                );
+            }
+
+            const input = document.getElementById("ddl-input");
+            const output = document.getElementById("ddl-output");
+            const dbType = document.getElementById("db-type");
+
+            function renderOutput() {
+                const text = input.value.trim();
+                output.value = text ? parseDDL(text, dbType.value) : "";
+            }
+
+            input.addEventListener("input", function () {
+                renderOutput();
+            });
+            dbType.addEventListener("change", renderOutput);
+
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>

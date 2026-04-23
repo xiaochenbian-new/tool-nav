@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>文本对比工具</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --ok-bg: #ecfff2;
+                --ok-color: #18834f;
+                --diff-bg: #fff3f3;
+                --diff-color: #c03434;
+            }
+            html, body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 10px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .editor-wrap {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .editor-card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .editor-title {
+                padding: 8px 10px;
+                font-size: 12px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+            }
+            textarea {
+                flex: 1;
+                width: 100%;
+                border: none;
+                outline: none;
+                resize: none;
+                padding: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--text);
+                background: #fff;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .result {
+                max-height: 38%;
+                overflow: auto;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .line {
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                line-height: 1.5;
+                font-family: Consolas, "Courier New", monospace;
+                white-space: pre-wrap;
+                word-break: break-word;
+                border: 1px solid #e6eeff;
+                background: #f8fbff;
+            }
+            .line.same {
+                background: var(--ok-bg);
+                color: var(--ok-color);
+                border-color: #bde8cf;
+            }
+            .line.diff {
+                background: var(--diff-bg);
+                color: var(--diff-color);
+                border-color: #ffd1d1;
+            }
+            @media (max-width: 900px) {
+                .editor-wrap { grid-template-columns: 1fr; }
+                .result { max-height: 42%; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="toolbar">
+                <button id="compare-btn" class="btn primary" type="button">开始对比</button>
+                <button id="swap-btn" class="btn" type="button">左右互换</button>
+                <button id="clear-btn" class="btn" type="button">清空</button>
+                <span id="summary" class="hint">输入左右文本后点击“开始对比”</span>
+            </div>
+
+            <div class="editor-wrap">
+                <div class="editor-card">
+                    <div class="editor-title">左侧文本</div>
+                    <textarea id="left-text" placeholder="请输入左侧文本"></textarea>
+                </div>
+                <div class="editor-card">
+                    <div class="editor-title">右侧文本</div>
+                    <textarea id="right-text" placeholder="请输入右侧文本"></textarea>
+                </div>
+            </div>
+
+            <div id="result" class="result"></div>
+        </div>
+
+        <script>
+            function normalizeLines(text) {
+                return String(text || "").replace(/\r\n/g, "\n").split("\n");
+            }
+
+            function compareLines(leftText, rightText) {
+                const left = normalizeLines(leftText);
+                const right = normalizeLines(rightText);
+                const maxLen = Math.max(left.length, right.length);
+                const rows = [];
+                let sameCount = 0;
+                let diffCount = 0;
+                for (let i = 0; i < maxLen; i += 1) {
+                    const l = left[i] === undefined ? "" : left[i];
+                    const r = right[i] === undefined ? "" : right[i];
+                    const same = l === r;
+                    if (same) sameCount += 1;
+                    else diffCount += 1;
+                    rows.push({
+                        lineNo: i + 1,
+                        same: same,
+                        left: l,
+                        right: r
+                    });
+                }
+                return { rows, sameCount, diffCount, total: maxLen };
+            }
+
+            function escapeHtml(input) {
+                return String(input)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            }
+
+            function renderDiff() {
+                const leftText = document.getElementById("left-text").value;
+                const rightText = document.getElementById("right-text").value;
+                const result = document.getElementById("result");
+                const summary = document.getElementById("summary");
+                const data = compareLines(leftText, rightText);
+
+                if (!data.total) {
+                    result.innerHTML = "<div class=\"line\">暂无内容</div>";
+                    summary.textContent = "输入左右文本后点击“开始对比”";
+                    return;
+                }
+
+                summary.textContent = "总行数 " + data.total + "，相同 " + data.sameCount + "，差异 " + data.diffCount;
+                result.innerHTML = data.rows.map(function (row) {
+                    const cls = row.same ? "same" : "diff";
+                    return "<div class=\"line " + cls + "\">"
+                        + "第 " + row.lineNo + " 行"
+                        + "\n左: " + escapeHtml(row.left)
+                        + "\n右: " + escapeHtml(row.right)
+                        + "</div>";
+                }).join("");
+            }
+
+            document.getElementById("compare-btn").addEventListener("click", renderDiff);
+            document.getElementById("swap-btn").addEventListener("click", function () {
+                const left = document.getElementById("left-text");
+                const right = document.getElementById("right-text");
+                const tmp = left.value;
+                left.value = right.value;
+                right.value = tmp;
+            });
+            document.getElementById("clear-btn").addEventListener("click", function () {
+                document.getElementById("left-text").value = "";
+                document.getElementById("right-text").value = "";
+                renderDiff();
+            });
+
+            renderDiff();
+        </script>
+    </body>
+</html>

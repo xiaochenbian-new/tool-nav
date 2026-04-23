@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>解析 Talend API Tester 为文档</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page {
+                display: flex;
+                height: calc(100vh - 16px);
+            }
+            .container {
+                display: flex;
+                flex: 1;
+                min-height: 0;
+                gap: 8px;
+            }
+            .input-panel,
+            .output-panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+            }
+            .input-panel {
+                flex: 0 0 38%;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .output-panel {
+                flex: 1;
+                padding: 8px;
+                overflow-y: auto;
+            }
+            .input-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 6px;
+            }
+            .input-header h2,
+            .output-panel h2 {
+                margin: 0;
+                font-size: 14px;
+                color: var(--text);
+            }
+            #input-json {
+                width: 100%;
+                flex: 1;
+                resize: none;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                outline: none;
+                padding: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            #input-json:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            button {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border: 0;
+                padding: 7px 12px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 999px;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 16px rgba(36, 90, 190, 0.25);
+            }
+            .api-card {
+                padding: 8px 10px;
+                border: 1px solid #dde7fb;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                background: #f9fbff;
+            }
+            .api-card h3 {
+                margin: 0 0 8px;
+                color: var(--primary);
+                font-size: 15px;
+            }
+            .api-card p {
+                margin: 6px 0;
+                font-size: 13px;
+            }
+            .api-card pre {
+                margin: 6px 0 0;
+                padding: 8px;
+                background: #f3f6fa;
+                border-radius: 4px;
+                overflow: auto;
+                font-size: 12px;
+            }
+            @media (max-width: 900px) {
+                .container {
+                    flex-direction: column;
+                }
+                .input-panel {
+                    flex: none;
+                    min-height: 240px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="container">
+                <div class="input-panel">
+                    <div class="input-header">
+                        <h2>输入 JSON</h2>
+                        <button id="parse-btn" type="button">开始解析</button>
+                    </div>
+                    <textarea id="input-json" placeholder='{"entities":[{"items":[...]}]}'></textarea>
+                </div>
+                <div class="output-panel">
+                    <h2>解析结果</h2>
+                    <div id="output-results"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function parseFlexibleJson(text) {
+                const raw = text.trim();
+                if (!raw) throw new Error("empty");
+                try {
+                    return JSON.parse(raw);
+                } catch (firstError) {
+                    try {
+                        const unescaped = raw.replace(/^\s*["']|["']\s*$/g, "").replace(/\\"/g, '"').replace(/\\n/g, "");
+                        return JSON.parse(unescaped);
+                    } catch (secondError) {
+                        try {
+                            // 有些导出内容是被二次 stringify 的字符串
+                            const parsed = JSON.parse(raw);
+                            if (typeof parsed === "string") return JSON.parse(parsed);
+                            throw secondError;
+                        } catch (thirdError) {
+                            throw firstError;
+                        }
+                    }
+                }
+            }
+
+            function collectRequestItemsFromNode(node, collector) {
+                if (!node) return;
+                if (Array.isArray(node)) {
+                    node.forEach((n) => collectRequestItemsFromNode(n, collector));
+                    return;
+                }
+                if (typeof node !== "object") return;
+                if (node?.entity?.type === "Request" || node?.request) {
+                    collector.push(node);
+                }
+                if (Array.isArray(node.items)) collectRequestItemsFromNode(node.items, collector);
+                if (Array.isArray(node.entities)) collectRequestItemsFromNode(node.entities, collector);
+                if (Array.isArray(node.children)) collectRequestItemsFromNode(node.children, collector);
+            }
+
+            function parseQueryParams(queryList) {
+                if (!queryList) return "";
+                const lines = [];
+                if (Array.isArray(queryList)) {
+                    queryList.forEach((item) => {
+                        if (!item || item.enabled === false) return;
+                        const name = item.name || item.key || "";
+                        const rawValue = item.value ?? item.val ?? item.defaultValue ?? "";
+                        const value = typeof rawValue === "string" ? rawValue.replace(/^"|"$/g, "") : rawValue;
+                        if (name) lines.push(name + "=" + (value ?? ""));
+                    });
+                    return lines.join("\n");
+                }
+                if (typeof queryList === "string") {
+                    const str = queryList.trim().replace(/^\?/, "");
+                    if (!str) return "";
+                    str.split("&").forEach((pair) => {
+                        if (!pair) return;
+                        const idx = pair.indexOf("=");
+                        if (idx === -1) {
+                            lines.push(pair);
+                        } else {
+                            lines.push(pair.slice(0, idx) + "=" + pair.slice(idx + 1));
+                        }
+                    });
+                    return lines.join("\n");
+                }
+                if (typeof queryList === "object") {
+                    if (Array.isArray(queryList.items)) {
+                        return parseQueryParams(queryList.items);
+                    }
+                    Object.keys(queryList).forEach((k) => {
+                        if (k === "delimiter" || k === "items") return;
+                        lines.push(k + "=" + (queryList[k] ?? ""));
+                    });
+                    return lines.join("\n");
+                }
+                return "";
+            }
+
+            function parseBodyText(textBody) {
+                if (!textBody) return "";
+                if (typeof textBody === "object") {
+                    try {
+                        return JSON.stringify(textBody, null, 2);
+                    } catch (error) {
+                        return String(textBody);
+                    }
+                }
+                try {
+                    const normalized = textBody.replace(/\\n/g, "").replace(/\\"/g, '"');
+                    return JSON.stringify(JSON.parse(normalized), null, 2);
+                } catch (error) {
+                    return textBody;
+                }
+            }
+
+            function firstNonEmptyString(candidates) {
+                for (let i = 0; i < candidates.length; i++) {
+                    const v = candidates[i];
+                    if (typeof v === "string" && v.trim()) return v.trim();
+                }
+                return "";
+            }
+
+            function buildUriString(uriObj) {
+                if (!uriObj) return "";
+                if (typeof uriObj === "string") return uriObj;
+                const schemeName = uriObj?.scheme?.name || "";
+                const host = uriObj?.host || "";
+                const path = uriObj?.path || "";
+                let query = parseQueryParams(uriObj?.query);
+                if (query) {
+                    const delimiter = uriObj?.query?.delimiter || "&";
+                    query = query.replace(/\n/g, delimiter);
+                }
+                let url = "";
+                if (host) {
+                    if (schemeName) {
+                        url = schemeName + "://" + host + path;
+                    } else {
+                        url = host + path;
+                    }
+                } else {
+                    url = path;
+                }
+                if (query) {
+                    url += (url.includes("?") ? "&" : "?") + query;
+                }
+                return url;
+            }
+
+            function extractRequestMeta(item) {
+                const request = item?.request || item?.entity || {};
+                const pathObj = request.path || {};
+                const method = firstNonEmptyString([
+                    request?.method?.name,
+                    request?.method,
+                    request?.httpMethod,
+                    item?.entity?.method
+                ]) || "GET";
+
+                const uri = firstNonEmptyString([
+                    pathObj?.uri,
+                    pathObj?.url,
+                    request?.uri,
+                    request?.url,
+                    request?.endpoint,
+                    request?.path,
+                    item?.entity?.uri,
+                    item?.entity?.url,
+                    item?.entity?.path,
+                    buildUriString(request?.uri),
+                    buildUriString(item?.entity?.uri)
+                ]) || buildUriString(request?.uri) || buildUriString(item?.entity?.uri);
+
+                const queryParams =
+                    parseQueryParams(pathObj?.query) ||
+                    parseQueryParams(pathObj?.queryString) ||
+                    parseQueryParams(request?.query) ||
+                    parseQueryParams(request?.queryString) ||
+                    parseQueryParams(request?.params) ||
+                    parseQueryParams(request?.parameters) ||
+                    parseQueryParams(request?.uri?.query) ||
+                    parseQueryParams(item?.entity?.uri?.query);
+
+                const bodyParams =
+                    parseBodyText(request?.body?.textBody) ||
+                    parseBodyText(request?.body?.raw) ||
+                    parseBodyText(request?.body?.json) ||
+                    parseBodyText(request?.body?.form) ||
+                    parseBodyText(request?.body?.formData) ||
+                    parseBodyText(request?.payload) ||
+                    parseBodyText(request?.body) ||
+                    parseBodyText(item?.entity?.body?.textBody) ||
+                    parseBodyText(item?.entity?.body?.raw) ||
+                    parseBodyText(item?.entity?.body?.json) ||
+                    parseBodyText(item?.entity?.body);
+
+                return {
+                    request: request,
+                    method: method,
+                    uri: uri,
+                    queryParams: queryParams,
+                    bodyParams: bodyParams
+                };
+            }
+
+            function createApiCard(item) {
+                const name = item?.entity?.name || "未命名接口";
+                const meta = extractRequestMeta(item);
+                const uri = meta.uri || "(未识别到 URL)";
+                const method = meta.method || "GET";
+                const queryParams = meta.queryParams;
+                const bodyParams = meta.bodyParams;
+                const params = method === "GET" ? queryParams : bodyParams || queryParams;
+
+                const card = document.createElement("div");
+                card.className = "api-card";
+                card.innerHTML =
+                    "<h3>## " +
+                    name +
+                    "</h3>" +
+                    "<p><strong>- 接口 URI:</strong> " +
+                    uri +
+                    "</p>" +
+                    "<p><strong>- 请求方式:</strong> " +
+                    method +
+                    "</p>" +
+                    "<p><strong>- 接口参数:</strong></p>" +
+                    "<pre>" +
+                    (params || "(无参数)") +
+                    "</pre>";
+                return card;
+            }
+
+            function parseJson() {
+                const input = document.getElementById("input-json").value.trim();
+                const output = document.getElementById("output-results");
+                output.innerHTML = "";
+                if (!input) {
+                    alert("请输入 JSON 内容");
+                    return;
+                }
+                let data;
+                try {
+                    data = parseFlexibleJson(input);
+                } catch (error) {
+                    alert("JSON 格式错误，请检查后再试");
+                    return;
+                }
+
+                const requestItems = [];
+                collectRequestItemsFromNode(data, requestItems);
+                if (requestItems.length === 0) {
+                    output.textContent = "没有可解析的 Request 项目。";
+                    return;
+                }
+
+                requestItems.forEach((item) => output.appendChild(createApiCard(item)));
+            }
+
+            document.getElementById("parse-btn").addEventListener("click", parseJson);
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>

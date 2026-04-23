@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Nginx 配置工具</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+                overflow: hidden;
+            }
+            .page { height: calc(100vh - 16px); display: flex; gap: 8px; min-height: 0; }
+            .panel {
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                overflow: auto;
+            }
+            .panel-left { flex: 1.15; }
+            .panel-right { flex: 0.85; }
+            .panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--text); }
+            .section {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 8px;
+                margin-bottom: 8px;
+                background: #f8fbff;
+            }
+            .section h4 { margin: 0 0 8px; font-size: 12px; color: #2b3f66; }
+            .row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin-bottom: 8px;
+                flex-wrap: wrap;
+            }
+            label { font-size: 12px; color: var(--muted); min-width: 74px; }
+            input, select, textarea {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                outline: none;
+                font-size: 12px;
+            }
+            input, select { min-width: 170px; }
+            textarea { width: 100%; flex: 1; resize: none; line-height: 1.6; }
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .check-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+            .check-group label {
+                min-width: 0;
+                display: inline-flex;
+                gap: 4px;
+                align-items: center;
+                color: #3b4f78;
+            }
+            .button-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+            button {
+                border: 0;
+                border-radius: 999px;
+                padding: 7px 12px;
+                font-size: 12px;
+                color: #fff;
+                cursor: pointer;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            #clear-btn { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            .status {
+                margin-top: 8px;
+                padding: 6px 8px;
+                border-radius: 6px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                font-size: 12px;
+                color: #2f3d5d;
+            }
+            .hint { margin-top: 6px; font-size: 12px; color: #4f648b; line-height: 1.6; }
+            @media (max-width: 980px) {
+                .page { flex-direction: column; }
+                input, select { min-width: 160px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel panel-left">
+                <h3>Nginx 参数配置</h3>
+                <div class="section">
+                    <h4>基础</h4>
+                    <div class="row">
+                        <label for="site-mode">站点模式</label>
+                        <select id="site-mode">
+                            <option value="proxy">反向代理</option>
+                            <option value="static">静态站点</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label for="server-name">域名</label>
+                        <input id="server-name" type="text" value="example.com www.example.com" />
+                    </div>
+                    <div class="row">
+                        <label for="listen-port">HTTP 端口</label>
+                        <input id="listen-port" type="text" value="80" />
+                        <label for="https-port">HTTPS 端口</label>
+                        <input id="https-port" type="text" value="443" />
+                    </div>
+                    <div class="row">
+                        <label for="location-path">Location</label>
+                        <input id="location-path" type="text" value="/" />
+                        <label for="client-max-body">Body 限制</label>
+                        <input id="client-max-body" type="text" value="20m" />
+                    </div>
+                </div>
+
+                <div class="section" id="proxy-section">
+                    <h4>反向代理 / Upstream</h4>
+                    <div class="row">
+                        <label for="upstream-name">Upstream 名</label>
+                        <input id="upstream-name" type="text" value="backend_app" />
+                        <label for="lb-method">负载策略</label>
+                        <select id="lb-method">
+                            <option value="none">轮询(默认)</option>
+                            <option value="least_conn">least_conn</option>
+                            <option value="ip_hash">ip_hash</option>
+                            <option value="random">random</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label for="upstream-hosts">后端节点</label>
+                        <input id="upstream-hosts" type="text" value="127.0.0.1:8080,127.0.0.1:8081" />
+                    </div>
+                    <div class="row">
+                        <label for="proxy-timeout">读取超时</label>
+                        <input id="proxy-timeout" type="text" value="60s" />
+                        <label for="proxy-connect-timeout">连接超时</label>
+                        <input id="proxy-connect-timeout" type="text" value="10s" />
+                    </div>
+                    <div class="check-group">
+                        <label><input id="enable-websocket" type="checkbox" checked /> WebSocket</label>
+                        <label><input id="enable-cache-static" type="checkbox" /> 静态资源缓存</label>
+                    </div>
+                </div>
+
+                <div class="section" id="static-section" style="display: none">
+                    <h4>静态站点</h4>
+                    <div class="row">
+                        <label for="root-path">root</label>
+                        <input id="root-path" type="text" value="/usr/share/nginx/html" />
+                    </div>
+                    <div class="row">
+                        <label for="index-file">index</label>
+                        <input id="index-file" type="text" value="index.html index.htm" />
+                    </div>
+                    <div class="row">
+                        <label for="try-files">try_files</label>
+                        <input id="try-files" type="text" value="$uri $uri/ /index.html" />
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>安全 / 性能 / 其它</h4>
+                    <div class="row">
+                        <label for="https-mode">HTTPS</label>
+                        <select id="https-mode">
+                            <option value="off">不启用</option>
+                            <option value="redirect">HTTP 跳转 HTTPS</option>
+                            <option value="https">仅生成 HTTPS</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <label for="cert-path">证书</label>
+                        <input id="cert-path" type="text" value="/etc/nginx/cert/fullchain.pem" />
+                    </div>
+                    <div class="row">
+                        <label for="key-path">私钥</label>
+                        <input id="key-path" type="text" value="/etc/nginx/cert/privkey.pem" />
+                    </div>
+                    <div class="check-group">
+                        <label><input id="enable-http2" type="checkbox" checked /> HTTP/2</label>
+                        <label><input id="enable-hsts" type="checkbox" /> HSTS</label>
+                        <label><input id="enable-gzip" type="checkbox" checked /> Gzip</label>
+                        <label><input id="enable-cors" type="checkbox" /> CORS</label>
+                        <label><input id="enable-rate-limit" type="checkbox" /> 限流</label>
+                    </div>
+                    <div class="row">
+                        <label for="rate-limit">限流值</label>
+                        <input id="rate-limit" type="text" value="10r/s" />
+                        <label for="burst-limit">burst</label>
+                        <input id="burst-limit" type="text" value="20" />
+                    </div>
+                    <div class="row">
+                        <label for="access-log">access_log</label>
+                        <input id="access-log" type="text" value="/var/log/nginx/access.log" />
+                    </div>
+                    <div class="row">
+                        <label for="error-log">error_log</label>
+                        <input id="error-log" type="text" value="/var/log/nginx/error.log warn" />
+                    </div>
+                    <div class="row">
+                        <label for="custom-headers">自定义头</label>
+                        <textarea id="custom-headers" rows="3" style="min-height: 70px; flex: 1">X-Frame-Options SAMEORIGIN
+X-Content-Type-Options nosniff</textarea>
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button id="gen-btn" type="button">生成配置</button>
+                    <button id="copy-btn" type="button">复制配置</button>
+                    <button id="clear-btn" type="button">清空</button>
+                </div>
+                <div class="hint">支持：反向代理/静态站点、upstream 多节点、HTTPS、Gzip、CORS、限流、WebSocket、自定义 Header。</div>
+            </div>
+            <div class="panel panel-right">
+                <h3>生成结果</h3>
+                <textarea id="result" readonly></textarea>
+                <div id="status" class="status">点击“生成配置”开始。</div>
+            </div>
+        </div>
+        <script>
+            function setStatus(text, isError) {
+                const status = document.getElementById("status");
+                status.textContent = text;
+                status.style.color = isError ? "#c43d3d" : "#2f3d5d";
+            }
+
+            function parseBackendHosts(rawHosts) {
+                return rawHosts.split(",").map((h) => h.trim()).filter((h) => h);
+            }
+
+            function buildUpstreamBlock(upstreamName, hosts, lbMethod) {
+                if (!hosts.length) return "";
+                let text = "upstream " + upstreamName + " {\n";
+                if (lbMethod && lbMethod !== "none") text += "    " + lbMethod + ";\n";
+                hosts.forEach((host) => {
+                    text += "    server " + host + " max_fails=3 fail_timeout=30s;\n";
+                });
+                text += "}\n\n";
+                return text;
+            }
+
+            function buildCorsBlock() {
+                return (
+                    "        add_header Access-Control-Allow-Origin * always;\n" +
+                    "        add_header Access-Control-Allow-Methods 'GET,POST,PUT,DELETE,OPTIONS' always;\n" +
+                    "        add_header Access-Control-Allow-Headers '*' always;\n" +
+                    "        if ($request_method = OPTIONS) { return 204; }\n"
+                );
+            }
+
+            function buildCustomHeaderBlock(rawText) {
+                const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l);
+                let text = "";
+                lines.forEach((line) => {
+                    const splitIndex = line.indexOf(" ");
+                    if (splitIndex === -1) return;
+                    const key = line.slice(0, splitIndex).trim();
+                    const val = line.slice(splitIndex + 1).trim();
+                    if (!key || !val) return;
+                    text += "    add_header " + key + " \"" + val + "\" always;\n";
+                });
+                return text;
+            }
+
+            function buildGzipBlock(enable) {
+                if (!enable) return "";
+                return (
+                    "    gzip on;\n" +
+                    "    gzip_types text/plain text/css application/json application/javascript application/xml image/svg+xml;\n" +
+                    "    gzip_min_length 1k;\n"
+                );
+            }
+
+            function buildRateLimitGlobal(enable, rateLimit) {
+                if (!enable) return "";
+                return "limit_req_zone $binary_remote_addr zone=req_limit:10m rate=" + rateLimit + ";\n\n";
+            }
+
+            function buildProxyBlock(options) {
+                let text = "    location " + options.locationPath + " {\n";
+                text += "        proxy_pass http://" + options.upstreamName + ";\n";
+                text += "        proxy_set_header Host $host;\n";
+                text += "        proxy_set_header X-Real-IP $remote_addr;\n";
+                text += "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n";
+                text += "        proxy_set_header X-Forwarded-Proto $scheme;\n";
+                text += "        proxy_http_version 1.1;\n";
+                text += "        proxy_connect_timeout " + options.connectTimeout + ";\n";
+                text += "        proxy_read_timeout " + options.proxyTimeout + ";\n";
+                if (options.enableWebsocket) {
+                    text += "        proxy_set_header Upgrade $http_upgrade;\n";
+                    text += "        proxy_set_header Connection \"upgrade\";\n";
+                }
+                if (options.enableRateLimit) {
+                    text += "        limit_req zone=req_limit burst=" + options.burstLimit + " nodelay;\n";
+                }
+                if (options.enableCors) text += buildCorsBlock();
+                text += "    }\n";
+
+                if (options.enableCacheStatic) {
+                    text +=
+                        "\n    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {\n" +
+                        "        expires 30d;\n" +
+                        "        add_header Cache-Control \"public, max-age=2592000\";\n" +
+                        "    }\n";
+                }
+                return text;
+            }
+
+            function buildStaticBlock(options) {
+                let text =
+                    "    root " + options.rootPath + ";\n" +
+                    "    index " + options.indexFile + ";\n\n" +
+                    "    location " + options.locationPath + " {\n" +
+                    "        try_files " + options.tryFiles + ";\n";
+                if (options.enableRateLimit) {
+                    text += "        limit_req zone=req_limit burst=" + options.burstLimit + " nodelay;\n";
+                }
+                if (options.enableCors) text += buildCorsBlock();
+                text += "    }\n";
+                if (options.enableCacheStatic) {
+                    text +=
+                        "\n    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {\n" +
+                        "        expires 30d;\n" +
+                        "        add_header Cache-Control \"public, max-age=2592000\";\n" +
+                        "    }\n";
+                }
+                return text;
+            }
+
+            function buildServerBlock(options) {
+                const listenLine = options.https
+                    ? "    listen " + options.httpsPort + " ssl" + (options.enableHttp2 ? " http2" : "") + ";\n"
+                    : "    listen " + options.httpPort + ";\n";
+                let text =
+                    "server {\n" +
+                    listenLine +
+                    "    server_name " + options.serverName + ";\n" +
+                    "    client_max_body_size " + options.clientMaxBody + ";\n" +
+                    "    access_log " + options.accessLog + ";\n" +
+                    "    error_log " + options.errorLog + ";\n\n";
+
+                if (options.https) {
+                    text +=
+                        "    ssl_certificate " + options.certPath + ";\n" +
+                        "    ssl_certificate_key " + options.keyPath + ";\n" +
+                        "    ssl_protocols TLSv1.2 TLSv1.3;\n" +
+                        "    ssl_session_timeout 10m;\n";
+                    if (options.enableHsts) {
+                        text += "    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;\n";
+                    }
+                    text += "\n";
+                }
+
+                text += buildGzipBlock(options.enableGzip);
+                const customHeaderBlock = buildCustomHeaderBlock(options.customHeaders);
+                if (customHeaderBlock) text += customHeaderBlock + "\n";
+                text += options.siteMode === "proxy" ? buildProxyBlock(options) : buildStaticBlock(options);
+                text += "}\n";
+                return text;
+            }
+
+            function updateModeUI() {
+                const mode = document.getElementById("site-mode").value;
+                document.getElementById("proxy-section").style.display = mode === "proxy" ? "block" : "none";
+                document.getElementById("static-section").style.display = mode === "static" ? "block" : "none";
+            }
+
+            function generateConfig() {
+                const options = {
+                    siteMode: document.getElementById("site-mode").value,
+                    serverName: document.getElementById("server-name").value.trim(),
+                    httpPort: document.getElementById("listen-port").value.trim() || "80",
+                    httpsPort: document.getElementById("https-port").value.trim() || "443",
+                    locationPath: document.getElementById("location-path").value.trim() || "/",
+                    clientMaxBody: document.getElementById("client-max-body").value.trim() || "20m",
+                    upstreamName: document.getElementById("upstream-name").value.trim() || "backend_app",
+                    lbMethod: document.getElementById("lb-method").value,
+                    upstreamHosts: parseBackendHosts(document.getElementById("upstream-hosts").value.trim()),
+                    proxyTimeout: document.getElementById("proxy-timeout").value.trim() || "60s",
+                    connectTimeout: document.getElementById("proxy-connect-timeout").value.trim() || "10s",
+                    rootPath: document.getElementById("root-path").value.trim() || "/usr/share/nginx/html",
+                    indexFile: document.getElementById("index-file").value.trim() || "index.html index.htm",
+                    tryFiles: document.getElementById("try-files").value.trim() || "$uri $uri/ /index.html",
+                    httpsMode: document.getElementById("https-mode").value,
+                    certPath: document.getElementById("cert-path").value.trim(),
+                    keyPath: document.getElementById("key-path").value.trim(),
+                    enableHttp2: document.getElementById("enable-http2").checked,
+                    enableHsts: document.getElementById("enable-hsts").checked,
+                    enableGzip: document.getElementById("enable-gzip").checked,
+                    enableCors: document.getElementById("enable-cors").checked,
+                    enableRateLimit: document.getElementById("enable-rate-limit").checked,
+                    enableWebsocket: document.getElementById("enable-websocket").checked,
+                    enableCacheStatic: document.getElementById("enable-cache-static").checked,
+                    rateLimit: document.getElementById("rate-limit").value.trim() || "10r/s",
+                    burstLimit: document.getElementById("burst-limit").value.trim() || "20",
+                    accessLog: document.getElementById("access-log").value.trim() || "/var/log/nginx/access.log",
+                    errorLog: document.getElementById("error-log").value.trim() || "/var/log/nginx/error.log warn",
+                    customHeaders: document.getElementById("custom-headers").value
+                };
+
+                if (!options.serverName) {
+                    setStatus("请填写域名。", true);
+                    return;
+                }
+                if (options.siteMode === "proxy" && options.upstreamHosts.length === 0) {
+                    setStatus("反向代理模式请至少填写一个后端节点。", true);
+                    return;
+                }
+                if (options.httpsMode !== "off" && (!options.certPath || !options.keyPath)) {
+                    setStatus("启用 HTTPS 时请填写证书和私钥路径。", true);
+                    return;
+                }
+
+                let result = "";
+                result += buildRateLimitGlobal(options.enableRateLimit, options.rateLimit);
+                if (options.siteMode === "proxy") {
+                    result += buildUpstreamBlock(options.upstreamName, options.upstreamHosts, options.lbMethod);
+                }
+                if (options.httpsMode === "off") {
+                    result += buildServerBlock({ ...options, https: false });
+                } else if (options.httpsMode === "redirect") {
+                    result +=
+                        "server {\n" +
+                        "    listen " + options.httpPort + ";\n" +
+                        "    server_name " + options.serverName + ";\n" +
+                        "    return 301 https://$host$request_uri;\n" +
+                        "}\n\n";
+                    result += buildServerBlock({ ...options, https: true });
+                } else {
+                    result += buildServerBlock({ ...options, https: true });
+                }
+
+                document.getElementById("result").value = result;
+                setStatus("配置已生成（增强版模板）。", false);
+            }
+
+            function copyConfig() {
+                const result = document.getElementById("result").value;
+                if (!result.trim()) {
+                    setStatus("请先生成配置。", true);
+                    return;
+                }
+                navigator.clipboard.writeText(result);
+                setStatus("已复制到剪贴板。", false);
+            }
+
+            function clearConfig() {
+                document.getElementById("result").value = "";
+                setStatus("已清空结果。", false);
+            }
+
+            document.getElementById("site-mode").addEventListener("change", updateModeUI);
+            document.getElementById("gen-btn").addEventListener("click", generateConfig);
+            document.getElementById("copy-btn").addEventListener("click", copyConfig);
+            document.getElementById("clear-btn").addEventListener("click", clearConfig);
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+            updateModeUI();
+        </script>
+    </body>
+</html>

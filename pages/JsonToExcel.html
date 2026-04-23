@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <title>JSON / Excel / SQL 转换工具</title>
+        <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                padding: 8px;
+                min-height: 100vh;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                height: calc(100vh - 16px);
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                min-height: 0;
+            }
+            .panel-main {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+            }
+            .control-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+            }
+            label {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            select,
+            input[type="file"] {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 5px 8px;
+                font-size: 12px;
+                background: #fff;
+                outline: none;
+            }
+            #text-input,
+            #output {
+                width: 100%;
+                flex: 1;
+                min-height: 180px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 10px;
+                resize: none;
+                outline: none;
+                font-size: 13px;
+                line-height: 1.6;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            #text-input:focus,
+            #output:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .button-container {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-top: 8px;
+            }
+            button {
+                padding: 7px 12px;
+                border: none;
+                border-radius: 999px;
+                color: white;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 12px;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 16px rgba(36, 90, 190, 0.25);
+            }
+            #export-btn,
+            #convert-btn,
+            #download-btn {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            #clear-btn {
+                background: linear-gradient(135deg, var(--danger), #ff7979);
+            }
+            .status {
+                margin-top: 6px;
+                padding: 6px 8px;
+                border-radius: 6px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                font-size: 12px;
+                color: #2f3d5d;
+            }
+            .tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+                margin-bottom: 6px;
+            }
+            .tab {
+                padding: 4px 8px;
+                font-size: 11px;
+                border-radius: 999px;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+                cursor: pointer;
+            }
+            .tab.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel panel-main">
+                <div class="control-row">
+                    <label for="source-type">输入类型</label>
+                    <select id="source-type">
+                        <option value="json">JSON 文本</option>
+                        <option value="csv">CSV 文本</option>
+                        <option value="excel">Excel 文件</option>
+                        <option value="sql">SQL Insert 文本</option>
+                    </select>
+                    <label for="target-type">输出类型</label>
+                    <select id="target-type">
+                        <option value="excel">Excel 文件</option>
+                        <option value="csv">CSV 文本</option>
+                        <option value="insert">Insert 语句</option>
+                        <option value="json">JSON 文本</option>
+                    </select>
+                    <input id="excel-file" type="file" accept=".xlsx,.xls" style="display: none" />
+                </div>
+                <textarea id="text-input" placeholder='JSON 示例：
+[
+  {"name":"张三","age":10},
+  {"name":"李四","age":14}
+]
+
+多 Sheet JSON 示例：
+{
+  "users":[{"id":1,"name":"A"}],
+  "orders":[{"id":1001,"userId":1}]
+}
+
+SQL 示例：
+insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
+                <div class="button-container">
+                    <button id="convert-btn" type="button">执行转换</button>
+                    <button id="download-btn" type="button">下载输出</button>
+                    <button id="clear-btn" type="button">清空</button>
+                </div>
+                <div id="output-tabs" class="tabs"></div>
+                <textarea id="output" readonly></textarea>
+                <div id="status" class="status">请选择输入输出类型后执行转换。</div>
+            </div>
+        </div>
+        <script>
+            let workbookData = null;
+            let outputTextData = "";
+            let outputBlob = null;
+            let outputFilename = "";
+            let outputSections = {};
+            let activeSectionKey = "";
+            const TARGET_OPTIONS = [
+                { value: "excel", label: "Excel 文件" },
+                { value: "csv", label: "CSV 文本" },
+                { value: "insert", label: "Insert 语句" },
+                { value: "json", label: "JSON 文本" }
+            ];
+
+            function setStatus(text, isError) {
+                const status = document.getElementById("status");
+                status.textContent = text;
+                status.style.color = isError ? "#c43d3d" : "#2f3d5d";
+            }
+
+            function getEquivalentTargetBySource(sourceType) {
+                if (sourceType === "json") return "json";
+                if (sourceType === "csv") return "csv";
+                if (sourceType === "excel") return "excel";
+                if (sourceType === "sql") return "insert";
+                return "";
+            }
+
+            function refreshTargetOptionsVisibility() {
+                const sourceType = document.getElementById("source-type").value;
+                const targetSelect = document.getElementById("target-type");
+                const hiddenValue = getEquivalentTargetBySource(sourceType);
+                const current = targetSelect.value;
+                targetSelect.innerHTML = "";
+                TARGET_OPTIONS.forEach((opt) => {
+                    if (opt.value === hiddenValue) return;
+                    const optionEl = document.createElement("option");
+                    optionEl.value = opt.value;
+                    optionEl.textContent = opt.label;
+                    targetSelect.appendChild(optionEl);
+                });
+                const validCurrent = TARGET_OPTIONS.some((opt) => opt.value === current && opt.value !== hiddenValue);
+                targetSelect.value = validCurrent ? current : targetSelect.options[0]?.value;
+            }
+
+            function enforceSourceTargetExclusion(triggeredBy) {
+                const sourceSelect = document.getElementById("source-type");
+                const targetSelect = document.getElementById("target-type");
+                const sourceType = sourceSelect.value;
+                const equivalent = getEquivalentTargetBySource(sourceType);
+                if (targetSelect.value !== equivalent && targetSelect.value) return;
+
+                const options = Array.from(targetSelect.options)
+                    .filter((o) => !o.disabled && !o.hidden)
+                    .map((o) => o.value);
+                const fallback = options.find((v) => v !== equivalent) || targetSelect.value;
+                targetSelect.value = fallback;
+
+                if (triggeredBy) {
+                    setStatus("输入类型与输出类型不能相同语义，已自动切换输出类型。", false);
+                }
+            }
+
+            function renderOutputSections() {
+                const tabs = document.getElementById("output-tabs");
+                const keys = Object.keys(outputSections);
+                tabs.innerHTML = "";
+                if (!keys.length) {
+                    output.value = "";
+                    return;
+                }
+                if (!activeSectionKey || !outputSections[activeSectionKey]) activeSectionKey = keys[0];
+                keys.forEach((key) => {
+                    const tab = document.createElement("div");
+                    tab.className = "tab" + (key === activeSectionKey ? " active" : "");
+                    tab.textContent = key;
+                    tab.addEventListener("click", function () {
+                        activeSectionKey = key;
+                        renderOutputSections();
+                    });
+                    tabs.appendChild(tab);
+                });
+                output.value = outputSections[activeSectionKey] || "";
+            }
+
+            function setSingleOutput(text) {
+                outputSections = { "结果": text || "" };
+                activeSectionKey = "结果";
+                renderOutputSections();
+            }
+
+            function setMultiOutput(mapObj) {
+                outputSections = mapObj || {};
+                activeSectionKey = Object.keys(outputSections)[0] || "";
+                renderOutputSections();
+            }
+
+            function escapeCsvValue(value) {
+                if (value === null || value === undefined) return "";
+                const text = String(value);
+                if (/[",\r\n]/.test(text)) {
+                    return '"' + text.replace(/"/g, '""') + '"';
+                }
+                return text;
+            }
+
+            function normalizeWorkbookFromJson(text) {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    return { Sheet1: parsed };
+                }
+                if (parsed && typeof parsed === "object") {
+                    const keys = Object.keys(parsed);
+                    if (keys.length === 0) throw new Error("JSON 对象为空");
+                    const allArray = keys.every((k) => Array.isArray(parsed[k]));
+                    if (allArray) return parsed;
+                }
+                throw new Error("JSON 格式不支持，请输入数组或多 Sheet 对象");
+            }
+
+            function splitCsvLine(line) {
+                const result = [];
+                let current = "";
+                let inQuote = false;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    const next = i + 1 < line.length ? line[i + 1] : "";
+                    if (ch === '"') {
+                        if (inQuote && next === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuote = !inQuote;
+                        }
+                        continue;
+                    }
+                    if (ch === "," && !inQuote) {
+                        result.push(current);
+                        current = "";
+                        continue;
+                    }
+                    current += ch;
+                }
+                result.push(current);
+                return result;
+            }
+
+            function parseCsvTextToWorkbook(text) {
+                const rawLines = text
+                    .replace(/\r/g, "")
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter((l) => l);
+                if (!rawLines.length) throw new Error("CSV 内容为空");
+
+                const headers = splitCsvLine(rawLines[0]).map((h) => h.trim());
+                if (!headers.length) throw new Error("CSV 表头为空");
+
+                const rows = [];
+                for (let i = 1; i < rawLines.length; i++) {
+                    const vals = splitCsvLine(rawLines[i]);
+                    const row = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        const key = headers[j] || ("col_" + (j + 1));
+                        const v = vals[j] !== undefined ? vals[j] : "";
+                        if (/^-?\d+(\.\d+)?$/.test(v)) {
+                            row[key] = Number(v);
+                        } else if (/^null$/i.test(v)) {
+                            row[key] = null;
+                        } else {
+                            row[key] = v;
+                        }
+                    }
+                    rows.push(row);
+                }
+                return { Sheet1: rows };
+            }
+
+            function splitValuesTuples(valuesText) {
+                const tuples = [];
+                let current = "";
+                let depth = 0;
+                let inSingle = false;
+                let inDouble = false;
+                for (let i = 0; i < valuesText.length; i++) {
+                    const ch = valuesText[i];
+                    const prev = i > 0 ? valuesText[i - 1] : "";
+                    if (ch === "'" && !inDouble && prev !== "\\") inSingle = !inSingle;
+                    if (ch === '"' && !inSingle && prev !== "\\") inDouble = !inDouble;
+                    if (!inSingle && !inDouble) {
+                        if (ch === "(") depth++;
+                        if (ch === ")") depth--;
+                        if (ch === "," && depth === 0) {
+                            if (current.trim()) tuples.push(current.trim());
+                            current = "";
+                            continue;
+                        }
+                    }
+                    current += ch;
+                }
+                if (current.trim()) tuples.push(current.trim());
+                return tuples;
+            }
+
+            function splitTupleValues(tupleText) {
+                const text = tupleText.trim().replace(/^\(/, "").replace(/\)$/, "");
+                const vals = [];
+                let current = "";
+                let inSingle = false;
+                let inDouble = false;
+                for (let i = 0; i < text.length; i++) {
+                    const ch = text[i];
+                    const prev = i > 0 ? text[i - 1] : "";
+                    if (ch === "'" && !inDouble && prev !== "\\") inSingle = !inSingle;
+                    if (ch === '"' && !inSingle && prev !== "\\") inDouble = !inDouble;
+                    if (ch === "," && !inSingle && !inDouble) {
+                        vals.push(current.trim());
+                        current = "";
+                        continue;
+                    }
+                    current += ch;
+                }
+                vals.push(current.trim());
+                return vals.map((v) => {
+                    const t = v.trim();
+                    if (/^null$/i.test(t)) return null;
+                    if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
+                    if ((t.startsWith("'") && t.endsWith("'")) || (t.startsWith('"') && t.endsWith('"'))) {
+                        return t.slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"');
+                    }
+                    return t;
+                });
+            }
+
+            function parseInsertSqlToWorkbook(text) {
+                const workbook = {};
+                const regex = /insert\s+into\s+([`"]?[a-zA-Z0-9_]+[`"]?(?:\.[`"]?[a-zA-Z0-9_]+[`"]?)?)\s*\(([^)]+)\)\s*values\s*([\s\S]*?);/gi;
+                let m = regex.exec(text);
+                while (m) {
+                    const table = m[1].replace(/[`"]/g, "").split(".").pop();
+                    const columns = m[2].split(",").map((c) => c.replace(/[`"\s]/g, "").trim());
+                    const tupleList = splitValuesTuples(m[3]);
+                    if (!workbook[table]) workbook[table] = [];
+                    tupleList.forEach((tuple) => {
+                        const values = splitTupleValues(tuple);
+                        const row = {};
+                        for (let i = 0; i < columns.length; i++) {
+                            row[columns[i]] = values[i] !== undefined ? values[i] : null;
+                        }
+                        workbook[table].push(row);
+                    });
+                    m = regex.exec(text);
+                }
+                if (Object.keys(workbook).length === 0) throw new Error("未识别到有效 Insert 语句");
+                return workbook;
+            }
+
+            function getSourceWorkbook() {
+                const sourceType = document.getElementById("source-type").value;
+                const text = document.getElementById("text-input").value.trim();
+                if (sourceType === "json") {
+                    if (!text) throw new Error("请输入 JSON 文本");
+                    return normalizeWorkbookFromJson(text);
+                }
+                if (sourceType === "csv") {
+                    if (!text) throw new Error("请输入 CSV 文本");
+                    return parseCsvTextToWorkbook(text);
+                }
+                if (sourceType === "sql") {
+                    if (!text) throw new Error("请输入 SQL Insert 文本");
+                    return parseInsertSqlToWorkbook(text);
+                }
+                if (!workbookData) throw new Error("请先上传 Excel 文件");
+                return workbookData;
+            }
+
+            function workbookToInsertSql(wb) {
+                const blocks = [];
+                Object.keys(wb).forEach((sheetName) => {
+                    const rows = wb[sheetName] || [];
+                    if (rows.length === 0) return;
+                    const cols = Object.keys(rows[0]);
+                    const values = rows.map((row) => {
+                        return (
+                            "(" +
+                            cols
+                                .map((col) => {
+                                    const v = row[col];
+                                    if (v === null || v === undefined || v === "") return "NULL";
+                                    if (typeof v === "number") return String(v);
+                                    return "'" + String(v).replace(/'/g, "\\'") + "'";
+                                })
+                                .join(", ") +
+                            ")"
+                        );
+                    });
+                    blocks.push("insert into " + sheetName + " (" + cols.join(", ") + ") values\n" + values.join(",\n") + ";");
+                });
+                return blocks.join("\n\n");
+            }
+
+            function workbookToInsertMap(wb) {
+                const map = {};
+                Object.keys(wb).forEach((sheetName) => {
+                    const rows = wb[sheetName] || [];
+                    if (!rows.length) {
+                        map[sheetName] = "-- 空表，无可生成 insert 数据";
+                        return;
+                    }
+                    const cols = Object.keys(rows[0]);
+                    const values = rows.map((row) => {
+                        return (
+                            "(" +
+                            cols
+                                .map((col) => {
+                                    const v = row[col];
+                                    if (v === null || v === undefined || v === "") return "NULL";
+                                    if (typeof v === "number") return String(v);
+                                    return "'" + String(v).replace(/'/g, "\\'") + "'";
+                                })
+                                .join(", ") +
+                            ")"
+                        );
+                    });
+                    map[sheetName] = "insert into " + sheetName + " (" + cols.join(", ") + ") values\n" + values.join(",\n") + ";";
+                });
+                return map;
+            }
+
+            function workbookToCsvText(wb) {
+                const sheets = Object.keys(wb);
+                if (sheets.length === 0) return "";
+                const first = wb[sheets[0]];
+                if (!first || first.length === 0) return "";
+                const headers = Object.keys(first[0]);
+                const rows = [headers.join(",")];
+                first.forEach((item) => {
+                    rows.push(headers.map((k) => escapeCsvValue(item[k])).join(","));
+                });
+                return rows.join("\r\n");
+            }
+
+            function workbookToCsvMap(wb) {
+                const map = {};
+                Object.keys(wb).forEach((sheetName) => {
+                    const rowsData = wb[sheetName] || [];
+                    if (!rowsData.length) {
+                        map[sheetName] = "";
+                        return;
+                    }
+                    const headers = Object.keys(rowsData[0]);
+                    const rows = [headers.join(",")];
+                    rowsData.forEach((item) => {
+                        rows.push(headers.map((k) => escapeCsvValue(item[k])).join(","));
+                    });
+                    map[sheetName] = rows.join("\r\n");
+                });
+                return map;
+            }
+
+            function workbookToJsonText(wb) {
+                const names = Object.keys(wb);
+                if (names.length === 1) return JSON.stringify(wb[names[0]], null, 2);
+                return JSON.stringify(wb, null, 2);
+            }
+
+            function workbookToJsonMap(wb) {
+                const map = {};
+                Object.keys(wb).forEach((sheetName) => {
+                    map[sheetName] = JSON.stringify(wb[sheetName] || [], null, 2);
+                });
+                return map;
+            }
+
+            function workbookToExcelBlob(wb) {
+                const wbObj = XLSX.utils.book_new();
+                Object.keys(wb).forEach((sheetName) => {
+                    const arr = wb[sheetName] || [];
+                    const ws = XLSX.utils.json_to_sheet(arr);
+                    XLSX.utils.book_append_sheet(wbObj, ws, sheetName.slice(0, 31) || "Sheet1");
+                });
+                const out = XLSX.write(wbObj, { bookType: "xlsx", type: "array" });
+                return new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            }
+
+            function runConvert() {
+                try {
+                    const wb = getSourceWorkbook();
+                    const target = document.getElementById("target-type").value;
+                    outputBlob = null;
+                    outputFilename = "";
+                    outputTextData = "";
+
+                    if (target === "insert") {
+                        const insertMap = workbookToInsertMap(wb);
+                        setMultiOutput(insertMap);
+                        outputTextData = Object.keys(insertMap)
+                            .map((k) => "-- TABLE: " + k + "\n" + insertMap[k])
+                            .join("\n\n");
+                        outputBlob = new Blob([outputTextData], { type: "text/plain" });
+                        outputFilename = "output.sql";
+                        setStatus("转换成功：多表结果已按 tab 分组展示。", false);
+                        return;
+                    }
+                    if (target === "json") {
+                        const jsonMap = workbookToJsonMap(wb);
+                        setMultiOutput(jsonMap);
+                        outputTextData = Object.keys(jsonMap)
+                            .map((k) => "// " + k + "\n" + jsonMap[k])
+                            .join("\n\n");
+                        outputBlob = new Blob([workbookToJsonText(wb)], { type: "application/json" });
+                        outputFilename = "output.json";
+                        setStatus("转换成功：JSON 已按表 / sheet 分组为多个 tab。", false);
+                        return;
+                    }
+                    if (target === "csv") {
+                        const csvMap = workbookToCsvMap(wb);
+                        setMultiOutput(csvMap);
+                        outputTextData = Object.keys(csvMap)
+                            .map((k) => "-- SHEET: " + k + "\n" + csvMap[k])
+                            .join("\n\n");
+                        outputBlob = new Blob(["\ufeff" + outputTextData], { type: "text/csv" });
+                        outputFilename = "output.csv";
+                        setStatus("转换成功：CSV 已按 sheet 分组为多个 tab。", false);
+                        return;
+                    }
+                    if (target === "excel") {
+                        outputBlob = workbookToExcelBlob(wb);
+                        outputFilename = "output.xlsx";
+                        const summaryMap = {};
+                        Object.keys(wb).forEach((name) => {
+                            const rows = wb[name] || [];
+                            summaryMap[name] = "行数：" + rows.length + "\n预览(前5行)：\n" + JSON.stringify(rows.slice(0, 5), null, 2);
+                        });
+                        setMultiOutput(summaryMap);
+                        setStatus("转换成功：多表 Insert 会按表名导出为多个 Sheet。", false);
+                    }
+                } catch (error) {
+                    setSingleOutput("");
+                    outputBlob = null;
+                    outputFilename = "";
+                    setStatus("转换失败：" + error.message, true);
+                }
+            }
+
+            function downloadOutput() {
+                if (!outputBlob) {
+                    setStatus("请先执行转换。", true);
+                    return;
+                }
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(outputBlob);
+                a.download = outputFilename || "output.txt";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            }
+
+            function clearAll() {
+                document.getElementById("text-input").value = "";
+                document.getElementById("output").value = "";
+                document.getElementById("excel-file").value = "";
+                workbookData = null;
+                outputBlob = null;
+                outputFilename = "";
+                outputTextData = "";
+                outputSections = {};
+                activeSectionKey = "";
+                document.getElementById("output-tabs").innerHTML = "";
+                setStatus("已清空。", false);
+            }
+
+            function syncUIBySourceType() {
+                const sourceType = document.getElementById("source-type").value;
+                const excelFile = document.getElementById("excel-file");
+                const textInput = document.getElementById("text-input");
+                if (sourceType === "excel") {
+                    excelFile.style.display = "inline-block";
+                    textInput.placeholder = "请上传 Excel 文件（支持多 Sheet），然后点击“执行转换”。";
+                } else if (sourceType === "sql") {
+                    excelFile.style.display = "none";
+                    textInput.placeholder = "请输入 SQL Insert 语句（可多条、多表）。";
+                } else if (sourceType === "csv") {
+                    excelFile.style.display = "none";
+                    textInput.placeholder = "请输入 CSV 文本（首行为表头）。";
+                } else {
+                    excelFile.style.display = "none";
+                    textInput.placeholder = "请输入 JSON 数组，或多 Sheet JSON 对象。";
+                }
+                refreshTargetOptionsVisibility();
+                enforceSourceTargetExclusion(false);
+            }
+
+            document.getElementById("excel-file").addEventListener("change", function (event) {
+                const file = event.target.files && event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const wb = XLSX.read(data, { type: "array", cellDates: true });
+                        const obj = {};
+                        wb.SheetNames.forEach((name) => {
+                            obj[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], {
+                                defval: null,
+                                raw: false,
+                                dateNF: "yyyy-mm-dd HH:mm:ss"
+                            });
+                        });
+                        workbookData = obj;
+                        setStatus("已读取 Excel 文件：" + file.name + "（" + wb.SheetNames.length + " 个 Sheet）", false);
+                    } catch (error) {
+                        workbookData = null;
+                        setStatus("Excel 读取失败：" + error.message, true);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            document.getElementById("source-type").addEventListener("change", function () {
+                syncUIBySourceType();
+                enforceSourceTargetExclusion(true);
+            });
+            document.getElementById("target-type").addEventListener("change", function () {
+                enforceSourceTargetExclusion(true);
+            });
+            document.getElementById("convert-btn").addEventListener("click", runConvert);
+            document.getElementById("download-btn").addEventListener("click", downloadOutput);
+            document.getElementById("clear-btn").addEventListener("click", clearAll);
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+            const output = document.getElementById("output");
+            syncUIBySourceType();
+        </script>
+    </body>
+</html>
