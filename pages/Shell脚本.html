@@ -27,8 +27,8 @@
                 background: var(--bg);
             }
             .page {
-                max-width: 1200px;
-                margin: 0 auto;
+                width: 100%;
+                height: calc(100vh - 16px);
             }
             .container {
                 background: var(--card);
@@ -36,6 +36,32 @@
                 border-radius: 8px;
                 box-shadow: var(--shadow);
                 padding: 8px;
+                height: 100%;
+                display: flex;
+                gap: 8px;
+                min-height: 0;
+            }
+            .left-panel,
+            .right-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .left-panel {
+                overflow: hidden;
+            }
+            .right-panel {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 8px;
+            }
+            .panel-title {
+                margin: 0 0 8px;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--text);
             }
             .form-group {
                 margin-bottom: 12px;
@@ -83,14 +109,13 @@
                 background: linear-gradient(135deg, var(--danger), #ff7979);
             }
             #result {
-                margin-top: 8px;
+                flex: 1;
                 padding: 8px;
-                background: #f8fbff;
+                background: #fff;
                 border: 1px solid #dbe7ff;
                 border-radius: 8px;
-                min-height: 100px;
+                min-height: 0;
                 overflow: auto;
-                max-height: 380px;
             }
             #result pre {
                 margin: 0;
@@ -129,50 +154,83 @@
                 border-color: #ff8383 !important;
                 background-color: #fff0f0;
             }
+            #models {
+                flex: 1;
+                overflow: auto;
+                padding-right: 4px;
+                min-height: 0;
+            }
+            .actions {
+                display: flex;
+                gap: 8px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                margin-top: 4px;
+                padding-top: 8px;
+                border-top: 1px solid #dbe7ff;
+                background: var(--card);
+            }
+            .actions button {
+                margin: 0;
+                flex-shrink: 0;
+            }
+            @media (max-width: 900px) {
+                .container {
+                    flex-direction: column;
+                }
+            }
         </style>
     </head>
     <body>
         <div class="page">
             <div class="container">
-            <div id="models">
-                <div class="model-container">
-                    <div class="model-header">
-                        <span>模型 1</span>
-                        <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
-                    </div>
-                    <div class="form-group">
-                        <label for="model1-configFiles"
-                            >配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label
-                        >
-                        <input
-                            id="model1-configFiles"
-                            placeholder="例如：application-prd,site_cm_common"
-                        />
-                    </div>
-                    <div id="model1-configItems">
-                        <div class="config-item">
-                            <label>配置项 1:</label>
-                            <input
-                                placeholder="键（例如：common.dp.conf.esg.ocr）"
-                                class="configKey"
-                                onblur="checkDuplicateKey(this)"
-                            />
-                            <input
-                                placeholder="值（例如：Y）"
-                                class="configValue"
-                            />
-                            <button class="danger-btn" onclick="removeConfigItem(this)">
-                                删除配置项
-                            </button>
+                <div class="left-panel">
+                    <h3 class="panel-title">输入配置</h3>
+                    <div id="models">
+                        <div class="model-container">
+                            <div class="model-header">
+                                <span>模型 1</span>
+                                <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                            </div>
+                            <div class="form-group">
+                                <label for="model1-configFiles"
+                                    >配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label
+                                >
+                                <input
+                                    id="model1-configFiles"
+                                    placeholder="例如：application-prd,site_cm_common"
+                                />
+                            </div>
+                            <div id="model1-configItems">
+                                <div class="config-item">
+                                    <label>配置项 1:</label>
+                                    <input
+                                        placeholder="键（例如：common.dp.conf.esg.ocr）"
+                                        class="configKey"
+                                        onblur="checkDuplicateKey(this)"
+                                    />
+                                    <input
+                                        placeholder="值（例如：Y）"
+                                        class="configValue"
+                                    />
+                                    <button class="danger-btn" onclick="removeConfigItem(this)">
+                                        删除配置项
+                                    </button>
+                                </div>
+                            </div>
+                            <button onclick="addConfigItem(this)">添加配置项</button>
                         </div>
                     </div>
-                    <button onclick="addConfigItem(this)">添加配置项</button>
+                    <div class="actions">
+                        <button onclick="addModel()">添加模型</button>
+                        <button onclick="generateScript()">生成脚本</button>
+                        <button onclick="downloadScript()">下载脚本</button>
+                    </div>
                 </div>
-            </div>
-            <button onclick="addModel()">添加模型</button>
-            <button onclick="generateScript()">生成脚本</button>
-            <button onclick="downloadScript()">下载脚本</button>
-            <div id="result"></div>
+                <div class="right-panel">
+                    <h3 class="panel-title">生成结果</h3>
+                    <div id="result"></div>
+                </div>
             </div>
         </div>
         <script>

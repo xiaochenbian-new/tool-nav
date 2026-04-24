@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Linux curl 请求生成</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .container {
+                height: calc(100vh - 16px);
+                display: flex;
+                gap: 8px;
+                min-height: 0;
+            }
+            .panel {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            .title {
+                margin: 0 0 8px;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--text);
+            }
+            label {
+                font-size: 12px;
+                color: var(--muted);
+                margin-bottom: 6px;
+                display: block;
+            }
+            input, select, textarea {
+                width: 100%;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 8px 10px;
+                font-size: 13px;
+                outline: none;
+            }
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea {
+                resize: vertical;
+                min-height: 90px;
+            }
+            .row {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                gap: 8px;
+                margin-bottom: 8px;
+                align-items: center;
+            }
+            .actions {
+                margin-top: auto;
+                display: flex;
+                gap: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #dbe7ff;
+            }
+            button {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border: 0;
+                border-radius: 999px;
+                font-size: 12px;
+                padding: 7px 12px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            #output {
+                flex: 1;
+                min-height: 0;
+                white-space: pre-wrap;
+                word-break: break-all;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 10px;
+                overflow: auto;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .status {
+                margin-top: 8px;
+                padding: 6px 8px;
+                border-radius: 6px;
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                font-size: 12px;
+                color: #2f3d5d;
+            }
+            @media (max-width: 900px) {
+                .container { flex-direction: column; }
+                .row { grid-template-columns: 1fr; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="panel">
+                <h3 class="title">请求参数</h3>
+                <div class="row">
+                    <label for="method">请求方法</label>
+                    <select id="method">
+                        <option>GET</option>
+                        <option>POST</option>
+                        <option>PUT</option>
+                        <option>PATCH</option>
+                        <option>DELETE</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="url">请求 URL</label>
+                    <input id="url" placeholder="https://api.example.com/v1/orders" />
+                </div>
+                <div class="row">
+                    <label for="headers">请求头（每行一个）</label>
+                    <textarea id="headers" placeholder="Content-Type: application/json&#10;Authorization: Bearer xxx"></textarea>
+                </div>
+                <div class="row">
+                    <label for="body">请求体</label>
+                    <textarea id="body" placeholder='{"id":1,"name":"demo"}'></textarea>
+                </div>
+                <div class="actions">
+                    <button id="generate-btn" type="button">生成 curl</button>
+                    <button id="copy-btn" type="button">复制命令</button>
+                    <button id="clear-btn" class="danger" type="button">清空</button>
+                </div>
+                <div id="status" class="status">输入 URL 后可一键生成 Linux curl 命令。</div>
+            </div>
+            <div class="panel">
+                <h3 class="title">命令输出</h3>
+                <div id="output"></div>
+            </div>
+        </div>
+        <script>
+            function setStatus(text, isError) {
+                const status = document.getElementById("status");
+                status.textContent = text;
+                status.style.color = isError ? "#c43d3d" : "#2f3d5d";
+            }
+
+            function shQuote(text) {
+                return "'" + String(text).replace(/'/g, "'\"'\"'") + "'";
+            }
+
+            function generateCurl() {
+                const method = document.getElementById("method").value.trim().toUpperCase();
+                const url = document.getElementById("url").value.trim();
+                const headersText = document.getElementById("headers").value;
+                const body = document.getElementById("body").value;
+                const output = document.getElementById("output");
+
+                if (!url) {
+                    output.textContent = "";
+                    setStatus("请先输入请求 URL。", true);
+                    return;
+                }
+
+                const lines = ["curl -X " + method + " \\", "  " + shQuote(url) + " \\"];
+                headersText
+                    .split(/\r?\n/)
+                    .map(function (line) { return line.trim(); })
+                    .filter(function (line) { return !!line; })
+                    .forEach(function (header) {
+                        lines.push("  -H " + shQuote(header) + " \\");
+                    });
+
+                if (body.trim()) {
+                    lines.push("  --data-raw " + shQuote(body));
+                } else {
+                    lines[lines.length - 1] = lines[lines.length - 1].replace(/\\$/, "").trimEnd();
+                }
+
+                output.textContent = lines.join("\n");
+                setStatus("curl 命令已生成。", false);
+            }
+
+            function copyCurl() {
+                const text = document.getElementById("output").textContent.trim();
+                if (!text) {
+                    setStatus("请先生成 curl 命令。", true);
+                    return;
+                }
+                navigator.clipboard.writeText(text).then(function () {
+                    setStatus("已复制到剪贴板。", false);
+                }).catch(function () {
+                    setStatus("复制失败，请手动复制。", true);
+                });
+            }
+
+            function clearAll() {
+                document.getElementById("method").value = "GET";
+                document.getElementById("url").value = "";
+                document.getElementById("headers").value = "";
+                document.getElementById("body").value = "";
+                document.getElementById("output").textContent = "";
+                setStatus("已清空。", false);
+            }
+
+            document.getElementById("generate-btn").addEventListener("click", generateCurl);
+            document.getElementById("copy-btn").addEventListener("click", copyCurl);
+            document.getElementById("clear-btn").addEventListener("click", clearAll);
+            document.getElementById("url").addEventListener("input", function () {
+                if (document.getElementById("url").value.trim()) generateCurl();
+            });
+            document.getElementById("headers").addEventListener("input", generateCurl);
+            document.getElementById("body").addEventListener("input", generateCurl);
+            document.getElementById("method").addEventListener("change", generateCurl);
+            document.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+        </script>
+    </body>
+</html>
