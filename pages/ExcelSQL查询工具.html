@@ -22,6 +22,7 @@
                 min-height: 100vh;
                 padding: 8px;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 14px;
                 background: var(--bg);
                 color: var(--text);
             }
@@ -31,6 +32,9 @@
                 grid-template-columns: 360px 1fr;
                 gap: 8px;
                 min-height: 0;
+            }
+            .container.left-collapsed {
+                grid-template-columns: 1fr;
             }
             .panel {
                 min-height: 0;
@@ -57,13 +61,25 @@
                 background: #eef4ff;
                 border-radius: 999px;
             }
-            .title { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
-            .muted { color: var(--muted); font-size: 11px; line-height: 1.35; margin-bottom: 6px; }
+            .left-panel.hidden {
+                display: none;
+            }
+            .title { margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+            .left-header {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                margin-bottom: 6px;
+            }
+            .left-header .title {
+                margin: 0;
+            }
+            .muted { color: var(--muted); font-size: 13px; line-height: 1.45; margin-bottom: 6px; }
             .field { margin-bottom: 6px; }
-            label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+            label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
             input, select, textarea, button {
                 font-family: inherit;
-                font-size: 11px;
+                font-size: 13px;
             }
             input, select, textarea {
                 width: 100%;
@@ -74,7 +90,7 @@
                 background: #fff;
             }
             input, select {
-                height: 32px;
+                height: 36px;
             }
             input:focus, select:focus, textarea:focus {
                 border-color: var(--primary);
@@ -98,7 +114,7 @@
             button {
                 border: 0;
                 border-radius: 999px;
-                padding: 6px 10px;
+                padding: 8px 12px;
                 cursor: pointer;
                 color: #fff;
                 font-weight: 600;
@@ -116,7 +132,7 @@
                 max-height: 140px;
             }
             .table-item {
-                font-size: 11px;
+                font-size: 13px;
                 margin-bottom: 5px;
                 line-height: 1.4;
                 word-break: break-all;
@@ -127,7 +143,7 @@
                 border-radius: 8px;
                 background: #f8fbff;
                 padding: 6px 8px;
-                font-size: 11px;
+                font-size: 13px;
                 color: #2f3d5d;
             }
             .result-wrap {
@@ -138,10 +154,65 @@
                 background: #fff;
                 overflow: auto;
             }
+            .result-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 6px;
+            }
+            .result-head .title {
+                margin: 0;
+            }
+            .result-head-left {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                min-width: 0;
+            }
+            .copy-hint {
+                color: #2f3d5d;
+                font-size: 12px;
+                background: #edf3ff;
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                padding: 2px 8px;
+                max-width: 420px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                display: none;
+            }
+            .copy-hint.visible {
+                display: inline-block;
+            }
+            .icon-btn {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                padding: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                line-height: 1;
+            }
+            .result-tools {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+            .secondary {
+                color: #3c4f78;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+            }
             table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 12px;
+                font-size: 13px;
+                table-layout: fixed;
             }
             th, td {
                 border: 1px solid #e7efff;
@@ -149,16 +220,258 @@
                 text-align: left;
                 white-space: nowrap;
             }
+            tbody tr:nth-child(even) td {
+                background: #f5f7fb;
+            }
+            tbody tr:hover td {
+                background: #eaf1ff;
+            }
             thead th {
                 position: sticky;
                 top: 0;
                 z-index: 1;
                 background: #f3f7ff;
             }
+            .rowno-col {
+                width: 72px;
+                text-align: center;
+            }
+            .sortable-head {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                width: calc(100% - 8px);
+            }
+            .sort-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 2px 8px;
+                font-size: 12px;
+                font-weight: 600;
+                line-height: 1.1;
+                cursor: pointer;
+            }
+            .sort-btn.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .filter-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 2px 6px;
+                font-size: 12px;
+                font-weight: 600;
+                line-height: 1.1;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 24px;
+            }
+            .filter-btn.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            th {
+                position: relative;
+            }
+            .th-name {
+                overflow: visible;
+                text-overflow: clip;
+                white-space: nowrap;
+            }
+            .resize-handle {
+                position: absolute;
+                top: 0;
+                right: -2px;
+                width: 6px;
+                height: 100%;
+                cursor: col-resize;
+                user-select: none;
+                z-index: 8;
+            }
+            .resize-handle:hover {
+                background: rgba(47, 107, 255, 0.18);
+            }
+            .filter-pop {
+                display: none;
+                position: absolute;
+                left: 0;
+                top: calc(100% + 4px);
+                min-width: 260px;
+                max-width: 320px;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #fff;
+                box-shadow: 0 8px 22px rgba(36, 90, 190, 0.16);
+                padding: 8px;
+                z-index: 30;
+            }
+            .filter-pop.show {
+                display: block;
+            }
+            .filter-input {
+                width: 100%;
+                height: 32px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                margin-bottom: 6px;
+                outline: none;
+            }
+            .filter-values {
+                max-height: 160px;
+                overflow: auto;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 6px;
+                margin-bottom: 6px;
+                background: #f8fbff;
+            }
+            .filter-check {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                line-height: 1.35;
+                margin-bottom: 4px;
+                word-break: break-all;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                padding: 4px 6px;
+                background: #fff;
+                cursor: pointer;
+                transition: border-color .15s ease, background-color .15s ease;
+            }
+            .filter-check:hover {
+                border-color: #d8e5ff;
+                background: #f3f8ff;
+            }
+            .filter-check input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+                margin: 0;
+                accent-color: #2f6bff;
+                flex: 0 0 14px;
+            }
+            .filter-check span {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .filter-values::-webkit-scrollbar {
+                width: 8px;
+            }
+            .filter-values::-webkit-scrollbar-thumb {
+                background: #c8d8ff;
+                border-radius: 999px;
+            }
+            .filter-values::-webkit-scrollbar-track {
+                background: #eef4ff;
+                border-radius: 999px;
+            }
+            .filter-actions {
+                display: flex;
+                gap: 6px;
+                justify-content: flex-end;
+            }
+            .filter-meta {
+                margin-top: 2px;
+                margin-bottom: 6px;
+                font-size: 12px;
+                color: #6f7d96;
+                text-align: right;
+            }
+            .mini-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 8px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .sql-preview {
+                margin-top: 6px;
+            }
+            .pager {
+                margin-top: 6px;
+                display: none;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .pager.visible {
+                display: flex;
+            }
+            .pager-info {
+                color: #6f7d96;
+                font-size: 12px;
+                margin-right: 4px;
+            }
+            .cell-content {
+                display: inline-block;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                vertical-align: top;
+                cursor: default;
+            }
+            .cell-content.is-truncated {
+                cursor: pointer;
+            }
+            .text-popup-mask {
+                position: fixed;
+                inset: 0;
+                background: rgba(16, 30, 60, 0.35);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 80;
+                padding: 16px;
+            }
+            .text-popup-mask.show {
+                display: flex;
+            }
+            .text-popup {
+                width: min(760px, 100%);
+                max-height: 70vh;
+                border: 1px solid #dbe7ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+                padding: 10px;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-all;
+                font-size: 13px;
+            }
+            #view-sql {
+                width: 100%;
+                height: 88px;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 12px;
+                background: #f8fbff;
+                color: #2f3d5d;
+                resize: vertical;
+            }
             .empty {
                 padding: 16px;
                 color: var(--muted);
-                font-size: 12px;
+                font-size: 13px;
             }
             @media (max-width: 980px) {
                 .container { grid-template-columns: 1fr; }
@@ -167,8 +480,10 @@
     </head>
     <body>
         <div class="container">
-            <div class="panel panel-scroll">
-                <h3 class="title">Excel 当数据库查询</h3>
+            <div id="left-panel" class="panel panel-scroll left-panel">
+                <div class="left-header">
+                    <h3 class="title">Excel 当数据库查询</h3>
+                </div>
                 <div class="muted">
                     上传多个 Excel 后，每个 Excel 视为一个数据库，Sheet 视为表。<br />
                     执行 SQL 时默认在当前选中的 Excel 库中查询。
@@ -192,11 +507,19 @@
                     </div>
                 </div>
                 <div class="field">
+                    <label for="sql-mode">SQL 语法类型</label>
+                    <select id="sql-mode">
+                        <option value="mysql" selected>MySQL（默认）</option>
+                        <option value="alasql">AlaSQL 原生</option>
+                    </select>
+                </div>
+                <div class="field">
                     <label for="sql-input">SQL 语句</label>
-                    <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1] WHERE [报案号] = 'J900000001002026000002' LIMIT 100;"></textarea>
+                    <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1] LIMIT 100;"></textarea>
                 </div>
                 <div class="btn-row">
                     <button id="run-sql-btn" type="button">执行 SQL</button>
+                    <button id="quick-query-btn" type="button">快速查询当前表</button>
                     <button id="clear-all-btn" class="danger" type="button">清空</button>
                 </div>
                 <div class="table-list" id="table-list">
@@ -205,11 +528,34 @@
                 <div class="status" id="status">请先上传 Excel 文件。</div>
             </div>
             <div class="panel">
-                <h3 class="title">查询结果</h3>
+                <div class="result-head">
+                    <div class="result-head-left">
+                        <h3 class="title">查询结果</h3>
+                        <span id="copy-hint" class="copy-hint"></span>
+                        <button id="toggle-left-btn" class="secondary icon-btn" type="button" title="收起左侧">◀</button>
+                    </div>
+                    <div class="result-tools">
+                        <button id="export-xlsx-btn" class="secondary" type="button">导出 Excel</button>
+                        <button id="export-csv-btn" class="secondary" type="button">导出 CSV</button>
+                        <button id="clear-view-btn" class="secondary" type="button">清除排序和过滤</button>
+                    </div>
+                </div>
                 <div class="result-wrap" id="result-wrap">
                     <div class="empty">暂无数据</div>
                 </div>
+                <div id="pager" class="pager">
+                    <span id="pager-info" class="pager-info"></span>
+                    <button id="pager-prev" class="secondary" type="button">上一页</button>
+                    <button id="pager-next" class="secondary" type="button">下一页</button>
+                </div>
+                <div class="sql-preview">
+                    <label for="view-sql">当前视图 SQL</label>
+                    <textarea id="view-sql" readonly placeholder="执行查询后，这里会显示包含排序和过滤条件的 SQL"></textarea>
+                </div>
             </div>
+        </div>
+        <div id="text-popup-mask" class="text-popup-mask">
+            <div id="text-popup" class="text-popup"></div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -217,6 +563,16 @@
         <script>
             const dbStore = {};
             let currentDb = "";
+            let lastQueryRows = [];
+            let currentViewRows = [];
+            let currentCols = [];
+            let currentFilters = {};
+            let currentSort = { col: "", dir: "" };
+            let lastExecutedSql = "";
+            let currentColWidths = {};
+            let currentPage = 1;
+            const PAGE_SIZE = 1000;
+            let leftCollapsed = false;
 
             function setStatus(text, isError) {
                 const el = document.getElementById("status");
@@ -230,6 +586,13 @@
                     .replace(/[^\w\u4e00-\u9fa5]+/g, "_")
                     .replace(/^_+|_+$/g, "")
                     .slice(0, 60) || "table";
+            }
+
+            function escapeHtml(value) {
+                return String(value === null || value === undefined ? "" : value)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
             }
 
             function refreshTableList() {
@@ -303,25 +666,89 @@
                 });
             }
 
-            function escapeRegExp(value) {
-                return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            function isIdentifierChar(ch) {
+                return /[A-Za-z0-9_\u4e00-\u9fa5]/.test(ch || "");
+            }
+
+            function autoQuoteOneIdentifier(sql, identifier) {
+                if (!identifier) return sql;
+                var out = "";
+                var i = 0;
+                var n = sql.length;
+                var id = String(identifier);
+                var idLen = id.length;
+                var state = "normal";
+
+                while (i < n) {
+                    var ch = sql[i];
+                    if (state === "normal") {
+                        if (ch === "'") {
+                            state = "single";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            state = "double";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "[") {
+                            state = "bracket";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "`") {
+                            state = "backtick";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+
+                        if (sql.slice(i, i + idLen) === id) {
+                            var prev = i > 0 ? sql[i - 1] : "";
+                            var next = i + idLen < n ? sql[i + idLen] : "";
+                            if (!isIdentifierChar(prev) && !isIdentifierChar(next)) {
+                                out += "[" + id + "]";
+                                i += idLen;
+                                continue;
+                            }
+                        }
+
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+
+                    out += ch;
+                    if (state === "single" && ch === "'") state = "normal";
+                    else if (state === "double" && ch === '"') state = "normal";
+                    else if (state === "bracket" && ch === "]") state = "normal";
+                    else if (state === "backtick" && ch === "`") state = "normal";
+                    i++;
+                }
+                return out;
             }
 
             function autoQuoteIdentifiers(sql, columns) {
-                let out = sql;
-                const ordered = (columns || []).slice().sort(function (a, b) {
+                var out = sql;
+                var ordered = (columns || []).slice().sort(function (a, b) {
                     return String(b).length - String(a).length;
                 });
                 ordered.forEach(function (col) {
-                    if (!col) return;
-                    const escaped = escapeRegExp(col);
-                    const pattern = new RegExp("(?<!\\[)" + escaped + "(?!\\])", "g");
-                    out = out.replace(pattern, "[" + col + "]");
+                    out = autoQuoteOneIdentifier(out, col);
                 });
                 return out;
             }
 
-            function normalizeSql(rawSql) {
+            function transformMysqlSql(sql) {
+                // Keep common MySQL habits compatible with AlaSQL parser.
+                return String(sql || "").replace(/`([^`]+)`/g, "[$1]");
+            }
+
+            function normalizeSql(rawSql, sqlMode) {
                 const tableSelect = document.getElementById("table-select");
                 let sql = String(rawSql || "").trim().replace(/;+\s*$/, "");
                 if (!sql) return "";
@@ -338,30 +765,393 @@
                         t.columns.forEach(function (c) { cols.push(c); });
                     });
                 }
+                if (sqlMode === "mysql") {
+                    sql = transformMysqlSql(sql);
+                }
                 sql = autoQuoteIdentifiers(sql, cols);
                 return sql + ";";
             }
 
             function renderResult(rows) {
+                lastQueryRows = Array.isArray(rows) ? rows.slice() : [];
+                currentFilters = {};
+                currentSort = { col: "", dir: "" };
+                currentCols = lastQueryRows.length ? Object.keys(lastQueryRows[0]) : [];
+                currentColWidths = {};
+                currentPage = 1;
+                applyResultView();
+            }
+
+            function compareCellValue(a, b) {
+                const sa = String(a === null || a === undefined ? "" : a).trim();
+                const sb = String(b === null || b === undefined ? "" : b).trim();
+                const na = Number(sa);
+                const nb = Number(sb);
+                const an = sa !== "" && !Number.isNaN(na);
+                const bn = sb !== "" && !Number.isNaN(nb);
+                if (an && bn) return na - nb;
+                return sa.localeCompare(sb, "zh-CN", { numeric: true, sensitivity: "base" });
+            }
+
+            function applyResultView() {
+                let rows = lastQueryRows.slice();
+                Object.keys(currentFilters).forEach(function (col) {
+                    const rule = currentFilters[col] || { keyword: "", selected: [] };
+                    const kw = String(rule.keyword || "").trim().toLowerCase();
+                    const selected = Array.isArray(rule.selected) ? rule.selected : [];
+                    rows = rows.filter(function (r) {
+                        const raw = r[col] === null || r[col] === undefined ? "" : r[col];
+                        const text = String(raw);
+                        const textLower = text.toLowerCase();
+                        const byKeyword = !kw || textLower.includes(kw);
+                        const bySelected = !selected.length || selected.indexOf(text) >= 0;
+                        return byKeyword && bySelected;
+                    });
+                });
+                if (currentSort.col && currentSort.dir) {
+                    const col = currentSort.col;
+                    const dir = currentSort.dir === "desc" ? -1 : 1;
+                    rows.sort(function (a, b) {
+                        return compareCellValue(a[col], b[col]) * dir;
+                    });
+                }
+                currentViewRows = rows;
+                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / PAGE_SIZE));
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+                renderResultTable();
+                renderPager();
+                updateViewSql();
+            }
+
+            function renderResultTable() {
                 const wrap = document.getElementById("result-wrap");
-                if (!rows || !rows.length) {
+                if (!lastQueryRows || !lastQueryRows.length) {
                     wrap.innerHTML = '<div class="empty">查询成功，但无结果。</div>';
                     return;
                 }
-                const cols = Object.keys(rows[0]);
-                let html = "<table><thead><tr>";
-                cols.forEach(function (c) { html += "<th>" + c + "</th>"; });
+                const cols = currentCols;
+                const defaultWidth = Math.max(140, Math.floor((wrap.clientWidth || 800) / Math.max(cols.length, 1)));
+                const startIdx = (currentPage - 1) * PAGE_SIZE;
+                const pageRows = currentViewRows.slice(startIdx, startIdx + PAGE_SIZE);
+                let html = "<table><colgroup>";
+                html += "<col style=\"width:72px\" />";
+                cols.forEach(function (c) {
+                    const width = currentColWidths[c] || defaultWidth;
+                    html += "<col style=\"width:" + width + "px\" />";
+                });
+                html += "</colgroup><thead><tr>";
+                html += "<th class=\"rowno-col\">行号</th>";
+                cols.forEach(function (c) {
+                    const active = currentSort.col === c ? " active" : "";
+                    const symbol = currentSort.col === c ? (currentSort.dir === "asc" ? "↑" : "↓") : "↕";
+                    const filterRule = currentFilters[c] || { keyword: "", selected: [] };
+                    const hasFilter = !!String(filterRule.keyword || "").trim() || (filterRule.selected && filterRule.selected.length > 0);
+                    const filterActive = hasFilter ? " active" : "";
+                    html += "<th><span class=\"sortable-head\">"
+                        + "<span class=\"th-name\" title=\"" + escapeHtml(c) + "\">" + escapeHtml(c) + "</span>"
+                        + "<button class=\"sort-btn" + active + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\">" + symbol + "</button>"
+                        + "<button class=\"filter-btn" + filterActive + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"筛选\">"
+                        + "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3 5h18l-7 8v5l-4 2v-7L3 5z\" fill=\"currentColor\"></path></svg>"
+                        + "</button>"
+                        + "</span><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\"></span></th>";
+                });
                 html += "</tr></thead><tbody>";
-                rows.forEach(function (r) {
+                pageRows.forEach(function (r, idx) {
+                    const rowNo = startIdx + idx + 1;
                     html += "<tr>";
+                    html += "<td class=\"rowno-col\" title=\"当前数据第 " + rowNo + " 行\">" + rowNo + "</td>";
                     cols.forEach(function (c) {
-                        const v = r[c] === null || r[c] === undefined ? "" : String(r[c]);
-                        html += "<td>" + v.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</td>";
+                        const text = escapeHtml(r[c]);
+                        html += "<td title=\"点击展开/收起\"><span class=\"cell-content\" title=\"" + text + "\">" + text + "</span></td>";
                     });
                     html += "</tr>";
                 });
                 html += "</tbody></table>";
                 wrap.innerHTML = html;
+                bindResultTableEvents();
+            }
+
+            function bindResultTableEvents() {
+                const wrap = document.getElementById("result-wrap");
+                wrap.querySelectorAll(".sort-btn").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        const col = btn.getAttribute("data-col");
+                        if (currentSort.col !== col) {
+                            currentSort = { col: col, dir: "asc" };
+                        } else if (currentSort.dir === "asc") {
+                            currentSort = { col: col, dir: "desc" };
+                        } else {
+                            currentSort = { col: "", dir: "" };
+                        }
+                        applyResultView();
+                    });
+                });
+                wrap.querySelectorAll(".filter-btn").forEach(function (btn) {
+                    btn.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        toggleFilterPopup(btn.getAttribute("data-col"), btn);
+                    });
+                });
+                markTruncatedCells();
+                bindResizeEvents();
+            }
+
+            function markTruncatedCells() {
+                const wrap = document.getElementById("result-wrap");
+                wrap.querySelectorAll(".cell-content").forEach(function (el) {
+                    const truncated = el.scrollWidth > el.clientWidth + 1;
+                    el.classList.toggle("is-truncated", truncated);
+                    el.setAttribute("data-truncated", truncated ? "1" : "0");
+                });
+            }
+
+            function bindResizeEvents() {
+                const wrap = document.getElementById("result-wrap");
+                const table = wrap.querySelector("table");
+                if (!table) return;
+                const handles = wrap.querySelectorAll(".resize-handle");
+                handles.forEach(function (handle, idx) {
+                    handle.addEventListener("mousedown", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const colName = handle.getAttribute("data-col");
+                        const colEls = table.querySelectorAll("col");
+                        const targetCol = colEls[idx + 1];
+                        if (!targetCol) return;
+                        const startX = e.clientX;
+                        const startW = parseInt(targetCol.style.width || "160", 10);
+                        function onMove(ev) {
+                            const next = Math.max(100, startW + (ev.clientX - startX));
+                            targetCol.style.width = next + "px";
+                            currentColWidths[colName] = next;
+                        }
+                        function onUp() {
+                            document.removeEventListener("mousemove", onMove);
+                            document.removeEventListener("mouseup", onUp);
+                        }
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                    });
+                });
+            }
+
+            function renderPager() {
+                const pager = document.getElementById("pager");
+                const info = document.getElementById("pager-info");
+                const prev = document.getElementById("pager-prev");
+                const next = document.getElementById("pager-next");
+                const total = currentViewRows.length;
+                const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+                const start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+                const end = total ? Math.min(currentPage * PAGE_SIZE, total) : 0;
+                info.textContent = "第 " + currentPage + "/" + totalPages + " 页，显示 " + start + "-" + end + "，共 " + total + " 条";
+                prev.disabled = currentPage <= 1;
+                next.disabled = currentPage >= totalPages;
+                pager.classList.toggle("visible", total > PAGE_SIZE);
+            }
+
+            function getUniqueValuesForCol(col) {
+                var set = new Set();
+                lastQueryRows.forEach(function (r) {
+                    var text = String(r[col] === null || r[col] === undefined ? "" : r[col]);
+                    set.add(text);
+                });
+                return Array.from(set).sort(function (a, b) {
+                    return a.localeCompare(b, "zh-CN", { numeric: true, sensitivity: "base" });
+                });
+            }
+
+            function closeAllFilterPopup() {
+                document.querySelectorAll(".filter-pop").forEach(function (el) { el.remove(); });
+            }
+
+            function toggleFilterPopup(col, btnEl) {
+                const existing = btnEl.parentElement.querySelector(".filter-pop");
+                if (existing) {
+                    existing.remove();
+                    return;
+                }
+                closeAllFilterPopup();
+                const rule = currentFilters[col] || { keyword: "", selected: [] };
+                const values = getUniqueValuesForCol(col);
+                const panel = document.createElement("div");
+                panel.className = "filter-pop show";
+                panel.innerHTML =
+                    "<input class=\"filter-input\" placeholder=\"输入关键词\" value=\"" + escapeHtml(rule.keyword || "") + "\" />"
+                    + "<div class=\"filter-values\">"
+                    + values.map(function (v) {
+                        const checked = rule.selected && rule.selected.indexOf(v) >= 0 ? " checked" : "";
+                        return "<label class=\"filter-check\"><input type=\"checkbox\" value=\"" + escapeHtml(v) + "\"" + checked + " />"
+                            + "<span>" + escapeHtml(v || "(空值)") + "</span></label>";
+                    }).join("")
+                    + "</div>"
+                    + "<div class=\"filter-meta\" id=\"filter-meta-" + escapeHtml(col) + "\"></div>"
+                    + "<div class=\"filter-actions\">"
+                    + "<button class=\"mini-btn\" data-act=\"select-all\" type=\"button\">全选</button>"
+                    + "<button class=\"mini-btn\" data-act=\"unselect-all\" type=\"button\">取消全选</button>"
+                    + "<button class=\"mini-btn\" data-act=\"reset\" type=\"button\">清空本列</button>"
+                    + "<button class=\"mini-btn\" data-act=\"apply\" type=\"button\">应用</button>"
+                    + "</div>";
+                btnEl.parentElement.appendChild(panel);
+
+                function updateMeta() {
+                    const checkedCount = panel.querySelectorAll(".filter-values input[type='checkbox']:checked").length;
+                    const totalCount = panel.querySelectorAll(".filter-values input[type='checkbox']").length;
+                    const visibleCount = panel.querySelectorAll(".filter-check:not([data-hidden='1'])").length;
+                    const meta = panel.querySelector(".filter-meta");
+                    if (meta) {
+                        meta.textContent = "已选 " + checkedCount + " / 显示 " + visibleCount + " / 共 " + totalCount;
+                    }
+                }
+
+                function syncValueListByKeyword() {
+                    const kw = String(panel.querySelector(".filter-input").value || "").trim().toLowerCase();
+                    panel.querySelectorAll(".filter-check").forEach(function (item) {
+                        const text = String(item.textContent || "").toLowerCase();
+                        const matched = !kw || text.includes(kw);
+                        item.style.display = matched ? "" : "none";
+                        item.setAttribute("data-hidden", matched ? "0" : "1");
+                    });
+                    updateMeta();
+                }
+                updateMeta();
+                syncValueListByKeyword();
+
+                panel.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                });
+                panel.querySelector(".filter-input").addEventListener("input", function () {
+                    syncValueListByKeyword();
+                });
+                panel.querySelectorAll(".filter-values input[type='checkbox']").forEach(function (chk) {
+                    chk.addEventListener("change", updateMeta);
+                });
+                panel.querySelectorAll(".mini-btn").forEach(function (b) {
+                    b.addEventListener("click", function () {
+                        const act = b.getAttribute("data-act");
+                        if (act === "select-all" || act === "unselect-all") {
+                            const checked = act === "select-all";
+                            panel.querySelectorAll(".filter-check").forEach(function (item) {
+                                if (item.getAttribute("data-hidden") === "1") return;
+                                const chk = item.querySelector("input[type='checkbox']");
+                                if (chk) chk.checked = checked;
+                            });
+                            updateMeta();
+                            return;
+                        }
+                        if (act === "reset") {
+                            delete currentFilters[col];
+                            closeAllFilterPopup();
+                            applyResultView();
+                            return;
+                        }
+                        const keyword = panel.querySelector(".filter-input").value || "";
+                        const selected = Array.from(panel.querySelectorAll(".filter-values input[type='checkbox']:checked"))
+                            .map(function (x) { return x.value; });
+                        const hasKeyword = String(keyword).trim().length > 0;
+                        const hasSelected = selected.length > 0;
+                        if (!hasKeyword && !hasSelected) {
+                            delete currentFilters[col];
+                        } else {
+                            currentFilters[col] = { keyword: keyword, selected: selected };
+                        }
+                        closeAllFilterPopup();
+                        applyResultView();
+                    });
+                });
+            }
+
+            function quoteSqlValue(v) {
+                return "'" + String(v).replace(/'/g, "''") + "'";
+            }
+
+            function updateViewSql() {
+                const sqlBox = document.getElementById("view-sql");
+                if (!lastExecutedSql) {
+                    sqlBox.value = "";
+                    return;
+                }
+                const base = String(lastExecutedSql).replace(/;+\s*$/, "");
+                const hasSort = !!(currentSort.col && currentSort.dir);
+                const hasFilters = Object.keys(currentFilters).some(function (col) {
+                    const rule = currentFilters[col] || { keyword: "", selected: [] };
+                    return !!String(rule.keyword || "").trim() || (Array.isArray(rule.selected) && rule.selected.length > 0);
+                });
+                if (!hasSort && !hasFilters) {
+                    sqlBox.value = base + ";";
+                    return;
+                }
+                const whereParts = [];
+                Object.keys(currentFilters).forEach(function (col) {
+                    const rule = currentFilters[col] || { keyword: "", selected: [] };
+                    const parts = [];
+                    const kw = String(rule.keyword || "").trim();
+                    const selected = Array.isArray(rule.selected) ? rule.selected : [];
+                    if (kw) {
+                        parts.push("CAST([" + col + "] AS STRING) LIKE '%" + kw.replace(/'/g, "''") + "%'");
+                    }
+                    if (selected.length) {
+                        parts.push("[" + col + "] IN (" + selected.map(quoteSqlValue).join(", ") + ")");
+                    }
+                    if (parts.length) whereParts.push("(" + parts.join(" AND ") + ")");
+                });
+                let sql = "SELECT * FROM (" + base + ") AS [t]";
+                if (whereParts.length) {
+                    sql += " WHERE " + whereParts.join(" AND ");
+                }
+                if (currentSort.col && currentSort.dir) {
+                    sql += " ORDER BY [" + currentSort.col + "] " + (currentSort.dir === "desc" ? "DESC" : "ASC");
+                }
+                sql += ";";
+                sqlBox.value = sql;
+            }
+
+            function copyText(text) {
+                const val = String(text || "");
+                if (!val) return;
+                function showCopyHint() {
+                    const hint = document.getElementById("copy-hint");
+                    hint.textContent = "复制了字符串：" + val;
+                    hint.title = val;
+                    hint.classList.add("visible");
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(val).then(function () {
+                        showCopyHint();
+                    }).catch(function () {
+                        const ta = document.createElement("textarea");
+                        ta.value = val;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand("copy");
+                        ta.remove();
+                        showCopyHint();
+                    });
+                    return;
+                }
+                const ta = document.createElement("textarea");
+                ta.value = val;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                ta.remove();
+                showCopyHint();
+            }
+
+            function toggleLeftPanel(forceState) {
+                if (typeof forceState === "boolean") {
+                    leftCollapsed = forceState;
+                } else {
+                    leftCollapsed = !leftCollapsed;
+                }
+                const container = document.querySelector(".container");
+                const left = document.getElementById("left-panel");
+                const btn = document.getElementById("toggle-left-btn");
+                container.classList.toggle("left-collapsed", leftCollapsed);
+                left.classList.toggle("hidden", leftCollapsed);
+                btn.textContent = leftCollapsed ? "▶" : "◀";
+                btn.title = leftCollapsed ? "展开左侧" : "收起左侧";
             }
 
             async function loadExcelFiles(files) {
@@ -374,18 +1164,33 @@
                 let tableCount = 0;
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    const buf = await file.arrayBuffer();
-                    const wb = XLSX.read(buf, { type: "array", cellDates: false });
                     const dbName = sanitizeName(file.name);
                     const dbTables = [];
-                    wb.SheetNames.forEach(function (sheetName) {
-                        const sheet = wb.Sheets[sheetName];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                        if (!rows.length) return;
-                        const tableName = sanitizeName(sheetName);
-                        dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
-                        tableCount++;
-                    });
+
+                    if (/\.csv$/i.test(file.name)) {
+                        const text = await file.text();
+                        const wbCsv = XLSX.read(text, { type: "string", cellDates: false });
+                        const firstSheetName = wbCsv.SheetNames[0];
+                        if (firstSheetName) {
+                            const firstSheet = wbCsv.Sheets[firstSheetName];
+                            const rowsCsv = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+                            if (rowsCsv.length) {
+                                dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
+                                tableCount++;
+                            }
+                        }
+                    } else {
+                        const buf = await file.arrayBuffer();
+                        const wb = XLSX.read(buf, { type: "array", cellDates: false });
+                        wb.SheetNames.forEach(function (sheetName) {
+                            const sheet = wb.Sheets[sheetName];
+                            const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                            if (!rows.length) return;
+                            const tableName = sanitizeName(sheetName);
+                            dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
+                            tableCount++;
+                        });
+                    }
                     if (dbTables.length) {
                         dbStore[dbName] = { dbName: dbName, tables: dbTables };
                     }
@@ -400,12 +1205,13 @@
                 const db = dbStore[currentDb];
                 if (db && db.tables.length) {
                     document.getElementById("sql-input").value =
-                        "SELECT * FROM [" + db.tables[0].tableName + "] WHERE [报案号] = 'J900000001002026000002' LIMIT 100;";
+                        "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 1000;";
                 }
             }
 
             function runSql() {
                 const rawSql = (document.getElementById("sql-input").value || "").trim();
+                const sqlMode = document.getElementById("sql-mode").value || "mysql";
                 if (!rawSql) {
                     setStatus("请输入 SQL。", true);
                     return;
@@ -416,7 +1222,8 @@
                 }
                 try {
                     rebuildEngineWithCurrentDb();
-                    const sql = normalizeSql(rawSql);
+                    const sql = normalizeSql(rawSql, sqlMode);
+                    lastExecutedSql = sql;
                     const rows = alasql(sql);
                     if (Array.isArray(rows)) {
                         renderResult(rows);
@@ -426,8 +1233,19 @@
                         setStatus("执行成功。", false);
                     }
                 } catch (error) {
-                    setStatus("SQL 执行失败：" + (error && error.message ? error.message : "未知错误"), true);
+                    setStatus("SQL 执行失败：" + (error && error.message ? error.message : "未知错误") + "（可尝试切换 SQL 语法类型）", true);
                 }
+            }
+
+            function quickQueryCurrentTable() {
+                const tableSelect = document.getElementById("table-select");
+                const tableName = tableSelect.value;
+                if (!tableName) {
+                    setStatus("请先选择默认 Sheet 表。", true);
+                    return;
+                }
+                document.getElementById("sql-input").value = "SELECT * FROM [" + tableName + "] LIMIT 1000;";
+                runSql();
             }
 
             function clearAll() {
@@ -436,6 +1254,16 @@
                 document.getElementById("db-select").innerHTML = '<option value="">请先上传 Excel</option>';
                 document.getElementById("table-select").innerHTML = '<option value="">请先选择库</option>';
                 document.getElementById("result-wrap").innerHTML = '<div class="empty">暂无数据</div>';
+                document.getElementById("view-sql").value = "";
+                lastQueryRows = [];
+                currentViewRows = [];
+                currentCols = [];
+                currentFilters = {};
+                currentSort = { col: "", dir: "" };
+                lastExecutedSql = "";
+                currentColWidths = {};
+                currentPage = 1;
+                document.getElementById("pager").classList.remove("visible");
                 Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
                 currentDb = "";
                 try {
@@ -461,11 +1289,93 @@
                 refreshTableList();
                 const db = dbStore[currentDb];
                 if (db && db.tables.length) {
-                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 100;";
+                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 1000;";
                 }
             });
             document.getElementById("run-sql-btn").addEventListener("click", runSql);
+            document.getElementById("quick-query-btn").addEventListener("click", quickQueryCurrentTable);
             document.getElementById("clear-all-btn").addEventListener("click", clearAll);
+            document.getElementById("toggle-left-btn").addEventListener("click", function () {
+                toggleLeftPanel();
+            });
+            document.getElementById("clear-view-btn").addEventListener("click", function () {
+                currentFilters = {};
+                currentSort = { col: "", dir: "" };
+                currentPage = 1;
+                applyResultView();
+            });
+            document.getElementById("pager-prev").addEventListener("click", function () {
+                if (currentPage <= 1) return;
+                currentPage--;
+                renderResultTable();
+                renderPager();
+            });
+            document.getElementById("pager-next").addEventListener("click", function () {
+                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / PAGE_SIZE));
+                if (currentPage >= totalPages) return;
+                currentPage++;
+                renderResultTable();
+                renderPager();
+            });
+            document.getElementById("export-xlsx-btn").addEventListener("click", function () {
+                if (!currentViewRows.length) {
+                    setStatus("没有可导出的查询结果。", true);
+                    return;
+                }
+                const ws = XLSX.utils.json_to_sheet(currentViewRows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "result");
+                XLSX.writeFile(wb, "query_result.xlsx");
+                setStatus("已导出 Excel（query_result.xlsx）。", false);
+            });
+            document.getElementById("export-csv-btn").addEventListener("click", function () {
+                if (!currentViewRows.length) {
+                    setStatus("没有可导出的查询结果。", true);
+                    return;
+                }
+                const ws = XLSX.utils.json_to_sheet(currentViewRows);
+                const csv = XLSX.utils.sheet_to_csv(ws);
+                const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "query_result.csv";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                setStatus("已导出 CSV（query_result.csv）。", false);
+            });
+            document.addEventListener("click", function () {
+                closeAllFilterPopup();
+            });
+            document.getElementById("result-wrap").addEventListener("click", function (e) {
+                const cell = e.target.closest(".cell-content");
+                if (!cell) return;
+                if (cell.getAttribute("data-truncated") !== "1") return;
+                const mask = document.getElementById("text-popup-mask");
+                const box = document.getElementById("text-popup");
+                box.textContent = cell.textContent || "";
+                mask.classList.add("show");
+            });
+            document.getElementById("result-wrap").addEventListener("dblclick", function (e) {
+                const thName = e.target.closest(".th-name");
+                if (thName) {
+                    copyText(thName.textContent || "");
+                    return;
+                }
+                const cell = e.target.closest(".cell-content");
+                if (cell) {
+                    if (cell.getAttribute("data-truncated") === "1") return;
+                    copyText(cell.textContent || "");
+                }
+            });
+            document.getElementById("text-popup-mask").addEventListener("click", function (e) {
+                if (e.target.id === "text-popup-mask") {
+                    e.currentTarget.classList.remove("show");
+                    document.getElementById("text-popup").textContent = "";
+                }
+            });
         </script>
     </body>
 </html>
