@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>单位换算工具</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .panel {
+                height: calc(100vh - 16px);
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 10px;
+                gap: 8px;
+            }
+            h3 { margin: 0; font-size: 14px; color: var(--text); }
+            .row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            label { font-size: 12px; color: #465a84; }
+            select, input, textarea {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                outline: none;
+            }
+            select:focus, input:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .result {
+                flex: 1;
+                min-height: 0;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.7;
+                overflow: auto;
+                white-space: pre-wrap;
+            }
+            .hint {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 8px;
+                font-size: 12px;
+                color: #33496f;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="panel">
+            <h3>单位换算工具</h3>
+            <div class="row">
+                <label for="category">类别</label>
+                <select id="category"></select>
+                <label for="fromUnit">从</label>
+                <select id="fromUnit"></select>
+                <label for="toUnit">到</label>
+                <select id="toUnit"></select>
+            </div>
+            <div class="row">
+                <label for="inputValue">输入值</label>
+                <input id="inputValue" type="number" step="any" value="1" />
+                <label for="precision">小数位</label>
+                <input id="precision" type="number" min="0" max="12" value="6" />
+            </div>
+            <div id="mainResult" class="hint">结果：--</div>
+            <div id="allResult" class="result"></div>
+        </div>
+        <script>
+            const CATEGORY_DEFS = {
+                "时间": {
+                    base: "秒",
+                    units: {
+                        "毫秒": 0.001,
+                        "秒": 1,
+                        "分钟": 60,
+                        "小时": 3600,
+                        "天": 86400,
+                        "周": 604800
+                    }
+                },
+                "长度": {
+                    base: "米",
+                    units: {
+                        "毫米": 0.001,
+                        "厘米": 0.01,
+                        "米": 1,
+                        "千米": 1000,
+                        "英寸": 0.0254,
+                        "英尺": 0.3048
+                    }
+                },
+                "面积": {
+                    base: "平方米",
+                    units: {
+                        "平方厘米": 0.0001,
+                        "平方米": 1,
+                        "平方千米": 1000000,
+                        "公顷": 10000,
+                        "亩": 666.6666666667
+                    }
+                },
+                "重量": {
+                    base: "千克",
+                    units: {
+                        "毫克": 0.000001,
+                        "克": 0.001,
+                        "千克": 1,
+                        "吨": 1000,
+                        "磅": 0.45359237
+                    }
+                },
+                "温度": {
+                    base: "摄氏度",
+                    units: {
+                        "摄氏度": { toBase: function (v) { return v; }, fromBase: function (v) { return v; } },
+                        "华氏度": { toBase: function (v) { return (v - 32) * 5 / 9; }, fromBase: function (v) { return v * 9 / 5 + 32; } },
+                        "开尔文": { toBase: function (v) { return v - 273.15; }, fromBase: function (v) { return v + 273.15; } }
+                    }
+                },
+                "功率": {
+                    base: "瓦",
+                    units: {
+                        "毫瓦": 0.001,
+                        "瓦": 1,
+                        "千瓦": 1000,
+                        "马力": 745.6998715823
+                    }
+                }
+            };
+
+            function formatNum(value, precision) {
+                if (!isFinite(value)) return "NaN";
+                const p = Math.max(0, Math.min(12, precision));
+                return Number(value.toFixed(p)).toString();
+            }
+
+            function isTempCategory(cat) {
+                return cat === "温度";
+            }
+
+            function convertValue(cat, value, fromUnit, toUnit) {
+                if (isTempCategory(cat)) {
+                    const u = CATEGORY_DEFS[cat].units;
+                    const baseVal = u[fromUnit].toBase(value);
+                    return u[toUnit].fromBase(baseVal);
+                }
+                const units = CATEGORY_DEFS[cat].units;
+                const baseVal = value * units[fromUnit];
+                return baseVal / units[toUnit];
+            }
+
+            const categoryEl = document.getElementById("category");
+            const fromUnitEl = document.getElementById("fromUnit");
+            const toUnitEl = document.getElementById("toUnit");
+            const inputValueEl = document.getElementById("inputValue");
+            const precisionEl = document.getElementById("precision");
+            const mainResultEl = document.getElementById("mainResult");
+            const allResultEl = document.getElementById("allResult");
+
+            function fillCategory() {
+                categoryEl.innerHTML = "";
+                Object.keys(CATEGORY_DEFS).forEach(function (cat) {
+                    const opt = document.createElement("option");
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    categoryEl.appendChild(opt);
+                });
+            }
+
+            function fillUnits() {
+                const cat = categoryEl.value;
+                const units = Object.keys(CATEGORY_DEFS[cat].units);
+                fromUnitEl.innerHTML = "";
+                toUnitEl.innerHTML = "";
+                units.forEach(function (unit) {
+                    const fromOpt = document.createElement("option");
+                    fromOpt.value = unit;
+                    fromOpt.textContent = unit;
+                    fromUnitEl.appendChild(fromOpt);
+                    const toOpt = document.createElement("option");
+                    toOpt.value = unit;
+                    toOpt.textContent = unit;
+                    toUnitEl.appendChild(toOpt);
+                });
+                if (units.length > 1) toUnitEl.value = units[1];
+            }
+
+            function runConvert() {
+                const cat = categoryEl.value;
+                const fromUnit = fromUnitEl.value;
+                const toUnit = toUnitEl.value;
+                const input = Number(inputValueEl.value);
+                const precision = Number(precisionEl.value) || 6;
+                if (!isFinite(input)) {
+                    mainResultEl.textContent = "结果：请输入有效数字";
+                    allResultEl.textContent = "";
+                    return;
+                }
+
+                const value = convertValue(cat, input, fromUnit, toUnit);
+                mainResultEl.textContent = "结果：" + formatNum(input, precision) + " " + fromUnit + " = " + formatNum(value, precision) + " " + toUnit;
+
+                const lines = [];
+                const units = Object.keys(CATEGORY_DEFS[cat].units);
+                units.forEach(function (unit) {
+                    const v = convertValue(cat, input, fromUnit, unit);
+                    lines.push(formatNum(input, precision) + " " + fromUnit + " = " + formatNum(v, precision) + " " + unit);
+                });
+                allResultEl.textContent = lines.join("\n");
+            }
+
+            fillCategory();
+            fillUnits();
+            runConvert();
+
+            categoryEl.addEventListener("change", function () { fillUnits(); runConvert(); });
+            fromUnitEl.addEventListener("change", runConvert);
+            toUnitEl.addEventListener("change", runConvert);
+            inputValueEl.addEventListener("input", runConvert);
+            precisionEl.addEventListener("input", runConvert);
+            document.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>退税计算工具</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --danger: #f05656;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page {
+                height: calc(100vh - 16px);
+                display: flex;
+                gap: 8px;
+                min-height: 0;
+            }
+            .panel {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                gap: 8px;
+            }
+            h3 { margin: 0; font-size: 13px; color: var(--text); }
+            .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+            label { font-size: 12px; color: #3f547e; }
+            input, select {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                outline: none;
+            }
+            input:focus, select:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            button {
+                border: 0;
+                border-radius: 999px;
+                padding: 6px 12px;
+                color: #fff;
+                font-size: 12px;
+                cursor: pointer;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            .result {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+                white-space: pre-wrap;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.7;
+            }
+            .hint {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 8px;
+                font-size: 12px;
+                color: #324a74;
+            }
+            @media (max-width: 900px) { .page { flex-direction: column; } }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel">
+                <h3>退税参数</h3>
+                <div class="row">
+                    <label for="mode">输入模式</label>
+                    <select id="mode">
+                        <option value="taxIncluded">按含税销售额</option>
+                        <option value="taxExcluded">按不含税销售额</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="amount">金额</label>
+                    <input id="amount" type="number" step="0.01" value="100000" />
+                </div>
+                <div class="row">
+                    <label for="taxRate">征税税率(%)</label>
+                    <input id="taxRate" type="number" step="0.01" value="13" />
+                    <label for="refundRate">退税率(%)</label>
+                    <input id="refundRate" type="number" step="0.01" value="9" />
+                </div>
+                <div class="row">
+                    <button type="button" id="calcBtn">计算</button>
+                    <button type="button" id="copyBtn">复制结果</button>
+                    <button type="button" class="danger" id="clearBtn">重置</button>
+                </div>
+                <div class="hint">
+                    说明：按常见出口退税口径计算，结果仅供业务测算参考，具体以税务部门政策和申报口径为准。
+                </div>
+            </div>
+            <div class="panel">
+                <h3>计算结果</h3>
+                <div id="result" class="result">点击“计算”查看结果。</div>
+            </div>
+        </div>
+        <script>
+            function toMoney(v) {
+                return Number(v).toLocaleString("zh-CN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            function calcRefund() {
+                const mode = document.getElementById("mode").value;
+                const amount = Number(document.getElementById("amount").value);
+                const taxRate = Number(document.getElementById("taxRate").value) / 100;
+                const refundRate = Number(document.getElementById("refundRate").value) / 100;
+                const resultEl = document.getElementById("result");
+
+                if (!isFinite(amount) || amount <= 0) {
+                    resultEl.textContent = "金额需大于0。";
+                    return;
+                }
+                if (!isFinite(taxRate) || taxRate < 0 || !isFinite(refundRate) || refundRate < 0) {
+                    resultEl.textContent = "税率与退税率需为非负数。";
+                    return;
+                }
+
+                const salesExTax = mode === "taxIncluded" ? amount / (1 + taxRate) : amount;
+                const salesTax = salesExTax * taxRate;
+                const refundableTax = salesExTax * refundRate;
+                const nonDeductible = Math.max(0, salesExTax * (taxRate - refundRate));
+
+                const lines = [
+                    "输入金额：" + toMoney(amount) + (mode === "taxIncluded" ? "（含税）" : "（不含税）"),
+                    "征税税率：" + (taxRate * 100).toFixed(2) + "%",
+                    "退税率：" + (refundRate * 100).toFixed(2) + "%",
+                    "",
+                    "不含税销售额：" + toMoney(salesExTax),
+                    "销项税额（测算）：" + toMoney(salesTax),
+                    "应退税额（测算）：" + toMoney(refundableTax),
+                    "免抵退不得免征和抵扣税额（测算）：" + toMoney(nonDeductible),
+                    "",
+                    "计算关系：",
+                    "1) 不含税销售额 = 含税销售额 / (1 + 征税税率)",
+                    "2) 应退税额 = 不含税销售额 * 退税率",
+                    "3) 不得免征和抵扣税额 = 不含税销售额 * (征税税率 - 退税率)"
+                ];
+                resultEl.textContent = lines.join("\n");
+            }
+
+            document.getElementById("calcBtn").addEventListener("click", calcRefund);
+            document.getElementById("copyBtn").addEventListener("click", function () {
+                const text = document.getElementById("result").textContent.trim();
+                if (!text) return;
+                navigator.clipboard.writeText(text);
+            });
+            document.getElementById("clearBtn").addEventListener("click", function () {
+                document.getElementById("mode").value = "taxIncluded";
+                document.getElementById("amount").value = "100000";
+                document.getElementById("taxRate").value = "13";
+                document.getElementById("refundRate").value = "9";
+                document.getElementById("result").textContent = "点击“计算”查看结果。";
+            });
+
+            ["mode", "amount", "taxRate", "refundRate"].forEach(function (id) {
+                document.getElementById(id).addEventListener("input", calcRefund);
+            });
+
+            calcRefund();
+            document.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+        </script>
+    </body>
+</html>
