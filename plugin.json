@@ -1,11 +1,11 @@
 {
-	"main": "index.html",
-	"logo": "pages/img/CTools2.png",
+	"main": "index-back.html",
+	"logo": "pages/img/tool-cl.png",
 	"features": [
 		{
-		  "code": "ctools",
+		  "code": "tools-cl",
 		  "explain": "DDL sql解析；Json/Excel/SQL转换等工具",
-			"cmds":["json","excel","ddl","sh","nginx"]
+			"cmds":["tool","json","excel","sql","nginx"]
 		}
 	]
 }

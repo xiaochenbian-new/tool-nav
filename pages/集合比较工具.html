@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>集合比较工具</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 10px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .input-wrap {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                min-height: 0;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .panel-title {
+                padding: 8px 10px;
+                font-size: 12px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 2px 8px;
+                font-size: 11px;
+                cursor: pointer;
+            }
+            textarea {
+                width: 100%;
+                height: 180px;
+                min-height: 120px;
+                max-height: 38vh;
+                border: none;
+                outline: none;
+                resize: vertical;
+                padding: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--text);
+                background: #fff;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .result-wrap {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 8px;
+            }
+            .result-list {
+                padding: 8px;
+                overflow: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .item {
+                border: 1px solid #e6eeff;
+                background: #f8fbff;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                line-height: 1.5;
+                word-break: break-all;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .empty {
+                color: var(--muted);
+                font-size: 12px;
+                padding: 8px;
+            }
+            .dup-modal {
+                position: fixed;
+                inset: 0;
+                background: rgba(16, 30, 60, 0.35);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 99;
+                padding: 16px;
+            }
+            .dup-modal.show {
+                display: flex;
+            }
+            .dup-card {
+                width: min(560px, 100%);
+                max-height: 70vh;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .dup-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 8px 10px;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                font-size: 12px;
+                color: #324a76;
+            }
+            .dup-list {
+                padding: 10px;
+                overflow: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            @media (max-width: 900px) {
+                .input-wrap {
+                    grid-template-columns: 1fr;
+                }
+                .result-wrap {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="toolbar">
+                <button id="compare-btn" class="btn primary" type="button">开始比较</button>
+                <button id="swap-btn" class="btn" type="button">交换 A/B</button>
+                <button id="clear-btn" class="btn" type="button">清空</button>
+                <span id="summary" class="hint">支持空格、换行、逗号分隔</span>
+            </div>
+
+            <div class="input-wrap">
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>A 集合输入</span>
+                        <button id="show-dup-a" class="title-btn" type="button">查看重复</button>
+                    </div>
+                    <textarea id="set-a" placeholder="输入 A 集合，支持空格、换行、逗号混合分隔"></textarea>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>B 集合输入</span>
+                        <button id="show-dup-b" class="title-btn" type="button">查看重复</button>
+                    </div>
+                    <textarea id="set-b" placeholder="输入 B 集合，支持空格、换行、逗号混合分隔"></textarea>
+                </div>
+            </div>
+
+            <div class="result-wrap">
+                <div class="panel">
+                    <div id="a-only-title" class="panel-title">A 独有 (0)</div>
+                    <div id="a-only" class="result-list"></div>
+                </div>
+                <div class="panel">
+                    <div id="both-title" class="panel-title">A/B 共有 (0)</div>
+                    <div id="both" class="result-list"></div>
+                </div>
+                <div class="panel">
+                    <div id="b-only-title" class="panel-title">B 独有 (0)</div>
+                    <div id="b-only" class="result-list"></div>
+                </div>
+            </div>
+        </div>
+        <div id="dup-modal" class="dup-modal">
+            <div class="dup-card">
+                <div class="dup-head">
+                    <span id="dup-title">重复元素</span>
+                    <button id="dup-close" class="title-btn" type="button">关闭</button>
+                </div>
+                <div id="dup-list" class="dup-list"></div>
+            </div>
+        </div>
+
+        <script>
+            var STORAGE_KEY = "form_data_set_compare_tool_v1";
+
+            function saveFormData() {
+                var payload = {
+                    setA: document.getElementById("set-a").value,
+                    setB: document.getElementById("set-b").value
+                };
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // Ignore storage write errors (privacy mode/full storage).
+                }
+            }
+
+            function restoreFormData() {
+                try {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return;
+                    var data = JSON.parse(raw);
+                    document.getElementById("set-a").value = data.setA || "";
+                    document.getElementById("set-b").value = data.setB || "";
+                } catch (e) {
+                    // Ignore storage parse/read errors.
+                }
+            }
+
+            function parseRawItems(text) {
+                return String(text || "")
+                    .replace(/\r\n/g, "\n")
+                    .split(/[\s,，]+/)
+                    .map(function (item) {
+                        return item.trim();
+                    })
+                    .filter(function (item) {
+                        return item.length > 0;
+                    });
+            }
+
+            function parseInput(text) {
+                return Array.from(new Set(parseRawItems(text)));
+            }
+
+            function getDuplicateItems(text) {
+                var counts = new Map();
+                parseRawItems(text).forEach(function (item) {
+                    counts.set(item, (counts.get(item) || 0) + 1);
+                });
+                return Array.from(counts.entries())
+                    .filter(function (entry) {
+                        return entry[1] > 1;
+                    })
+                    .sort(function (a, b) {
+                        return b[1] - a[1];
+                    });
+            }
+
+            function renderList(el, values) {
+                if (!values.length) {
+                    el.innerHTML = '<div class="empty">暂无数据</div>';
+                    return;
+                }
+                el.innerHTML = values
+                    .map(function (val) {
+                        return '<div class="item">' + escapeHtml(val) + "</div>";
+                    })
+                    .join("");
+            }
+
+            function escapeHtml(input) {
+                return String(input)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            }
+
+            function compareSets() {
+                var aValues = parseInput(document.getElementById("set-a").value);
+                var bValues = parseInput(document.getElementById("set-b").value);
+                var bSet = new Set(bValues);
+                var aSet = new Set(aValues);
+
+                var aOnly = aValues.filter(function (item) {
+                    return !bSet.has(item);
+                });
+                var both = aValues.filter(function (item) {
+                    return bSet.has(item);
+                });
+                var bOnly = bValues.filter(function (item) {
+                    return !aSet.has(item);
+                });
+
+                document.getElementById("a-only-title").textContent = "A 独有 (" + aOnly.length + ")";
+                document.getElementById("both-title").textContent = "A/B 共有 (" + both.length + ")";
+                document.getElementById("b-only-title").textContent = "B 独有 (" + bOnly.length + ")";
+
+                renderList(document.getElementById("a-only"), aOnly);
+                renderList(document.getElementById("both"), both);
+                renderList(document.getElementById("b-only"), bOnly);
+
+                document.getElementById("summary").textContent =
+                    "A 去重后 " +
+                    aValues.length +
+                    " 条，B 去重后 " +
+                    bValues.length +
+                    " 条，交集 " +
+                    both.length +
+                    " 条";
+            }
+
+            function showDuplicates(inputId, title) {
+                var text = document.getElementById(inputId).value;
+                var duplicates = getDuplicateItems(text);
+                document.getElementById("dup-title").textContent = title + "（共 " + duplicates.length + " 项）";
+                var list = document.getElementById("dup-list");
+                if (!duplicates.length) {
+                    list.innerHTML = '<div class="empty">没有重复元素</div>';
+                } else {
+                    list.innerHTML = duplicates
+                        .map(function (entry) {
+                            return '<div class="item">' + escapeHtml(entry[0]) + " × " + entry[1] + "</div>";
+                        })
+                        .join("");
+                }
+                document.getElementById("dup-modal").classList.add("show");
+            }
+
+            document.getElementById("compare-btn").addEventListener("click", compareSets);
+            document.getElementById("swap-btn").addEventListener("click", function () {
+                var a = document.getElementById("set-a");
+                var b = document.getElementById("set-b");
+                var tmp = a.value;
+                a.value = b.value;
+                b.value = tmp;
+                saveFormData();
+                compareSets();
+            });
+            document.getElementById("clear-btn").addEventListener("click", function () {
+                document.getElementById("set-a").value = "";
+                document.getElementById("set-b").value = "";
+                saveFormData();
+                compareSets();
+            });
+            document.getElementById("show-dup-a").addEventListener("click", function () {
+                showDuplicates("set-a", "A 集合重复元素");
+            });
+            document.getElementById("show-dup-b").addEventListener("click", function () {
+                showDuplicates("set-b", "B 集合重复元素");
+            });
+            document.getElementById("dup-close").addEventListener("click", function () {
+                document.getElementById("dup-modal").classList.remove("show");
+            });
+            document.getElementById("dup-modal").addEventListener("click", function (e) {
+                if (e.target.id === "dup-modal") {
+                    document.getElementById("dup-modal").classList.remove("show");
+                }
+            });
+
+            document.getElementById("set-a").addEventListener("input", saveFormData);
+            document.getElementById("set-b").addEventListener("input", saveFormData);
+
+            restoreFormData();
+            compareSets();
+        </script>
+    </body>
+</html>

@@ -234,7 +234,8 @@
             </div>
         </div>
         <script>
-		    let modelCount = 1; // 跟踪模型的数量
+const SHELL_FORM_STORAGE_KEY = "shell_script_tool_form_v1";
+let modelCount = 1; // 跟踪模型的数量
 let scriptContent = ''; // 用于保存生成的脚本内容
 let allKeys = new Set(); // 存储所有配置项 key，用于去重校验
 
@@ -264,12 +265,14 @@ function addModel() {
                     <button onclick="addConfigItem(this)">添加配置项</button>
                 `;
                 modelsDiv.appendChild(newModel);
+                persistShellForm();
             }
 
 
  function removeModel(button) {
                 const modelContainer = button.parentElement.parentElement;
                 modelContainer.remove();
+                persistShellForm();
             }
 
             function addConfigItem(button) {
@@ -285,11 +288,13 @@ function addModel() {
                     <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
                 `;
                 configItemsDiv.appendChild(newItem);
+                persistShellForm();
             }
   function removeConfigItem(button) {
                 const configItem = button.parentElement;
                 const configItemsDiv = configItem.parentElement;
                 configItem.remove();
+                persistShellForm();
             }
 
 function checkDuplicateKey(input) {
@@ -409,6 +414,96 @@ function downloadScript() {
                 a.click();
                 URL.revokeObjectURL(url);
             }
+
+function readShellFormState() {
+                const models = Array.from(document.querySelectorAll('.model-container')).map((model) => {
+                    const configFilesInput = model.querySelector('input[id$="-configFiles"]');
+                    const configItems = Array.from(model.querySelectorAll('.config-item')).map((item) => {
+                        const keyInput = item.querySelector('.configKey');
+                        const valueInput = item.querySelector('.configValue');
+                        return {
+                            key: keyInput ? keyInput.value : '',
+                            value: valueInput ? valueInput.value : ''
+                        };
+                    });
+                    return {
+                        configFiles: configFilesInput ? configFilesInput.value : '',
+                        configItems: configItems
+                    };
+                });
+                return {
+                    models: models
+                };
+            }
+
+function persistShellForm() {
+                try {
+                    localStorage.setItem(SHELL_FORM_STORAGE_KEY, JSON.stringify(readShellFormState()));
+                } catch (e) {
+                    // Ignore storage failure.
+                }
+            }
+
+function restoreShellForm() {
+                try {
+                    const raw = localStorage.getItem(SHELL_FORM_STORAGE_KEY);
+                    if (!raw) return;
+                    const state = JSON.parse(raw);
+                    if (!state || !Array.isArray(state.models) || state.models.length === 0) return;
+
+                    const modelsDiv = document.getElementById('models');
+                    modelsDiv.innerHTML = '';
+                    modelCount = 0;
+
+                    state.models.forEach((modelState, index) => {
+                        modelCount = index + 1;
+                        const modelId = "model" + modelCount;
+                        const configItemsHtml = (modelState.configItems && modelState.configItems.length ? modelState.configItems : [{ key: '', value: '' }])
+                            .map((item, itemIndex) => `
+                                <div class="config-item">
+                                    <label>配置项 ${itemIndex + 1}:</label>
+                                    <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" value="${(item.key || '').replace(/"/g, '&quot;')}" onblur="checkDuplicateKey(this)">
+                                    <input type="text" placeholder="值（例如：Y）" class="configValue" value="${(item.value || '').replace(/"/g, '&quot;')}">
+                                    <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                                </div>
+                            `)
+                            .join('');
+
+                        const modelHtml = `
+                            <div class="model-container">
+                                <div class="model-header">
+                                    <span>模型 ${modelCount}</span>
+                                    <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                                </div>
+                                <div class="form-group">
+                                    <label for="${modelId}-configFiles">配置文件（多个文件用逗号分隔）:</label>
+                                    <input type="text" id="${modelId}-configFiles" placeholder="例如：application-prd,site_cm_common" value="${(modelState.configFiles || '').replace(/"/g, '&quot;')}">
+                                </div>
+                                <div id="${modelId}-configItems">${configItemsHtml}</div>
+                                <button onclick="addConfigItem(this)">添加配置项</button>
+                            </div>
+                        `;
+                        modelsDiv.insertAdjacentHTML('beforeend', modelHtml);
+                    });
+                } catch (e) {
+                    // Ignore restore errors.
+                }
+            }
+
+document.addEventListener('input', function (e) {
+                const t = e.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
+                    persistShellForm();
+                }
+            });
+document.addEventListener('change', function (e) {
+                const t = e.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
+                    persistShellForm();
+                }
+            });
+
+restoreShellForm();
 		</script>
     </body>
 </html>

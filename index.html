@@ -5,11 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>工具大全</title>
         <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
                 --bg: #f3f7ff;
                 --card: #ffffff;
@@ -20,8 +16,7 @@
                 --border: #dbe6ff;
                 --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
             }
-            body,
-            html {
+            html, body {
                 width: 100%;
                 height: 100%;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -33,236 +28,728 @@
                 height: 100%;
                 display: flex;
                 flex-direction: column;
-                gap: 5px;
+                gap: 6px;
                 padding: 6px;
             }
             .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 8px;
-                padding: 5px 8px;
                 box-shadow: var(--shadow);
+                padding: 6px 8px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                position: relative;
+            }
+            .left-zone {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-width: 0;
+                flex: 1;
+            }
+            .brand-mark {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .clover-icon {
+                width: 30px;
+                height: 30px;
+                flex: 0 0 30px;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #edf3ff;
+                color: #3c4f78;
+                font-size: 18px;
+                line-height: 1;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                user-select: none;
+            }
+            .clover-icon.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
             .brand-title {
                 font-size: 13px;
                 font-weight: 700;
-                letter-spacing: 0.3px;
+                white-space: nowrap;
             }
-            .tabs {
+            .category-nav {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-left: auto;
+                margin-right: 4px;
+            }
+            .category-item {
+                position: relative;
+                padding: 4px 8px;
+                border-radius: 999px;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .category-item:hover,
+            .category-item.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .category-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                min-width: 220px;
+                max-width: 360px;
+                padding: 12px 8px 8px;
+                border: 1px solid #d8e5ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+                z-index: 26;
+            }
+            .category-item:hover .category-menu,
+            .category-item:focus-within .category-menu {
+                display: block;
+            }
+            .category-menu-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .menu-tool {
+                padding: 4px 8px;
+                font-size: 11px;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+                border-radius: 999px;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                white-space: nowrap;
+            }
+            .search-wrap {
+                width: 300px;
+                max-width: 46%;
+                position: relative;
+            }
+            #search-input {
+                width: 100%;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 5px 8px;
+                font-size: 12px;
+                outline: none;
+            }
+            #search-input:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .floating-panel {
+                display: none;
+                position: absolute;
+                z-index: 20;
+                border: 1px solid #d8e5ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+            }
+            .floating-panel.visible {
+                display: block;
+            }
+            .overview-panel {
+                display: none;
+                position: fixed;
+                z-index: 35;
+                border: 1px solid #d8e5ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+                overflow: auto;
+                padding: 8px;
+            }
+            .overview-panel.visible {
+                display: block;
+            }
+            .overview-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 6px;
+            }
+            .overview-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .overview-close {
+                width: 24px;
+                height: 24px;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #edf3ff;
+                color: #3c4f78;
+                font-size: 16px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .overview-group {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 6px;
+                margin-bottom: 6px;
+            }
+            .overview-group-title {
+                font-size: 12px;
+                font-weight: 600;
+                color: #324a76;
+                margin-bottom: 6px;
+            }
+            .overview-group-tools {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .search-results {
+                top: calc(100% + 6px);
+                left: 0;
+                right: 0;
+                padding: 6px;
+            }
+            .result-title {
+                font-size: 12px;
+                color: var(--muted);
+                margin-bottom: 6px;
+            }
+            .result-list {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 4px;
-                align-items: center;
-                justify-content: flex-end;
             }
-            .tab {
+            .result-item {
                 padding: 4px 8px;
                 cursor: pointer;
                 font-size: 11px;
-                font-weight: 600;
                 color: #3c4f78;
                 background: #edf3ff;
                 border: 1px solid #d8e5ff;
                 border-radius: 999px;
-                transition: all 0.2s ease;
-                white-space: nowrap;
             }
-            .tab.active {
+            .tool-chip {
+                padding: 4px 8px;
+                font-size: 11px;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+                border-radius: 999px;
+                cursor: pointer;
+            }
+            .tool-chip.active,
+            .result-item.active,
+            .menu-tool.active {
                 color: #fff;
                 border-color: transparent;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
-                box-shadow: 0 6px 16px rgba(58, 110, 255, 0.35);
             }
-            .tab:hover {
-                transform: translateY(-1px);
-            }
-            .tab[title] {
-                position: relative;
-            }
-            .tab-content {
-                display: none;
+            .content {
                 flex: 1;
                 overflow: hidden;
                 border: 1px solid var(--border);
                 border-radius: 8px;
                 background: var(--card);
-                position: relative;
                 box-shadow: var(--shadow);
             }
-            .tab-content.active {
-                display: block;
+            #tool-frame-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
             }
             iframe {
                 width: 100%;
                 height: 100%;
                 border: none;
-                background-color: #fff;
+                background: #fff;
                 display: block;
-                border-radius: 8px;
+                position: absolute;
+                inset: 0;
+                visibility: hidden;
+                pointer-events: none;
+            }
+            iframe.tool-frame-active {
+                visibility: visible;
+                pointer-events: auto;
             }
             @media (max-width: 900px) {
-                .header {
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 4px;
-                }
-                .tabs {
-                    justify-content: flex-start;
-                }
-                .tab {
-                    font-size: 11px;
-                    padding: 4px 8px;
-                }
+                .header { flex-direction: column; align-items: stretch; }
+                .left-zone { min-width: 0; }
+                .category-nav { width: 100%; }
+                .category-menu { left: 0; right: auto; max-width: calc(100vw - 24px); }
+                .search-wrap { width: 100%; max-width: 100%; }
             }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="brand">
-                    <div class="brand-title">工具导航</div>
+                <div class="left-zone">
+                    <div class="brand-mark">
+                        <div id="clover-toggle" class="clover-icon" title="全部分类工具">✤</div>
+                        <div class="brand-title">工具导航</div>
+                    </div>
+                    <div id="category-nav" class="category-nav"></div>
                 </div>
-                <div class="tabs">
-                    <div class="tab active" data-tab="tab1" title="MySQL / PostgreSQL / Oracle DDL 解析工具">DDL 解析</div>
-                    <div class="tab" data-tab="tab2" title="Java 实体转 JSON 工具">Java 转 JSON</div>
-                    <div class="tab" data-tab="tab3" title="JSON / Excel / SQL Insert 多向转换工具">JSON/Excel/SQL</div>
-                    <div class="tab" data-tab="tab4" title="Talend Tester JSON 文档解析工具">Tester 文档解析</div>
-                    <div class="tab" data-tab="tab5" title="Shell 配置脚本生成工具">Shell 脚本生成</div>
-                    <div class="tab" data-tab="tab6" title="Crontab 定时任务工具">Crontab</div>
-                    <div class="tab" data-tab="tab7" title="身份证号码生成器工具">身份证生成</div>
-                    <div class="tab" data-tab="tab8" title="JSON 格式化工具">JSON 格式化</div>
-                    <div class="tab" data-tab="tab9" title="Nginx 配置工具">Nginx 配置</div>
-                    <div class="tab" data-tab="tab10" title="字符串生成二维码或条形码工具">其他-码生成</div>
-                    <div class="tab" data-tab="tab11" title="Linux curl 请求生成工具">Linux curl</div>
+                <div class="search-wrap">
+                    <input id="search-input" type="text" placeholder="搜索工具..." />
+                    <div id="search-results" class="search-results floating-panel">
+                        <div class="result-title">搜索结果</div>
+                        <div id="result-list" class="result-list"></div>
+                    </div>
                 </div>
             </div>
-            <div id="tab1" class="tab-content active">
-                <iframe src="pages/DDL.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab2" class="tab-content">
-                <iframe src="pages/JavaToJson.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab3" class="tab-content">
-                <iframe src="pages/JsonToExcel.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab4" class="tab-content">
-                <iframe src="pages/TesterJSON.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab5" class="tab-content">
-                <iframe src="pages/Shell脚本.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab6" class="tab-content">
-                <iframe src="pages/Crontab工具.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab7" class="tab-content">
-                <iframe src="pages/身份证号码生成器.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab8" class="tab-content">
-                <iframe src="pages/Json格式化.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab9" class="tab-content">
-                <iframe src="pages/Nginx配置工具.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab10" class="tab-content">
-                <iframe src="pages/码生成工具.html" frameborder="0"></iframe>
-            </div>
-            <div id="tab11" class="tab-content">
-                <iframe src="pages/LinuxCurl工具.html" frameborder="0"></iframe>
+            <div id="overview-panel" class="overview-panel"></div>
+            <div class="content">
+                <div id="tool-frame-container"></div>
             </div>
         </div>
-
         <script>
-            const STORAGE_PREFIX = 'form_data_';
+            const STORAGE_PREFIX = "tool_form_data_";
+            const FORM_CACHE = {};
+            const FRAME_CACHE = {};
+            const TOOLS = [
+                { id: "tab8", name: "JSON 格式化", category: "解析与转换", path: "pages/Json格式化.html", keywords: ["json", "format"] },
+                { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", keywords: ["ddl", "mysql", "pgsql", "oracle"] },
+                { id: "tab2", name: "Java 与 JSON", category: "解析与转换", path: "pages/JavaToJson.html", keywords: ["java", "json"] },
+                { id: "tab3", name: "JSON/Excel/SQL", category: "解析与转换", path: "pages/JsonToExcel.html", keywords: ["json", "excel", "csv", "sql", "insert"] },
+                { id: "tab4", name: "Tester 文档解析", category: "解析与转换", path: "pages/TesterJSON.html", keywords: ["tester", "talend", "api"] },
+                { id: "tab9", name: "Nginx 配置", category: "运维工具", path: "pages/Nginx配置工具.html", keywords: ["nginx", "proxy", "server"] },
+                { id: "tab5", name: "Shell 脚本生成", category: "运维工具", path: "pages/Shell脚本.html", keywords: ["shell", "script"] },
+                { id: "tab6", name: "Crontab", category: "运维工具", path: "pages/Crontab工具.html", keywords: ["cron", "schedule"] },
+                { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", keywords: ["curl", "linux", "http", "api"] },
+                { id: "tab7", name: "身份证生成", category: "数据生成", path: "pages/身份证号码生成器.html", keywords: ["idcard", "身份证"] },
+                { id: "tab10", name: "文本对比", category: "其他", path: "pages/文本对比.html", keywords: ["文本对比", "diff", "compare"] },
+                { id: "tab11", name: "码生成", category: "其他", path: "pages/码生成工具.html", keywords: ["二维码", "条形码", "qrcode", "barcode"] },
+                { id: "tab13", name: "集合比较", category: "其他", path: "pages/集合比较工具.html", keywords: ["集合", "交集", "差异", "compare", "set"] }
+            ];
+            const DEFAULT_TAB_ID = "tab8";
+            let currentId = "";
+            let overviewVisible = false;
 
-            function saveFormData(tabId) {
-                const iframe = document.querySelector(`#`+tabId + ` iframe`);
-                if (!iframe) return;
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                const inputs = iframeDoc.querySelectorAll('input, textarea, select');
-                const data = {};
-                inputs.forEach(input => {
-                    const name = input.name || input.id;
-                    if (name) {
-                        data[name] = input.value;
-                    }
-                });
-
-                localStorage.setItem(STORAGE_PREFIX + tabId, JSON.stringify(data));
+            function getFieldKey(field, idx) {
+                if (!field) return "";
+                const directKey = field.name || field.id || field.getAttribute("data-persist-key");
+                if (directKey) return directKey;
+                const fallbackKey = "auto_" + field.tagName.toLowerCase() + "_" + idx;
+                field.setAttribute("data-persist-key", fallbackKey);
+                return fallbackKey;
             }
 
-            function restoreFormData(tabId) {
-                const iframe = document.querySelector(`#`+tabId + ` iframe`);
-                if (!iframe) return;
+            function getToolFrame(toolId) {
+                return FRAME_CACHE[toolId] || null;
+            }
 
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                const saved = localStorage.getItem(STORAGE_PREFIX + tabId);
-                if (!saved) return;
+            function getFrameDoc(toolId) {
+                const frame = getToolFrame(toolId || currentId);
+                return frame ? (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document)) : null;
+            }
 
+            function saveToolFormData(toolId) {
+                if (!toolId) return;
+                const doc = getFrameDoc(toolId);
+                if (!doc) return;
                 try {
-                    const data = JSON.parse(saved);
-                    const inputs = iframeDoc.querySelectorAll('input, textarea, select');
-
-                    inputs.forEach(input => {
-                        const name = input.name || input.id;
-                        if (name && data[name] !== undefined) {
-                            input.value = data[name];
+                    const fields = doc.querySelectorAll("input, textarea, select");
+                    const data = {};
+                    fields.forEach((field, idx) => {
+                        if (field.type === "file") return;
+                        const key = getFieldKey(field, idx);
+                        if (!key) return;
+                        if (field.type === "checkbox" || field.type === "radio") {
+                            data[key] = !!field.checked;
+                        } else {
+                            data[key] = field.value;
                         }
                     });
+                    FORM_CACHE[toolId] = data;
+                    localStorage.setItem(STORAGE_PREFIX + toolId, JSON.stringify(data));
                 } catch (e) {
-                    console.warn('恢复表单数据失败：',e);
+                    // Ignore cross-document/storage errors.
                 }
             }
 
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const tabId = tab.getAttribute('data-tab');
-
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                    tab.classList.add('active');
-                    document.getElementById(tabId).classList.add('active');
-
-                    const currentTabId = document.querySelector('.tab.active').getAttribute('data-tab');
-                    saveFormData(currentTabId);
-
-                    const iframe = document.querySelector(`#`+tabId+ ` iframe`);
-                    iframe.onload = () => {
-                        restoreFormData(tabId);
-                    };
-
-                    if (iframe.contentDocument) {
-                        restoreFormData(tabId);
+            function restoreToolFormData(toolId) {
+                if (!toolId) return;
+                const doc = getFrameDoc(toolId);
+                if (!doc) return;
+                try {
+                    const fromCache = FORM_CACHE[toolId];
+                    const raw = localStorage.getItem(STORAGE_PREFIX + toolId);
+                    const data = fromCache || (raw ? JSON.parse(raw) : null);
+                    if (!data) return;
+                    const fields = doc.querySelectorAll("input, textarea, select");
+                    fields.forEach((field, idx) => {
+                        if (field.type === "file") return;
+                        const key = getFieldKey(field, idx);
+                        if (!key || data[key] === undefined) return;
+                        try {
+                            if (field.type === "checkbox" || field.type === "radio") {
+                                field.checked = !!data[key];
+                            } else {
+                                field.value = data[key];
+                            }
+                        } catch (fieldError) {
+                            // Skip problematic individual field.
+                        }
+                    });
+                    try {
+                        const evtInput = new Event("input", { bubbles: true });
+                        const evtChange = new Event("change", { bubbles: true });
+                        fields.forEach((field) => {
+                            if (field.type === "file") return;
+                            field.dispatchEvent(evtInput);
+                            field.dispatchEvent(evtChange);
+                        });
+                    } catch (eventError) {
+                        // Ignore event dispatch failure.
                     }
-                });
-            });
-
-            document.addEventListener('DOMContentLoaded', () => {
-                const initialTab = new URLSearchParams(window.location.hash.slice(1)).get('tab') || 'tab1';
-                const tabElement = document.querySelector(`.tab[data-tab="${initialTab}"]`);
-                if (tabElement) {
-                    tabElement.click();
-                } else {
-                    document.querySelector('.tab').click();
+                } catch (e) {
+                    // Ignore parse/DOM errors.
                 }
-                document.addEventListener('input', function (e) {
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-                        const currentTab = document.querySelector('.tab.active').getAttribute('data-tab');
-                        saveFormData(currentTab);
+            }
+
+            function bindFrameAutosave(toolId) {
+                const frame = getToolFrame(toolId);
+                if (!frame || frame.getAttribute("data-autosave-bound") === "1") return;
+                const doc = getFrameDoc(toolId);
+                if (!doc) return;
+                const handler = function (e) {
+                    const tag = (e.target && e.target.tagName) || "";
+                    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+                        saveToolFormData(toolId);
                     }
+                };
+                try {
+                    doc.addEventListener("input", handler);
+                    doc.addEventListener("change", handler);
+                    frame.setAttribute("data-autosave-bound", "1");
+                } catch (e) {
+                    // Ignore event bind failures.
+                }
+            }
+
+            function restoreToolFormDataTwice(toolId) {
+                restoreToolFormData(toolId);
+                setTimeout(function () {
+                    if (currentId === toolId) restoreToolFormData(toolId);
+                }, 80);
+                setTimeout(function () {
+                    if (currentId === toolId) restoreToolFormData(toolId);
+                }, 220);
+            }
+
+            function openTool(id, updateHash) {
+                const tool = TOOLS.find((t) => t.id === id) || TOOLS[0];
+                if (currentId === tool.id) {
+                    updateActiveStates();
+                    document.getElementById("search-results").classList.remove("visible");
+                    hideOverviewPanel();
+                    if (updateHash) {
+                        const sameHash = "tab=" + encodeURIComponent(currentId);
+                        if (window.location.hash !== "#" + sameHash) {
+                            window.location.hash = sameHash;
+                        }
+                    }
+                    return;
+                }
+
+                const previousId = currentId;
+                if (previousId) {
+                    try {
+                        saveToolFormData(previousId);
+                    } catch (e) {
+                        // Never block navigation due to save failures.
+                    }
+                }
+                currentId = tool.id;
+                const frame = getOrCreateToolFrame(tool);
+                activateToolFrame(tool.id);
+                if (frame.getAttribute("data-loaded") === "1") {
+                    try {
+                        restoreToolFormDataTwice(currentId);
+                    } catch (e) {
+                        // Ignore runtime restore failures.
+                    }
+                }
+                updateActiveStates();
+                document.getElementById("search-results").classList.remove("visible");
+                hideOverviewPanel();
+                if (updateHash) {
+                    const nextHash = "tab=" + encodeURIComponent(currentId);
+                    if (window.location.hash !== "#" + nextHash) {
+                        window.location.hash = nextHash;
+                    }
+                }
+            }
+
+            function activateToolFrame(toolId) {
+                Object.keys(FRAME_CACHE).forEach((id) => {
+                    const frame = FRAME_CACHE[id];
+                    if (!frame) return;
+                    frame.classList.toggle("tool-frame-active", id === toolId);
                 });
+            }
+
+            function getOrCreateToolFrame(tool) {
+                if (FRAME_CACHE[tool.id]) return FRAME_CACHE[tool.id];
+                const container = document.getElementById("tool-frame-container");
+                const frame = document.createElement("iframe");
+                frame.setAttribute("data-tool-id", tool.id);
+                frame.onload = function () {
+                    frame.setAttribute("data-loaded", "1");
+                    try {
+                        restoreToolFormDataTwice(tool.id);
+                        bindFrameAutosave(tool.id);
+                    } catch (e) {
+                        // Never block tool display due to restore failures.
+                    }
+                };
+                frame.src = tool.path;
+                FRAME_CACHE[tool.id] = frame;
+                container.appendChild(frame);
+                return frame;
+            }
+
+            function updateActiveStates() {
+                document.querySelectorAll(".tool-chip").forEach((el) => {
+                    el.classList.toggle("active", el.getAttribute("data-id") === currentId);
+                });
+                document.querySelectorAll(".result-item").forEach((el) => {
+                    el.classList.toggle("active", el.getAttribute("data-id") === currentId);
+                });
+                document.querySelectorAll(".menu-tool").forEach((el) => {
+                    el.classList.toggle("active", el.getAttribute("data-id") === currentId);
+                });
+                const currentTool = TOOLS.find((t) => t.id === currentId);
+                const currentCategory = currentTool ? currentTool.category : "";
+                document.querySelectorAll(".category-item").forEach((el) => {
+                    el.classList.toggle("active", el.getAttribute("data-category") === currentCategory);
+                });
+                document.querySelectorAll(".clover-tool").forEach((el) => {
+                    el.classList.toggle("active", el.getAttribute("data-id") === currentId);
+                });
+            }
+
+            function getInitialTab() {
+                const hash = window.location.hash.replace(/^#/, "");
+                if (!hash) return DEFAULT_TAB_ID;
+                const tab = new URLSearchParams(hash).get("tab");
+                return TOOLS.some((t) => t.id === tab) ? tab : DEFAULT_TAB_ID;
+            }
+
+            function renderCategoryNav() {
+                const nav = document.getElementById("category-nav");
+                nav.innerHTML = "";
+                const grouped = {};
+                TOOLS.forEach((tool) => {
+                    if (!grouped[tool.category]) grouped[tool.category] = [];
+                    grouped[tool.category].push(tool);
+                });
+
+                Object.keys(grouped).forEach((cat) => {
+                    const item = document.createElement("div");
+                    item.className = "category-item";
+                    item.setAttribute("data-category", cat);
+                    item.textContent = cat;
+
+                    const menu = document.createElement("div");
+                    menu.className = "category-menu";
+                    const list = document.createElement("div");
+                    list.className = "category-menu-list";
+                    grouped[cat].forEach((tool) => {
+                        const chip = document.createElement("div");
+                        chip.className = "menu-tool";
+                        chip.setAttribute("data-id", tool.id);
+                        chip.textContent = tool.name;
+                        chip.title = tool.name;
+                        chip.addEventListener("click", function (e) {
+                            e.stopPropagation();
+                            openTool(tool.id, true);
+                        });
+                        list.appendChild(chip);
+                    });
+                    menu.appendChild(list);
+                    item.appendChild(menu);
+                    nav.appendChild(item);
+                });
+                updateActiveStates();
+            }
+
+            function renderOverviewPanel() {
+                const panel = document.getElementById("overview-panel");
+                const grouped = {};
+                TOOLS.forEach((tool) => {
+                    if (!grouped[tool.category]) grouped[tool.category] = [];
+                    grouped[tool.category].push(tool);
+                });
+
+                panel.innerHTML = ""
+                    + "<div class=\"overview-header\">"
+                    + "<div class=\"overview-title\">全部分类工具</div>"
+                    + "<button id=\"overview-close\" type=\"button\" class=\"overview-close\" title=\"关闭\">×</button>"
+                    + "</div>";
+
+                Object.keys(grouped).forEach((cat) => {
+                    const group = document.createElement("div");
+                    group.className = "overview-group";
+                    const title = document.createElement("div");
+                    title.className = "overview-group-title";
+                    title.textContent = cat;
+                    group.appendChild(title);
+
+                    const toolsWrap = document.createElement("div");
+                    toolsWrap.className = "overview-group-tools";
+                    grouped[cat].forEach((tool) => {
+                        const chip = document.createElement("div");
+                        chip.className = "tool-chip clover-tool";
+                        chip.setAttribute("data-id", tool.id);
+                        chip.textContent = tool.name;
+                        chip.addEventListener("click", function () {
+                            openTool(tool.id, true);
+                        });
+                        toolsWrap.appendChild(chip);
+                    });
+                    group.appendChild(toolsWrap);
+                    panel.appendChild(group);
+                });
+
+                const closeBtn = document.getElementById("overview-close");
+                if (closeBtn) {
+                    closeBtn.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        hideOverviewPanel();
+                    });
+                }
+                updateActiveStates();
+            }
+
+            function syncOverviewPanelPosition() {
+                const header = document.querySelector(".header");
+                const container = document.querySelector(".container");
+                const panel = document.getElementById("overview-panel");
+                if (!header || !container || !panel) return;
+                const headerRect = header.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                panel.style.top = (headerRect.bottom + 6) + "px";
+                panel.style.left = (containerRect.left + 6) + "px";
+                panel.style.width = Math.max(280, containerRect.width - 12) + "px";
+                panel.style.height = Math.max(180, window.innerHeight - headerRect.bottom - 12) + "px";
+            }
+
+            function hideOverviewPanel() {
+                overviewVisible = false;
+                document.getElementById("overview-panel").classList.remove("visible");
+                document.getElementById("clover-toggle").classList.remove("active");
+            }
+
+            function toggleOverviewPanel() {
+                overviewVisible = !overviewVisible;
+                if (!overviewVisible) {
+                    hideOverviewPanel();
+                    return;
+                }
+                document.getElementById("search-results").classList.remove("visible");
+                renderOverviewPanel();
+                syncOverviewPanelPosition();
+                document.getElementById("overview-panel").classList.add("visible");
+                document.getElementById("clover-toggle").classList.add("active");
+            }
+
+            function applySearch(keyword) {
+                const kw = (keyword || "").trim().toLowerCase();
+                const resultWrap = document.getElementById("search-results");
+                const list = document.getElementById("result-list");
+                list.innerHTML = "";
+
+                if (!kw) {
+                    resultWrap.classList.remove("visible");
+                    return;
+                }
+
+                const filtered = TOOLS.filter((tool) => {
+                    const text = (tool.name + " " + tool.category + " " + tool.keywords.join(" ")).toLowerCase();
+                    return text.includes(kw);
+                });
+
+                filtered.forEach((tool) => {
+                    const item = document.createElement("div");
+                    item.className = "result-item";
+                    item.setAttribute("data-id", tool.id);
+                    item.textContent = tool.name + "（" + tool.category + "）";
+                    item.addEventListener("click", function () {
+                        openTool(tool.id, true);
+                    });
+                    list.appendChild(item);
+                });
+                resultWrap.classList.toggle("visible", filtered.length > 0);
+                updateActiveStates();
+            }
+
+            document.getElementById("search-input").addEventListener("input", function (e) {
+                applySearch(e.target.value);
             });
 
-            window.addEventListener('hashchange', () => {
-                const tab = new URLSearchParams(window.location.hash.slice(1)).get('tab');
-                if (tab && document.querySelector(`.tab[data-tab="${tab}"]`)) {
-                    const tabElement = document.querySelector(`.tab[data-tab="${tab}"]`);
-                    if (!tabElement.classList.contains('active')) {
-                        tabElement.click();
-                    }
+            window.addEventListener("hashchange", function () {
+                openTool(getInitialTab(), false);
+            });
+
+            document.querySelector(".content").addEventListener("click", function () {
+                document.getElementById("search-results").classList.remove("visible");
+                hideOverviewPanel();
+            });
+
+            document.addEventListener("click", function (e) {
+                if (e.target.closest(".search-wrap")) return;
+                if (e.target.closest("#clover-toggle")) return;
+                if (e.target.closest("#overview-panel")) return;
+                document.getElementById("search-results").classList.remove("visible");
+                if (e.target.closest(".header")) {
+                    if (e.target.closest(".category-item")) return;
+                    hideOverviewPanel();
+                    return;
+                }
+                hideOverviewPanel();
+            });
+
+            document.getElementById("clover-toggle").addEventListener("click", function (e) {
+                e.stopPropagation();
+                toggleOverviewPanel();
+            });
+
+            window.addEventListener("resize", function () {
+                if (overviewVisible) {
+                    syncOverviewPanelPosition();
+                }
+            });
+
+            document.addEventListener("DOMContentLoaded", function () {
+                renderCategoryNav();
+                openTool(getInitialTab(), false);
+                if (!window.location.hash) {
+                    window.location.hash = "tab=" + DEFAULT_TAB_ID;
                 }
             });
         </script>
