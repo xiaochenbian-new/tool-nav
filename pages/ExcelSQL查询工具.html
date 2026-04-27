@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Excel SQL 查询工具</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+            }
+            .container {
+                height: calc(100vh - 16px);
+                display: grid;
+                grid-template-columns: 360px 1fr;
+                gap: 8px;
+                min-height: 0;
+            }
+            .panel {
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                overflow: hidden;
+            }
+            .panel-scroll {
+                overflow-y: auto;
+            }
+            .panel-scroll::-webkit-scrollbar {
+                width: 8px;
+            }
+            .panel-scroll::-webkit-scrollbar-thumb {
+                background: #c8d8ff;
+                border-radius: 999px;
+            }
+            .panel-scroll::-webkit-scrollbar-track {
+                background: #eef4ff;
+                border-radius: 999px;
+            }
+            .title { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+            .muted { color: var(--muted); font-size: 11px; line-height: 1.35; margin-bottom: 6px; }
+            .field { margin-bottom: 6px; }
+            label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+            input, select, textarea, button {
+                font-family: inherit;
+                font-size: 11px;
+            }
+            input, select, textarea {
+                width: 100%;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                outline: none;
+                background: #fff;
+            }
+            input, select {
+                height: 32px;
+            }
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea {
+                min-height: 110px;
+                resize: vertical;
+            }
+            .compact-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            .btn-row {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-top: 6px;
+            }
+            button {
+                border: 0;
+                border-radius: 999px;
+                padding: 6px 10px;
+                cursor: pointer;
+                color: #fff;
+                font-weight: 600;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
+            .table-list {
+                margin-top: 6px;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 6px;
+                overflow: auto;
+                min-height: 76px;
+                max-height: 140px;
+            }
+            .table-item {
+                font-size: 11px;
+                margin-bottom: 5px;
+                line-height: 1.4;
+                word-break: break-all;
+            }
+            .status {
+                margin-top: 6px;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 6px 8px;
+                font-size: 11px;
+                color: #2f3d5d;
+            }
+            .result-wrap {
+                flex: 1;
+                min-height: 0;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #fff;
+                overflow: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
+            th, td {
+                border: 1px solid #e7efff;
+                padding: 6px 8px;
+                text-align: left;
+                white-space: nowrap;
+            }
+            thead th {
+                position: sticky;
+                top: 0;
+                z-index: 1;
+                background: #f3f7ff;
+            }
+            .empty {
+                padding: 16px;
+                color: var(--muted);
+                font-size: 12px;
+            }
+            @media (max-width: 980px) {
+                .container { grid-template-columns: 1fr; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="panel panel-scroll">
+                <h3 class="title">Excel 当数据库查询</h3>
+                <div class="muted">
+                    上传多个 Excel 后，每个 Excel 视为一个数据库，Sheet 视为表。<br />
+                    执行 SQL 时默认在当前选中的 Excel 库中查询。
+                </div>
+                <div class="field">
+                    <label for="excel-files">上传 Excel 文件（支持多选）</label>
+                    <input id="excel-files" type="file" accept=".xlsx,.xls,.csv" multiple />
+                </div>
+                <div class="compact-grid">
+                    <div class="field">
+                        <label for="db-select">当前 Excel 库</label>
+                        <select id="db-select">
+                            <option value="">请先上传 Excel</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="table-select">默认 Sheet 表</label>
+                        <select id="table-select">
+                            <option value="">请先选择库</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="sql-input">SQL 语句</label>
+                    <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1] WHERE [报案号] = 'J900000001002026000002' LIMIT 100;"></textarea>
+                </div>
+                <div class="btn-row">
+                    <button id="run-sql-btn" type="button">执行 SQL</button>
+                    <button id="clear-all-btn" class="danger" type="button">清空</button>
+                </div>
+                <div class="table-list" id="table-list">
+                    <div class="table-item">尚未加载表。</div>
+                </div>
+                <div class="status" id="status">请先上传 Excel 文件。</div>
+            </div>
+            <div class="panel">
+                <h3 class="title">查询结果</h3>
+                <div class="result-wrap" id="result-wrap">
+                    <div class="empty">暂无数据</div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/alasql@4.6.5/dist/alasql.min.js"></script>
+        <script>
+            const dbStore = {};
+            let currentDb = "";
+
+            function setStatus(text, isError) {
+                const el = document.getElementById("status");
+                el.textContent = text;
+                el.style.color = isError ? "#c43d3d" : "#2f3d5d";
+            }
+
+            function sanitizeName(name) {
+                return String(name || "")
+                    .replace(/\.[^.]+$/, "")
+                    .replace(/[^\w\u4e00-\u9fa5]+/g, "_")
+                    .replace(/^_+|_+$/g, "")
+                    .slice(0, 60) || "table";
+            }
+
+            function refreshTableList() {
+                const list = document.getElementById("table-list");
+                const db = dbStore[currentDb];
+                if (!db || !db.tables.length) {
+                    list.innerHTML = '<div class="table-item">尚未加载表。</div>';
+                    return;
+                }
+                list.innerHTML = "";
+                db.tables.forEach(function (item) {
+                    const div = document.createElement("div");
+                    div.className = "table-item";
+                    div.innerHTML = "<b>" + item.tableName + "</b><br/>列: " + item.columns.join(", ");
+                    list.appendChild(div);
+                });
+            }
+
+            function refreshDbSelect() {
+                const select = document.getElementById("db-select");
+                const keys = Object.keys(dbStore);
+                if (!keys.length) {
+                    select.innerHTML = '<option value="">请先上传 Excel</option>';
+                    currentDb = "";
+                    return;
+                }
+                select.innerHTML = "";
+                keys.forEach(function (dbName) {
+                    const op = document.createElement("option");
+                    op.value = dbName;
+                    op.textContent = dbName;
+                    select.appendChild(op);
+                });
+                if (!currentDb || !dbStore[currentDb]) currentDb = keys[0];
+                select.value = currentDb;
+            }
+
+            function refreshTableSelect() {
+                const select = document.getElementById("table-select");
+                const db = dbStore[currentDb];
+                if (!db || !db.tables.length) {
+                    select.innerHTML = '<option value="">请先选择库</option>';
+                    return;
+                }
+                const oldVal = select.value;
+                select.innerHTML = "";
+                db.tables.forEach(function (t) {
+                    const op = document.createElement("option");
+                    op.value = t.tableName;
+                    op.textContent = t.tableName;
+                    select.appendChild(op);
+                });
+                if (oldVal && db.tables.some(function (t) { return t.tableName === oldVal; })) {
+                    select.value = oldVal;
+                }
+            }
+
+            function rebuildEngineWithCurrentDb() {
+                try {
+                    alasql("SHOW TABLES").forEach(function (t) {
+                        alasql("DROP TABLE IF EXISTS [" + t.tableid + "]");
+                    });
+                } catch (e) {
+                    // ignore
+                }
+                const db = dbStore[currentDb];
+                if (!db) return;
+                db.tables.forEach(function (t) {
+                    alasql("CREATE TABLE [" + t.tableName + "]");
+                    alasql.tables[t.tableName].data = t.rows;
+                });
+            }
+
+            function escapeRegExp(value) {
+                return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+
+            function autoQuoteIdentifiers(sql, columns) {
+                let out = sql;
+                const ordered = (columns || []).slice().sort(function (a, b) {
+                    return String(b).length - String(a).length;
+                });
+                ordered.forEach(function (col) {
+                    if (!col) return;
+                    const escaped = escapeRegExp(col);
+                    const pattern = new RegExp("(?<!\\[)" + escaped + "(?!\\])", "g");
+                    out = out.replace(pattern, "[" + col + "]");
+                });
+                return out;
+            }
+
+            function normalizeSql(rawSql) {
+                const tableSelect = document.getElementById("table-select");
+                let sql = String(rawSql || "").trim().replace(/;+\s*$/, "");
+                if (!sql) return "";
+                if (!/\bfrom\b/i.test(sql)) {
+                    if (!tableSelect.value) {
+                        throw new Error("SQL 未写 FROM 且未选择默认 Sheet 表");
+                    }
+                    sql = sql + " FROM [" + tableSelect.value + "]";
+                }
+                const db = dbStore[currentDb];
+                const cols = [];
+                if (db) {
+                    db.tables.forEach(function (t) {
+                        t.columns.forEach(function (c) { cols.push(c); });
+                    });
+                }
+                sql = autoQuoteIdentifiers(sql, cols);
+                return sql + ";";
+            }
+
+            function renderResult(rows) {
+                const wrap = document.getElementById("result-wrap");
+                if (!rows || !rows.length) {
+                    wrap.innerHTML = '<div class="empty">查询成功，但无结果。</div>';
+                    return;
+                }
+                const cols = Object.keys(rows[0]);
+                let html = "<table><thead><tr>";
+                cols.forEach(function (c) { html += "<th>" + c + "</th>"; });
+                html += "</tr></thead><tbody>";
+                rows.forEach(function (r) {
+                    html += "<tr>";
+                    cols.forEach(function (c) {
+                        const v = r[c] === null || r[c] === undefined ? "" : String(r[c]);
+                        html += "<td>" + v.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</td>";
+                    });
+                    html += "</tr>";
+                });
+                html += "</tbody></table>";
+                wrap.innerHTML = html;
+            }
+
+            async function loadExcelFiles(files) {
+                if (!window.XLSX || !window.alasql) {
+                    setStatus("依赖加载失败，请检查网络后重试。", true);
+                    return;
+                }
+                Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
+
+                let tableCount = 0;
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const buf = await file.arrayBuffer();
+                    const wb = XLSX.read(buf, { type: "array", cellDates: false });
+                    const dbName = sanitizeName(file.name);
+                    const dbTables = [];
+                    wb.SheetNames.forEach(function (sheetName) {
+                        const sheet = wb.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                        if (!rows.length) return;
+                        const tableName = sanitizeName(sheetName);
+                        dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
+                        tableCount++;
+                    });
+                    if (dbTables.length) {
+                        dbStore[dbName] = { dbName: dbName, tables: dbTables };
+                    }
+                }
+
+                refreshDbSelect();
+                refreshTableSelect();
+                rebuildEngineWithCurrentDb();
+                refreshTableList();
+                setStatus("加载完成：共 " + tableCount + " 张表。当前库：" + currentDb, false);
+
+                const db = dbStore[currentDb];
+                if (db && db.tables.length) {
+                    document.getElementById("sql-input").value =
+                        "SELECT * FROM [" + db.tables[0].tableName + "] WHERE [报案号] = 'J900000001002026000002' LIMIT 100;";
+                }
+            }
+
+            function runSql() {
+                const rawSql = (document.getElementById("sql-input").value || "").trim();
+                if (!rawSql) {
+                    setStatus("请输入 SQL。", true);
+                    return;
+                }
+                if (!currentDb || !dbStore[currentDb]) {
+                    setStatus("请先上传并选择 Excel 库。", true);
+                    return;
+                }
+                try {
+                    rebuildEngineWithCurrentDb();
+                    const sql = normalizeSql(rawSql);
+                    const rows = alasql(sql);
+                    if (Array.isArray(rows)) {
+                        renderResult(rows);
+                        setStatus("执行成功：返回 " + rows.length + " 行。", false);
+                    } else {
+                        renderResult([]);
+                        setStatus("执行成功。", false);
+                    }
+                } catch (error) {
+                    setStatus("SQL 执行失败：" + (error && error.message ? error.message : "未知错误"), true);
+                }
+            }
+
+            function clearAll() {
+                document.getElementById("excel-files").value = "";
+                document.getElementById("sql-input").value = "";
+                document.getElementById("db-select").innerHTML = '<option value="">请先上传 Excel</option>';
+                document.getElementById("table-select").innerHTML = '<option value="">请先选择库</option>';
+                document.getElementById("result-wrap").innerHTML = '<div class="empty">暂无数据</div>';
+                Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
+                currentDb = "";
+                try {
+                    alasql("SHOW TABLES").forEach(function (t) {
+                        alasql("DROP TABLE IF EXISTS [" + t.tableid + "]");
+                    });
+                } catch (e) {
+                    // ignore
+                }
+                refreshTableList();
+                setStatus("已清空。", false);
+            }
+
+            document.getElementById("excel-files").addEventListener("change", function (e) {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                loadExcelFiles(files);
+            });
+            document.getElementById("db-select").addEventListener("change", function (e) {
+                currentDb = e.target.value;
+                refreshTableSelect();
+                rebuildEngineWithCurrentDb();
+                refreshTableList();
+                const db = dbStore[currentDb];
+                if (db && db.tables.length) {
+                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 100;";
+                }
+            });
+            document.getElementById("run-sql-btn").addEventListener("click", runSql);
+            document.getElementById("clear-all-btn").addEventListener("click", clearAll);
+        </script>
+    </body>
+</html>

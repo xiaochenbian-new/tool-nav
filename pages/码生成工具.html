@@ -126,6 +126,28 @@
                 max-width: 100%;
                 height: auto;
             }
+            #qrcode {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: flex-start;
+                justify-content: center;
+            }
+            .qr-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                padding: 8px;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #f8fbff;
+            }
+            .qr-item-label {
+                font-size: 12px;
+                color: #4a5b82;
+            }
             #barcode {
                 max-width: 100%;
                 height: auto;
@@ -208,6 +230,12 @@
                 return new TextEncoder().encode(text).length;
             }
 
+            function normalizeInputText(rawText) {
+                return String(rawText || "")
+                    .replace(/<br\s*\/?>/gi, "\n")
+                    .replace(/\r\n/g, "\n");
+            }
+
             function clearPreview() {
                 document.getElementById("qrcode").innerHTML = "";
                 const barcode = document.getElementById("barcode");
@@ -239,8 +267,81 @@
                 throw lastError || new Error("二维码生成失败");
             }
 
+            function toQrPayload(text) {
+                try {
+                    return unescape(encodeURIComponent(text));
+                } catch (error) {
+                    return text;
+                }
+            }
+
+            function canRenderQrChunk(payload) {
+                const probe = document.createElement("div");
+                try {
+                    renderQrCode(probe, payload, 120);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function splitQrPayloadAdaptively(payload) {
+                const chunks = [];
+                let index = 0;
+                const targetMaxBytes = QR_MAX_BYTES.L;
+
+                while (index < payload.length) {
+                    let high = Math.min(payload.length - index, targetMaxBytes);
+                    let low = 1;
+                    let bestLen = 0;
+
+                    while (low <= high) {
+                        const mid = Math.floor((low + high) / 2);
+                        const candidate = payload.slice(index, index + mid);
+                        if (canRenderQrChunk(candidate)) {
+                            bestLen = mid;
+                            low = mid + 1;
+                        } else {
+                            high = mid - 1;
+                        }
+                    }
+
+                    if (!bestLen) {
+                        throw new Error("内容包含无法编码的数据片段");
+                    }
+                    chunks.push(payload.slice(index, index + bestLen));
+                    index += bestLen;
+                }
+                return chunks;
+            }
+
+            function renderQrChunkList(qrcodeEl, text, size) {
+                const payload = toQrPayload(text);
+                const chunks = splitQrPayloadAdaptively(payload);
+                const levels = [];
+                chunks.forEach(function (chunk, idx) {
+                    const item = document.createElement("div");
+                    item.className = "qr-item";
+                    const label = document.createElement("div");
+                    label.className = "qr-item-label";
+                    label.textContent = "第 " + (idx + 1) + " / " + chunks.length + " 张";
+                    const codeWrap = document.createElement("div");
+                    item.appendChild(label);
+                    item.appendChild(codeWrap);
+                    qrcodeEl.appendChild(item);
+                    const levelName = renderQrCode(codeWrap, chunk, size);
+                    levels.push(levelName);
+                });
+                return {
+                    chunks: chunks,
+                    levels: levels
+                };
+            }
+
             function generateCode() {
-                const text = document.getElementById("input-text").value.trim();
+                const inputEl = document.getElementById("input-text");
+                const normalizedText = normalizeInputText(inputEl.value);
+                const text = normalizedText;
                 const codeType = document.getElementById("code-type").value;
                 const sizeValue = Number(document.getElementById("code-size").value) || 240;
                 const size = Math.max(100, Math.min(600, sizeValue));
@@ -249,36 +350,26 @@
                 const charLen = text.length;
                 const byteLen = getUtf8ByteLength(text);
 
-                if (!text) {
+                if (!text.trim()) {
                     clearPreview();
                     setStatus("请输入要编码的字符串。", true);
                     return;
                 }
 
-                try {
-                    clearPreview();
-                    if (codeType === "qrcode") {
-                        barcodeEl.classList.add("hidden");
-                        qrcodeEl.classList.remove("hidden");
-                        if (byteLen > QR_MAX_BYTES.L) {
-                            clearPreview();
-                            setStatus(
-                                "二维码生成失败：当前字符串 " +
-                                    charLen +
-                                    " 字符 / " +
-                                    byteLen +
-                                    " 字节，最大支持 " +
-                                    QR_MAX_BYTES.L +
-                                    " 字节（L级纠错）。",
-                                true
-                            );
-                            return;
-                        }
-                        const levelName = renderQrCode(qrcodeEl, text, size);
-                        const maxBytes = QR_MAX_BYTES[levelName] || QR_MAX_BYTES.L;
-                        const extra =
-                            levelName === "L"
-                                ? " 内容较大，已自动降级纠错级别为 L。"
+                clearPreview();
+                if (codeType === "qrcode") {
+                    barcodeEl.classList.add("hidden");
+                    qrcodeEl.classList.remove("hidden");
+                    try {
+                        const qrResult = renderQrChunkList(qrcodeEl, text, size);
+                        const hasL = qrResult.levels.indexOf("L") >= 0;
+                        const maxBytes = hasL ? QR_MAX_BYTES.L : QR_MAX_BYTES.M;
+                        const extra = hasL
+                            ? " 部分二维码内容较大，已自动降级纠错级别为 L。"
+                            : "";
+                        const splitInfo =
+                            qrResult.chunks.length > 1
+                                ? " 已自动分片为 " + qrResult.chunks.length + " 张二维码。"
                                 : "";
                         setStatus(
                             "二维码生成成功。" +
@@ -289,14 +380,29 @@
                                 " 字节，当前级别最大 " +
                                 maxBytes +
                                 " 字节。" +
+                                splitInfo +
                                 extra,
                             false
                         );
-                        return;
+                    } catch (error) {
+                        clearPreview();
+                        setStatus(
+                            "二维码生成失败：请检查输入内容或缩短文本后重试（当前 " +
+                                charLen +
+                                " 字符 / " +
+                                byteLen +
+                                " 字节，错误：" +
+                                (error && error.message ? error.message : "未知") +
+                                "）。",
+                            true
+                        );
                     }
+                    return;
+                }
 
-                    qrcodeEl.classList.add("hidden");
-                    barcodeEl.classList.remove("hidden");
+                qrcodeEl.classList.add("hidden");
+                barcodeEl.classList.remove("hidden");
+                try {
                     JsBarcode(barcodeEl, text, {
                         format: "CODE128",
                         width: 2,
@@ -308,13 +414,7 @@
                 } catch (error) {
                     clearPreview();
                     setStatus(
-                        "生成失败：当前字符串 " +
-                            charLen +
-                            " 字符 / " +
-                            byteLen +
-                            " 字节。二维码最大支持 " +
-                            QR_MAX_BYTES.L +
-                            " 字节（L级纠错），请缩短后重试。",
+                        "条形码生成失败：CODE128 对特殊字符支持有限，当前内容包含中文、制表符或换行时建议切换为二维码。",
                         true
                     );
                 }
