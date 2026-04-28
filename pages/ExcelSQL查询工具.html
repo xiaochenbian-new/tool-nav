@@ -77,6 +77,26 @@
             .muted { color: var(--muted); font-size: 13px; line-height: 1.45; margin-bottom: 6px; }
             .field { margin-bottom: 6px; }
             label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+            .label-inline {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .help-icon-btn {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 1px solid #b8cdfb;
+                background: #f4f8ff;
+                color: #3969e6;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                font-weight: 700;
+                padding: 0;
+                cursor: pointer;
+            }
             input, select, textarea, button {
                 font-family: inherit;
                 font-size: 13px;
@@ -152,7 +172,8 @@
                 border: 1px solid #dbe7ff;
                 border-radius: 8px;
                 background: #fff;
-                overflow: auto;
+                overflow-x: auto;
+                overflow-y: visible;
             }
             .result-head {
                 display: flex;
@@ -160,6 +181,7 @@
                 justify-content: space-between;
                 gap: 8px;
                 margin-bottom: 6px;
+                flex-wrap: nowrap;
             }
             .result-head .title {
                 margin: 0;
@@ -185,6 +207,14 @@
             }
             .copy-hint.visible {
                 display: inline-block;
+            }
+            .filter-count {
+                font-size: 12px;
+                color: #5f7298;
+                background: #f3f8ff;
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                padding: 2px 8px;
             }
             .icon-btn {
                 width: 30px;
@@ -235,6 +265,10 @@
             .rowno-col {
                 width: 72px;
                 text-align: center;
+            }
+            tbody td.rowno-col {
+                cursor: pointer;
+                user-select: none;
             }
             .sortable-head {
                 display: inline-flex;
@@ -302,17 +336,17 @@
             }
             .filter-pop {
                 display: none;
-                position: absolute;
+                position: fixed;
                 left: 0;
-                top: calc(100% + 4px);
-                min-width: 260px;
-                max-width: 320px;
+                top: 0;
+                width: 320px;
+                max-width: calc(100vw - 24px);
                 border: 1px solid #d8e5ff;
                 border-radius: 8px;
                 background: #fff;
                 box-shadow: 0 8px 22px rgba(36, 90, 190, 0.16);
                 padding: 8px;
-                z-index: 30;
+                z-index: 5000;
             }
             .filter-pop.show {
                 display: block;
@@ -391,6 +425,55 @@
                 font-size: 12px;
                 color: #6f7d96;
                 text-align: right;
+            }
+            .filter-date {
+                margin-bottom: 6px;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 6px;
+                background: #f8fbff;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            .filter-quarter {
+                margin-bottom: 6px;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 6px;
+                background: #f8fbff;
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: center;
+                gap: 6px;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+            .filter-quarter select {
+                width: 88px;
+                height: 28px;
+                font-size: 11px;
+                padding: 2px 6px;
+            }
+            .quarter-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 2px 8px;
+                font-size: 11px;
+                line-height: 1.2;
+                cursor: pointer;
+            }
+            .quarter-btn:hover {
+                background: #e3eeff;
+            }
+            .filter-date input {
+                height: 30px;
+                width: 100%;
+                min-width: 0;
+                display: block;
+                margin: 0;
             }
             .mini-btn {
                 border: 1px solid #d8e5ff;
@@ -473,6 +556,16 @@
                 color: var(--muted);
                 font-size: 13px;
             }
+            .row-selected td {
+                background: #eef4ff !important;
+            }
+            .cell-selected {
+                background: #e8f0ff !important;
+            }
+            .sql-help-content {
+                line-height: 1.5;
+                color: #2f3d5d;
+            }
             @media (max-width: 980px) {
                 .container { grid-template-columns: 1fr; }
             }
@@ -514,8 +607,11 @@
                     </select>
                 </div>
                 <div class="field">
-                    <label for="sql-input">SQL 语句</label>
-                    <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1] LIMIT 100;"></textarea>
+                    <label for="sql-input" class="label-inline">
+                        <span>SQL 语句</span>
+                        <button id="sql-help-btn" class="help-icon-btn" type="button" title="查看 MySQL 常用函数">!</button>
+                    </label>
+                    <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1];"></textarea>
                 </div>
                 <div class="btn-row">
                     <button id="run-sql-btn" type="button">执行 SQL</button>
@@ -530,9 +626,10 @@
             <div class="panel">
                 <div class="result-head">
                     <div class="result-head-left">
-                        <h3 class="title">查询结果</h3>
-                        <span id="copy-hint" class="copy-hint"></span>
                         <button id="toggle-left-btn" class="secondary icon-btn" type="button" title="收起左侧">◀</button>
+                        <h3 class="title">查询结果</h3>
+                        <span id="filter-count" class="filter-count">筛后 0 条</span>
+                        <span id="copy-hint" class="copy-hint"></span>
                     </div>
                     <div class="result-tools">
                         <button id="export-xlsx-btn" class="secondary" type="button">导出 Excel</button>
@@ -557,6 +654,9 @@
         <div id="text-popup-mask" class="text-popup-mask">
             <div id="text-popup" class="text-popup"></div>
         </div>
+        <div id="sql-help-mask" class="text-popup-mask">
+            <div id="sql-help-popup" class="text-popup sql-help-content"></div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/alasql@4.6.5/dist/alasql.min.js"></script>
@@ -573,6 +673,8 @@
             let currentPage = 1;
             const PAGE_SIZE = 1000;
             let leftCollapsed = false;
+            let rangeSelection = null; // { mode:'row'|'col', col?:string, start:number, end:number }
+            let activeFilterAnchor = null;
 
             function setStatus(text, isError) {
                 const el = document.getElementById("status");
@@ -593,6 +695,333 @@
                     .replace(/&/g, "&amp;")
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;");
+            }
+
+            function pad2(v) {
+                return ("0" + Number(v)).slice(-2);
+            }
+
+            /** @param {unknown} wb */
+            function workbookUsesDate1904(wb) {
+                try {
+                    return !!(wb.Workbook && wb.Workbook.WBProps && wb.Workbook.WBProps.date1904);
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            /** AlaSQL / Excel 结果里统一成易读时间（与 Excel 常见「2026/2/14 15:19」风格一致） */
+            function formatCellForDisplay(value) {
+                if (value === null || value === undefined) return "";
+                if (value instanceof Date) {
+                    if (isNaN(value.getTime())) return "";
+                    return formatDatePartsFriendly(dateToParts(value));
+                }
+                if (typeof value === "number" && Number.isFinite(value)) {
+                    var frac = Math.abs(value - Math.floor(value));
+                    var hasFrac = frac > 1e-9 && frac < 1 - 1e-9;
+                    if (hasFrac) {
+                        var p = tryExcelSerialToParts(value, { date1904: false });
+                        if (!p) p = tryExcelSerialToParts(value, { date1904: true });
+                        if (p) return formatDatePartsFriendly(p);
+                    }
+                    return String(value);
+                }
+                if (typeof value === "string") {
+                    var s = value.trim();
+                    if (!s) return "";
+                    var parsed = tryParseSortableOrIsoDateString(s);
+                    if (parsed) return formatDatePartsFriendly(parsed);
+                    return s;
+                }
+                return String(value);
+            }
+
+            function dateToParts(d) {
+                return {
+                    y: d.getFullYear(),
+                    m: d.getMonth() + 1,
+                    d: d.getDate(),
+                    H: d.getHours(),
+                    M: d.getMinutes(),
+                    S: d.getSeconds()
+                };
+            }
+
+            function formatDatePartsFriendly(p) {
+                if (!p) return "";
+                var t = pad2(p.H) + ":" + pad2(p.M);
+                if (p.S) t += ":" + pad2(p.S);
+                return p.y + "/" + p.m + "/" + p.d + " " + t;
+            }
+
+            /**
+             * 导入时转为可排序的本地时间串，避免序列号/JS Date 在查询结果里显示错乱。
+             */
+            function partsToSortable(p) {
+                if (!p) return "";
+                return p.y + "-" + pad2(p.m) + "-" + pad2(p.d) + " " + pad2(p.H) + ":" + pad2(p.M) + ":" + pad2(p.S);
+            }
+
+            function tryExcelSerialToParts(serial, opts) {
+                if (!window.XLSX || !XLSX.SSF || typeof XLSX.SSF.parse_date_code !== "function") return null;
+                if (typeof serial !== "number" || !Number.isFinite(serial)) return null;
+                var p = XLSX.SSF.parse_date_code(serial, opts || {});
+                if (!p || typeof p.y !== "number") return null;
+                if (p.y < 1900 || p.y > 2200) return null;
+                return p;
+            }
+
+            function expandTwoDigitYear(y) {
+                y = +y;
+                if (y >= 1900 || y <= 0) return y;
+                if (y < 100) return y <= 29 ? 2000 + y : 1900 + y;
+                return y;
+            }
+
+            /** 不把代码/金额为纯数字的字符串误判为日期（如 "1"、"100"、"200000..."）。 */
+            function tryParseSortableOrIsoDateString(s) {
+                var str = String(s || "").trim();
+                if (!str) return null;
+                if (/^-?[0-9]+$/.test(str)) return null;
+
+                var slash = str.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+                if (slash) {
+                    return {
+                        y: +slash[1],
+                        m: +slash[2],
+                        d: +slash[3],
+                        H: slash[4] !== undefined ? +slash[4] : 0,
+                        M: slash[5] !== undefined ? +slash[5] : 0,
+                        S: slash[6] !== undefined ? +slash[6] : 0
+                    };
+                }
+                var isoDate = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+                if (isoDate) {
+                    return {
+                        y: +isoDate[1],
+                        m: +isoDate[2],
+                        d: +isoDate[3],
+                        H: 0,
+                        M: 0,
+                        S: 0
+                    };
+                }
+                var iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+                if (iso) {
+                    return {
+                        y: +iso[1],
+                        m: +iso[2],
+                        d: +iso[3],
+                        H: +iso[4],
+                        M: +iso[5],
+                        S: iso[6] ? +iso[6] : 0
+                    };
+                }
+                /** Excel 导出常见 m/d/yy 或 m/d/yyyy，如 "1/16/26 12:30"、"2/5/26 22:01" */
+                var md = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+                if (md) {
+                    var mon = +md[1];
+                    var dy = +md[2];
+                    var yi = expandTwoDigitYear(+md[3]);
+                    if (mon <= 12 && dy <= 31 && mon >= 1 && dy >= 1 && yi >= 1900 && yi <= 2200) {
+                        return {
+                            y: yi,
+                            m: mon,
+                            d: dy,
+                            H: md[4] !== undefined ? +md[4] : 0,
+                            M: md[5] !== undefined ? +md[5] : 0,
+                            S: md[6] !== undefined ? +md[6] : 0
+                        };
+                    }
+                }
+                /** 仅剩：含分隔符或英文月份的自由文本，避免出现 Date.parse("1")==2001 年 等误判 */
+                if (str.length < 6) return null;
+                if (/[\/\-.:]/.test(str) || /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(str)) {
+                    var t = Date.parse(str);
+                    if (!isNaN(t)) return dateToParts(new Date(t));
+                }
+                return null;
+            }
+
+            function compareDateParts(a, b) {
+                if (!a || !b) return 0;
+                var aa = partsToSortable(a);
+                var bb = partsToSortable(b);
+                if (aa === bb) return 0;
+                return aa < bb ? -1 : 1;
+            }
+
+            function parseDateFilterInput(v) {
+                var text = String(v || "").trim();
+                if (!text) return null;
+                var normalized = text.replace("T", " ");
+                return tryParseSortableOrIsoDateString(normalized);
+            }
+
+            function toDatetimeLocalValue(v, withSeconds) {
+                var p = parseDateFilterInput(v);
+                if (!p) return "";
+                var out = p.y + "-" + pad2(p.m) + "-" + pad2(p.d) + "T" + pad2(p.H) + ":" + pad2(p.M);
+                if (withSeconds) out += ":" + pad2(p.S || 0);
+                return out;
+            }
+
+            function normalizeDateInputValue(v, isEnd) {
+                var s = String(v || "").trim();
+                if (!s) return "";
+                s = s.replace("T", " ");
+                if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+                    return s + (isEnd ? " 23:59:59" : " 00:00:00");
+                }
+                if (/^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}$/.test(s)) {
+                    return s + (isEnd ? ":59" : ":00");
+                }
+                return s;
+            }
+
+            function enforceDefaultTimeForInputValue(v, isEnd) {
+                var s = String(v || "").trim();
+                if (!s) return "";
+                var p = parseDateFilterInput(s);
+                if (!p) return s;
+                var base = p.y + "-" + pad2(p.m) + "-" + pad2(p.d);
+                if (isEnd) return base + " 23:59:59";
+                return base + " 00:00:00";
+            }
+
+            function getDateYearsForCol(col) {
+                var set = new Set();
+                lastQueryRows.forEach(function (r) {
+                    var txt = String(r[col] === null || r[col] === undefined ? "" : r[col]).trim();
+                    if (!txt) return;
+                    var p = tryParseSortableOrIsoDateString(txt);
+                    if (!p) p = tryParseSortableOrIsoDateString(formatCellForDisplay(txt));
+                    if (p && p.y >= 1900 && p.y <= 2200) set.add(p.y);
+                });
+                var years = Array.from(set).sort(function (a, b) { return a - b; });
+                var current = new Date().getFullYear();
+                if (years.indexOf(current) < 0) years.push(current);
+                years.sort(function (a, b) { return a - b; });
+                return years;
+            }
+
+            function quarterRangeByYear(year, q) {
+                var y = Number(year);
+                if (!y || y < 1900 || y > 2200) return null;
+                if (q === "Q1") return { from: y + "-01-01 00:00:00", to: y + "-03-31 23:59:59" };
+                if (q === "Q2") return { from: y + "-04-01 00:00:00", to: y + "-06-30 23:59:59" };
+                if (q === "Q3") return { from: y + "-07-01 00:00:00", to: y + "-09-30 23:59:59" };
+                if (q === "Q4") return { from: y + "-10-01 00:00:00", to: y + "-12-31 23:59:59" };
+                return null;
+            }
+
+            function getRecentYears(count) {
+                var years = [];
+                var current = new Date().getFullYear();
+                var total = Math.max(1, Number(count) || 30);
+                for (var i = 0; i < total; i++) years.push(current - i);
+                return years;
+            }
+
+            function getDefaultDayTimeRange() {
+                var now = new Date();
+                var y = now.getFullYear();
+                var m = pad2(now.getMonth() + 1);
+                var d = pad2(now.getDate());
+                return {
+                    from: y + "-" + m + "-" + d + " 00:00:00",
+                    to: y + "-" + m + "-" + d + " 23:59:59"
+                };
+            }
+
+            function isDateLikeColumn(col) {
+                var total = 0;
+                var ok = 0;
+                for (var i = 0; i < lastQueryRows.length && total < 200; i++) {
+                    var raw = lastQueryRows[i][col];
+                    var txt = String(raw === null || raw === undefined ? "" : raw).trim();
+                    if (!txt) continue;
+                    total++;
+                    if (tryParseSortableOrIsoDateString(txt)) ok++;
+                }
+                return total >= 2 && ok / total >= 0.6;
+            }
+
+            function rowMatchesFilterRule(row, col, rule) {
+                const realRule = rule || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
+                const kw = String(realRule.keyword || "").trim().toLowerCase();
+                const selected = Array.isArray(realRule.selected) ? realRule.selected : [];
+                const dateFrom = parseDateFilterInput(realRule.dateFrom || "");
+                const dateTo = parseDateFilterInput(realRule.dateTo || "");
+                const raw = row[col] === null || row[col] === undefined ? "" : row[col];
+                const text = String(formatCellForDisplay(raw));
+                const byKeyword = !kw || text.toLowerCase().includes(kw);
+                const bySelected = !selected.length || selected.indexOf(text) >= 0;
+                var byDate = true;
+                if (dateFrom || dateTo) {
+                    var currentDate = parseDateFilterInput(text);
+                    if (!currentDate) byDate = false;
+                    if (byDate && dateFrom && compareDateParts(currentDate, dateFrom) < 0) byDate = false;
+                    if (byDate && dateTo && compareDateParts(currentDate, dateTo) > 0) byDate = false;
+                }
+                return byKeyword && bySelected && byDate;
+            }
+
+            function getRowsByCurrentFilters(excludeCol, overrideRuleForCol) {
+                return lastQueryRows.filter(function (row) {
+                    return Object.keys(currentFilters).every(function (col) {
+                        if (excludeCol && col === excludeCol && !overrideRuleForCol) return true;
+                        var rule = (excludeCol && col === excludeCol && overrideRuleForCol) ? overrideRuleForCol : currentFilters[col];
+                        return rowMatchesFilterRule(row, col, rule);
+                    });
+                });
+            }
+
+            /**
+             * @param {unknown} v
+             * @param {{ date1904?: boolean }} sheetOpts
+             */
+            function normalizeImportedCellValue(v, sheetOpts) {
+                if (v === null || v === undefined || v === "") return v;
+                var d1904 = sheetOpts && sheetOpts.date1904;
+                if (v instanceof Date) {
+                    if (isNaN(v.getTime())) return "";
+                    return partsToSortable(dateToParts(v));
+                }
+                if (typeof v === "number" && Number.isFinite(v)) {
+                    var frac = Math.abs(v - Math.floor(v));
+                    var hasFrac = frac > 1e-9 && frac < 1 - 1e-9;
+                    if (!hasFrac) return v;
+                    var p = tryExcelSerialToParts(v, { date1904: !!d1904 });
+                    return p ? partsToSortable(p) : v;
+                }
+                if (typeof v === "string") {
+                    var str = v.trim();
+                    var parts = tryParseSortableOrIsoDateString(str);
+                    if (parts) return partsToSortable(parts);
+                }
+                return v;
+            }
+
+            function normalizeImportedRow(row, sheetOpts) {
+                var out = {};
+                Object.keys(row).forEach(function (k) {
+                    out[k] = normalizeImportedCellValue(row[k], sheetOpts);
+                });
+                return out;
+            }
+
+            function rowsWithDisplayStrings(rows) {
+                if (!Array.isArray(rows) || !rows.length) return [];
+                var cols = Object.keys(rows[0]);
+                return rows.map(function (r) {
+                    var o = {};
+                    cols.forEach(function (c) {
+                        o[c] = formatCellForDisplay(r[c]);
+                    });
+                    return o;
+                });
             }
 
             function refreshTableList() {
@@ -748,6 +1177,45 @@
                 return String(sql || "").replace(/`([^`]+)`/g, "[$1]");
             }
 
+            /** 将 SQL 中日期字符串字面量统一为 yyyy-MM-dd HH:mm:ss，避免时间比较因格式差异失效。 */
+            function normalizeDateLiteralsInSql(sql) {
+                var text = String(sql || "");
+                var out = "";
+                var i = 0;
+                while (i < text.length) {
+                    var ch = text.charAt(i);
+                    if (ch !== "'") {
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    out += "'";
+                    i++;
+                    var token = "";
+                    while (i < text.length) {
+                        var c = text.charAt(i);
+                        if (c === "'") {
+                            if (i + 1 < text.length && text.charAt(i + 1) === "'") {
+                                token += "'";
+                                i += 2;
+                                continue;
+                            }
+                            break;
+                        }
+                        token += c;
+                        i++;
+                    }
+                    var parts = tryParseSortableOrIsoDateString(token);
+                    var normalized = parts ? partsToSortable(parts) : token;
+                    out += String(normalized).replace(/'/g, "''");
+                    if (i < text.length && text.charAt(i) === "'") {
+                        out += "'";
+                        i++;
+                    }
+                }
+                return out;
+            }
+
             function normalizeSql(rawSql, sqlMode) {
                 const tableSelect = document.getElementById("table-select");
                 let sql = String(rawSql || "").trim().replace(/;+\s*$/, "");
@@ -769,6 +1237,7 @@
                     sql = transformMysqlSql(sql);
                 }
                 sql = autoQuoteIdentifiers(sql, cols);
+                sql = normalizeDateLiteralsInSql(sql);
                 return sql + ";";
             }
 
@@ -779,12 +1248,16 @@
                 currentCols = lastQueryRows.length ? Object.keys(lastQueryRows[0]) : [];
                 currentColWidths = {};
                 currentPage = 1;
+                rangeSelection = null;
                 applyResultView();
             }
 
             function compareCellValue(a, b) {
-                const sa = String(a === null || a === undefined ? "" : a).trim();
-                const sb = String(b === null || b === undefined ? "" : b).trim();
+                if (a instanceof Date && b instanceof Date && !isNaN(a.getTime()) && !isNaN(b.getTime())) {
+                    return a.getTime() - b.getTime();
+                }
+                const sa = String(formatCellForDisplay(a === null || a === undefined ? "" : a)).trim();
+                const sb = String(formatCellForDisplay(b === null || b === undefined ? "" : b)).trim();
                 const na = Number(sa);
                 const nb = Number(sb);
                 const an = sa !== "" && !Number.isNaN(na);
@@ -794,20 +1267,7 @@
             }
 
             function applyResultView() {
-                let rows = lastQueryRows.slice();
-                Object.keys(currentFilters).forEach(function (col) {
-                    const rule = currentFilters[col] || { keyword: "", selected: [] };
-                    const kw = String(rule.keyword || "").trim().toLowerCase();
-                    const selected = Array.isArray(rule.selected) ? rule.selected : [];
-                    rows = rows.filter(function (r) {
-                        const raw = r[col] === null || r[col] === undefined ? "" : r[col];
-                        const text = String(raw);
-                        const textLower = text.toLowerCase();
-                        const byKeyword = !kw || textLower.includes(kw);
-                        const bySelected = !selected.length || selected.indexOf(text) >= 0;
-                        return byKeyword && bySelected;
-                    });
-                });
+                let rows = getRowsByCurrentFilters("", null);
                 if (currentSort.col && currentSort.dir) {
                     const col = currentSort.col;
                     const dir = currentSort.dir === "desc" ? -1 : 1;
@@ -816,6 +1276,8 @@
                     });
                 }
                 currentViewRows = rows;
+                var fc = document.getElementById("filter-count");
+                if (fc) fc.textContent = "筛后 " + currentViewRows.length + " 条";
                 const totalPages = Math.max(1, Math.ceil(currentViewRows.length / PAGE_SIZE));
                 if (currentPage > totalPages) currentPage = totalPages;
                 if (currentPage < 1) currentPage = 1;
@@ -845,8 +1307,11 @@
                 cols.forEach(function (c) {
                     const active = currentSort.col === c ? " active" : "";
                     const symbol = currentSort.col === c ? (currentSort.dir === "asc" ? "↑" : "↓") : "↕";
-                    const filterRule = currentFilters[c] || { keyword: "", selected: [] };
-                    const hasFilter = !!String(filterRule.keyword || "").trim() || (filterRule.selected && filterRule.selected.length > 0);
+                    const filterRule = currentFilters[c] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
+                    const hasFilter = !!String(filterRule.keyword || "").trim()
+                        || (filterRule.selected && filterRule.selected.length > 0)
+                        || !!String(filterRule.dateFrom || "").trim()
+                        || !!String(filterRule.dateTo || "").trim();
                     const filterActive = hasFilter ? " active" : "";
                     html += "<th><span class=\"sortable-head\">"
                         + "<span class=\"th-name\" title=\"" + escapeHtml(c) + "\">" + escapeHtml(c) + "</span>"
@@ -859,11 +1324,20 @@
                 html += "</tr></thead><tbody>";
                 pageRows.forEach(function (r, idx) {
                     const rowNo = startIdx + idx + 1;
-                    html += "<tr>";
-                    html += "<td class=\"rowno-col\" title=\"当前数据第 " + rowNo + " 行\">" + rowNo + "</td>";
+                    var rowCls = "";
+                    if (rangeSelection && rangeSelection.mode === "row" && rowNo >= Math.min(rangeSelection.start, rangeSelection.end) && rowNo <= Math.max(rangeSelection.start, rangeSelection.end)) {
+                        rowCls = " class=\"row-selected\"";
+                    }
+                    html += "<tr data-row-index=\"" + rowNo + "\"" + rowCls + ">";
+                    html += "<td class=\"rowno-col\" data-row-index=\"" + rowNo + "\" title=\"当前数据第 " + rowNo + " 行\">" + rowNo + "</td>";
                     cols.forEach(function (c) {
-                        const text = escapeHtml(r[c]);
-                        html += "<td title=\"点击展开/收起\"><span class=\"cell-content\" title=\"" + text + "\">" + text + "</span></td>";
+                        const text = escapeHtml(formatCellForDisplay(r[c]));
+                        var cellCls = "";
+                        if (rangeSelection && rangeSelection.mode === "col" && rangeSelection.col === c && rowNo >= Math.min(rangeSelection.start, rangeSelection.end) && rowNo <= Math.max(rangeSelection.start, rangeSelection.end)) {
+                            cellCls = " cell-selected";
+                        }
+                        html += "<td class=\"data-cell" + cellCls + "\" data-col=\"" + escapeHtml(c) + "\" data-row-index=\"" + rowNo + "\" title=\"点击展开/收起\">"
+                            + "<span class=\"cell-content\" title=\"" + text + "\">" + text + "</span></td>";
                     });
                     html += "</tr>";
                 });
@@ -951,10 +1425,11 @@
                 pager.classList.toggle("visible", total > PAGE_SIZE);
             }
 
-            function getUniqueValuesForCol(col) {
+            function getUniqueValuesForCol(col, fromAllRows) {
                 var set = new Set();
-                lastQueryRows.forEach(function (r) {
-                    var text = String(r[col] === null || r[col] === undefined ? "" : r[col]);
+                var candidateRows = fromAllRows ? lastQueryRows : getRowsByCurrentFilters(col, null);
+                candidateRows.forEach(function (r) {
+                    var text = String(formatCellForDisplay(r[col] === null || r[col] === undefined ? "" : r[col]));
                     set.add(text);
                 });
                 return Array.from(set).sort(function (a, b) {
@@ -964,21 +1439,74 @@
 
             function closeAllFilterPopup() {
                 document.querySelectorAll(".filter-pop").forEach(function (el) { el.remove(); });
+                activeFilterAnchor = null;
+            }
+
+            function adjustFilterPopupPosition(panel, btnEl) {
+                if (!panel || !btnEl) return;
+                var rect = btnEl.getBoundingClientRect();
+                var vw = window.innerWidth || document.documentElement.clientWidth;
+                var vh = window.innerHeight || document.documentElement.clientHeight;
+                var panelW = panel.offsetWidth || 320;
+                var panelH = panel.offsetHeight || 320;
+
+                var left = rect.left;
+                if (left + panelW > vw - 8) left = vw - panelW - 8;
+                if (left < 8) left = 8;
+
+                var top = rect.bottom + 6;
+                if (top + panelH > vh - 8) {
+                    var above = rect.top - panelH - 6;
+                    if (above >= 8) top = above;
+                    else top = Math.max(8, vh - panelH - 8);
+                }
+                panel.style.left = Math.round(left) + "px";
+                panel.style.top = Math.round(top) + "px";
             }
 
             function toggleFilterPopup(col, btnEl) {
-                const existing = btnEl.parentElement.querySelector(".filter-pop");
+                const existing = Array.from(document.querySelectorAll(".filter-pop")).find(function (el) {
+                    return el.getAttribute("data-col") === col;
+                });
                 if (existing) {
                     existing.remove();
                     return;
                 }
                 closeAllFilterPopup();
-                const rule = currentFilters[col] || { keyword: "", selected: [] };
-                const values = getUniqueValuesForCol(col);
+                const rule = currentFilters[col] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
+                const dateCol = isDateLikeColumn(col);
+                const values = getUniqueValuesForCol(col, dateCol);
+                const years = dateCol ? getRecentYears(30) : [];
+                const defaultYear = String(new Date().getFullYear());
+                const initialFrom = rule.dateFrom ? rule.dateFrom : "";
+                const initialTo = rule.dateTo ? rule.dateTo : "";
                 const panel = document.createElement("div");
                 panel.className = "filter-pop show";
+                panel.setAttribute("data-col", col);
                 panel.innerHTML =
-                    "<input class=\"filter-input\" placeholder=\"输入关键词\" value=\"" + escapeHtml(rule.keyword || "") + "\" />"
+                    (dateCol
+                        ? "<div class=\"filter-quarter\">"
+                        + "<span>季度</span>"
+                        + "<select class=\"quarter-year\">"
+                        + years.map(function (y) {
+                            var selected = String(y) === defaultYear ? " selected" : "";
+                            return "<option value=\"" + y + "\"" + selected + ">" + y + "年</option>";
+                        }).join("")
+                        + "</select>"
+                        + "<button class=\"quarter-btn\" data-quarter=\"Q1\" type=\"button\">Q1</button>"
+                        + "<button class=\"quarter-btn\" data-quarter=\"Q2\" type=\"button\">Q2</button>"
+                        + "<button class=\"quarter-btn\" data-quarter=\"Q3\" type=\"button\">Q3</button>"
+                        + "<button class=\"quarter-btn\" data-quarter=\"Q4\" type=\"button\">Q4</button>"
+                        + "</div>"
+                        : "")
+                    +
+                    (dateCol
+                        ? "<div class=\"filter-date\">"
+                        + "<input class=\"filter-date-from\" type=\"datetime-local\" step=\"1\" title=\"开始时间\" value=\"" + escapeHtml(toDatetimeLocalValue(initialFrom, true)) + "\" />"
+                        + "<input class=\"filter-date-to\" type=\"datetime-local\" step=\"1\" title=\"结束时间\" value=\"" + escapeHtml(toDatetimeLocalValue(initialTo, true)) + "\" />"
+                        + "</div>"
+                        : "")
+                    + "<input class=\"filter-input\" placeholder=\"输入关键词\" value=\"" + escapeHtml(rule.keyword || "") + "\" />"
                     + "<div class=\"filter-values\">"
                     + values.map(function (v) {
                         const checked = rule.selected && rule.selected.indexOf(v) >= 0 ? " checked" : "";
@@ -993,15 +1521,46 @@
                     + "<button class=\"mini-btn\" data-act=\"reset\" type=\"button\">清空本列</button>"
                     + "<button class=\"mini-btn\" data-act=\"apply\" type=\"button\">应用</button>"
                     + "</div>";
-                btnEl.parentElement.appendChild(panel);
+                document.body.appendChild(panel);
+                adjustFilterPopupPosition(panel, btnEl);
+                activeFilterAnchor = btnEl;
+                panel.querySelectorAll(".quarter-btn").forEach(function (qb) {
+                    qb.addEventListener("click", function () {
+                        var yearSel = panel.querySelector(".quarter-year");
+                        var q = qb.getAttribute("data-quarter");
+                        var y = yearSel ? yearSel.value : defaultYear;
+                        var range = quarterRangeByYear(y, q);
+                        if (!range) return;
+                        var fromInput = panel.querySelector(".filter-date-from");
+                        var toInput = panel.querySelector(".filter-date-to");
+                        if (fromInput) fromInput.value = toDatetimeLocalValue(range.from, true);
+                        if (toInput) toInput.value = toDatetimeLocalValue(range.to, true);
+                        updateMeta();
+                    });
+                });
+
+                function readDraftRule() {
+                    const keyword = panel.querySelector(".filter-input").value || "";
+                    const selected = Array.from(panel.querySelectorAll(".filter-values input[type='checkbox']:checked"))
+                        .map(function (x) { return x.value; });
+                    const dateFromInput = panel.querySelector(".filter-date-from");
+                    const dateToInput = panel.querySelector(".filter-date-to");
+                    const dateFrom = dateFromInput ? normalizeDateInputValue(dateFromInput.value, false) : "";
+                    const dateTo = dateToInput ? normalizeDateInputValue(dateToInput.value, true) : "";
+                    return { keyword: keyword, selected: selected, dateFrom: dateFrom, dateTo: dateTo };
+                }
 
                 function updateMeta() {
                     const checkedCount = panel.querySelectorAll(".filter-values input[type='checkbox']:checked").length;
                     const totalCount = panel.querySelectorAll(".filter-values input[type='checkbox']").length;
                     const visibleCount = panel.querySelectorAll(".filter-check:not([data-hidden='1'])").length;
+                    const draftRule = readDraftRule();
+                    const filteredCount = dateCol
+                        ? lastQueryRows.filter(function (row) { return rowMatchesFilterRule(row, col, draftRule); }).length
+                        : getRowsByCurrentFilters(col, draftRule).length;
                     const meta = panel.querySelector(".filter-meta");
                     if (meta) {
-                        meta.textContent = "已选 " + checkedCount + " / 显示 " + visibleCount + " / 共 " + totalCount;
+                        meta.textContent = "已选 " + checkedCount + " / 显示 " + visibleCount + " / 候选 " + totalCount + " / 筛后 " + filteredCount + " 条";
                     }
                 }
 
@@ -1027,6 +1586,22 @@
                 panel.querySelectorAll(".filter-values input[type='checkbox']").forEach(function (chk) {
                     chk.addEventListener("change", updateMeta);
                 });
+                var fromEl = panel.querySelector(".filter-date-from");
+                var toEl = panel.querySelector(".filter-date-to");
+                if (fromEl) fromEl.addEventListener("input", updateMeta);
+                if (toEl) toEl.addEventListener("input", updateMeta);
+                if (fromEl) {
+                    fromEl.addEventListener("change", function () {
+                        fromEl.value = toDatetimeLocalValue(enforceDefaultTimeForInputValue(fromEl.value, false), true);
+                        updateMeta();
+                    });
+                }
+                if (toEl) {
+                    toEl.addEventListener("change", function () {
+                        toEl.value = toDatetimeLocalValue(enforceDefaultTimeForInputValue(toEl.value, true), true);
+                        updateMeta();
+                    });
+                }
                 panel.querySelectorAll(".mini-btn").forEach(function (b) {
                     b.addEventListener("click", function () {
                         const act = b.getAttribute("data-act");
@@ -1046,15 +1621,18 @@
                             applyResultView();
                             return;
                         }
-                        const keyword = panel.querySelector(".filter-input").value || "";
-                        const selected = Array.from(panel.querySelectorAll(".filter-values input[type='checkbox']:checked"))
-                            .map(function (x) { return x.value; });
+                        const draftRule = readDraftRule();
+                        const keyword = draftRule.keyword;
+                        const selected = draftRule.selected;
+                        const dateFrom = draftRule.dateFrom;
+                        const dateTo = draftRule.dateTo;
                         const hasKeyword = String(keyword).trim().length > 0;
                         const hasSelected = selected.length > 0;
-                        if (!hasKeyword && !hasSelected) {
+                        const hasDate = !!dateFrom || !!dateTo;
+                        if (!hasKeyword && !hasSelected && !hasDate) {
                             delete currentFilters[col];
                         } else {
-                            currentFilters[col] = { keyword: keyword, selected: selected };
+                            currentFilters[col] = { keyword: keyword, selected: selected, dateFrom: dateFrom, dateTo: dateTo };
                         }
                         closeAllFilterPopup();
                         applyResultView();
@@ -1066,17 +1644,46 @@
                 return "'" + String(v).replace(/'/g, "''") + "'";
             }
 
+            function unwrapGeneratedViewBase(sql) {
+                var text = String(sql || "").trim().replace(/;+\s*$/, "");
+                while (/^select\s+\*\s+from\s*\(/i.test(text)) {
+                    var start = text.indexOf("(");
+                    if (start < 0) break;
+                    var depth = 0;
+                    var end = -1;
+                    for (var i = start; i < text.length; i++) {
+                        var ch = text.charAt(i);
+                        if (ch === "(") depth++;
+                        else if (ch === ")") {
+                            depth--;
+                            if (depth === 0) {
+                                end = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (end < 0) break;
+                    var tail = text.slice(end + 1).trim();
+                    if (!/^as\s+\[t\]\b/i.test(tail)) break;
+                    text = text.slice(start + 1, end).trim();
+                }
+                return text;
+            }
+
             function updateViewSql() {
                 const sqlBox = document.getElementById("view-sql");
                 if (!lastExecutedSql) {
                     sqlBox.value = "";
                     return;
                 }
-                const base = String(lastExecutedSql).replace(/;+\s*$/, "");
+                const base = unwrapGeneratedViewBase(lastExecutedSql);
                 const hasSort = !!(currentSort.col && currentSort.dir);
                 const hasFilters = Object.keys(currentFilters).some(function (col) {
-                    const rule = currentFilters[col] || { keyword: "", selected: [] };
-                    return !!String(rule.keyword || "").trim() || (Array.isArray(rule.selected) && rule.selected.length > 0);
+                    const rule = currentFilters[col] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
+                    return !!String(rule.keyword || "").trim()
+                        || (Array.isArray(rule.selected) && rule.selected.length > 0)
+                        || !!String(rule.dateFrom || "").trim()
+                        || !!String(rule.dateTo || "").trim();
                 });
                 if (!hasSort && !hasFilters) {
                     sqlBox.value = base + ";";
@@ -1084,21 +1691,40 @@
                 }
                 const whereParts = [];
                 Object.keys(currentFilters).forEach(function (col) {
-                    const rule = currentFilters[col] || { keyword: "", selected: [] };
+                    const rule = currentFilters[col] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
                     const parts = [];
                     const kw = String(rule.keyword || "").trim();
                     const selected = Array.isArray(rule.selected) ? rule.selected : [];
+                    const from = String(rule.dateFrom || "").trim();
+                    const to = String(rule.dateTo || "").trim();
                     if (kw) {
                         parts.push("CAST([" + col + "] AS STRING) LIKE '%" + kw.replace(/'/g, "''") + "%'");
                     }
                     if (selected.length) {
                         parts.push("[" + col + "] IN (" + selected.map(quoteSqlValue).join(", ") + ")");
                     }
+                    if (from) {
+                        const p = parseDateFilterInput(from);
+                        if (p) parts.push("[" + col + "] >= " + quoteSqlValue(partsToSortable(p)));
+                    }
+                    if (to) {
+                        const p2 = parseDateFilterInput(to);
+                        if (p2) parts.push("[" + col + "] <= " + quoteSqlValue(partsToSortable(p2)));
+                    }
                     if (parts.length) whereParts.push("(" + parts.join(" AND ") + ")");
                 });
-                let sql = "SELECT * FROM (" + base + ") AS [t]";
+                const canDirectAppend =
+                    /^select\b/i.test(base)
+                    && !/\bwhere\b/i.test(base)
+                    && !/\bgroup\s+by\b/i.test(base)
+                    && !/\bhaving\b/i.test(base)
+                    && !/\border\s+by\b/i.test(base)
+                    && !/\blimit\b/i.test(base)
+                    && !/\bunion\b/i.test(base);
+                let sql = base;
                 if (whereParts.length) {
-                    sql += " WHERE " + whereParts.join(" AND ");
+                    if (canDirectAppend) sql += " WHERE " + whereParts.join(" AND ");
+                    else sql = "SELECT * FROM (" + base + ") AS [t] WHERE " + whereParts.join(" AND ");
                 }
                 if (currentSort.col && currentSort.dir) {
                     sql += " ORDER BY [" + currentSort.col + "] " + (currentSort.dir === "desc" ? "DESC" : "ASC");
@@ -1139,6 +1765,103 @@
                 showCopyHint();
             }
 
+            function writeClipboardText(text, successMsg) {
+                var val = String(text || "");
+                if (!val) return;
+                function done() {
+                    const hint = document.getElementById("copy-hint");
+                    hint.textContent = successMsg || "已复制";
+                    hint.title = val;
+                    hint.classList.add("visible");
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(val).then(done).catch(function () {
+                        const ta = document.createElement("textarea");
+                        ta.value = val;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand("copy");
+                        ta.remove();
+                        done();
+                    });
+                    return;
+                }
+                const ta = document.createElement("textarea");
+                ta.value = val;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                ta.remove();
+                done();
+            }
+
+            function updateRangeSelectionFromClick(mode, rowIndex, colName, shiftKey) {
+                var idx = Number(rowIndex || 0);
+                if (!idx) return;
+                if (!shiftKey || !rangeSelection || rangeSelection.mode !== mode || (mode === "col" && rangeSelection.col !== colName)) {
+                    rangeSelection = { mode: mode, col: mode === "col" ? colName : "", start: idx, end: idx };
+                } else {
+                    rangeSelection.end = idx;
+                }
+                renderResultTable();
+            }
+
+            function buildCopyTextBySelection() {
+                if (!rangeSelection || !currentViewRows.length) return "";
+                var start = Math.min(rangeSelection.start, rangeSelection.end);
+                var end = Math.max(rangeSelection.start, rangeSelection.end);
+                var lines = [];
+                if (rangeSelection.mode === "row") {
+                    for (var i = start; i <= end; i++) {
+                        var row = currentViewRows[i - 1];
+                        if (!row) continue;
+                        var vals = currentCols.map(function (c) { return String(formatCellForDisplay(row[c])); });
+                        lines.push(vals.join("\t"));
+                    }
+                    return lines.join("\n");
+                }
+                if (rangeSelection.mode === "col") {
+                    lines.push(rangeSelection.col);
+                    for (var j = start; j <= end; j++) {
+                        var row2 = currentViewRows[j - 1];
+                        if (!row2) continue;
+                        lines.push(String(formatCellForDisplay(row2[rangeSelection.col])));
+                    }
+                    return lines.join("\n");
+                }
+                return "";
+            }
+
+            function openSqlHelp() {
+                var html = ""
+                    + "MySQL 场景常用函数速查\n\n"
+                    + "字符串：\n"
+                    + "- CONCAT(a,b): 拼接字符串\n"
+                    + "- LEFT(str,n) / RIGHT(str,n): 取左/右侧字符\n"
+                    + "- SUBSTRING(str,pos,len): 截取字符串\n"
+                    + "- LENGTH(str): 字符串长度\n"
+                    + "- REPLACE(str,from,to): 替换文本\n\n"
+                    + "时间：\n"
+                    + "- DATE(col): 取日期部分\n"
+                    + "- YEAR(col), MONTH(col), DAY(col): 拆分年月日\n"
+                    + "- DATE_FORMAT(col,'%Y-%m-%d %H:%i:%s'): 格式化\n"
+                    + "- NOW(): 当前时间\n"
+                    + "- DATEDIFF(d1,d2): 日期差（天）\n\n"
+                    + "数值：\n"
+                    + "- ROUND(x,n): 四舍五入\n"
+                    + "- FLOOR(x), CEIL(x): 向下/向上取整\n"
+                    + "- ABS(x): 绝对值\n\n"
+                    + "条件：\n"
+                    + "- IF(cond,a,b): 条件判断\n"
+                    + "- IFNULL(a,b): 空值替换\n"
+                    + "- CASE WHEN ... THEN ... END: 多分支判断\n\n"
+                    + "聚合：\n"
+                    + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x)\n\n"
+                    + "提示：当前工具底层是 AlaSQL，绝大部分常见 MySQL 写法可用。";
+                document.getElementById("sql-help-popup").textContent = html;
+                document.getElementById("sql-help-mask").classList.add("show");
+            }
+
             function toggleLeftPanel(forceState) {
                 if (typeof forceState === "boolean") {
                     leftCollapsed = forceState;
@@ -1169,23 +1892,39 @@
 
                     if (/\.csv$/i.test(file.name)) {
                         const text = await file.text();
-                        const wbCsv = XLSX.read(text, { type: "string", cellDates: false });
+                        const wbCsv = XLSX.read(text, { type: "string", cellDates: true });
+                        const date1904Csv = workbookUsesDate1904(wbCsv);
                         const firstSheetName = wbCsv.SheetNames[0];
                         if (firstSheetName) {
                             const firstSheet = wbCsv.Sheets[firstSheetName];
-                            const rowsCsv = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
-                            if (rowsCsv.length) {
+                            const rowsCsvRaw = XLSX.utils.sheet_to_json(firstSheet, {
+                                defval: "",
+                                raw: false,
+                                dateNF: "yyyy-mm-dd HH:mm:ss"
+                            });
+                            if (rowsCsvRaw.length) {
+                                const rowsCsv = rowsCsvRaw.map(function (row) {
+                                    return normalizeImportedRow(row, { date1904: date1904Csv });
+                                });
                                 dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
                                 tableCount++;
                             }
                         }
                     } else {
                         const buf = await file.arrayBuffer();
-                        const wb = XLSX.read(buf, { type: "array", cellDates: false });
+                        const wb = XLSX.read(buf, { type: "array", cellDates: true });
+                        const date1904Book = workbookUsesDate1904(wb);
                         wb.SheetNames.forEach(function (sheetName) {
                             const sheet = wb.Sheets[sheetName];
-                            const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                            if (!rows.length) return;
+                            const rowsRaw = XLSX.utils.sheet_to_json(sheet, {
+                                defval: "",
+                                raw: false,
+                                dateNF: "yyyy-mm-dd HH:mm:ss"
+                            });
+                            if (!rowsRaw.length) return;
+                            const rows = rowsRaw.map(function (row) {
+                                return normalizeImportedRow(row, { date1904: date1904Book });
+                            });
                             const tableName = sanitizeName(sheetName);
                             dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
                             tableCount++;
@@ -1205,7 +1944,7 @@
                 const db = dbStore[currentDb];
                 if (db && db.tables.length) {
                     document.getElementById("sql-input").value =
-                        "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 1000;";
+                        "SELECT * FROM [" + db.tables[0].tableName + "];";
                 }
             }
 
@@ -1244,7 +1983,7 @@
                     setStatus("请先选择默认 Sheet 表。", true);
                     return;
                 }
-                document.getElementById("sql-input").value = "SELECT * FROM [" + tableName + "] LIMIT 1000;";
+                document.getElementById("sql-input").value = "SELECT * FROM [" + tableName + "];";
                 runSql();
             }
 
@@ -1263,6 +2002,7 @@
                 lastExecutedSql = "";
                 currentColWidths = {};
                 currentPage = 1;
+                rangeSelection = null;
                 document.getElementById("pager").classList.remove("visible");
                 Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
                 currentDb = "";
@@ -1289,12 +2029,17 @@
                 refreshTableList();
                 const db = dbStore[currentDb];
                 if (db && db.tables.length) {
-                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "] LIMIT 1000;";
+                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "];";
                 }
             });
             document.getElementById("run-sql-btn").addEventListener("click", runSql);
             document.getElementById("quick-query-btn").addEventListener("click", quickQueryCurrentTable);
             document.getElementById("clear-all-btn").addEventListener("click", clearAll);
+            document.getElementById("sql-help-btn").addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSqlHelp();
+            });
             document.getElementById("toggle-left-btn").addEventListener("click", function () {
                 toggleLeftPanel();
             });
@@ -1302,6 +2047,7 @@
                 currentFilters = {};
                 currentSort = { col: "", dir: "" };
                 currentPage = 1;
+                rangeSelection = null;
                 applyResultView();
             });
             document.getElementById("pager-prev").addEventListener("click", function () {
@@ -1322,7 +2068,7 @@
                     setStatus("没有可导出的查询结果。", true);
                     return;
                 }
-                const ws = XLSX.utils.json_to_sheet(currentViewRows);
+                const ws = XLSX.utils.json_to_sheet(rowsWithDisplayStrings(currentViewRows));
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "result");
                 XLSX.writeFile(wb, "query_result.xlsx");
@@ -1333,7 +2079,7 @@
                     setStatus("没有可导出的查询结果。", true);
                     return;
                 }
-                const ws = XLSX.utils.json_to_sheet(currentViewRows);
+                const ws = XLSX.utils.json_to_sheet(rowsWithDisplayStrings(currentViewRows));
                 const csv = XLSX.utils.sheet_to_csv(ws);
                 const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
@@ -1350,6 +2096,15 @@
                 closeAllFilterPopup();
             });
             document.getElementById("result-wrap").addEventListener("click", function (e) {
+                const rowNoCell = e.target.closest("td.rowno-col");
+                if (rowNoCell) {
+                    updateRangeSelectionFromClick("row", rowNoCell.getAttribute("data-row-index"), "", e.shiftKey);
+                    return;
+                }
+                const dataCell = e.target.closest("td.data-cell");
+                if (dataCell) {
+                    updateRangeSelectionFromClick("col", dataCell.getAttribute("data-row-index"), dataCell.getAttribute("data-col"), e.shiftKey);
+                }
                 const cell = e.target.closest(".cell-content");
                 if (!cell) return;
                 if (cell.getAttribute("data-truncated") !== "1") return;
@@ -1357,6 +2112,16 @@
                 const box = document.getElementById("text-popup");
                 box.textContent = cell.textContent || "";
                 mask.classList.add("show");
+            });
+            document.getElementById("result-wrap").addEventListener("contextmenu", function (e) {
+                const rowNoCell = e.target.closest("td.rowno-col");
+                const dataCell = e.target.closest("td.data-cell");
+                if (!rowNoCell && !dataCell) return;
+                if (!rangeSelection) return;
+                const text = buildCopyTextBySelection();
+                if (!text) return;
+                e.preventDefault();
+                writeClipboardText(text, "已复制选中范围");
             });
             document.getElementById("result-wrap").addEventListener("dblclick", function (e) {
                 const thName = e.target.closest(".th-name");
@@ -1375,6 +2140,16 @@
                     e.currentTarget.classList.remove("show");
                     document.getElementById("text-popup").textContent = "";
                 }
+            });
+            document.getElementById("sql-help-mask").addEventListener("click", function (e) {
+                if (e.target.id === "sql-help-mask") {
+                    e.currentTarget.classList.remove("show");
+                    document.getElementById("sql-help-popup").textContent = "";
+                }
+            });
+            window.addEventListener("resize", function () {
+                const panel = document.querySelector(".filter-pop.show");
+                if (panel && activeFilterAnchor) adjustFilterPopupPosition(panel, activeFilterAnchor);
             });
         </script>
     </body>
