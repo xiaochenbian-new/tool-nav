@@ -208,14 +208,6 @@
             .copy-hint.visible {
                 display: inline-block;
             }
-            .filter-count {
-                font-size: 12px;
-                color: #5f7298;
-                background: #f3f8ff;
-                border: 1px solid #d8e5ff;
-                border-radius: 999px;
-                padding: 2px 8px;
-            }
             .icon-btn {
                 width: 30px;
                 height: 30px;
@@ -243,6 +235,8 @@
                 border-collapse: collapse;
                 font-size: 13px;
                 table-layout: fixed;
+                -webkit-user-select: none;
+                user-select: none;
             }
             th, td {
                 border: 1px solid #e7efff;
@@ -490,10 +484,10 @@
             .pager {
                 margin-top: 6px;
                 display: none;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 6px;
-                flex-wrap: wrap;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: nowrap;
             }
             .pager.visible {
                 display: flex;
@@ -503,6 +497,67 @@
                 font-size: 12px;
                 margin-right: 4px;
             }
+            .pager-sum {
+                color: #1f4d8c;
+                font-size: 12px;
+                margin-right: 4px;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .pager-left, .pager-right {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .pager-left {
+                min-width: 0;
+                flex: 1 1 260px;
+            }
+            .pager-right {
+                justify-content: flex-end;
+                flex: 1 1 560px;
+                flex-wrap: nowrap;
+            }
+            .pager-pages {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .pager-nav-btn {
+                border: 0;
+                background: transparent;
+                color: #486084;
+                width: auto;
+                height: auto;
+                min-width: 0;
+                padding: 0 2px;
+                border-radius: 0;
+                font-size: 16px;
+                line-height: 1;
+            }
+            .pager-nav-btn:hover {
+                color: #1f4d8c;
+                background: transparent;
+            }
+            .pager-nav-btn:disabled {
+                opacity: 0.35;
+                cursor: not-allowed;
+            }
+            .pager-page {
+                color: #486084;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .pager-page.active {
+                color: #1f4d8c;
+                font-weight: 600;
+                text-decoration: underline;
+            }
             .cell-content {
                 display: inline-block;
                 max-width: 100%;
@@ -511,8 +566,29 @@
                 vertical-align: top;
                 cursor: default;
             }
-            .cell-content.is-truncated {
+            td.data-cell {
+                position: relative;
+                padding-right: 26px;
+            }
+            .cell-view-btn {
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                border: 0;
+                background: transparent;
+                color: #5a739b;
+                font-size: 12px;
+                line-height: 1;
+                padding: 0;
+                display: none;
                 cursor: pointer;
+            }
+            td.data-cell.has-overflow:hover .cell-view-btn {
+                display: inline-block;
+            }
+            .cell-view-btn:hover {
+                color: #1f4d8c;
             }
             .text-popup-mask {
                 position: fixed;
@@ -539,6 +615,33 @@
                 white-space: pre-wrap;
                 word-break: break-all;
                 font-size: 13px;
+            }
+            .copy-menu {
+                position: fixed;
+                z-index: 120;
+                min-width: 132px;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #fff;
+                box-shadow: 0 8px 24px rgba(36, 90, 190, 0.18);
+                padding: 4px;
+                display: none;
+            }
+            .copy-menu.show {
+                display: block;
+            }
+            .copy-menu button {
+                width: 100%;
+                text-align: left;
+                border: 0;
+                background: transparent;
+                color: #2f3d5d;
+                padding: 6px 8px;
+                border-radius: 6px;
+                font-size: 12px;
+            }
+            .copy-menu button:hover {
+                background: #edf3ff;
             }
             #view-sql {
                 width: 100%;
@@ -568,6 +671,23 @@
             }
             @media (max-width: 980px) {
                 .container { grid-template-columns: 1fr; }
+                .pager {
+                    flex-wrap: wrap;
+                    align-items: stretch;
+                }
+                .pager-left, .pager-right {
+                    flex: 1 1 100%;
+                }
+                .pager-right {
+                    justify-content: flex-start;
+                    flex-wrap: wrap;
+                }
+                .pager-info {
+                    margin-right: 0;
+                }
+                .pager-sum {
+                    max-width: 100%;
+                }
             }
         </style>
     </head>
@@ -628,7 +748,6 @@
                     <div class="result-head-left">
                         <button id="toggle-left-btn" class="secondary icon-btn" type="button" title="收起左侧">◀</button>
                         <h3 class="title">查询结果</h3>
-                        <span id="filter-count" class="filter-count">筛后 0 条</span>
                         <span id="copy-hint" class="copy-hint"></span>
                     </div>
                     <div class="result-tools">
@@ -641,9 +760,17 @@
                     <div class="empty">暂无数据</div>
                 </div>
                 <div id="pager" class="pager">
-                    <span id="pager-info" class="pager-info"></span>
-                    <button id="pager-prev" class="secondary" type="button">上一页</button>
-                    <button id="pager-next" class="secondary" type="button">下一页</button>
+                    <div class="pager-left">
+                        <span id="pager-sum" class="pager-sum"></span>
+                    </div>
+                    <div class="pager-right">
+                        <span id="pager-info" class="pager-info"></span>
+                        <button id="pager-first" class="pager-nav-btn" type="button" title="第一页">«</button>
+                        <button id="pager-prev" class="pager-nav-btn" type="button" title="上一页">‹</button>
+                        <span id="pager-pages" class="pager-pages"></span>
+                        <button id="pager-next" class="pager-nav-btn" type="button" title="下一页">›</button>
+                        <button id="pager-last" class="pager-nav-btn" type="button" title="最后一页">»</button>
+                    </div>
                 </div>
                 <div class="sql-preview">
                     <label for="view-sql">当前视图 SQL</label>
@@ -657,6 +784,7 @@
         <div id="sql-help-mask" class="text-popup-mask">
             <div id="sql-help-popup" class="text-popup sql-help-content"></div>
         </div>
+        <div id="copy-menu" class="copy-menu"></div>
 
         <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/alasql@4.6.5/dist/alasql.min.js"></script>
@@ -671,10 +799,15 @@
             let lastExecutedSql = "";
             let currentColWidths = {};
             let currentPage = 1;
-            const PAGE_SIZE = 1000;
+            let currentPageSize = 1000;
+            const FILTER_VALUE_PAGE_SIZE = 20;
+            const ZH_COLLATOR = new Intl.Collator("zh-CN", { numeric: true, sensitivity: "base" });
+            let currentSumText = "";
             let leftCollapsed = false;
             let rangeSelection = null; // { mode:'row'|'col', col?:string, start:number, end:number }
             let activeFilterAnchor = null;
+            let rowDisplayCache = new WeakMap();
+            let copyMenuState = { type: "selection", col: "" };
 
             function setStatus(text, isError) {
                 const el = document.getElementById("status");
@@ -718,13 +851,7 @@
                     return formatDatePartsFriendly(dateToParts(value));
                 }
                 if (typeof value === "number" && Number.isFinite(value)) {
-                    var frac = Math.abs(value - Math.floor(value));
-                    var hasFrac = frac > 1e-9 && frac < 1 - 1e-9;
-                    if (hasFrac) {
-                        var p = tryExcelSerialToParts(value, { date1904: false });
-                        if (!p) p = tryExcelSerialToParts(value, { date1904: true });
-                        if (p) return formatDatePartsFriendly(p);
-                    }
+                    // 数值字段（尤其金额）不做日期序列号推断，避免误判为时间。
                     return String(value);
                 }
                 if (typeof value === "string") {
@@ -779,7 +906,7 @@
                 return y;
             }
 
-            /** 不把代码/金额为纯数字的字符串误判为日期（如 "1"、"100"、"200000..."）。 */
+            /** 仅识别白名单日期格式，避免金额/编号误判为日期。 */
             function tryParseSortableOrIsoDateString(s) {
                 var str = String(s || "").trim();
                 if (!str) return null;
@@ -794,6 +921,18 @@
                         H: slash[4] !== undefined ? +slash[4] : 0,
                         M: slash[5] !== undefined ? +slash[5] : 0,
                         S: slash[6] !== undefined ? +slash[6] : 0
+                    };
+                }
+                var slashYY = str.match(/^(\d{2})\/(\d{1,2})\/(\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+                if (slashYY) {
+                    var yy = expandTwoDigitYear(+slashYY[1]);
+                    return {
+                        y: yy,
+                        m: +slashYY[2],
+                        d: +slashYY[3],
+                        H: slashYY[4] !== undefined ? +slashYY[4] : 0,
+                        M: slashYY[5] !== undefined ? +slashYY[5] : 0,
+                        S: slashYY[6] !== undefined ? +slashYY[6] : 0
                     };
                 }
                 var isoDate = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -834,12 +973,6 @@
                             S: md[6] !== undefined ? +md[6] : 0
                         };
                     }
-                }
-                /** 仅剩：含分隔符或英文月份的自由文本，避免出现 Date.parse("1")==2001 年 等误判 */
-                if (str.length < 6) return null;
-                if (/[\/\-.:]/.test(str) || /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(str)) {
-                    var t = Date.parse(str);
-                    if (!isNaN(t)) return dateToParts(new Date(t));
                 }
                 return null;
             }
@@ -954,8 +1087,7 @@
                 const selected = Array.isArray(realRule.selected) ? realRule.selected : [];
                 const dateFrom = parseDateFilterInput(realRule.dateFrom || "");
                 const dateTo = parseDateFilterInput(realRule.dateTo || "");
-                const raw = row[col] === null || row[col] === undefined ? "" : row[col];
-                const text = String(formatCellForDisplay(raw));
+                const text = getRowDisplayValue(row, col);
                 const byKeyword = !kw || text.toLowerCase().includes(kw);
                 const bySelected = !selected.length || selected.indexOf(text) >= 0;
                 var byDate = true;
@@ -969,12 +1101,16 @@
             }
 
             function getRowsByCurrentFilters(excludeCol, overrideRuleForCol) {
+                var cols = Object.keys(currentFilters);
+                if (!cols.length) return lastQueryRows.slice();
                 return lastQueryRows.filter(function (row) {
-                    return Object.keys(currentFilters).every(function (col) {
-                        if (excludeCol && col === excludeCol && !overrideRuleForCol) return true;
+                    for (var i = 0; i < cols.length; i++) {
+                        var col = cols[i];
+                        if (excludeCol && col === excludeCol && !overrideRuleForCol) continue;
                         var rule = (excludeCol && col === excludeCol && overrideRuleForCol) ? overrideRuleForCol : currentFilters[col];
-                        return rowMatchesFilterRule(row, col, rule);
-                    });
+                        if (!rowMatchesFilterRule(row, col, rule)) return false;
+                    }
+                    return true;
                 });
             }
 
@@ -984,20 +1120,18 @@
              */
             function normalizeImportedCellValue(v, sheetOpts) {
                 if (v === null || v === undefined || v === "") return v;
-                var d1904 = sheetOpts && sheetOpts.date1904;
                 if (v instanceof Date) {
                     if (isNaN(v.getTime())) return "";
                     return partsToSortable(dateToParts(v));
                 }
                 if (typeof v === "number" && Number.isFinite(v)) {
-                    var frac = Math.abs(v - Math.floor(v));
-                    var hasFrac = frac > 1e-9 && frac < 1 - 1e-9;
-                    if (!hasFrac) return v;
-                    var p = tryExcelSerialToParts(v, { date1904: !!d1904 });
-                    return p ? partsToSortable(p) : v;
+                    // 保持原始数值，避免把金额等数字误识别成日期。
+                    return v;
                 }
                 if (typeof v === "string") {
                     var str = v.trim();
+                    var num = tryParseNumberLike(str);
+                    if (num !== null) return num;
                     var parts = tryParseSortableOrIsoDateString(str);
                     if (parts) return partsToSortable(parts);
                 }
@@ -1022,6 +1156,19 @@
                     });
                     return o;
                 });
+            }
+
+            function getRowDisplayValue(row, col) {
+                if (!row || !col) return "";
+                var cached = rowDisplayCache.get(row);
+                if (!cached) {
+                    cached = {};
+                    rowDisplayCache.set(row, cached);
+                }
+                if (Object.prototype.hasOwnProperty.call(cached, col)) return cached[col];
+                var text = String(formatCellForDisplay(row[col] === null || row[col] === undefined ? "" : row[col]));
+                cached[col] = text;
+                return text;
             }
 
             function refreshTableList() {
@@ -1174,7 +1321,27 @@
 
             function transformMysqlSql(sql) {
                 // Keep common MySQL habits compatible with AlaSQL parser.
-                return String(sql || "").replace(/`([^`]+)`/g, "[$1]");
+                return String(sql || "")
+                    .replace(/`([^`]+)`/g, "[$1]")
+                    .replace(/\bIFNULL\s*\(/gi, "COALESCE(")
+                    .replace(/\bLCASE\s*\(/gi, "LOWER(")
+                    .replace(/\bUCASE\s*\(/gi, "UPPER(")
+                    .replace(/\bCHAR_LENGTH\s*\(/gi, "LENGTH(")
+                    .replace(/\bSUBSTRING\s*\(/gi, "SUBSTR(");
+            }
+
+            function tryParseNumberLike(v) {
+                if (typeof v === "number" && Number.isFinite(v)) return v;
+                if (typeof v !== "string") return null;
+                var s = v.trim();
+                if (!s) return null;
+                if (tryParseSortableOrIsoDateString(s)) return null;
+                var normalized = s.replace(/[,\s]/g, "");
+                if (/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) {
+                    var n = Number(normalized);
+                    return Number.isFinite(n) ? n : null;
+                }
+                return null;
             }
 
             /** 将 SQL 中日期字符串字面量统一为 yyyy-MM-dd HH:mm:ss，避免时间比较因格式差异失效。 */
@@ -1243,11 +1410,13 @@
 
             function renderResult(rows) {
                 lastQueryRows = Array.isArray(rows) ? rows.slice() : [];
+                rowDisplayCache = new WeakMap();
                 currentFilters = {};
                 currentSort = { col: "", dir: "" };
                 currentCols = lastQueryRows.length ? Object.keys(lastQueryRows[0]) : [];
                 currentColWidths = {};
                 currentPage = 1;
+                currentSumText = "";
                 rangeSelection = null;
                 applyResultView();
             }
@@ -1271,14 +1440,35 @@
                 if (currentSort.col && currentSort.dir) {
                     const col = currentSort.col;
                     const dir = currentSort.dir === "desc" ? -1 : 1;
-                    rows.sort(function (a, b) {
-                        return compareCellValue(a[col], b[col]) * dir;
+                    const keyed = rows.map(function (r) {
+                        var text = getRowDisplayValue(r, col);
+                        var n = Number(text);
+                        var p = parseDateFilterInput(text);
+                        var key;
+                        var mode;
+                        if (text !== "" && !Number.isNaN(n)) {
+                            mode = "num";
+                            key = n;
+                        } else if (p) {
+                            mode = "date";
+                            key = partsToSortable(p);
+                        } else {
+                            mode = "str";
+                            key = text;
+                        }
+                        return { row: r, mode: mode, key: key };
                     });
+                    keyed.sort(function (a, b) {
+                        if (a.mode === b.mode) {
+                            if (a.mode === "num") return (a.key - b.key) * dir;
+                            return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+                        }
+                        return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+                    });
+                    rows = keyed.map(function (x) { return x.row; });
                 }
                 currentViewRows = rows;
-                var fc = document.getElementById("filter-count");
-                if (fc) fc.textContent = "筛后 " + currentViewRows.length + " 条";
-                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / PAGE_SIZE));
+                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / currentPageSize));
                 if (currentPage > totalPages) currentPage = totalPages;
                 if (currentPage < 1) currentPage = 1;
                 renderResultTable();
@@ -1294,8 +1484,8 @@
                 }
                 const cols = currentCols;
                 const defaultWidth = Math.max(140, Math.floor((wrap.clientWidth || 800) / Math.max(cols.length, 1)));
-                const startIdx = (currentPage - 1) * PAGE_SIZE;
-                const pageRows = currentViewRows.slice(startIdx, startIdx + PAGE_SIZE);
+                const startIdx = (currentPage - 1) * currentPageSize;
+                const pageRows = currentViewRows.slice(startIdx, startIdx + currentPageSize);
                 let html = "<table><colgroup>";
                 html += "<col style=\"width:72px\" />";
                 cols.forEach(function (c) {
@@ -1324,26 +1514,20 @@
                 html += "</tr></thead><tbody>";
                 pageRows.forEach(function (r, idx) {
                     const rowNo = startIdx + idx + 1;
-                    var rowCls = "";
-                    if (rangeSelection && rangeSelection.mode === "row" && rowNo >= Math.min(rangeSelection.start, rangeSelection.end) && rowNo <= Math.max(rangeSelection.start, rangeSelection.end)) {
-                        rowCls = " class=\"row-selected\"";
-                    }
-                    html += "<tr data-row-index=\"" + rowNo + "\"" + rowCls + ">";
+                    html += "<tr data-row-index=\"" + rowNo + "\">";
                     html += "<td class=\"rowno-col\" data-row-index=\"" + rowNo + "\" title=\"当前数据第 " + rowNo + " 行\">" + rowNo + "</td>";
                     cols.forEach(function (c) {
                         const text = escapeHtml(formatCellForDisplay(r[c]));
-                        var cellCls = "";
-                        if (rangeSelection && rangeSelection.mode === "col" && rangeSelection.col === c && rowNo >= Math.min(rangeSelection.start, rangeSelection.end) && rowNo <= Math.max(rangeSelection.start, rangeSelection.end)) {
-                            cellCls = " cell-selected";
-                        }
-                        html += "<td class=\"data-cell" + cellCls + "\" data-col=\"" + escapeHtml(c) + "\" data-row-index=\"" + rowNo + "\" title=\"点击展开/收起\">"
-                            + "<span class=\"cell-content\" title=\"" + text + "\">" + text + "</span></td>";
+                        html += "<td class=\"data-cell\" data-col=\"" + escapeHtml(c) + "\" data-row-index=\"" + rowNo + "\">"
+                            + "<span class=\"cell-content\" title=\"" + text + "\">" + text + "</span>"
+                            + "<button class=\"cell-view-btn\" type=\"button\" title=\"查看完整内容\">👁</button></td>";
                     });
                     html += "</tr>";
                 });
                 html += "</tbody></table>";
                 wrap.innerHTML = html;
                 bindResultTableEvents();
+                refreshSelectionHighlight();
             }
 
             function bindResultTableEvents() {
@@ -1367,6 +1551,12 @@
                         toggleFilterPopup(btn.getAttribute("data-col"), btn);
                     });
                 });
+                wrap.querySelectorAll(".th-name").forEach(function (el) {
+                    el.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        showColumnSum(el.textContent || "");
+                    });
+                });
                 markTruncatedCells();
                 bindResizeEvents();
             }
@@ -1377,6 +1567,8 @@
                     const truncated = el.scrollWidth > el.clientWidth + 1;
                     el.classList.toggle("is-truncated", truncated);
                     el.setAttribute("data-truncated", truncated ? "1" : "0");
+                    var td = el.closest("td.data-cell");
+                    if (td) td.classList.toggle("has-overflow", truncated);
                 });
             }
 
@@ -1413,27 +1605,72 @@
             function renderPager() {
                 const pager = document.getElementById("pager");
                 const info = document.getElementById("pager-info");
+                const sumInfo = document.getElementById("pager-sum");
+                const pagesWrap = document.getElementById("pager-pages");
+                const first = document.getElementById("pager-first");
                 const prev = document.getElementById("pager-prev");
                 const next = document.getElementById("pager-next");
+                const last = document.getElementById("pager-last");
                 const total = currentViewRows.length;
-                const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-                const start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
-                const end = total ? Math.min(currentPage * PAGE_SIZE, total) : 0;
+                const totalPages = Math.max(1, Math.ceil(total / currentPageSize));
+                const start = total ? (currentPage - 1) * currentPageSize + 1 : 0;
+                const end = total ? Math.min(currentPage * currentPageSize, total) : 0;
                 info.textContent = "第 " + currentPage + "/" + totalPages + " 页，显示 " + start + "-" + end + "，共 " + total + " 条";
+                if (sumInfo) sumInfo.textContent = currentSumText || "";
+                if (first) first.disabled = currentPage <= 1;
                 prev.disabled = currentPage <= 1;
                 next.disabled = currentPage >= totalPages;
-                pager.classList.toggle("visible", total > PAGE_SIZE);
+                if (last) last.disabled = currentPage >= totalPages;
+                if (pagesWrap) {
+                    var from = Math.max(1, currentPage - 2);
+                    var to = Math.min(totalPages, currentPage + 2);
+                    var html = "";
+                    for (var p = from; p <= to; p++) {
+                        var active = p === currentPage ? " active" : "";
+                        html += "<span class=\"pager-page" + active + "\" data-page=\"" + p + "\">" + p + "</span>";
+                    }
+                    pagesWrap.innerHTML = html;
+                }
+                pager.classList.toggle("visible", true);
+            }
+
+            function showColumnSum(col) {
+                var hasValue = false;
+                var invalidCount = 0;
+                var sum = 0;
+                currentViewRows.forEach(function (row) {
+                    var v = row ? row[col] : null;
+                    if (v === null || v === undefined) return;
+                    var s = String(v).trim();
+                    if (!s) return;
+                    var n = tryParseNumberLike(v);
+                    if (n === null) {
+                        invalidCount++;
+                        return;
+                    }
+                    hasValue = true;
+                    sum += n;
+                });
+                if (!hasValue) {
+                    currentSumText = "列【" + col + "】无可求和数值";
+                } else {
+                    currentSumText = "列【" + col + "】总和：" + String(Number(sum.toFixed(8)));
+                    if (invalidCount > 0) {
+                        currentSumText += "（忽略 " + invalidCount + " 个非数值）";
+                    }
+                }
+                renderPager();
             }
 
             function getUniqueValuesForCol(col, fromAllRows) {
                 var set = new Set();
                 var candidateRows = fromAllRows ? lastQueryRows : getRowsByCurrentFilters(col, null);
                 candidateRows.forEach(function (r) {
-                    var text = String(formatCellForDisplay(r[col] === null || r[col] === undefined ? "" : r[col]));
+                    var text = getRowDisplayValue(r, col);
                     set.add(text);
                 });
                 return Array.from(set).sort(function (a, b) {
-                    return a.localeCompare(b, "zh-CN", { numeric: true, sensitivity: "base" });
+                    return ZH_COLLATOR.compare(a, b);
                 });
             }
 
@@ -1483,6 +1720,7 @@
                 const panel = document.createElement("div");
                 panel.className = "filter-pop show";
                 panel.setAttribute("data-col", col);
+                const selectedSet = new Set(Array.isArray(rule.selected) ? rule.selected : []);
                 panel.innerHTML =
                     (dateCol
                         ? "<div class=\"filter-quarter\">"
@@ -1507,13 +1745,7 @@
                         + "</div>"
                         : "")
                     + "<input class=\"filter-input\" placeholder=\"输入关键词\" value=\"" + escapeHtml(rule.keyword || "") + "\" />"
-                    + "<div class=\"filter-values\">"
-                    + values.map(function (v) {
-                        const checked = rule.selected && rule.selected.indexOf(v) >= 0 ? " checked" : "";
-                        return "<label class=\"filter-check\"><input type=\"checkbox\" value=\"" + escapeHtml(v) + "\"" + checked + " />"
-                            + "<span>" + escapeHtml(v || "(空值)") + "</span></label>";
-                    }).join("")
-                    + "</div>"
+                    + "<div class=\"filter-values\"></div>"
                     + "<div class=\"filter-meta\" id=\"filter-meta-" + escapeHtml(col) + "\"></div>"
                     + "<div class=\"filter-actions\">"
                     + "<button class=\"mini-btn\" data-act=\"select-all\" type=\"button\">全选</button>"
@@ -1524,6 +1756,27 @@
                 document.body.appendChild(panel);
                 adjustFilterPopupPosition(panel, btnEl);
                 activeFilterAnchor = btnEl;
+                var valueWrap = panel.querySelector(".filter-values");
+                var filteredValues = values.slice();
+                var renderedCount = 0;
+
+                function renderNextValueChunk(reset) {
+                    if (reset) {
+                        valueWrap.innerHTML = "";
+                        renderedCount = 0;
+                    }
+                    var end = Math.min(filteredValues.length, renderedCount + FILTER_VALUE_PAGE_SIZE);
+                    var html = "";
+                    for (var i = renderedCount; i < end; i++) {
+                        var v = filteredValues[i];
+                        var checked = selectedSet.has(v) ? " checked" : "";
+                        html += "<label class=\"filter-check\"><input type=\"checkbox\" value=\"" + escapeHtml(v) + "\"" + checked + " />"
+                            + "<span>" + escapeHtml(v || "(空值)") + "</span></label>";
+                    }
+                    if (html) valueWrap.insertAdjacentHTML("beforeend", html);
+                    renderedCount = end;
+                }
+                renderNextValueChunk(true);
                 panel.querySelectorAll(".quarter-btn").forEach(function (qb) {
                     qb.addEventListener("click", function () {
                         var yearSel = panel.querySelector(".quarter-year");
@@ -1541,8 +1794,7 @@
 
                 function readDraftRule() {
                     const keyword = panel.querySelector(".filter-input").value || "";
-                    const selected = Array.from(panel.querySelectorAll(".filter-values input[type='checkbox']:checked"))
-                        .map(function (x) { return x.value; });
+                    const selected = Array.from(selectedSet);
                     const dateFromInput = panel.querySelector(".filter-date-from");
                     const dateToInput = panel.querySelector(".filter-date-to");
                     const dateFrom = dateFromInput ? normalizeDateInputValue(dateFromInput.value, false) : "";
@@ -1551,9 +1803,9 @@
                 }
 
                 function updateMeta() {
-                    const checkedCount = panel.querySelectorAll(".filter-values input[type='checkbox']:checked").length;
-                    const totalCount = panel.querySelectorAll(".filter-values input[type='checkbox']").length;
-                    const visibleCount = panel.querySelectorAll(".filter-check:not([data-hidden='1'])").length;
+                    const checkedCount = selectedSet.size;
+                    const totalCount = values.length;
+                    const visibleCount = filteredValues.length;
                     const draftRule = readDraftRule();
                     const filteredCount = dateCol
                         ? lastQueryRows.filter(function (row) { return rowMatchesFilterRule(row, col, draftRule); }).length
@@ -1566,12 +1818,10 @@
 
                 function syncValueListByKeyword() {
                     const kw = String(panel.querySelector(".filter-input").value || "").trim().toLowerCase();
-                    panel.querySelectorAll(".filter-check").forEach(function (item) {
-                        const text = String(item.textContent || "").toLowerCase();
-                        const matched = !kw || text.includes(kw);
-                        item.style.display = matched ? "" : "none";
-                        item.setAttribute("data-hidden", matched ? "0" : "1");
+                    filteredValues = !kw ? values.slice() : values.filter(function (v) {
+                        return String(v).toLowerCase().includes(kw);
                     });
+                    renderNextValueChunk(true);
                     updateMeta();
                 }
                 updateMeta();
@@ -1583,8 +1833,18 @@
                 panel.querySelector(".filter-input").addEventListener("input", function () {
                     syncValueListByKeyword();
                 });
-                panel.querySelectorAll(".filter-values input[type='checkbox']").forEach(function (chk) {
-                    chk.addEventListener("change", updateMeta);
+                valueWrap.addEventListener("change", function (e) {
+                    var chk = e.target.closest("input[type='checkbox']");
+                    if (!chk) return;
+                    if (chk.checked) selectedSet.add(chk.value);
+                    else selectedSet.delete(chk.value);
+                    updateMeta();
+                });
+                valueWrap.addEventListener("scroll", function () {
+                    if (renderedCount >= filteredValues.length) return;
+                    if (valueWrap.scrollTop + valueWrap.clientHeight >= valueWrap.scrollHeight - 24) {
+                        renderNextValueChunk(false);
+                    }
                 });
                 var fromEl = panel.querySelector(".filter-date-from");
                 var toEl = panel.querySelector(".filter-date-to");
@@ -1607,11 +1867,11 @@
                         const act = b.getAttribute("data-act");
                         if (act === "select-all" || act === "unselect-all") {
                             const checked = act === "select-all";
-                            panel.querySelectorAll(".filter-check").forEach(function (item) {
-                                if (item.getAttribute("data-hidden") === "1") return;
-                                const chk = item.querySelector("input[type='checkbox']");
-                                if (chk) chk.checked = checked;
+                            filteredValues.forEach(function (v) {
+                                if (checked) selectedSet.add(v);
+                                else selectedSet.delete(v);
                             });
+                            valueWrap.querySelectorAll("input[type='checkbox']").forEach(function (x) { x.checked = checked; });
                             updateMeta();
                             return;
                         }
@@ -1803,15 +2063,17 @@
                 } else {
                     rangeSelection.end = idx;
                 }
-                renderResultTable();
+                refreshSelectionHighlight();
             }
 
-            function buildCopyTextBySelection() {
+            function buildCopyTextBySelection(includeHeader) {
                 if (!rangeSelection || !currentViewRows.length) return "";
+                var withHeader = !!includeHeader;
                 var start = Math.min(rangeSelection.start, rangeSelection.end);
                 var end = Math.max(rangeSelection.start, rangeSelection.end);
                 var lines = [];
                 if (rangeSelection.mode === "row") {
+                    if (withHeader) lines.push(currentCols.join("\t"));
                     for (var i = start; i <= end; i++) {
                         var row = currentViewRows[i - 1];
                         if (!row) continue;
@@ -1821,7 +2083,7 @@
                     return lines.join("\n");
                 }
                 if (rangeSelection.mode === "col") {
-                    lines.push(rangeSelection.col);
+                    if (withHeader) lines.push(rangeSelection.col);
                     for (var j = start; j <= end; j++) {
                         var row2 = currentViewRows[j - 1];
                         if (!row2) continue;
@@ -1830,6 +2092,69 @@
                     return lines.join("\n");
                 }
                 return "";
+            }
+
+            function buildCopyTextByColumn(col, includeHeader) {
+                var column = String(col || "").trim();
+                if (!column || !currentViewRows.length) return "";
+                var lines = [];
+                if (includeHeader) lines.push(column);
+                currentViewRows.forEach(function (row) {
+                    lines.push(String(formatCellForDisplay(row[column])));
+                });
+                return lines.join("\n");
+            }
+
+            function refreshSelectionHighlight() {
+                var wrap = document.getElementById("result-wrap");
+                if (!wrap) return;
+                var start = rangeSelection ? Math.min(rangeSelection.start, rangeSelection.end) : 0;
+                var end = rangeSelection ? Math.max(rangeSelection.start, rangeSelection.end) : -1;
+                wrap.querySelectorAll("tr[data-row-index]").forEach(function (tr) {
+                    var idx = Number(tr.getAttribute("data-row-index") || 0);
+                    var on = !!rangeSelection && rangeSelection.mode === "row" && idx >= start && idx <= end;
+                    tr.classList.toggle("row-selected", on);
+                });
+                wrap.querySelectorAll("td.data-cell").forEach(function (td) {
+                    var idx = Number(td.getAttribute("data-row-index") || 0);
+                    var col = td.getAttribute("data-col") || "";
+                    var on = !!rangeSelection
+                        && rangeSelection.mode === "col"
+                        && col === rangeSelection.col
+                        && idx >= start
+                        && idx <= end;
+                    td.classList.toggle("cell-selected", on);
+                });
+            }
+
+            function hideCopyMenu() {
+                var menu = document.getElementById("copy-menu");
+                if (!menu) return;
+                menu.classList.remove("show");
+                menu.innerHTML = "";
+                copyMenuState = { type: "selection", col: "" };
+            }
+
+            function showCopyMenu(x, y, includeHeaderAction) {
+                var menu = document.getElementById("copy-menu");
+                if (!menu) return;
+                var html = "<button type=\"button\" data-act=\"copy\">复制</button>";
+                if (includeHeaderAction) {
+                    html += "<button type=\"button\" data-act=\"copy-header\">复制（含表头）</button>";
+                }
+                menu.innerHTML = html;
+                menu.classList.add("show");
+                var vw = window.innerWidth || document.documentElement.clientWidth;
+                var vh = window.innerHeight || document.documentElement.clientHeight;
+                var rect = menu.getBoundingClientRect();
+                var left = x;
+                var top = y;
+                if (left + rect.width > vw - 8) left = vw - rect.width - 8;
+                if (top + rect.height > vh - 8) top = vh - rect.height - 8;
+                if (left < 8) left = 8;
+                if (top < 8) top = 8;
+                menu.style.left = Math.round(left) + "px";
+                menu.style.top = Math.round(top) + "px";
             }
 
             function openSqlHelp() {
@@ -2002,6 +2327,7 @@
                 lastExecutedSql = "";
                 currentColWidths = {};
                 currentPage = 1;
+                currentSumText = "";
                 rangeSelection = null;
                 document.getElementById("pager").classList.remove("visible");
                 Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
@@ -2047,8 +2373,15 @@
                 currentFilters = {};
                 currentSort = { col: "", dir: "" };
                 currentPage = 1;
+                currentSumText = "";
                 rangeSelection = null;
                 applyResultView();
+            });
+            document.getElementById("pager-first").addEventListener("click", function () {
+                if (currentPage <= 1) return;
+                currentPage = 1;
+                renderResultTable();
+                renderPager();
             });
             document.getElementById("pager-prev").addEventListener("click", function () {
                 if (currentPage <= 1) return;
@@ -2057,9 +2390,25 @@
                 renderPager();
             });
             document.getElementById("pager-next").addEventListener("click", function () {
-                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / PAGE_SIZE));
+                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / currentPageSize));
                 if (currentPage >= totalPages) return;
                 currentPage++;
+                renderResultTable();
+                renderPager();
+            });
+            document.getElementById("pager-last").addEventListener("click", function () {
+                const totalPages = Math.max(1, Math.ceil(currentViewRows.length / currentPageSize));
+                if (currentPage >= totalPages) return;
+                currentPage = totalPages;
+                renderResultTable();
+                renderPager();
+            });
+            document.getElementById("pager-pages").addEventListener("click", function (e) {
+                var target = e.target.closest(".pager-page");
+                if (!target) return;
+                var p = Number(target.getAttribute("data-page"));
+                if (!Number.isFinite(p) || p < 1) return;
+                currentPage = p;
                 renderResultTable();
                 renderPager();
             });
@@ -2094,8 +2443,22 @@
             });
             document.addEventListener("click", function () {
                 closeAllFilterPopup();
+                hideCopyMenu();
             });
             document.getElementById("result-wrap").addEventListener("click", function (e) {
+                const viewBtn = e.target.closest(".cell-view-btn");
+                if (viewBtn) {
+                    e.stopPropagation();
+                    const hostCell = viewBtn.closest("td.data-cell");
+                    if (!hostCell) return;
+                    const cell = hostCell.querySelector(".cell-content");
+                    if (!cell || cell.getAttribute("data-truncated") !== "1") return;
+                    const mask = document.getElementById("text-popup-mask");
+                    const box = document.getElementById("text-popup");
+                    box.textContent = cell.textContent || "";
+                    mask.classList.add("show");
+                    return;
+                }
                 const rowNoCell = e.target.closest("td.rowno-col");
                 if (rowNoCell) {
                     updateRangeSelectionFromClick("row", rowNoCell.getAttribute("data-row-index"), "", e.shiftKey);
@@ -2105,35 +2468,44 @@
                 if (dataCell) {
                     updateRangeSelectionFromClick("col", dataCell.getAttribute("data-row-index"), dataCell.getAttribute("data-col"), e.shiftKey);
                 }
-                const cell = e.target.closest(".cell-content");
-                if (!cell) return;
-                if (cell.getAttribute("data-truncated") !== "1") return;
-                const mask = document.getElementById("text-popup-mask");
-                const box = document.getElementById("text-popup");
-                box.textContent = cell.textContent || "";
-                mask.classList.add("show");
             });
             document.getElementById("result-wrap").addEventListener("contextmenu", function (e) {
+                const thName = e.target.closest(".th-name");
                 const rowNoCell = e.target.closest("td.rowno-col");
                 const dataCell = e.target.closest("td.data-cell");
-                if (!rowNoCell && !dataCell) return;
-                if (!rangeSelection) return;
-                const text = buildCopyTextBySelection();
-                if (!text) return;
+                if (!thName && !rowNoCell && !dataCell) return;
                 e.preventDefault();
-                writeClipboardText(text, "已复制选中范围");
-            });
-            document.getElementById("result-wrap").addEventListener("dblclick", function (e) {
-                const thName = e.target.closest(".th-name");
+                var includeHeaderAction = false;
                 if (thName) {
-                    copyText(thName.textContent || "");
-                    return;
+                    copyMenuState = { type: "column", col: String(thName.textContent || "").trim() };
+                    includeHeaderAction = true;
+                } else {
+                    copyMenuState = { type: "selection", col: "" };
+                    if (!rangeSelection) return;
+                    includeHeaderAction = rangeSelection.mode === "row";
                 }
-                const cell = e.target.closest(".cell-content");
-                if (cell) {
-                    if (cell.getAttribute("data-truncated") === "1") return;
-                    copyText(cell.textContent || "");
+                showCopyMenu(e.clientX, e.clientY, includeHeaderAction);
+            });
+            document.getElementById("copy-menu").addEventListener("click", function (e) {
+                var actBtn = e.target.closest("button[data-act]");
+                if (!actBtn) return;
+                var act = actBtn.getAttribute("data-act");
+                if (copyMenuState.type === "column" && copyMenuState.col) {
+                    if (act === "copy") {
+                        var colText = buildCopyTextByColumn(copyMenuState.col, false);
+                        if (colText) writeClipboardText(colText, "已复制该列全部数据");
+                    } else if (act === "copy-header") {
+                        var colText2 = buildCopyTextByColumn(copyMenuState.col, true);
+                        if (colText2) writeClipboardText(colText2, "已复制该列（含表头）");
+                    }
+                } else if (act === "copy") {
+                    var text = buildCopyTextBySelection(false);
+                    if (text) writeClipboardText(text, "已复制选中范围");
+                } else if (act === "copy-header") {
+                    var text2 = buildCopyTextBySelection(true);
+                    if (text2) writeClipboardText(text2, "已复制选中范围（含表头）");
                 }
+                hideCopyMenu();
             });
             document.getElementById("text-popup-mask").addEventListener("click", function (e) {
                 if (e.target.id === "text-popup-mask") {
