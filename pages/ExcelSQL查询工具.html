@@ -97,6 +97,100 @@
                 padding: 0;
                 cursor: pointer;
             }
+            .sql-history-pop {
+                display: none;
+                position: fixed;
+                z-index: 5100;
+                min-width: min(440px, calc(100vw - 24px));
+                max-width: min(720px, calc(100vw - 24px));
+                max-height: min(480px, 62vh);
+                overflow: auto;
+                border: 1px solid #d8e5ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 8px 22px rgba(36, 90, 190, 0.16);
+                padding: 10px 12px;
+            }
+            .sql-history-pop.show {
+                display: block;
+            }
+            .sql-history-pop .sql-history-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #4a5978;
+                padding: 6px 8px 10px;
+                line-height: 1.4;
+            }
+            .sql-history-item {
+                display: block;
+                width: 100%;
+                text-align: left;
+                border: 1px solid #e7efff;
+                border-radius: 8px;
+                background: #f8fbff;
+                color: #1f2a44;
+                font-size: 15px;
+                line-height: 1.45;
+                padding: 10px 12px;
+                margin-bottom: 8px;
+                cursor: pointer;
+                word-break: break-all;
+            }
+            .sql-history-item:hover {
+                border-color: #b8cdfb;
+                background: #eef4ff;
+            }
+            .sql-history-empty {
+                font-size: 15px;
+                color: var(--muted);
+                padding: 12px;
+                line-height: 1.5;
+            }
+            .busy-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 6000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                gap: 16px;
+                background: rgba(16, 30, 60, 0.38);
+                backdrop-filter: blur(2px);
+            }
+            .busy-overlay.show {
+                display: flex;
+            }
+            .busy-overlay-card {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 14px;
+                padding: 24px 32px;
+                border-radius: 12px;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                box-shadow: 0 12px 32px rgba(36, 90, 190, 0.22);
+                max-width: min(360px, calc(100vw - 48px));
+            }
+            .busy-spinner {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                border: 3px solid #e0e9ff;
+                border-top-color: var(--primary);
+                animation: busy-spin 0.75s linear infinite;
+            }
+            @keyframes busy-spin {
+                to { transform: rotate(360deg); }
+            }
+            .busy-overlay-text {
+                margin: 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #2f3d5d;
+                text-align: center;
+            }
             input, select, textarea, button {
                 font-family: inherit;
                 font-size: 13px;
@@ -265,12 +359,14 @@
                 user-select: none;
             }
             .sortable-head {
-                display: inline-flex;
+                display: flex;
                 align-items: center;
                 gap: 4px;
-                width: calc(100% - 8px);
+                width: 100%;
+                min-width: 0;
             }
             .sort-btn {
+                flex: 0 0 auto;
                 border: 1px solid #d8e5ff;
                 border-radius: 999px;
                 background: #edf3ff;
@@ -287,6 +383,7 @@
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
             .filter-btn {
+                flex: 0 0 auto;
                 border: 1px solid #d8e5ff;
                 border-radius: 999px;
                 background: #edf3ff;
@@ -311,9 +408,12 @@
                 position: relative;
             }
             .th-name {
-                overflow: visible;
-                text-overflow: clip;
+                flex: 1 1 auto;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
                 white-space: nowrap;
+                cursor: pointer;
             }
             .resize-handle {
                 position: absolute;
@@ -566,6 +666,10 @@
                 vertical-align: top;
                 cursor: default;
             }
+            .cell-content.is-truncated {
+                cursor: pointer;
+                border-bottom: 1px dotted rgba(47, 107, 255, 0.35);
+            }
             td.data-cell {
                 position: relative;
                 padding-right: 26px;
@@ -730,7 +834,11 @@
                     <label for="sql-input" class="label-inline">
                         <span>SQL 语句</span>
                         <button id="sql-help-btn" class="help-icon-btn" type="button" title="查看 MySQL 常用函数">!</button>
+                        <button id="sql-history-btn" class="help-icon-btn" type="button" title="最近执行的 SQL（最多 10 条）" aria-label="最近执行的 SQL">
+                            <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a6 6 0 1 1 6 6v-2h2v2a8 8 0 1 0-2.343-5.657L13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                        </button>
                     </label>
+                    <div id="sql-history-pop" class="sql-history-pop" aria-hidden="true"></div>
                     <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1];"></textarea>
                 </div>
                 <div class="btn-row">
@@ -785,12 +893,20 @@
             <div id="sql-help-popup" class="text-popup sql-help-content"></div>
         </div>
         <div id="copy-menu" class="copy-menu"></div>
+        <div id="busy-overlay" class="busy-overlay" aria-hidden="true" role="status">
+            <div class="busy-overlay-card">
+                <div class="busy-spinner" aria-hidden="true"></div>
+                <p id="busy-overlay-text" class="busy-overlay-text">请稍候…</p>
+            </div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/alasql@4.6.5/dist/alasql.min.js"></script>
         <script>
             const dbStore = {};
             let currentDb = "";
+            /** 与 currentDb 一致时表示 AlaSQL 表已从 dbStore 注册，避免每次查询重复 DROP/CREATE 大表。 */
+            let alasqlEngineDbKey = "";
             let lastQueryRows = [];
             let currentViewRows = [];
             let currentCols = [];
@@ -808,6 +924,48 @@
             let activeFilterAnchor = null;
             let rowDisplayCache = new WeakMap();
             let copyMenuState = { type: "selection", col: "" };
+            let lastSqlHistoryList = [];
+            const SQL_HISTORY_KEY = "excelSqlQueryHistoryV1";
+            const SQL_HISTORY_MAX = 10;
+            /** 大批量导入时每 N 行让出一次主线程，便于 1s 后显示等待层 */
+            const IMPORT_YIELD_ROWS = 8000;
+
+            function yieldToBrowser() {
+                return new Promise(function (resolve) {
+                    window.setTimeout(resolve, 0);
+                });
+            }
+
+            function showBusyOverlay(message) {
+                var msgEl = document.getElementById("busy-overlay-text");
+                var overlay = document.getElementById("busy-overlay");
+                if (msgEl) msgEl.textContent = message || "请稍候…";
+                if (overlay) {
+                    overlay.classList.add("show");
+                    overlay.setAttribute("aria-hidden", "false");
+                }
+            }
+
+            function hideBusyOverlay() {
+                var overlay = document.getElementById("busy-overlay");
+                if (overlay) {
+                    overlay.classList.remove("show");
+                    overlay.setAttribute("aria-hidden", "true");
+                }
+            }
+
+            /** 操作超过 1s 才显示全屏等待，避免闪烁 */
+            function startDelayedBusy(message) {
+                var shown = false;
+                var id = window.setTimeout(function () {
+                    showBusyOverlay(message);
+                    shown = true;
+                }, 1000);
+                return function stopDelayedBusy() {
+                    window.clearTimeout(id);
+                    if (shown) hideBusyOverlay();
+                };
+            }
 
             function setStatus(text, isError) {
                 const el = document.getElementById("status");
@@ -828,6 +986,182 @@
                     .replace(/&/g, "&amp;")
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;");
+            }
+
+            function loadSqlHistory() {
+                try {
+                    var raw = localStorage.getItem(SQL_HISTORY_KEY);
+                    var arr = JSON.parse(raw);
+                    if (!Array.isArray(arr)) return [];
+                    var seen = {};
+                    var out = [];
+                    for (var i = 0; i < arr.length; i++) {
+                        var k = normalizeSqlHistoryDedupKey(arr[i]);
+                        if (!k || seen[k]) continue;
+                        seen[k] = true;
+                        out.push(String(arr[i]).trim());
+                        if (out.length >= SQL_HISTORY_MAX) break;
+                    }
+                    return out;
+                } catch (err) {
+                    return [];
+                }
+            }
+
+            /** 去重用：忽略首尾空白、连续空白、末尾分号、大小写 */
+            function normalizeSqlHistoryDedupKey(s) {
+                return String(s || "")
+                    .trim()
+                    .replace(/;+\s*$/, "")
+                    .replace(/\s+/g, " ")
+                    .toLowerCase();
+            }
+
+            function saveSqlHistoryItem(text) {
+                var raw = String(text || "").trim();
+                if (!raw) return;
+                var key = normalizeSqlHistoryDedupKey(raw);
+                var arr = loadSqlHistory().filter(function (x) {
+                    return normalizeSqlHistoryDedupKey(x) !== key;
+                });
+                arr.unshift(raw);
+                if (arr.length > SQL_HISTORY_MAX) arr = arr.slice(0, SQL_HISTORY_MAX);
+                try {
+                    localStorage.setItem(SQL_HISTORY_KEY, JSON.stringify(arr));
+                } catch (err) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function mapSqlOutsideStringLiterals(sql, fn) {
+                var result = "";
+                var i = 0;
+                while (i < sql.length) {
+                    if (sql.charAt(i) !== "'") {
+                        var start = i;
+                        while (i < sql.length && sql.charAt(i) !== "'") i++;
+                        result += fn(sql.slice(start, i));
+                        continue;
+                    }
+                    var strStart = i;
+                    i++;
+                    while (i < sql.length) {
+                        var c = sql.charAt(i);
+                        if (c === "'") {
+                            if (i + 1 < sql.length && sql.charAt(i + 1) === "'") {
+                                i += 2;
+                                continue;
+                            }
+                            i++;
+                            break;
+                        }
+                        i++;
+                    }
+                    result += sql.slice(strStart, i);
+                }
+                return result;
+            }
+
+            function expandNumericEqualityChunk(chunk) {
+                var s = chunk;
+                function pairSq(col, num) {
+                    if (num.length > 1 && num.charAt(0) === "0") {
+                        return col + " = '" + num + "'";
+                    }
+                    return "(" + col + " = '" + num + "' OR " + col + " = " + num + ")";
+                }
+                function pairDq(col, num) {
+                    if (num.length > 1 && num.charAt(0) === "0") {
+                        return col + " = \"" + num + "\"";
+                    }
+                    return "(" + col + " = \"" + num + "\" OR " + col + " = " + num + ")";
+                }
+                s = s.replace(/(\[[^\]]+\])\s*=\s*'(\d+)'/g, function (_, col, num) {
+                    return pairSq(col, num);
+                });
+                s = s.replace(/'(\d+)'\s*=\s*(\[[^\]]+\])/g, function (_, num, col) {
+                    if (num.length > 1 && num.charAt(0) === "0") {
+                        return "'" + num + "' = " + col;
+                    }
+                    return "(" + col + " = '" + num + "' OR " + col + " = " + num + ")";
+                });
+                s = s.replace(/(\[[^\]]+\])\s*=\s*"(\d+)"/g, function (_, col, num) {
+                    return pairDq(col, num);
+                });
+                s = s.replace(/"(\d+)"\s*=\s*(\[[^\]]+\])/g, function (_, num, col) {
+                    if (num.length > 1 && num.charAt(0) === "0") {
+                        return "\"" + num + "\" = " + col;
+                    }
+                    return "(" + col + " = \"" + num + "\" OR " + col + " = " + num + ")";
+                });
+                return s;
+            }
+
+            /** Excel 数字列与带引号的数字比较时，AlaSQL 类型不一致会查不到行，这里自动展开为字符串或数字两种相等。 */
+            function expandNumericEqualityInSql(sql) {
+                return mapSqlOutsideStringLiterals(String(sql || ""), expandNumericEqualityChunk);
+            }
+
+            function adjustSqlHistoryPopupPosition(panel, btnEl) {
+                if (!panel || !btnEl) return;
+                var rect = btnEl.getBoundingClientRect();
+                var vw = window.innerWidth || document.documentElement.clientWidth;
+                var vh = window.innerHeight || document.documentElement.clientHeight;
+                var panelW = panel.offsetWidth || 320;
+                var panelH = panel.offsetHeight || 200;
+                var left = rect.left;
+                if (left + panelW > vw - 8) left = vw - panelW - 8;
+                if (left < 8) left = 8;
+                var top = rect.bottom + 6;
+                if (top + panelH > vh - 8) {
+                    var above = rect.top - panelH - 6;
+                    if (above >= 8) top = above;
+                    else top = Math.max(8, vh - panelH - 8);
+                }
+                panel.style.left = Math.round(left) + "px";
+                panel.style.top = Math.round(top) + "px";
+            }
+
+            function closeSqlHistoryPop() {
+                var pop = document.getElementById("sql-history-pop");
+                if (pop && pop.classList.contains("show")) {
+                    pop.classList.remove("show");
+                    pop.setAttribute("aria-hidden", "true");
+                }
+            }
+
+            function toggleSqlHistoryPop() {
+                var pop = document.getElementById("sql-history-pop");
+                var btn = document.getElementById("sql-history-btn");
+                if (!pop || !btn) return;
+                if (pop.classList.contains("show")) {
+                    closeSqlHistoryPop();
+                    return;
+                }
+                lastSqlHistoryList = loadSqlHistory();
+                if (!lastSqlHistoryList.length) {
+                    pop.innerHTML = "<div class=\"sql-history-empty\">暂无执行记录（执行成功后会自动保存）。</div>";
+                } else {
+                    pop.innerHTML = "<div class=\"sql-history-title\">最近 " + lastSqlHistoryList.length + " 条（已去重，最新在上）· 点击填入并执行</div>"
+                        + lastSqlHistoryList.map(function (sql, idx) {
+                            return "<button type=\"button\" class=\"sql-history-item\" data-idx=\"" + idx + "\">"
+                                + escapeHtml(sql) + "</button>";
+                        }).join("");
+                    pop.querySelectorAll(".sql-history-item").forEach(function (b) {
+                        b.addEventListener("click", function (ev) {
+                            ev.stopPropagation();
+                            var idx = Number(b.getAttribute("data-idx"));
+                            var raw = lastSqlHistoryList[idx];
+                            if (raw == null) return;
+                            document.getElementById("sql-input").value = raw;
+                            closeSqlHistoryPop();
+                            void runSql();
+                        });
+                    });
+                }
+                pop.classList.add("show");
+                pop.setAttribute("aria-hidden", "false");
+                adjustSqlHistoryPopupPosition(pop, btn);
             }
 
             function pad2(v) {
@@ -857,8 +1191,10 @@
                 if (typeof value === "string") {
                     var s = value.trim();
                     if (!s) return "";
-                    var parsed = tryParseSortableOrIsoDateString(s);
-                    if (parsed) return formatDatePartsFriendly(parsed);
+                    if (couldBeDateLikeString(s)) {
+                        var parsed = tryParseSortableOrIsoDateString(s);
+                        if (parsed) return formatDatePartsFriendly(parsed);
+                    }
                     return s;
                 }
                 return String(value);
@@ -906,6 +1242,21 @@
                 return y;
             }
 
+            /**
+             * 大表导入时避免对每格跑完整日期正则（理赔号、长文本等）。
+             * 仍可能为日期的：含 / 或 : 或 ISO T，或以 yyyy- 开头。
+             */
+            function couldBeDateLikeString(str) {
+                if (typeof str !== "string" || !str) return false;
+                var s = str.trim();
+                if (s.length < 4) return false;
+                if (s.indexOf("/") >= 0) return true;
+                if (s.indexOf(":") >= 0) return true;
+                if (s.indexOf("T") >= 0 && /\dT\d/.test(s)) return true;
+                if (/^\d{4}-\d/.test(s)) return true;
+                return false;
+            }
+
             /** 仅识别白名单日期格式，避免金额/编号误判为日期。 */
             function tryParseSortableOrIsoDateString(s) {
                 var str = String(s || "").trim();
@@ -923,6 +1274,27 @@
                         S: slash[6] !== undefined ? +slash[6] : 0
                     };
                 }
+                /**
+                 * 须在 slashYY 之前：Excel 用 raw:false 时常得到 "10/1/25 4:30"（月/日/年），
+                 * 若先匹配 yy/mm/dd 会把 10 误当年份得到 2010-01-25。
+                 */
+                var md = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+                if (md) {
+                    var mon = +md[1];
+                    var dy = +md[2];
+                    var yi = expandTwoDigitYear(+md[3]);
+                    if (mon <= 12 && dy <= 31 && mon >= 1 && dy >= 1 && yi >= 1900 && yi <= 2200) {
+                        return {
+                            y: yi,
+                            m: mon,
+                            d: dy,
+                            H: md[4] !== undefined ? +md[4] : 0,
+                            M: md[5] !== undefined ? +md[5] : 0,
+                            S: md[6] !== undefined ? +md[6] : 0
+                        };
+                    }
+                }
+                /** yy/mm/dd：仅当 m/d 形式不成立时再试（如 "25/10/1" 月份 25 无效）。 */
                 var slashYY = str.match(/^(\d{2})\/(\d{1,2})\/(\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
                 if (slashYY) {
                     var yy = expandTwoDigitYear(+slashYY[1]);
@@ -956,23 +1328,6 @@
                         M: +iso[5],
                         S: iso[6] ? +iso[6] : 0
                     };
-                }
-                /** Excel 导出常见 m/d/yy 或 m/d/yyyy，如 "1/16/26 12:30"、"2/5/26 22:01" */
-                var md = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
-                if (md) {
-                    var mon = +md[1];
-                    var dy = +md[2];
-                    var yi = expandTwoDigitYear(+md[3]);
-                    if (mon <= 12 && dy <= 31 && mon >= 1 && dy >= 1 && yi >= 1900 && yi <= 2200) {
-                        return {
-                            y: yi,
-                            m: mon,
-                            d: dy,
-                            H: md[4] !== undefined ? +md[4] : 0,
-                            M: md[5] !== undefined ? +md[5] : 0,
-                            S: md[6] !== undefined ? +md[6] : 0
-                        };
-                    }
                 }
                 return null;
             }
@@ -1102,7 +1457,7 @@
 
             function getRowsByCurrentFilters(excludeCol, overrideRuleForCol) {
                 var cols = Object.keys(currentFilters);
-                if (!cols.length) return lastQueryRows.slice();
+                if (!cols.length) return lastQueryRows;
                 return lastQueryRows.filter(function (row) {
                     for (var i = 0; i < cols.length; i++) {
                         var col = cols[i];
@@ -1125,15 +1480,19 @@
                     return partsToSortable(dateToParts(v));
                 }
                 if (typeof v === "number" && Number.isFinite(v)) {
-                    // 保持原始数值，避免把金额等数字误识别成日期。
+                    // Excel 里格式为「数值」的单元格保留 number，SUM/聚合仍可用。
                     return v;
                 }
                 if (typeof v === "string") {
                     var str = v.trim();
+                    if (couldBeDateLikeString(str)) {
+                        var parts = tryParseSortableOrIsoDateString(str);
+                        if (parts) return partsToSortable(parts);
+                    }
+                    // 仅当可安全表示为 JS 数字时才转 number（超长整数串如报案号保持原文本，避免精度丢失）。
                     var num = tryParseNumberLike(str);
                     if (num !== null) return num;
-                    var parts = tryParseSortableOrIsoDateString(str);
-                    if (parts) return partsToSortable(parts);
+                    return str;
                 }
                 return v;
             }
@@ -1143,6 +1502,17 @@
                 Object.keys(row).forEach(function (k) {
                     out[k] = normalizeImportedCellValue(row[k], sheetOpts);
                 });
+                return out;
+            }
+
+            async function normalizeImportedRowsAsync(rowsRaw, sheetOpts) {
+                var n = rowsRaw.length;
+                var out = new Array(n);
+                for (var i = 0; i < n; i++) {
+                    out[i] = normalizeImportedRow(rowsRaw[i], sheetOpts);
+                    if (i > 0 && (i + 1) % IMPORT_YIELD_ROWS === 0) await yieldToBrowser();
+                }
+                await yieldToBrowser();
                 return out;
             }
 
@@ -1182,7 +1552,12 @@
                 db.tables.forEach(function (item) {
                     const div = document.createElement("div");
                     div.className = "table-item";
-                    div.innerHTML = "<b>" + item.tableName + "</b><br/>列: " + item.columns.join(", ");
+                    var colText = item.columns.join(", ");
+                    if (colText.length > 400) colText = colText.slice(0, 400) + "…";
+                    var rowHint = item.rows && item.rows.length >= 1
+                        ? "，约 " + item.rows.length + " 行"
+                        : "";
+                    div.innerHTML = "<b>" + item.tableName + "</b>" + rowHint + "<br/>列: " + colText;
                     list.appendChild(div);
                 });
             }
@@ -1235,11 +1610,21 @@
                     // ignore
                 }
                 const db = dbStore[currentDb];
-                if (!db) return;
+                if (!db) {
+                    alasqlEngineDbKey = "";
+                    return;
+                }
                 db.tables.forEach(function (t) {
                     alasql("CREATE TABLE [" + t.tableName + "]");
                     alasql.tables[t.tableName].data = t.rows;
                 });
+                alasqlEngineDbKey = currentDb;
+            }
+
+            function ensureAlasqlEngineReady() {
+                if (!currentDb || !dbStore[currentDb]) return;
+                if (alasqlEngineDbKey === currentDb) return;
+                rebuildEngineWithCurrentDb();
             }
 
             function isIdentifierChar(ch) {
@@ -1335,11 +1720,14 @@
                 if (typeof v !== "string") return null;
                 var s = v.trim();
                 if (!s) return null;
-                if (tryParseSortableOrIsoDateString(s)) return null;
+                if (couldBeDateLikeString(s) && tryParseSortableOrIsoDateString(s)) return null;
                 var normalized = s.replace(/[,\s]/g, "");
                 if (/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) {
                     var n = Number(normalized);
-                    return Number.isFinite(n) ? n : null;
+                    if (!Number.isFinite(n)) return null;
+                    /** 报案号类长整型字符串不可安全转为 Number（超过 2^53-1 会失真） */
+                    if (/^[-+]?\d+$/.test(normalized) && !Number.isSafeInteger(n)) return null;
+                    return n;
                 }
                 return null;
             }
@@ -1404,6 +1792,7 @@
                     sql = transformMysqlSql(sql);
                 }
                 sql = autoQuoteIdentifiers(sql, cols);
+                sql = expandNumericEqualityInSql(sql);
                 sql = normalizeDateLiteralsInSql(sql);
                 return sql + ";";
             }
@@ -1531,40 +1920,17 @@
             }
 
             function bindResultTableEvents() {
-                const wrap = document.getElementById("result-wrap");
-                wrap.querySelectorAll(".sort-btn").forEach(function (btn) {
-                    btn.addEventListener("click", function () {
-                        const col = btn.getAttribute("data-col");
-                        if (currentSort.col !== col) {
-                            currentSort = { col: col, dir: "asc" };
-                        } else if (currentSort.dir === "asc") {
-                            currentSort = { col: col, dir: "desc" };
-                        } else {
-                            currentSort = { col: "", dir: "" };
-                        }
-                        applyResultView();
-                    });
-                });
-                wrap.querySelectorAll(".filter-btn").forEach(function (btn) {
-                    btn.addEventListener("click", function (e) {
-                        e.stopPropagation();
-                        toggleFilterPopup(btn.getAttribute("data-col"), btn);
-                    });
-                });
-                wrap.querySelectorAll(".th-name").forEach(function (el) {
-                    el.addEventListener("click", function (e) {
-                        e.stopPropagation();
-                        showColumnSum(el.textContent || "");
-                    });
-                });
                 markTruncatedCells();
                 bindResizeEvents();
             }
 
+            /** 不用 scrollWidth 逐格测量（大表会触发数万次强制布局、页面无响应）。 */
             function markTruncatedCells() {
                 const wrap = document.getElementById("result-wrap");
+                var thresh = 40;
                 wrap.querySelectorAll(".cell-content").forEach(function (el) {
-                    const truncated = el.scrollWidth > el.clientWidth + 1;
+                    var t = el.textContent || "";
+                    var truncated = t.length > thresh;
                     el.classList.toggle("is-truncated", truncated);
                     el.setAttribute("data-truncated", truncated ? "1" : "0");
                     var td = el.closest("td.data-cell");
@@ -2182,7 +2548,8 @@
                     + "- CASE WHEN ... THEN ... END: 多分支判断\n\n"
                     + "聚合：\n"
                     + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x)\n\n"
-                    + "提示：当前工具底层是 AlaSQL，绝大部分常见 MySQL 写法可用。";
+                    + "提示：当前工具底层是 AlaSQL，绝大部分常见 MySQL 写法可用。\n\n"
+                    + "筛选提示：WHERE 里对纯数字加引号（如 地区='150000'）时，会自动同时匹配单元格为文本或数值两种情况，避免 Excel 数字列查不到行。";
                 document.getElementById("sql-help-popup").textContent = html;
                 document.getElementById("sql-help-mask").classList.add("show");
             }
@@ -2203,77 +2570,88 @@
             }
 
             async function loadExcelFiles(files) {
-                if (!window.XLSX || !window.alasql) {
-                    setStatus("依赖加载失败，请检查网络后重试。", true);
-                    return;
-                }
-                Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
+                var stopBusy = startDelayedBusy("正在导入 Excel…");
+                try {
+                    if (!window.XLSX || !window.alasql) {
+                        setStatus("依赖加载失败，请检查网络后重试。", true);
+                        return;
+                    }
+                    await yieldToBrowser();
+                    Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
+                    alasqlEngineDbKey = "";
 
-                let tableCount = 0;
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const dbName = sanitizeName(file.name);
-                    const dbTables = [];
+                    let tableCount = 0;
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        const dbName = sanitizeName(file.name);
+                        const dbTables = [];
 
-                    if (/\.csv$/i.test(file.name)) {
-                        const text = await file.text();
-                        const wbCsv = XLSX.read(text, { type: "string", cellDates: true });
-                        const date1904Csv = workbookUsesDate1904(wbCsv);
-                        const firstSheetName = wbCsv.SheetNames[0];
-                        if (firstSheetName) {
-                            const firstSheet = wbCsv.Sheets[firstSheetName];
-                            const rowsCsvRaw = XLSX.utils.sheet_to_json(firstSheet, {
-                                defval: "",
-                                raw: false,
-                                dateNF: "yyyy-mm-dd HH:mm:ss"
-                            });
-                            if (rowsCsvRaw.length) {
-                                const rowsCsv = rowsCsvRaw.map(function (row) {
-                                    return normalizeImportedRow(row, { date1904: date1904Csv });
+                        if (/\.csv$/i.test(file.name)) {
+                            setStatus("读取 CSV：" + file.name + " …", false);
+                            const text = await file.text();
+                            await yieldToBrowser();
+                            const wbCsv = XLSX.read(text, { type: "string", cellDates: true });
+                            const date1904Csv = workbookUsesDate1904(wbCsv);
+                            const firstSheetName = wbCsv.SheetNames[0];
+                            if (firstSheetName) {
+                                const firstSheet = wbCsv.Sheets[firstSheetName];
+                                const rowsCsvRaw = XLSX.utils.sheet_to_json(firstSheet, {
+                                    defval: "",
+                                    raw: false,
+                                    dateNF: "yyyy-mm-dd HH:mm:ss"
                                 });
-                                dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
+                                if (rowsCsvRaw.length) {
+                                    await yieldToBrowser();
+                                    const rowsCsv = await normalizeImportedRowsAsync(rowsCsvRaw, { date1904: date1904Csv });
+                                    dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
+                                    tableCount++;
+                                }
+                            }
+                        } else {
+                            setStatus("读取 Excel：" + file.name + " …", false);
+                            const buf = await file.arrayBuffer();
+                            await yieldToBrowser();
+                            const wb = XLSX.read(buf, { type: "array", cellDates: true });
+                            const date1904Book = workbookUsesDate1904(wb);
+                            for (let si = 0; si < wb.SheetNames.length; si++) {
+                                const sheetName = wb.SheetNames[si];
+                                const sheet = wb.Sheets[sheetName];
+                                const rowsRaw = XLSX.utils.sheet_to_json(sheet, {
+                                    defval: "",
+                                    raw: false,
+                                    dateNF: "yyyy-mm-dd HH:mm:ss"
+                                });
+                                if (!rowsRaw.length) continue;
+                                await yieldToBrowser();
+                                const rows = await normalizeImportedRowsAsync(rowsRaw, { date1904: date1904Book });
+                                const tableName = sanitizeName(sheetName);
+                                dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
                                 tableCount++;
                             }
                         }
-                    } else {
-                        const buf = await file.arrayBuffer();
-                        const wb = XLSX.read(buf, { type: "array", cellDates: true });
-                        const date1904Book = workbookUsesDate1904(wb);
-                        wb.SheetNames.forEach(function (sheetName) {
-                            const sheet = wb.Sheets[sheetName];
-                            const rowsRaw = XLSX.utils.sheet_to_json(sheet, {
-                                defval: "",
-                                raw: false,
-                                dateNF: "yyyy-mm-dd HH:mm:ss"
-                            });
-                            if (!rowsRaw.length) return;
-                            const rows = rowsRaw.map(function (row) {
-                                return normalizeImportedRow(row, { date1904: date1904Book });
-                            });
-                            const tableName = sanitizeName(sheetName);
-                            dbTables.push({ tableName: tableName, columns: Object.keys(rows[0]), rows: rows });
-                            tableCount++;
-                        });
+                        if (dbTables.length) {
+                            dbStore[dbName] = { dbName: dbName, tables: dbTables };
+                        }
                     }
-                    if (dbTables.length) {
-                        dbStore[dbName] = { dbName: dbName, tables: dbTables };
+
+                    await yieldToBrowser();
+                    refreshDbSelect();
+                    refreshTableSelect();
+                    rebuildEngineWithCurrentDb();
+                    refreshTableList();
+                    setStatus("加载完成：共 " + tableCount + " 张表。当前库：" + currentDb, false);
+
+                    const db = dbStore[currentDb];
+                    if (db && db.tables.length) {
+                        document.getElementById("sql-input").value =
+                            "SELECT * FROM [" + db.tables[0].tableName + "];";
                     }
-                }
-
-                refreshDbSelect();
-                refreshTableSelect();
-                rebuildEngineWithCurrentDb();
-                refreshTableList();
-                setStatus("加载完成：共 " + tableCount + " 张表。当前库：" + currentDb, false);
-
-                const db = dbStore[currentDb];
-                if (db && db.tables.length) {
-                    document.getElementById("sql-input").value =
-                        "SELECT * FROM [" + db.tables[0].tableName + "];";
+                } finally {
+                    stopBusy();
                 }
             }
 
-            function runSql() {
+            async function runSql() {
                 const rawSql = (document.getElementById("sql-input").value || "").trim();
                 const sqlMode = document.getElementById("sql-mode").value || "mysql";
                 if (!rawSql) {
@@ -2284,24 +2662,36 @@
                     setStatus("请先上传并选择 Excel 库。", true);
                     return;
                 }
+                var stopBusy = startDelayedBusy("正在执行 SQL…");
                 try {
-                    rebuildEngineWithCurrentDb();
+                    await yieldToBrowser();
+                    ensureAlasqlEngineReady();
+                    await yieldToBrowser();
                     const sql = normalizeSql(rawSql, sqlMode);
                     lastExecutedSql = sql;
+                    await yieldToBrowser();
                     const rows = alasql(sql);
+                    await yieldToBrowser();
                     if (Array.isArray(rows)) {
                         renderResult(rows);
-                        setStatus("执行成功：返回 " + rows.length + " 行。", false);
+                        saveSqlHistoryItem(rawSql);
+                        var hint = rows.length > 20000
+                            ? "（结果行数较多，已分页显示；需要全量数据请用 LIMIT/OFFSET 或导出）"
+                            : "";
+                        setStatus("执行成功：返回 " + rows.length + " 行。" + hint, false);
                     } else {
                         renderResult([]);
+                        saveSqlHistoryItem(rawSql);
                         setStatus("执行成功。", false);
                     }
                 } catch (error) {
                     setStatus("SQL 执行失败：" + (error && error.message ? error.message : "未知错误") + "（可尝试切换 SQL 语法类型）", true);
+                } finally {
+                    stopBusy();
                 }
             }
 
-            function quickQueryCurrentTable() {
+            async function quickQueryCurrentTable() {
                 const tableSelect = document.getElementById("table-select");
                 const tableName = tableSelect.value;
                 if (!tableName) {
@@ -2309,7 +2699,7 @@
                     return;
                 }
                 document.getElementById("sql-input").value = "SELECT * FROM [" + tableName + "];";
-                runSql();
+                await runSql();
             }
 
             function clearAll() {
@@ -2332,6 +2722,7 @@
                 document.getElementById("pager").classList.remove("visible");
                 Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
                 currentDb = "";
+                alasqlEngineDbKey = "";
                 try {
                     alasql("SHOW TABLES").forEach(function (t) {
                         alasql("DROP TABLE IF EXISTS [" + t.tableid + "]");
@@ -2351,20 +2742,30 @@
             document.getElementById("db-select").addEventListener("change", function (e) {
                 currentDb = e.target.value;
                 refreshTableSelect();
-                rebuildEngineWithCurrentDb();
+                alasqlEngineDbKey = "";
                 refreshTableList();
                 const db = dbStore[currentDb];
                 if (db && db.tables.length) {
                     document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "];";
                 }
             });
-            document.getElementById("run-sql-btn").addEventListener("click", runSql);
-            document.getElementById("quick-query-btn").addEventListener("click", quickQueryCurrentTable);
+            document.getElementById("run-sql-btn").addEventListener("click", function () {
+                void runSql();
+            });
+            document.getElementById("quick-query-btn").addEventListener("click", function () {
+                void quickQueryCurrentTable();
+            });
             document.getElementById("clear-all-btn").addEventListener("click", clearAll);
             document.getElementById("sql-help-btn").addEventListener("click", function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+                closeSqlHistoryPop();
                 openSqlHelp();
+            });
+            document.getElementById("sql-history-btn").addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSqlHistoryPop();
             });
             document.getElementById("toggle-left-btn").addEventListener("click", function () {
                 toggleLeftPanel();
@@ -2444,8 +2845,47 @@
             document.addEventListener("click", function () {
                 closeAllFilterPopup();
                 hideCopyMenu();
+                closeSqlHistoryPop();
+            });
+            document.getElementById("sql-history-pop").addEventListener("click", function (e) {
+                e.stopPropagation();
             });
             document.getElementById("result-wrap").addEventListener("click", function (e) {
+                const sortBtn = e.target.closest(".sort-btn");
+                if (sortBtn) {
+                    e.stopPropagation();
+                    const col = sortBtn.getAttribute("data-col");
+                    if (currentSort.col !== col) {
+                        currentSort = { col: col, dir: "asc" };
+                    } else if (currentSort.dir === "asc") {
+                        currentSort = { col: col, dir: "desc" };
+                    } else {
+                        currentSort = { col: "", dir: "" };
+                    }
+                    applyResultView();
+                    return;
+                }
+                const filterBtn = e.target.closest(".filter-btn");
+                if (filterBtn) {
+                    e.stopPropagation();
+                    toggleFilterPopup(filterBtn.getAttribute("data-col"), filterBtn);
+                    return;
+                }
+                const thNameHead = e.target.closest(".th-name");
+                if (thNameHead) {
+                    e.stopPropagation();
+                    showColumnSum(thNameHead.textContent || "");
+                    return;
+                }
+                const truncContent = e.target.closest(".cell-content.is-truncated");
+                if (truncContent && truncContent.getAttribute("data-truncated") === "1") {
+                    e.stopPropagation();
+                    const mask = document.getElementById("text-popup-mask");
+                    const box = document.getElementById("text-popup");
+                    box.textContent = truncContent.textContent || "";
+                    mask.classList.add("show");
+                    return;
+                }
                 const viewBtn = e.target.closest(".cell-view-btn");
                 if (viewBtn) {
                     e.stopPropagation();
@@ -2522,6 +2962,9 @@
             window.addEventListener("resize", function () {
                 const panel = document.querySelector(".filter-pop.show");
                 if (panel && activeFilterAnchor) adjustFilterPopupPosition(panel, activeFilterAnchor);
+                var hp = document.getElementById("sql-history-pop");
+                var hb = document.getElementById("sql-history-btn");
+                if (hp && hp.classList.contains("show") && hb) adjustSqlHistoryPopupPosition(hp, hb);
             });
         </script>
     </body>

@@ -179,6 +179,17 @@
                 background: #f8fbff;
                 font-size: 14px;
                 color: #324a76;
+                flex-wrap: wrap;
+            }
+            .dup-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .title-btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
             }
             .dup-list {
                 padding: 10px;
@@ -203,6 +214,7 @@
                 <button id="compare-btn" class="btn primary" type="button">开始比较</button>
                 <button id="swap-btn" class="btn" type="button">交换 A/B</button>
                 <button id="clear-btn" class="btn" type="button">清空</button>
+                <button id="copy-result-btn" class="btn" type="button">复制对比结果</button>
                 <span id="summary" class="hint">支持空格、换行、逗号分隔</span>
             </div>
 
@@ -242,7 +254,10 @@
             <div class="dup-card">
                 <div class="dup-head">
                     <span id="dup-title">重复元素</span>
-                    <button id="dup-close" class="title-btn" type="button">关闭</button>
+                    <div class="dup-actions">
+                        <button id="dedupe-current" class="title-btn" type="button" disabled>去掉重复（每项保留一次）</button>
+                        <button id="dup-close" class="title-btn" type="button">关闭</button>
+                    </div>
                 </div>
                 <div id="dup-list" class="dup-list"></div>
             </div>
@@ -290,6 +305,22 @@
             function parseInput(text) {
                 return Array.from(new Set(parseRawItems(text)));
             }
+
+            /** 按首次出现顺序去重（与 parseInput 的 Set 顺序一致，便于与比较逻辑一致） */
+            function uniquePreserveOrder(items) {
+                var seen = new Set();
+                var out = [];
+                items.forEach(function (item) {
+                    if (!seen.has(item)) {
+                        seen.add(item);
+                        out.push(item);
+                    }
+                });
+                return out;
+            }
+
+            var dupModalInputId = null;
+            var lastCompareResult = { aOnly: [], both: [], bOnly: [] };
 
             function getDuplicateItems(text) {
                 var counts = new Map();
@@ -340,6 +371,10 @@
                     return !aSet.has(item);
                 });
 
+                lastCompareResult.aOnly = aOnly;
+                lastCompareResult.both = both;
+                lastCompareResult.bOnly = bOnly;
+
                 document.getElementById("a-only-title").textContent = "A 独有 (" + aOnly.length + ")";
                 document.getElementById("both-title").textContent = "A/B 共有 (" + both.length + ")";
                 document.getElementById("b-only-title").textContent = "B 独有 (" + bOnly.length + ")";
@@ -358,10 +393,78 @@
                     " 条";
             }
 
+            function dedupeCurrentTextarea() {
+                if (!dupModalInputId) return;
+                var el = document.getElementById(dupModalInputId);
+                var unique = uniquePreserveOrder(parseRawItems(el.value));
+                el.value = unique.join("\n");
+                saveFormData();
+                compareSets();
+                document.getElementById("dup-modal").classList.remove("show");
+            }
+
+            function formatCompareResultForCopy() {
+                function block(title, arr) {
+                    var body = arr.length ? arr.join("\n") : "（无）";
+                    return title + "\n" + body;
+                }
+                return [
+                    block("【A 独有】", lastCompareResult.aOnly),
+                    block("【A/B 共有】", lastCompareResult.both),
+                    block("【B 独有】", lastCompareResult.bOnly)
+                ].join("\n\n");
+            }
+
+            function copyTextFallback(text) {
+                var ta = document.createElement("textarea");
+                ta.value = text;
+                ta.setAttribute("readonly", "");
+                ta.style.position = "fixed";
+                ta.style.left = "-9999px";
+                ta.style.top = "0";
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+            }
+
+            function copyCompareResult(btn) {
+                var text = formatCompareResultForCopy();
+                var label = btn ? btn.textContent : "复制对比结果";
+                var done = function () {
+                    if (btn) {
+                        btn.textContent = "已复制";
+                        setTimeout(function () {
+                            btn.textContent = label;
+                        }, 1600);
+                    }
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done).catch(function () {
+                        try {
+                            copyTextFallback(text);
+                            done();
+                        } catch (e) {
+                            alert("复制失败，请手动选中结果或检查浏览器权限。");
+                        }
+                    });
+                } else {
+                    try {
+                        copyTextFallback(text);
+                        done();
+                    } catch (e) {
+                        alert("复制失败，请手动选中结果。");
+                    }
+                }
+            }
+
             function showDuplicates(inputId, title) {
+                dupModalInputId = inputId;
                 var text = document.getElementById(inputId).value;
                 var duplicates = getDuplicateItems(text);
                 document.getElementById("dup-title").textContent = title + "（共 " + duplicates.length + " 项）";
+                var dedupeBtn = document.getElementById("dedupe-current");
+                dedupeBtn.disabled = duplicates.length === 0;
                 var list = document.getElementById("dup-list");
                 if (!duplicates.length) {
                     list.innerHTML = '<div class="empty">没有重复元素</div>';
@@ -376,6 +479,10 @@
             }
 
             document.getElementById("compare-btn").addEventListener("click", compareSets);
+            document.getElementById("copy-result-btn").addEventListener("click", function () {
+                copyCompareResult(this);
+            });
+            document.getElementById("dedupe-current").addEventListener("click", dedupeCurrentTextarea);
             document.getElementById("swap-btn").addEventListener("click", function () {
                 var a = document.getElementById("set-a");
                 var b = document.getElementById("set-b");
