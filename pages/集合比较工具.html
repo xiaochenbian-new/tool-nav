@@ -214,7 +214,6 @@
                 <button id="compare-btn" class="btn primary" type="button">开始比较</button>
                 <button id="swap-btn" class="btn" type="button">交换 A/B</button>
                 <button id="clear-btn" class="btn" type="button">清空</button>
-                <button id="copy-result-btn" class="btn" type="button">复制对比结果</button>
                 <span id="summary" class="hint">支持空格、换行、逗号分隔</span>
             </div>
 
@@ -237,15 +236,24 @@
 
             <div class="result-wrap">
                 <div class="panel">
-                    <div id="a-only-title" class="panel-title">A 独有 (0)</div>
+                    <div class="panel-title">
+                        <span id="a-only-title">A 独有 (0)</span>
+                        <button id="copy-a-only" class="title-btn" type="button">复制</button>
+                    </div>
                     <div id="a-only" class="result-list"></div>
                 </div>
                 <div class="panel">
-                    <div id="both-title" class="panel-title">A/B 共有 (0)</div>
+                    <div class="panel-title">
+                        <span id="both-title">A/B 共有 (0)</span>
+                        <button id="copy-both" class="title-btn" type="button">复制</button>
+                    </div>
                     <div id="both" class="result-list"></div>
                 </div>
                 <div class="panel">
-                    <div id="b-only-title" class="panel-title">B 独有 (0)</div>
+                    <div class="panel-title">
+                        <span id="b-only-title">B 独有 (0)</span>
+                        <button id="copy-b-only" class="title-btn" type="button">复制</button>
+                    </div>
                     <div id="b-only" class="result-list"></div>
                 </div>
             </div>
@@ -403,18 +411,6 @@
                 document.getElementById("dup-modal").classList.remove("show");
             }
 
-            function formatCompareResultForCopy() {
-                function block(title, arr) {
-                    var body = arr.length ? arr.join("\n") : "（无）";
-                    return title + "\n" + body;
-                }
-                return [
-                    block("【A 独有】", lastCompareResult.aOnly),
-                    block("【A/B 共有】", lastCompareResult.both),
-                    block("【B 独有】", lastCompareResult.bOnly)
-                ].join("\n\n");
-            }
-
             function copyTextFallback(text) {
                 var ta = document.createElement("textarea");
                 ta.value = text;
@@ -428,9 +424,10 @@
                 document.body.removeChild(ta);
             }
 
-            function copyCompareResult(btn) {
-                var text = formatCompareResultForCopy();
-                var label = btn ? btn.textContent : "复制对比结果";
+            function copyResultColumn(btn, key) {
+                var arr = lastCompareResult[key] || [];
+                var text = arr.join("\n");
+                var label = btn ? btn.textContent : "复制";
                 var done = function () {
                     if (btn) {
                         btn.textContent = "已复制";
@@ -479,8 +476,14 @@
             }
 
             document.getElementById("compare-btn").addEventListener("click", compareSets);
-            document.getElementById("copy-result-btn").addEventListener("click", function () {
-                copyCompareResult(this);
+            document.getElementById("copy-a-only").addEventListener("click", function () {
+                copyResultColumn(this, "aOnly");
+            });
+            document.getElementById("copy-both").addEventListener("click", function () {
+                copyResultColumn(this, "both");
+            });
+            document.getElementById("copy-b-only").addEventListener("click", function () {
+                copyResultColumn(this, "bOnly");
             });
             document.getElementById("dedupe-current").addEventListener("click", dedupeCurrentTextarea);
             document.getElementById("swap-btn").addEventListener("click", function () {

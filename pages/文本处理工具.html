@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>文本处理工具</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #e04040;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            html, body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+                min-height: 0;
+            }
+            /* 与 Ctool 一致：主编辑区占满剩余高度，底部选项 margin-top:5px */
+            .editor-wrap {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+            }
+            .editor-head {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 8px 10px;
+                font-size: 12px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+            }
+            .editor-head .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            #main-input {
+                flex: 1;
+                width: 100%;
+                min-height: 160px;
+                border: none;
+                outline: none;
+                resize: none;
+                padding: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+                font-family: Consolas, "Courier New", monospace;
+                color: var(--text);
+                background: #fff;
+            }
+            #main-input::placeholder { color: #a8b4cc; }
+            #main-input:focus { box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25); }
+            .ctool-page-option {
+                margin-top: 5px;
+                flex: 0 0 auto;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 5px;
+            }
+            .align-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                justify-content: center;
+                align-items: center;
+            }
+            select.dd {
+                height: 1.75rem;
+                min-width: 6.5rem;
+                max-width: 11rem;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                background: #fff;
+                color: var(--text);
+                cursor: pointer;
+            }
+            select.dd:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+                outline: none;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 12px;
+                font-size: 12px;
+                cursor: pointer;
+                height: 1.75rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .btn:hover { border-color: var(--primary); color: var(--primary); }
+            .btn.dotted { border-style: dashed; }
+            .btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .btn.primary:hover { filter: brightness(1.05); color: #fff; }
+            /* 弹窗：仅 [open] 时布局。勿对 dialog 写死 display，否则会覆盖浏览器默认的 display:none，导致未打开也可见 */
+            dialog.dlg-root[open] {
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                max-width: 100vw;
+                height: 100%;
+                max-height: 100vh;
+                margin: 0;
+                padding: 16px;
+                border: none;
+                background: rgba(31, 42, 68, 0.4);
+                box-sizing: border-box;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: auto;
+            }
+            dialog.dlg-root[open]::backdrop {
+                background: transparent;
+            }
+            .dlg-panel {
+                position: relative;
+                width: 100%;
+                max-width: 620px;
+                max-height: min(90vh, 100% - 32px);
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .dlg-panel .dlg-h {
+                flex-shrink: 0;
+                padding: 10px 12px;
+                font-size: 14px;
+                font-weight: 600;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                color: var(--text);
+            }
+            .dlg-panel .dlg-b { flex: 1; min-height: 0; padding: 12px; overflow: auto; }
+            .dlg-panel .dlg-f {
+                flex-shrink: 0;
+                padding: 10px 12px;
+                border-top: 1px solid #e4edff;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: flex-end;
+                background: #fafcff;
+            }
+            .dlg-grid-2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            @media (max-width: 520px) { .dlg-grid-2 { grid-template-columns: 1fr; } }
+            .field-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+            textarea.modal-ta {
+                width: 100%;
+                min-height: 160px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 12px;
+                font-family: Consolas, "Courier New", monospace;
+                resize: vertical;
+            }
+            textarea.modal-ta:focus {
+                border-color: var(--primary);
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.12);
+            }
+            .row-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+            .escape-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 6px 10px;
+                font-size: 12px;
+            }
+            .escape-grid label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+            .stat-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+            .stat-tabs button {
+                border: 1px solid #cfdcf7;
+                background: #fff;
+                padding: 4px 12px;
+                font-size: 12px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .stat-tabs button.active {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #f0f5ff;
+            }
+            .stat-panel { display: none; font-size: 12px; }
+            .stat-panel.active { display: block; }
+            table.stat-table { width: 100%; border-collapse: collapse; }
+            table.stat-table th, table.stat-table td {
+                border: 1px solid #e4edff;
+                padding: 6px 8px;
+                text-align: left;
+            }
+            table.stat-table th { background: #f8fbff; color: #324a76; }
+            .explain-list { line-height: 1.6; color: var(--text); }
+            .explain-list dt { font-weight: 600; margin-top: 8px; color: #324a76; }
+            .explain-list dd { margin-left: 0; color: var(--muted); }
+            #toast {
+                position: fixed;
+                bottom: 28px;
+                left: 50%;
+                transform: translateX(-50%) translateY(12px);
+                padding: 8px 18px;
+                background: rgba(31, 42, 68, 0.92);
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            #toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="editor-wrap">
+                <div class="editor-head">
+                    <span>文本内容</span>
+                    <div class="actions">
+                        <button type="button" class="btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
+                        <button type="button" class="btn" id="btn-copy">复制</button>
+                        <button type="button" class="btn" id="btn-clear">清空</button>
+                    </div>
+                </div>
+                <textarea id="main-input" placeholder="请在此输入或粘贴文本"></textarea>
+            </div>
+
+            <div class="ctool-page-option">
+                <div class="align-row">
+                    <select id="dd-case" class="dd" title="大小写转换">
+                        <option value="">大小写转换</option>
+                        <option value="upper">全部大写</option>
+                        <option value="lower">全部小写</option>
+                        <option value="upperLineStart">行首大写</option>
+                        <option value="lowerLineStart">行首小写</option>
+                        <option value="upperStart">词首大写</option>
+                        <option value="lowerStart">词首小写</option>
+                    </select>
+                    <select id="dd-punct" class="dd" title="标点符号">
+                        <option value="">标点符号</option>
+                        <option value="zh">英文标点 → 中文标点</option>
+                        <option value="en">中文标点 → 英文标点</option>
+                    </select>
+                    <select id="dd-zh" class="dd" title="简繁转换（需联网）">
+                        <option value="">简繁转换</option>
+                        <option value="simplified">简体 → 繁体</option>
+                        <option value="traditional">繁体 → 简体</option>
+                    </select>
+                    <button type="button" class="btn" id="btn-replace">替换</button>
+                    <button type="button" class="btn" id="btn-escape">转义</button>
+                    <button type="button" class="btn" id="btn-dedupe">去除重复行</button>
+                    <select id="dd-rename" class="dd" title="命名规范（英文标识）">
+                        <option value="">命名规范</option>
+                        <option value="kebabCase">kebab-case</option>
+                        <option value="upperSnakeCase">SNAKE_CASE</option>
+                        <option value="pascalCase">CamelCase</option>
+                        <option value="camelCase">camelCase</option>
+                        <option value="lowerSnakeCase">snake_case</option>
+                    </select>
+                    <select id="dd-line" class="dd" title="行号">
+                        <option value="">行号</option>
+                        <option value="addLineIndex">添加行号</option>
+                        <option value="removeLineIndex">移除行号</option>
+                    </select>
+                    <select id="dd-sort" class="dd" title="行顺序调整">
+                        <option value="">行顺序调整</option>
+                        <option value="line_asc">升序排序</option>
+                        <option value="line_desc">降序排序</option>
+                        <option value="reverse_line">反转行</option>
+                        <option value="reverse_line_string">每行反转</option>
+                        <option value="reverse_all">全文反转</option>
+                    </select>
+                    <select id="dd-filter" class="dd" title="过滤">
+                        <option value="">过滤</option>
+                        <option value="lineTrim">过滤行首尾不可见字符(trim)</option>
+                        <option value="filterBlankLine">过滤多余空行</option>
+                        <option value="filterAllBr">过滤换行符</option>
+                    </select>
+                    <select id="dd-affix" class="dd" title="行首行尾">
+                        <option value="">行首行尾</option>
+                        <option value="prefix">行首追加字符串…</option>
+                        <option value="suffix">行尾追加字符串…</option>
+                        <option value="sqlInList">SQL 集合元素</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 替换（与 Ctool Modal 一致：双栏 + 常用正则 + 正则开关） -->
+        <dialog id="dlg-replace" class="dlg-root">
+            <div class="dlg-panel">
+                <div class="dlg-h">替换</div>
+                <div class="dlg-b">
+                    <div class="dlg-grid-2">
+                        <div>
+                            <div class="field-label">查找</div>
+                            <textarea id="rep-search" class="modal-ta" placeholder="每行一项与替换项按行对应（非正则时）"></textarea>
+                        </div>
+                        <div>
+                            <div class="field-label">替换为</div>
+                            <textarea id="rep-replace" class="modal-ta" placeholder="每行一项与查找按行对应（非正则时）"></textarea>
+                        </div>
+                    </div>
+                    <div class="row-tools">
+                        <select id="rep-regex-preset" class="dd" style="max-width:14rem;">
+                            <option value="">常用正则</option>
+                        </select>
+                        <label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+                            <input type="checkbox" id="rep-use-regex" /> 使用正则表达式（全局 g）
+                        </label>
+                    </div>
+                </div>
+                <div class="dlg-f">
+                    <button type="button" class="btn" data-close="dlg-replace">取消</button>
+                    <button type="button" class="btn primary" id="rep-ok">确定</button>
+                </div>
+            </div>
+        </dialog>
+
+        <!-- 统计（与 Ctool 两 Tab 表格一致） -->
+        <dialog id="dlg-stat" class="dlg-root">
+            <div class="dlg-panel">
+                <div class="dlg-h">统计</div>
+                <div class="dlg-b">
+                    <div class="stat-tabs">
+                        <button type="button" class="active" data-stat-tab="a">统计项</button>
+                        <button type="button" data-stat-tab="b">说明</button>
+                    </div>
+                    <div id="stat-panel-a" class="stat-panel active"></div>
+                    <div id="stat-panel-b" class="stat-panel">
+                        <dl class="explain-list">
+                            <dt>UTF-8 字节数</dt>
+                            <dd>按 UTF-8 编码计算的字节长度。</dd>
+                            <dt>GBK 估算宽度</dt>
+                            <dd>ASCII 计 1，其余字符计 2，作传统 GBK 环境参考。</dd>
+                            <dt>字符数（不含换行）</dt>
+                            <dd>去掉换行符后的字符个数。</dd>
+                            <dt>字数</dt>
+                            <dd>中文、英文词、标点、数字等启发式合计。</dd>
+                            <dt>数字词</dt>
+                            <dd>匹配整段数字单词（\b\d+\b）的次数。</dd>
+                            <dt>空行</dt>
+                            <dd>本工具「过滤多余空行」可去除仅含空白字符的行。</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="dlg-f">
+                    <button type="button" class="btn primary" data-close="dlg-stat">关闭</button>
+                </div>
+            </div>
+        </dialog>
+
+        <!-- 转义（与 Ctool：勾选 + 两个按钮） -->
+        <dialog id="dlg-escape" class="dlg-root">
+            <div class="dlg-panel">
+                <div class="dlg-h">转义 / 反转义</div>
+                <div class="dlg-b">
+                    <div id="escape-box" class="escape-grid"></div>
+                </div>
+                <div class="dlg-f">
+                    <button type="button" class="btn" data-close="dlg-escape">取消</button>
+                    <button type="button" class="btn primary" id="esc-forward">解析转义序列</button>
+                    <button type="button" class="btn primary" id="esc-reverse">生成转义序列</button>
+                </div>
+            </div>
+        </dialog>
+
+        <!-- 行首 / 行尾追加指定字符串 -->
+        <dialog id="dlg-affix" class="dlg-root">
+            <div class="dlg-panel">
+                <div class="dlg-h" id="affix-title">追加字符串</div>
+                <div class="dlg-b">
+                    <p class="field-label" id="affix-hint">在每行开头插入下列内容（可为空）</p>
+                    <textarea id="affix-text" class="modal-ta" style="min-height:88px;" placeholder="输入要追加的字符或字符串，支持多行（将按一行内容处理）"></textarea>
+                </div>
+                <div class="dlg-f">
+                    <button type="button" class="btn" data-close="dlg-affix">取消</button>
+                    <button type="button" class="btn primary" id="affix-ok">确定</button>
+                </div>
+            </div>
+        </dialog>
+
+        <div id="toast" role="status" aria-live="polite"></div>
+
+        <script>
+            (function () {
+                var inputEl = document.getElementById("main-input");
+
+                var spaceCaseToPascalCaseSpace = "spaceCaseToPascalCaseSpace";
+                var pascalCaseSpaceToKebabCase = "pascalCaseSpaceToKebabCase";
+                var kebabCaseToUpperSnakeCase = "kebabCaseToUpperSnakeCase";
+                var upperSnakeCaseToPascalCase = "upperSnakeCaseToPascalCase";
+                var pascalCaseToCamelCase = "pascalCaseToCamelCase";
+                var camelCaseToLowerSnakeCase = "camelCaseToLowerSnakeCase";
+                var lowerSnakeCaseToSpaceCase = "lowerSnakeCaseToSpaceCase";
+
+                function isUpperCase(str, first) {
+                    if (!first) return str.toUpperCase() === str;
+                    return str.substring(0, 1).toUpperCase() === str.substring(0, 1)
+                        && (str.length === 1 || str.substring(1, 2).toLowerCase() === str.substring(1, 2));
+                }
+                function isLowerCase(str, first) {
+                    if (!first) return str.toLowerCase() === str;
+                    return str.substring(0, 1).toLowerCase() === str.substring(0, 1);
+                }
+                function firstToUpper(str) {
+                    return str !== "" ? str.replace(str[0], str[0].toUpperCase()) : "";
+                }
+                function firstToLower(str) {
+                    return str !== "" ? str.replace(str[0], str[0].toLowerCase()) : "";
+                }
+                function getMethodName(str) {
+                    str = str.trim();
+                    if (isLowerCase(str) && str.indexOf("_") >= 0) return lowerSnakeCaseToSpaceCase;
+                    if (isLowerCase(str) && str.indexOf("-") >= 0) return kebabCaseToUpperSnakeCase;
+                    if (isLowerCase(str) && str.indexOf(" ") >= 0) return spaceCaseToPascalCaseSpace;
+                    if (isUpperCase(str, true) && str.indexOf(" ") >= 0) return pascalCaseSpaceToKebabCase;
+                    if (isUpperCase(str) && str.indexOf("_") >= 0) return upperSnakeCaseToPascalCase;
+                    if (isUpperCase(str, true) && str.indexOf("_") < 0 && str.indexOf(" ") < 0) return pascalCaseToCamelCase;
+                    return camelCaseToLowerSnakeCase;
+                }
+                function Convent(str) {
+                    this.str = str.trim();
+                    this.result = {};
+                    this._convert();
+                }
+                Convent.prototype.spaceCaseToPascalCaseSpace = function () {
+                    return this.str.split(" ").map(function (s) { return firstToUpper(s); }).join(" ").trim();
+                };
+                Convent.prototype.pascalCaseSpaceToKebabCase = function () {
+                    return this.str.replace(/ /g, "-").toLowerCase().trim();
+                };
+                Convent.prototype.kebabCaseToUpperSnakeCase = function () {
+                    return this.str.toUpperCase().replace(/-/g, "_").trim();
+                };
+                Convent.prototype.upperSnakeCaseToPascalCase = function () {
+                    return this.str.split("_").map(function (s) { return firstToUpper(s.toLowerCase()); }).join("").trim();
+                };
+                Convent.prototype.pascalCaseToCamelCase = function () {
+                    return firstToLower(this.str).trim();
+                };
+                Convent.prototype.camelCaseToLowerSnakeCase = function () {
+                    var str = this.str;
+                    if ((isUpperCase(str) || isLowerCase(str)) && str.indexOf("_") < 0 && str.indexOf(" ") < 0) {
+                        return str.toLowerCase();
+                    }
+                    var temp = "";
+                    for (var i = 0; i < this.str.length; i++) {
+                        if (isUpperCase(this.str.substring(i, i + 1))) temp += "_";
+                        temp += this.str.substring(i, i + 1).toLowerCase();
+                    }
+                    return temp.trim();
+                };
+                Convent.prototype.lowerSnakeCaseToSpaceCase = function () {
+                    return this.str.replace(/_/g, " ").trim();
+                };
+                Convent.prototype._convert = function () {
+                    var methods = [
+                        spaceCaseToPascalCaseSpace, pascalCaseSpaceToKebabCase, kebabCaseToUpperSnakeCase,
+                        upperSnakeCaseToPascalCase, pascalCaseToCamelCase, camelCaseToLowerSnakeCase, lowerSnakeCaseToSpaceCase
+                    ];
+                    var current = methods.indexOf(getMethodName(this.str));
+                    var executeMethods = current === 0 ? methods.slice()
+                        : methods.slice(current).concat(methods.slice(0, current));
+                    var str = this.str;
+                    for (var i = 0; i < executeMethods.length; i++) {
+                        this.str = str.trim();
+                        str = this[executeMethods[i]]();
+                        this.result[executeMethods[i]] = str;
+                    }
+                };
+                Convent.prototype.spaceCase = function () { return this.result[lowerSnakeCaseToSpaceCase] || ""; };
+                Convent.prototype.pascalCaseSpace = function () { return this.result[spaceCaseToPascalCaseSpace] || ""; };
+                Convent.prototype.kebabCase = function () { return this.result[pascalCaseSpaceToKebabCase] || ""; };
+                Convent.prototype.upperSnakeCase = function () { return this.result[kebabCaseToUpperSnakeCase] || ""; };
+                Convent.prototype.pascalCase = function () { return this.result[upperSnakeCaseToPascalCase] || ""; };
+                Convent.prototype.camelCase = function () { return this.result[pascalCaseToCamelCase] || ""; };
+                Convent.prototype.lowerSnakeCase = function () { return this.result[camelCaseToLowerSnakeCase] || ""; };
+
+                function nameConvent(str, type) {
+                    return new Convent(str)[type]();
+                }
+
+                var ESCAPE_CHARS = {
+                    backslash: { string: "\\\\", char: "\\" },
+                    single_quote: { string: "\\'", char: "'" },
+                    double_quote: { string: "\\\"", char: "\"" },
+                    new_line: { string: "\\n", char: "\n" },
+                    carriage_return: { string: "\\r", char: "\r" },
+                    tab: { string: "\\t", char: "\t" },
+                    vertical_tab: { string: "\\v", char: "\v" },
+                    backspace: { string: "\\b", char: "\b" },
+                    form_feed: { string: "\\f", char: "\f" }
+                };
+
+                var ESCAPE_LABELS = {
+                    backslash: "反斜杠",
+                    single_quote: "单引号",
+                    double_quote: "双引号",
+                    new_line: "换行",
+                    carriage_return: "回车",
+                    tab: "制表符",
+                    vertical_tab: "垂直制表",
+                    backspace: "退格",
+                    form_feed: "换页"
+                };
+
+                function regExpQuote(str) {
+                    return String(str).replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
+                }
+
+                function getGbkStrLength(str) {
+                    var realLength = 0;
+                    for (var i = 0; i < str.length; i++) {
+                        var c = str.charCodeAt(i);
+                        realLength += c >= 0 && c <= 128 ? 1 : 2;
+                    }
+                    return realLength;
+                }
+
+                function utf8ByteLength(text) {
+                    return new TextEncoder().encode(text).length;
+                }
+
+                function lineUniq(lines) {
+                    var seen = Object.create(null);
+                    var out = [];
+                    lines.forEach(function (l) {
+                        if (!Object.prototype.hasOwnProperty.call(seen, l)) {
+                            seen[l] = true;
+                            out.push(l);
+                        }
+                    });
+                    return out;
+                }
+
+                function orderByLinesAsc(parts) {
+                    return parts.slice().sort(function (a, b) {
+                        if (a < b) return -1;
+                        if (a > b) return 1;
+                        return 0;
+                    });
+                }
+
+                function createTextApi(text) {
+                    return {
+                        upper: function () { return text.toUpperCase(); },
+                        lower: function () { return text.toLowerCase(); },
+                        upperLineStart: function () {
+                            return text.split(/\r?\n/).map(function (str) {
+                                if (str.length < 1) return "";
+                                return str[0].toUpperCase() + str.substr(1);
+                            }).join("\n");
+                        },
+                        lowerLineStart: function () {
+                            return text.split(/\r?\n/).map(function (str) {
+                                if (str.length < 1) return "";
+                                return str[0].toLowerCase() + str.substr(1);
+                            }).join("\n");
+                        },
+                        upperStart: function () {
+                            return text.replace(/\b\w/g, function (s) { return s.toUpperCase(); });
+                        },
+                        lowerStart: function () {
+                            return text.replace(/\b\w/g, function (s) { return s.toLowerCase(); });
+                        },
+                        replacePunctuation: function (opt) {
+                            var type = (opt && opt.type) || "zh";
+                            var zh = ["“", "”", "‘", "’", "。", "，", "；", "：", "？", "！", "……", "—", "～", "（", "）", "《", "》"];
+                            var en = ["\"", "\"", "'", "'", ".", ",", ";", ":", "?", "!", "…", "-", "~", "(", ")", "<", ">"];
+                            var t = text;
+                            for (var i = 0; i < zh.length; i++) {
+                                var from = type === "zh" ? en[i] : zh[i];
+                                var to = type === "zh" ? zh[i] : en[i];
+                                t = t.replace(new RegExp(regExpQuote(from), "g"), to);
+                            }
+                            return t;
+                        },
+                        replace: function (opt) {
+                            var search = (opt && opt.search) || [];
+                            var replace = (opt && opt.replace) || [];
+                            var t = text;
+                            for (var i = 0; i < search.length; i++) {
+                                if (search[i]) {
+                                    var rep = i in replace ? replace[i] : "";
+                                    t = t.replace(new RegExp(regExpQuote(search[i]), "g"), rep);
+                                }
+                            }
+                            return t;
+                        },
+                        regularReplace: function (opt) {
+                            var search = (opt && opt.search) || "";
+                            var rep = (opt && opt.replace) || "";
+                            if (!search) return text;
+                            return text.replace(new RegExp(search, "g"), rep);
+                        },
+                        lineRemoveRepeat: function () {
+                            return lineUniq(text.split("\n")).join("\n");
+                        },
+                        removeLineIndex: function () {
+                            return text.replace(/^\s*\d+\.?/gm, "");
+                        },
+                        addLineIndex: function () {
+                            return text.split("\n").map(function (line, index) {
+                                return (index + 1) + ". " + line;
+                            }).join("\n");
+                        },
+                        sort: function (opt) {
+                            var type = (opt && opt.type) || "";
+                            var parts = text.split(/\r?\n/);
+                            switch (type) {
+                                case "reverse_line":
+                                    return parts.slice().reverse().join("\n");
+                                case "reverse_line_string":
+                                    return parts.map(function (line) {
+                                        return line.split("").reverse().join("");
+                                    }).join("\n");
+                                case "reverse_all":
+                                    return text.split("").reverse().join("");
+                                case "line_asc":
+                                    return orderByLinesAsc(parts).join("\n");
+                                case "line_desc":
+                                    return orderByLinesAsc(parts).reverse().join("\n");
+                                default:
+                                    return text;
+                            }
+                        },
+                        lineTrim: function () {
+                            return text.split(/\r?\n/).map(function (item) { return item.trim(); }).join("\n");
+                        },
+                        filterBlankLine: function () {
+                            return text.split(/\r?\n/).filter(function (item) { return item.trim() !== ""; }).join("\n");
+                        },
+                        filterAllBr: function () {
+                            return text.replace(/\r?\n|\r/g, "");
+                        },
+                        addLinePrefix: function (opt) {
+                            var p = opt && opt.prefix != null ? opt.prefix : "";
+                            return text.split(/\r?\n/).map(function (line) {
+                                return p + line;
+                            }).join("\n");
+                        },
+                        addLineSuffix: function (opt) {
+                            var s = opt && opt.suffix != null ? opt.suffix : "";
+                            return text.split(/\r?\n/).map(function (line) {
+                                return line + s;
+                            }).join("\n");
+                        },
+                        /** 每行包成 'x', 最后一行 'x'（无逗号）；行内单引号按 SQL 加倍 */
+                        sqlInListElements: function () {
+                            var lines = text.split(/\r?\n/);
+                            var n = lines.length;
+                            return lines.map(function (line, i) {
+                                var esc = String(line).replace(/'/g, "''");
+                                var isLast = i === n - 1;
+                                return "'" + esc + (isLast ? "'" : "',");
+                            }).join("\n");
+                        },
+                        escape: function (opt) {
+                            var lists = (opt && opt.lists) || [];
+                            var t = text;
+                            for (var i = 0; i < lists.length; i++) {
+                                var item = lists[i];
+                                if (ESCAPE_CHARS[item]) {
+                                    var pair = ESCAPE_CHARS[item];
+                                    t = t.split(pair.string).join(pair.char);
+                                }
+                            }
+                            return t;
+                        },
+                        unescape: function (opt) {
+                            var lists = (opt && opt.lists) || [];
+                            var t = text;
+                            for (var i = 0; i < lists.length; i++) {
+                                var item = lists[i];
+                                if (ESCAPE_CHARS[item]) {
+                                    var pair = ESCAPE_CHARS[item];
+                                    t = t.split(pair.char).join(pair.string);
+                                }
+                            }
+                            return t;
+                        },
+                        rename: function (opt) {
+                            var type = (opt && opt.type) || "lowerSnakeCase";
+                            return text.replace(/\b[\w\-_]+\b/g, function (str) {
+                                return nameConvent(str, type);
+                            });
+                        },
+                        stat: function () {
+                            var content = text.replace(/\r?\n/g, "\n");
+                            var zh_word = (content.match(/[\u4e00-\u9fa5]/g) || []).length;
+                            var zh_punctuation = (content.match(/[\u3002\uff1f\uff01\uff0c\u3001\uff1b\uff1a\u201c\u201d\u2018\u2019\uff08\uff09\u300a\u300b\u3008\u3009\u3010\u3011\u300e\u300f\u300c\u300d\ufe43\ufe44\u3014\u3015\u2026\u2014\uff5e\ufe4f\uffe5]/g) || []).length;
+                            var int_string = (content.match(/[0-9]/g) || []).length;
+                            var en_string = (content.match(/[A-Za-z]/g) || []).length;
+                            var int_word = (content.match(/\b\d+\b/g) || []).length;
+                            var en_word = (content.match(/\b\w+\b/g) || []).length - int_word;
+                            var en_punctuation = (content.match(/[~`!@#$%^&*()\-_+=|\\[\]{};:"',<.>/?]/g) || []).length;
+                            return {
+                                byte_utf8_length: utf8ByteLength(text),
+                                byte_gbk_length: getGbkStrLength(text),
+                                string_length: content.replace(/\n/g, "").length,
+                                word_length: zh_word + en_word + zh_punctuation + int_word + en_punctuation,
+                                zh_word: zh_word,
+                                zh_punctuation: zh_punctuation,
+                                en_string: en_string,
+                                en_word: en_word,
+                                en_punctuation: en_punctuation,
+                                int_string: int_string,
+                                int_word: int_word,
+                                line_length: text ? text.split("\n").length : 0
+                            };
+                        }
+                    };
+                }
+
+                function handle(method, opt) {
+                    var t = inputEl.value;
+                    if (t.length < 1) return;
+                    var api = createTextApi(t);
+                    if (typeof api[method] !== "function") return;
+                    inputEl.value = api[method](opt);
+                }
+
+                var zhLibPromise = null;
+                function loadZhTran() {
+                    if (!zhLibPromise) {
+                        zhLibPromise = (async function () {
+                            var mod = await import("https://esm.sh/chinese-simple2traditional@2.2.2");
+                            try {
+                                var enh = await import("https://esm.sh/chinese-simple2traditional@2.2.2/enhance");
+                                if (typeof enh.setupEnhance === "function") enh.setupEnhance();
+                            } catch (e) {}
+                            return mod;
+                        })();
+                    }
+                    return zhLibPromise;
+                }
+
+                async function handleZhTran(type) {
+                    var t = inputEl.value;
+                    if (t.length < 1) return;
+                    try {
+                        var mod = await loadZhTran();
+                        var out = type === "simplified" ? mod.toTraditional(t) : mod.toSimplified(t);
+                        inputEl.value = out;
+                    } catch (e) {
+                        alert((e && e.message) || String(e));
+                    }
+                }
+
+                function showToast(msg) {
+                    var t = document.getElementById("toast");
+                    t.textContent = msg;
+                    t.classList.add("show");
+                    clearTimeout(t._hideTimer);
+                    t._hideTimer = setTimeout(function () {
+                        t.classList.remove("show");
+                    }, 2000);
+                }
+
+                function refreshStatPreviewBtn() {
+                    var t = inputEl.value;
+                    var btn = document.getElementById("btn-stat-preview");
+                    if (!t.length) {
+                        btn.textContent = "字数 0，UTF-8 0 字节，GBK估 0 …";
+                        return;
+                    }
+                    var s = createTextApi(t).stat();
+                    btn.textContent = "字数 " + s.word_length + "，UTF-8 " + s.byte_utf8_length + " 字节，GBK估 " + s.byte_gbk_length + " …";
+                }
+
+                function renderStatTable() {
+                    var t = inputEl.value;
+                    var s = createTextApi(t || "").stat();
+                    var h = "<table class=\"stat-table\"><tbody>";
+                    h += "<tr><th>项目</th><th>值</th><th>项目</th><th>值</th></tr>";
+                    h += "<tr><td>字符数（不含换行）</td><td>" + s.string_length + "</td><td>字节 UTF-8 / GBK估</td><td>" + s.byte_utf8_length + " / " + s.byte_gbk_length + "</td></tr>";
+                    h += "<tr><td>字数</td><td>" + s.word_length + "</td><td>行数</td><td>" + s.line_length + "</td></tr>";
+                    h += "<tr><td>中文汉字 / 中文标点</td><td>" + s.zh_word + " / " + s.zh_punctuation + "</td><td>英文（字母/词/标点）</td><td>" + s.en_string + " / " + s.en_word + " / " + s.en_punctuation + "</td></tr>";
+                    h += "<tr><td>数字字符 / 数字词</td><td>" + s.int_string + " / " + s.int_word + "</td><td>—</td><td>—</td></tr>";
+                    h += "</tbody></table>";
+                    document.getElementById("stat-panel-a").innerHTML = h;
+                }
+
+                function wireSelectReset(el, fn) {
+                    el.addEventListener("change", function () {
+                        var v = this.value;
+                        if (!v) return;
+                        fn(v);
+                        this.selectedIndex = 0;
+                    });
+                }
+
+                wireSelectReset(document.getElementById("dd-case"), function (v) { handle(v); });
+                wireSelectReset(document.getElementById("dd-punct"), function (v) { handle("replacePunctuation", { type: v }); });
+                wireSelectReset(document.getElementById("dd-zh"), function (v) { handleZhTran(v); });
+                wireSelectReset(document.getElementById("dd-rename"), function (v) { handle("rename", { type: v }); });
+                wireSelectReset(document.getElementById("dd-line"), function (v) { handle(v); });
+                wireSelectReset(document.getElementById("dd-sort"), function (v) { handle("sort", { type: v }); });
+                wireSelectReset(document.getElementById("dd-filter"), function (v) { handle(v); });
+
+                (function () {
+                    var ddAffix = document.getElementById("dd-affix");
+                    var dlgAffix = document.getElementById("dlg-affix");
+                    ddAffix.addEventListener("change", function () {
+                        var v = this.value;
+                        if (!v) return;
+                        if (v === "sqlInList") {
+                            handle("sqlInListElements");
+                            refreshStatPreviewBtn();
+                            this.selectedIndex = 0;
+                            return;
+                        }
+                        dlgAffix.dataset.mode = v;
+                        document.getElementById("affix-text").value = "";
+                        if (v === "prefix") {
+                            document.getElementById("affix-title").textContent = "行首追加字符串";
+                            document.getElementById("affix-hint").textContent = "在每行开头插入下列内容（可为空）";
+                        } else if (v === "suffix") {
+                            document.getElementById("affix-title").textContent = "行尾追加字符串";
+                            document.getElementById("affix-hint").textContent = "在每行末尾插入下列内容（可为空）";
+                        }
+                        dlgAffix.showModal();
+                        this.selectedIndex = 0;
+                    });
+                    document.getElementById("affix-ok").addEventListener("click", function () {
+                        var mode = dlgAffix.dataset.mode;
+                        var t = inputEl.value;
+                        if (t.length < 1) {
+                            dlgAffix.close();
+                            return;
+                        }
+                        var str = document.getElementById("affix-text").value;
+                        var api = createTextApi(t);
+                        if (mode === "prefix") {
+                            inputEl.value = api.addLinePrefix({ prefix: str });
+                        } else if (mode === "suffix") {
+                            inputEl.value = api.addLineSuffix({ suffix: str });
+                        }
+                        dlgAffix.close();
+                        refreshStatPreviewBtn();
+                    });
+                })();
+
+                document.getElementById("btn-dedupe").addEventListener("click", function () {
+                    handle("lineRemoveRepeat");
+                });
+
+                document.getElementById("btn-replace").addEventListener("click", function () {
+                    document.getElementById("dlg-replace").showModal();
+                });
+                document.getElementById("btn-escape").addEventListener("click", function () {
+                    document.getElementById("dlg-escape").showModal();
+                });
+
+                document.querySelectorAll("[data-close]").forEach(function (b) {
+                    b.addEventListener("click", function () {
+                        document.getElementById(this.getAttribute("data-close")).close();
+                    });
+                });
+
+                ["dlg-replace", "dlg-stat", "dlg-escape", "dlg-affix"].forEach(function (id) {
+                    var dlg = document.getElementById(id);
+                    dlg.addEventListener("click", function (e) {
+                        if (e.target === dlg) dlg.close();
+                    });
+                });
+
+                var REGEX_ZH = [
+                    { value: "[\\u4e00-\\u9fa5]", label: "中文字符" },
+                    { value: "[^\\x00-\\xff]", label: "双字节字符(含汉字)" },
+                    { value: "\\n\\s*\\r", label: "空白行" },
+                    { value: "[\\w!#$%&'*+/=?^_`{|}~-]+(?:\\.[\\w!#$%&'*+/=?^_`{|}~-]+)*@(?:[\\w](?:[\\w-]*[\\w])?\\.)+[\\w](?:[\\w-]*[\\w])?", label: "Email" },
+                    { value: "[a-zA-z]+://[^\\s]*", label: "URL" },
+                    { value: "[1][3,4,5,7,8][0-9]{9}", label: "手机" },
+                    { value: "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}", label: "IPv4" },
+                    { value: "\\d{3}-\\d{8}|\\d{4}-\\d{7,8}", label: "国内电话" },
+                    { value: "[1-9][0-9]{4,}", label: "QQ号" },
+                    { value: "[1-9]\\d{5}(?!\\d)", label: "邮编" },
+                    { value: "[1-9]\\d*", label: "正整数" },
+                    { value: "\\s+", label: "连续空白" }
+                ];
+                var presetSel = document.getElementById("rep-regex-preset");
+                REGEX_ZH.forEach(function (item) {
+                    var o = document.createElement("option");
+                    o.value = item.value;
+                    o.textContent = item.label;
+                    presetSel.appendChild(o);
+                });
+                presetSel.addEventListener("change", function () {
+                    if (!this.value) return;
+                    document.getElementById("rep-search").value = this.value;
+                    document.getElementById("rep-use-regex").checked = true;
+                    this.selectedIndex = 0;
+                });
+
+                document.getElementById("rep-ok").addEventListener("click", function () {
+                    var t = inputEl.value;
+                    if (t.length < 1) {
+                        document.getElementById("dlg-replace").close();
+                        return;
+                    }
+                    var search = document.getElementById("rep-search").value;
+                    var rep = document.getElementById("rep-replace").value;
+                    var useRe = document.getElementById("rep-use-regex").checked;
+                    if (!search) return;
+                    var api = createTextApi(t);
+                    if (useRe) {
+                        inputEl.value = api.regularReplace({ search: search, replace: rep });
+                    } else {
+                        inputEl.value = api.replace({
+                            search: search.split(/\r?\n/),
+                            replace: rep.split(/\r?\n/)
+                        });
+                    }
+                    document.getElementById("dlg-replace").close();
+                });
+
+                function buildEscapeBox() {
+                    var box = document.getElementById("escape-box");
+                    box.innerHTML = "";
+                    Object.keys(ESCAPE_CHARS).forEach(function (key) {
+                        var pair = ESCAPE_CHARS[key];
+                        var lab = document.createElement("label");
+                        var inp = document.createElement("input");
+                        inp.type = "checkbox";
+                        inp.name = "esc";
+                        inp.value = key;
+                        inp.checked = true;
+                        lab.appendChild(inp);
+                        lab.appendChild(document.createTextNode(" " + (ESCAPE_LABELS[key] || key) + "（"));
+                        lab.appendChild(document.createTextNode(pair.string));
+                        lab.appendChild(document.createTextNode("）"));
+                        box.appendChild(lab);
+                    });
+                }
+                buildEscapeBox();
+
+                function getEscapeChecked() {
+                    var arr = [];
+                    document.querySelectorAll("#escape-box input[name=esc]:checked").forEach(function (i) {
+                        arr.push(i.value);
+                    });
+                    return arr;
+                }
+
+                document.getElementById("esc-forward").addEventListener("click", function () {
+                    handle("escape", { lists: getEscapeChecked() });
+                    document.getElementById("dlg-escape").close();
+                });
+                document.getElementById("esc-reverse").addEventListener("click", function () {
+                    handle("unescape", { lists: getEscapeChecked() });
+                    document.getElementById("dlg-escape").close();
+                });
+
+                document.getElementById("btn-stat-preview").addEventListener("click", function () {
+                    renderStatTable();
+                    document.querySelectorAll("[data-stat-tab]").forEach(function (x) { x.classList.remove("active"); });
+                    document.querySelector("[data-stat-tab=\"a\"]").classList.add("active");
+                    document.getElementById("stat-panel-a").classList.add("active");
+                    document.getElementById("stat-panel-b").classList.remove("active");
+                    document.getElementById("dlg-stat").showModal();
+                });
+
+                document.querySelectorAll("[data-stat-tab]").forEach(function (b) {
+                    b.addEventListener("click", function () {
+                        var tab = this.getAttribute("data-stat-tab");
+                        document.querySelectorAll("[data-stat-tab]").forEach(function (x) { x.classList.remove("active"); });
+                        this.classList.add("active");
+                        document.getElementById("stat-panel-a").classList.toggle("active", tab === "a");
+                        document.getElementById("stat-panel-b").classList.toggle("active", tab === "b");
+                    });
+                });
+
+                document.getElementById("btn-copy").addEventListener("click", function () {
+                    var v = inputEl.value;
+                    if (!v) return;
+                    navigator.clipboard.writeText(v).then(function () {
+                        showToast("已复制");
+                    }).catch(function () {
+                        showToast("复制失败，请手动复制");
+                    });
+                });
+                document.getElementById("btn-clear").addEventListener("click", function () {
+                    inputEl.value = "";
+                    refreshStatPreviewBtn();
+                });
+
+                inputEl.addEventListener("input", refreshStatPreviewBtn);
+                refreshStatPreviewBtn();
+            })();
+        </script>
+    </body>
+</html>
