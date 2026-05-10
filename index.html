@@ -82,55 +82,16 @@
                 font-weight: 700;
                 white-space: nowrap;
             }
-            .category-nav {
+            .recent-nav {
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
                 flex-wrap: wrap;
                 margin-left: auto;
                 margin-right: 4px;
+                min-height: 30px;
             }
-            .category-item {
-                position: relative;
-                padding: 5px 10px;
-                border-radius: 999px;
-                border: 1px solid #d8e5ff;
-                background: #edf3ff;
-                color: #3c4f78;
-                font-size: 14px;
-                cursor: pointer;
-                user-select: none;
-            }
-            .category-item:hover,
-            .category-item.active {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            }
-            .category-menu {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                min-width: 220px;
-                max-width: 360px;
-                padding: 12px 8px 8px;
-                border: 1px solid #d8e5ff;
-                border-radius: 10px;
-                background: #fff;
-                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
-                z-index: 26;
-            }
-            .category-item:hover .category-menu,
-            .category-item:focus-within .category-menu {
-                display: block;
-            }
-            .category-menu-list {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 5px;
-            }
-            .menu-tool {
+            .recent-tool {
                 padding: 5px 10px;
                 font-size: 13px;
                 border: 1px solid #d8e5ff;
@@ -141,6 +102,9 @@
                 display: inline-flex;
                 align-items: center;
                 white-space: nowrap;
+                max-width: 140px;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .search-wrap {
                 width: 300px;
@@ -261,7 +225,7 @@
             }
             .tool-chip.active,
             .result-item.active,
-            .menu-tool.active {
+            .recent-tool.active {
                 color: #fff;
                 border-color: transparent;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
@@ -297,8 +261,7 @@
             @media (max-width: 900px) {
                 .header { flex-direction: column; align-items: stretch; }
                 .left-zone { min-width: 0; }
-                .category-nav { width: 100%; }
-                .category-menu { left: 0; right: auto; max-width: calc(100vw - 24px); }
+                .recent-nav { width: 100%; margin-left: 0; justify-content: flex-start; }
                 .search-wrap { width: 100%; max-width: 100%; }
             }
         </style>
@@ -311,7 +274,7 @@
                         <div id="clover-toggle" class="clover-icon" title="全部分类工具">✤</div>
                         <div class="brand-title">工具导航</div>
                     </div>
-                    <div id="category-nav" class="category-nav"></div>
+                    <div id="recent-nav" class="recent-nav" title="最近打开的工具"></div>
                 </div>
                 <div class="search-wrap">
                     <input id="search-input" type="text" placeholder="搜索工具..." />
@@ -328,6 +291,8 @@
         </div>
         <script>
             const STORAGE_PREFIX = "tool_form_data_";
+            const RECENT_TOOLS_KEY = "tool_nav_recent_tool_ids";
+            const RECENT_TOOLS_MAX = 5;
             const FORM_CACHE = {};
             const FRAME_CACHE = {};
             const TOOLS = [
@@ -350,6 +315,8 @@
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "重量", "温度", "功率"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] }
             ];
+            /** 全部分类工具面板「常用」分栏（顺序即展示顺序） */
+            const COMMON_TOOL_IDS = ["tab8", "tab18", "tab13", "tab14", "tab5"];
             const DEFAULT_TAB_ID = "tab8";
             let currentId = "";
             let overviewVisible = false;
@@ -466,10 +433,126 @@
                 }, 220);
             }
 
+            function dedupeRecentSlots(slots) {
+                const seen = new Set();
+                const out = [];
+                (slots || []).forEach((id) => {
+                    if (!TOOLS.some((t) => t.id === id)) return;
+                    if (seen.has(id)) return;
+                    seen.add(id);
+                    out.push(id);
+                    if (out.length >= RECENT_TOOLS_MAX) return;
+                });
+                return out;
+            }
+
+            function loadRecentState() {
+                try {
+                    const raw = localStorage.getItem(RECENT_TOOLS_KEY);
+                    if (!raw) return { slots: [], lastUsed: {} };
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && Array.isArray(parsed.slots)) {
+                        let slots = dedupeRecentSlots(parsed.slots);
+                        const lastUsed = parsed.lastUsed && typeof parsed.lastUsed === "object" ? { ...parsed.lastUsed } : {};
+                        const slotSet = new Set(slots);
+                        Object.keys(lastUsed).forEach((k) => {
+                            if (!slotSet.has(k)) delete lastUsed[k];
+                        });
+                        const now = Date.now();
+                        slots.forEach((id, i) => {
+                            const t = lastUsed[id];
+                            if (typeof t !== "number" || !Number.isFinite(t)) {
+                                lastUsed[id] = now - (slots.length - i) * 1000;
+                            }
+                        });
+                        return { slots, lastUsed };
+                    }
+                    if (Array.isArray(parsed)) {
+                        const ids = dedupeRecentSlots(parsed);
+                        const lastUsed = {};
+                        const base = Date.now();
+                        ids.forEach((id, i) => {
+                            lastUsed[id] = base - i * 1000;
+                        });
+                        return { slots: ids, lastUsed };
+                    }
+                } catch (e) {
+                    // Ignore parse errors.
+                }
+                return { slots: [], lastUsed: {} };
+            }
+
+            function saveRecentState(state) {
+                try {
+                    localStorage.setItem(RECENT_TOOLS_KEY, JSON.stringify(state));
+                } catch (e) {
+                    // Ignore storage failures.
+                }
+            }
+
+            /** 固定槽位顺序；已收录的工具只刷新使用时间，新工具满员时替换最久未使用项并占据其槽位 */
+            function persistRecentToolId(toolId) {
+                if (!toolId || !TOOLS.some((t) => t.id === toolId)) return;
+                const now = Date.now();
+                let { slots, lastUsed } = loadRecentState();
+                slots = dedupeRecentSlots(slots);
+
+                const existingIdx = slots.indexOf(toolId);
+                if (existingIdx !== -1) {
+                    lastUsed[toolId] = now;
+                    saveRecentState({ slots, lastUsed });
+                    return;
+                }
+
+                if (slots.length < RECENT_TOOLS_MAX) {
+                    slots.push(toolId);
+                    lastUsed[toolId] = now;
+                    saveRecentState({ slots, lastUsed });
+                    return;
+                }
+
+                let lruId = slots[0];
+                let lruTime = lastUsed[lruId] != null ? lastUsed[lruId] : 0;
+                for (let i = 1; i < slots.length; i++) {
+                    const id = slots[i];
+                    const t = lastUsed[id] != null ? lastUsed[id] : 0;
+                    if (t < lruTime) {
+                        lruTime = t;
+                        lruId = id;
+                    }
+                }
+                const lruIdx = slots.indexOf(lruId);
+                delete lastUsed[lruId];
+                slots[lruIdx] = toolId;
+                lastUsed[toolId] = now;
+                saveRecentState({ slots, lastUsed });
+            }
+
+            function renderRecentNav() {
+                const nav = document.getElementById("recent-nav");
+                if (!nav) return;
+                nav.innerHTML = "";
+                const { slots } = loadRecentState();
+                const ids = dedupeRecentSlots(slots);
+                ids.forEach((tid) => {
+                    const tool = TOOLS.find((t) => t.id === tid);
+                    if (!tool) return;
+                    const chip = document.createElement("div");
+                    chip.className = "recent-tool";
+                    chip.setAttribute("data-id", tool.id);
+                    chip.textContent = tool.name;
+                    chip.title = tool.name;
+                    chip.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        openTool(tool.id, true);
+                    });
+                    nav.appendChild(chip);
+                });
+            }
+
             function openTool(id, updateHash) {
                 const tool = TOOLS.find((t) => t.id === id) || TOOLS[0];
                 if (currentId === tool.id) {
-                    updateActiveStates();
                     document.getElementById("search-results").classList.remove("visible");
                     hideOverviewPanel();
                     if (updateHash) {
@@ -478,6 +561,9 @@
                             window.location.hash = sameHash;
                         }
                     }
+                    persistRecentToolId(tool.id);
+                    renderRecentNav();
+                    updateActiveStates();
                     return;
                 }
 
@@ -499,6 +585,8 @@
                         // Ignore runtime restore failures.
                     }
                 }
+                persistRecentToolId(tool.id);
+                renderRecentNav();
                 updateActiveStates();
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
@@ -545,13 +633,8 @@
                 document.querySelectorAll(".result-item").forEach((el) => {
                     el.classList.toggle("active", el.getAttribute("data-id") === currentId);
                 });
-                document.querySelectorAll(".menu-tool").forEach((el) => {
+                document.querySelectorAll(".recent-tool").forEach((el) => {
                     el.classList.toggle("active", el.getAttribute("data-id") === currentId);
-                });
-                const currentTool = TOOLS.find((t) => t.id === currentId);
-                const currentCategory = currentTool ? currentTool.category : "";
-                document.querySelectorAll(".category-item").forEach((el) => {
-                    el.classList.toggle("active", el.getAttribute("data-category") === currentCategory);
                 });
                 document.querySelectorAll(".clover-tool").forEach((el) => {
                     el.classList.toggle("active", el.getAttribute("data-id") === currentId);
@@ -565,46 +648,9 @@
                 return TOOLS.some((t) => t.id === tab) ? tab : DEFAULT_TAB_ID;
             }
 
-            function renderCategoryNav() {
-                const nav = document.getElementById("category-nav");
-                nav.innerHTML = "";
-                const grouped = {};
-                TOOLS.forEach((tool) => {
-                    if (!grouped[tool.category]) grouped[tool.category] = [];
-                    grouped[tool.category].push(tool);
-                });
-
-                Object.keys(grouped).forEach((cat) => {
-                    const item = document.createElement("div");
-                    item.className = "category-item";
-                    item.setAttribute("data-category", cat);
-                    item.textContent = cat;
-
-                    const menu = document.createElement("div");
-                    menu.className = "category-menu";
-                    const list = document.createElement("div");
-                    list.className = "category-menu-list";
-                    grouped[cat].forEach((tool) => {
-                        const chip = document.createElement("div");
-                        chip.className = "menu-tool";
-                        chip.setAttribute("data-id", tool.id);
-                        chip.textContent = tool.name;
-                        chip.title = tool.name;
-                        chip.addEventListener("click", function (e) {
-                            e.stopPropagation();
-                            openTool(tool.id, true);
-                        });
-                        list.appendChild(chip);
-                    });
-                    menu.appendChild(list);
-                    item.appendChild(menu);
-                    nav.appendChild(item);
-                });
-                updateActiveStates();
-            }
-
             function renderOverviewPanel() {
                 const panel = document.getElementById("overview-panel");
+                const commonIdSet = new Set(COMMON_TOOL_IDS);
                 const grouped = {};
                 TOOLS.forEach((tool) => {
                     if (!grouped[tool.category]) grouped[tool.category] = [];
@@ -617,17 +663,17 @@
                     + "<button id=\"overview-close\" type=\"button\" class=\"overview-close\" title=\"关闭\">×</button>"
                     + "</div>";
 
-                Object.keys(grouped).forEach((cat) => {
+                function appendToolGroup(titleText, tools) {
+                    if (!tools.length) return;
                     const group = document.createElement("div");
                     group.className = "overview-group";
                     const title = document.createElement("div");
                     title.className = "overview-group-title";
-                    title.textContent = cat;
+                    title.textContent = titleText;
                     group.appendChild(title);
-
                     const toolsWrap = document.createElement("div");
                     toolsWrap.className = "overview-group-tools";
-                    grouped[cat].forEach((tool) => {
+                    tools.forEach((tool) => {
                         const chip = document.createElement("div");
                         chip.className = "tool-chip clover-tool";
                         chip.setAttribute("data-id", tool.id);
@@ -639,6 +685,14 @@
                     });
                     group.appendChild(toolsWrap);
                     panel.appendChild(group);
+                }
+
+                const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
+                appendToolGroup("常用", commonTools);
+
+                Object.keys(grouped).forEach((cat) => {
+                    const toolsInCat = grouped[cat].filter((t) => !commonIdSet.has(t.id));
+                    appendToolGroup(cat, toolsInCat);
                 });
 
                 const closeBtn = document.getElementById("overview-close");
@@ -732,7 +786,7 @@
                 if (e.target.closest("#overview-panel")) return;
                 document.getElementById("search-results").classList.remove("visible");
                 if (e.target.closest(".header")) {
-                    if (e.target.closest(".category-item")) return;
+                    if (e.target.closest(".recent-tool")) return;
                     hideOverviewPanel();
                     return;
                 }
@@ -751,7 +805,7 @@
             });
 
             document.addEventListener("DOMContentLoaded", function () {
-                renderCategoryNav();
+                renderRecentNav();
                 openTool(getInitialTab(), false);
                 if (!window.location.hash) {
                     window.location.hash = "tab=" + DEFAULT_TAB_ID;
