@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>文本处理工具</title>
+        <link rel="stylesheet" href="vendor/codemirror.min.css" />
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -95,22 +96,45 @@
             .title-btn.dotted {
                 border-style: dashed;
             }
+            /* 隐藏 textarea 仅用于父页 localStorage 字段恢复；实际编辑为本地 CodeMirror 5 */
             #main-input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                border: 0;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+            }
+            #editor-mount {
                 flex: 1;
                 width: 100%;
                 min-height: 160px;
-                border: none;
-                outline: none;
-                resize: none;
-                padding: 10px;
-                font-size: 14px;
-                line-height: 1.6;
-                font-family: Consolas, "Courier New", monospace;
-                color: var(--text);
+                position: relative;
+                overflow: hidden;
                 background: #fff;
             }
-            #main-input::placeholder { color: #a8b4cc; }
-            #main-input:focus { box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25); }
+            #cm-editor {
+                position: absolute;
+                inset: 0;
+            }
+            #cm-editor .CodeMirror {
+                height: 100%;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                color: var(--text);
+            }
+            #cm-editor .CodeMirror-scroll {
+                min-height: 100%;
+            }
+            #cm-editor .CodeMirror-focused {
+                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
+            }
             .ctool-page-option {
                 flex: 0 0 auto;
                 background: var(--card);
@@ -313,7 +337,10 @@
                         <button type="button" class="title-btn" id="btn-clear">清空</button>
                     </div>
                 </div>
-                <textarea id="main-input" placeholder="请在此输入或粘贴文本"></textarea>
+                <div id="editor-mount">
+                    <textarea id="main-input" tabindex="-1" aria-hidden="true"></textarea>
+                    <div id="cm-editor"></div>
+                </div>
             </div>
 
             <div class="ctool-page-option">
@@ -473,9 +500,81 @@
 
         <div id="toast" role="status" aria-live="polite"></div>
 
+        <script src="vendor/codemirror.min.js"></script>
         <script>
             (function () {
-                var inputEl = document.getElementById("main-input");
+                if (typeof CodeMirror === "undefined") {
+                    alert("编辑器脚本缺失：请确认与本页同级的 vendor/codemirror.min.js、codemirror.min.css 存在。");
+                    return;
+                }
+
+                var persistTa = document.getElementById("main-input");
+                var cmMount = document.getElementById("cm-editor");
+
+                var afterDocChange = function () {};
+
+                var editor = CodeMirror(cmMount, {
+                    value: persistTa.value || "",
+                    lineNumbers: true,
+                    mode: null,
+                    theme: "default",
+                    indentWithTabs: false,
+                    indentUnit: 4,
+                    tabSize: 4,
+                    lineWrapping: false,
+                    autofocus: false,
+                    spellcheck: false,
+                    inputStyle: "textarea",
+                });
+
+                editor.on("change", function () {
+                    var t = editor.getValue();
+                    if (persistTa.value !== t) persistTa.value = t;
+                    afterDocChange();
+                });
+
+                function getInputValue() {
+                    return editor.getValue();
+                }
+                /** 全文替换但保留 CodeMirror 撤销栈（底部工具与 Ctrl+Z） */
+                function setInputValue(text) {
+                    var cur = editor.getValue();
+                    var next = text == null ? "" : String(text);
+                    if (cur === next) return;
+                    var doc = editor.getDoc();
+                    var end = doc.posFromIndex(cur.length);
+                    doc.replaceRange(next, { line: 0, ch: 0 }, end);
+                }
+
+                persistTa.addEventListener("input", function () {
+                    var v = persistTa.value;
+                    if (v !== editor.getValue()) {
+                        editor.setValue(v);
+                    }
+                });
+
+                /** 焦点在底部按钮/下拉等处时，Ctrl+Z / Ctrl+Y 仍作用在主编辑器（弹窗内输入框保持自带撤销） */
+                function globalUndoRedoAction(e) {
+                    if (!e.ctrlKey && !e.metaKey) return null;
+                    var k = (e.key || "").toLowerCase();
+                    if (k === "z" && !e.shiftKey) return "undo";
+                    if (k === "y") return "redo";
+                    if (k === "z" && e.shiftKey) return "redo";
+                    return null;
+                }
+                document.addEventListener("keydown", function (e) {
+                    var action = globalUndoRedoAction(e);
+                    if (!action) return;
+                    var el = e.target;
+                    if (el && el.closest && el.closest("dialog[open]")) return;
+                    if (el && el.closest && el.closest("#cm-editor")) return;
+                    var tag = el && el.tagName;
+                    if ((tag === "INPUT" || tag === "TEXTAREA") && el && el.closest && !el.closest("#cm-editor")) return;
+                    e.preventDefault();
+                    editor.focus();
+                    if (action === "undo") CodeMirror.commands.undo(editor);
+                    else CodeMirror.commands.redo(editor);
+                }, true);
 
                 var spaceCaseToPascalCaseSpace = "spaceCaseToPascalCaseSpace";
                 var pascalCaseSpaceToKebabCase = "pascalCaseSpaceToKebabCase";
@@ -805,11 +904,11 @@
                 }
 
                 function handle(method, opt) {
-                    var t = inputEl.value;
+                    var t = getInputValue();
                     if (t.length < 1) return;
                     var api = createTextApi(t);
                     if (typeof api[method] !== "function") return;
-                    inputEl.value = api[method](opt);
+                    setInputValue(api[method](opt));
                 }
 
                 var zhLibPromise = null;
@@ -828,12 +927,12 @@
                 }
 
                 async function handleZhTran(type) {
-                    var t = inputEl.value;
+                    var t = getInputValue();
                     if (t.length < 1) return;
                     try {
                         var mod = await loadZhTran();
                         var out = type === "simplified" ? mod.toTraditional(t) : mod.toSimplified(t);
-                        inputEl.value = out;
+                        setInputValue(out);
                     } catch (e) {
                         alert((e && e.message) || String(e));
                     }
@@ -850,7 +949,7 @@
                 }
 
                 function refreshStatPreviewBtn() {
-                    var t = inputEl.value;
+                    var t = getInputValue();
                     var btn = document.getElementById("btn-stat-preview");
                     if (!t.length) {
                         btn.textContent = "字数 0，UTF-8 0 字节，GBK估 0 …";
@@ -859,9 +958,10 @@
                     var s = createTextApi(t).stat();
                     btn.textContent = "字数 " + s.word_length + "，UTF-8 " + s.byte_utf8_length + " 字节，GBK估 " + s.byte_gbk_length + " …";
                 }
+                afterDocChange = refreshStatPreviewBtn;
 
                 function renderStatTable() {
-                    var t = inputEl.value;
+                    var t = getInputValue();
                     var s = createTextApi(t || "").stat();
                     var h = "<table class=\"stat-table\"><tbody>";
                     h += "<tr><th>项目</th><th>值</th><th>项目</th><th>值</th></tr>";
@@ -916,7 +1016,7 @@
                     });
                     document.getElementById("affix-ok").addEventListener("click", function () {
                         var mode = dlgAffix.dataset.mode;
-                        var t = inputEl.value;
+                        var t = getInputValue();
                         if (t.length < 1) {
                             dlgAffix.close();
                             return;
@@ -924,9 +1024,9 @@
                         var str = document.getElementById("affix-text").value;
                         var api = createTextApi(t);
                         if (mode === "prefix") {
-                            inputEl.value = api.addLinePrefix({ prefix: str });
+                            setInputValue(api.addLinePrefix({ prefix: str }));
                         } else if (mode === "suffix") {
-                            inputEl.value = api.addLineSuffix({ suffix: str });
+                            setInputValue(api.addLineSuffix({ suffix: str }));
                         }
                         dlgAffix.close();
                         refreshStatPreviewBtn();
@@ -986,7 +1086,7 @@
                 });
 
                 document.getElementById("rep-ok").addEventListener("click", function () {
-                    var t = inputEl.value;
+                    var t = getInputValue();
                     if (t.length < 1) {
                         document.getElementById("dlg-replace").close();
                         return;
@@ -997,12 +1097,12 @@
                     if (!search) return;
                     var api = createTextApi(t);
                     if (useRe) {
-                        inputEl.value = api.regularReplace({ search: search, replace: rep });
+                        setInputValue(api.regularReplace({ search: search, replace: rep }));
                     } else {
-                        inputEl.value = api.replace({
+                        setInputValue(api.replace({
                             search: search.split(/\r?\n/),
                             replace: rep.split(/\r?\n/)
-                        });
+                        }));
                     }
                     document.getElementById("dlg-replace").close();
                 });
@@ -1064,7 +1164,7 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    var v = inputEl.value;
+                    var v = getInputValue();
                     if (!v) return;
                     navigator.clipboard.writeText(v).then(function () {
                         showToast("已复制");
@@ -1073,11 +1173,10 @@
                     });
                 });
                 document.getElementById("btn-clear").addEventListener("click", function () {
-                    inputEl.value = "";
+                    setInputValue("");
                     refreshStatPreviewBtn();
                 });
 
-                inputEl.addEventListener("input", refreshStatPreviewBtn);
                 refreshStatPreviewBtn();
             })();
         </script>
