@@ -21,6 +21,7 @@
                 width: 100%;
                 height: 100%;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
                 background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
                 color: var(--text);
             }
@@ -29,10 +30,10 @@
                 padding: 10px;
                 display: flex;
                 flex-direction: column;
-                gap: 0;
+                gap: 8px;
                 min-height: 0;
             }
-            /* 与 Ctool 一致：主编辑区占满剩余高度，底部选项 margin-top:5px */
+            /* 主编辑区占满剩余高度，底部选项区与 Json工具 等页面一致 */
             .editor-wrap {
                 flex: 1;
                 min-height: 0;
@@ -44,19 +45,56 @@
                 box-shadow: var(--shadow);
                 overflow: hidden;
             }
-            .editor-head {
-                flex: 0 0 auto;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
+            /* 与集合比较工具 / Json工具 的 .panel-title / .title-btn 一致 */
+            .panel-title {
                 padding: 8px 10px;
-                font-size: 12px;
+                font-size: 14px;
                 color: #324a76;
                 border-bottom: 1px solid #e4edff;
                 background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
             }
-            .editor-head .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            .editor-head {
+                flex: 0 0 auto;
+                gap: 8px;
+            }
+            .editor-head-main {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                flex-wrap: wrap;
+                flex: 1;
+            }
+            .editor-head .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .title-btn.dotted {
+                border-style: dashed;
+            }
             #main-input {
                 flex: 1;
                 width: 100%;
@@ -65,7 +103,7 @@
                 outline: none;
                 resize: none;
                 padding: 10px;
-                font-size: 13px;
+                font-size: 14px;
                 line-height: 1.6;
                 font-family: Consolas, "Courier New", monospace;
                 color: var(--text);
@@ -74,13 +112,12 @@
             #main-input::placeholder { color: #a8b4cc; }
             #main-input:focus { box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25); }
             .ctool-page-option {
-                margin-top: 5px;
                 flex: 0 0 auto;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 10px;
                 box-shadow: var(--shadow);
-                padding: 5px;
+                padding: 8px;
             }
             .align-row {
                 display: flex;
@@ -90,11 +127,11 @@
                 align-items: center;
             }
             select.dd {
-                height: 1.75rem;
+                min-height: 2rem;
                 min-width: 6.5rem;
                 max-width: 11rem;
-                padding: 0 6px;
-                font-size: 12px;
+                padding: 4px 8px;
+                font-size: 14px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 background: #fff;
@@ -111,16 +148,15 @@
                 border-radius: 8px;
                 background: #edf3ff;
                 color: #3c4f78;
-                padding: 5px 12px;
-                font-size: 12px;
+                padding: 7px 12px;
+                font-size: 14px;
                 cursor: pointer;
-                height: 1.75rem;
+                min-height: 2rem;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
             }
             .btn:hover { border-color: var(--primary); color: var(--primary); }
-            .btn.dotted { border-style: dashed; }
             .btn.primary {
                 color: #fff;
                 border-color: transparent;
@@ -187,14 +223,14 @@
                 gap: 10px;
             }
             @media (max-width: 520px) { .dlg-grid-2 { grid-template-columns: 1fr; } }
-            .field-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+            .field-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
             textarea.modal-ta {
                 width: 100%;
                 min-height: 160px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 padding: 8px;
-                font-size: 12px;
+                font-size: 14px;
                 font-family: Consolas, "Courier New", monospace;
                 resize: vertical;
             }
@@ -208,24 +244,29 @@
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                 gap: 6px 10px;
-                font-size: 12px;
+                font-size: 13px;
             }
             .escape-grid label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
             .stat-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
             .stat-tabs button {
                 border: 1px solid #cfdcf7;
                 background: #fff;
-                padding: 4px 12px;
-                font-size: 12px;
+                padding: 7px 14px;
+                font-size: 14px;
                 border-radius: 8px;
                 cursor: pointer;
+                color: var(--text);
+            }
+            .stat-tabs button:hover {
+                border-color: var(--primary);
+                color: var(--primary);
             }
             .stat-tabs button.active {
                 border-color: var(--primary);
-                color: var(--primary);
-                background: #f0f5ff;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .stat-panel { display: none; font-size: 12px; }
+            .stat-panel { display: none; font-size: 14px; }
             .stat-panel.active { display: block; }
             table.stat-table { width: 100%; border-collapse: collapse; }
             table.stat-table th, table.stat-table td {
@@ -262,12 +303,14 @@
     <body>
         <div class="page">
             <div class="editor-wrap">
-                <div class="editor-head">
-                    <span>文本内容</span>
+                <div class="editor-head panel-title">
+                    <div class="editor-head-main">
+                        <span>文本内容</span>
+                    </div>
                     <div class="actions">
-                        <button type="button" class="btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
-                        <button type="button" class="btn" id="btn-copy">复制</button>
-                        <button type="button" class="btn" id="btn-clear">清空</button>
+                        <button type="button" class="title-btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
+                        <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        <button type="button" class="title-btn" id="btn-clear">清空</button>
                     </div>
                 </div>
                 <textarea id="main-input" placeholder="请在此输入或粘贴文本"></textarea>

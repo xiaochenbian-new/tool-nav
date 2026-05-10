@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>JSON 工具</title>
+        <title>Json工具</title>
         <script src="https://cdn.jsdelivr.net/npm/jsonrepair@3.8.0/lib/umd/jsonrepair.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
         <style>
@@ -23,6 +23,7 @@
                 width: 100%;
                 height: 100%;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
                 background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
                 color: var(--text);
             }
@@ -31,7 +32,7 @@
                 padding: 10px;
                 display: flex;
                 flex-direction: column;
-                gap: 0;
+                gap: 8px;
                 min-height: 0;
             }
             .editor-wrap {
@@ -45,19 +46,57 @@
                 box-shadow: var(--shadow);
                 overflow: hidden;
             }
-            .editor-head {
-                flex: 0 0 auto;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
+            /* 与集合比较工具等页面的 .panel-title / .hint / .title-btn 一致 */
+            .panel-title {
                 padding: 8px 10px;
-                font-size: 12px;
+                font-size: 14px;
                 color: #324a76;
                 border-bottom: 1px solid #e4edff;
                 background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
             }
-            .editor-head .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            .editor-head {
+                flex: 0 0 auto;
+                gap: 8px;
+            }
+            .editor-head-main {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                flex-wrap: wrap;
+                flex: 1;
+            }
+            .editor-head .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
             .editor-zone {
                 flex: 1;
                 min-height: 120px;
@@ -169,13 +208,12 @@
             .editor-zone.convert-mode #output-convert { display: block; }
             .editor-zone.convert-mode #wrap-out { display: flex !important; }
             .ctool-page-option {
-                margin-top: 5px;
                 flex: 0 0 auto;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 10px;
                 box-shadow: var(--shadow);
-                padding: 8px 10px 10px;
+                padding: 8px;
             }
             .json-tabs-row {
                 display: flex;
@@ -196,8 +234,8 @@
             .json-tabs button {
                 border: 1px solid #cfdcf7;
                 background: #fff;
-                padding: 5px 14px;
-                font-size: 12px;
+                padding: 7px 14px;
+                font-size: 14px;
                 border-radius: 8px;
                 cursor: pointer;
                 color: var(--text);
@@ -218,11 +256,11 @@
                 align-items: center;
             }
             select.dd {
-                height: 1.75rem;
+                min-height: 2rem;
                 min-width: 6.5rem;
                 max-width: 11rem;
-                padding: 0 6px;
-                font-size: 12px;
+                padding: 4px 8px;
+                font-size: 14px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 background: #fff;
@@ -239,10 +277,10 @@
                 border-radius: 8px;
                 background: #edf3ff;
                 color: #3c4f78;
-                padding: 5px 12px;
-                font-size: 12px;
+                padding: 7px 12px;
+                font-size: 14px;
                 cursor: pointer;
-                height: 1.75rem;
+                min-height: 2rem;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
@@ -301,6 +339,11 @@
                 box-shadow: 0 -4px 14px rgba(36, 90, 190, 0.08);
                 z-index: 5;
             }
+            .find-bar .btn {
+                min-height: 1.75rem;
+                padding: 0 10px;
+                font-size: 12px;
+            }
             .find-bar[hidden] { display: none !important; }
             .find-row {
                 display: flex;
@@ -349,25 +392,20 @@
                 color: #3c4f78;
                 user-select: none;
             }
-            .editor-hint {
-                font-size: 11px;
-                color: var(--muted);
-                margin-left: 6px;
-            }
         </style>
     </head>
     <body>
         <div class="page">
             <div class="editor-wrap">
-                <div class="editor-head">
-                    <div style="display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;flex:1;">
-                        <span id="head-title">Json 输入</span>
-                        <span class="editor-hint" title="与 Ctool Monaco 一致：查找高亮、当前匹配加粗色">Ctrl+F 查找 · Ctrl+H 替换 · 匹配高亮</span>
+                <div class="editor-head panel-title">
+                    <div class="editor-head-main">
+                        <span id="head-title">JSON 输入</span>
+                        <span class="hint" title="与 Ctool Monaco 一致：查找高亮、当前匹配加粗色">Ctrl+F 查找 · Ctrl+H 替换 · 匹配高亮</span>
                     </div>
                     <div class="actions">
-                        <button type="button" class="btn" id="btn-copy-out" style="display:none">复制输出</button>
-                        <button type="button" class="btn" id="btn-copy">复制输入</button>
-                        <button type="button" class="btn" id="btn-clear">清空</button>
+                        <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
+                        <button type="button" class="title-btn" id="btn-copy">复制输入</button>
+                        <button type="button" class="title-btn" id="btn-clear">清空</button>
                     </div>
                 </div>
                 <div id="editor-zone" class="editor-zone">
@@ -411,7 +449,7 @@
                         <button type="button" class="active" id="tab-common" data-tab="common">常用</button>
                         <button type="button" id="tab-convert" data-tab="convert">转换成</button>
                     </div>
-                    <button type="button" class="btn primary" id="btn-repair" title="尝试修复常见 JSON 语法错误">修复</button>
+                    <button type="button" class="btn primary" id="btn-repair" title="修复常见错误：缺逗号、缺 } 或 ]、引号与转义等，再经 jsonrepair 校正">修复</button>
                 </div>
 
                 <div id="panel-common" class="tab-panel active">
@@ -538,6 +576,235 @@
                     return null;
                 }
 
+                /** 在字符串外统计括号，在末尾补全缺失的 } ]（忽略串内括号） */
+                function balanceClosingBrackets(str) {
+                    var stack = [];
+                    var inStr = false;
+                    var esc = false;
+                    for (var idx = 0; idx < str.length; idx++) {
+                        var c = str.charAt(idx);
+                        if (inStr) {
+                            if (esc) {
+                                esc = false;
+                            } else if (c === "\\") {
+                                esc = true;
+                            } else if (c === '"') {
+                                inStr = false;
+                            }
+                            continue;
+                        }
+                        if (c === '"') {
+                            inStr = true;
+                            continue;
+                        }
+                        if (c === "{") {
+                            stack.push("}");
+                        } else if (c === "[") {
+                            stack.push("]");
+                        } else if (c === "}" || c === "]") {
+                            if (stack.length && stack[stack.length - 1] === c) {
+                                stack.pop();
+                            }
+                        }
+                    }
+                    var extra = "";
+                    while (stack.length) {
+                        extra += stack.pop();
+                    }
+                    return str + extra;
+                }
+
+                /**
+                 * 在对象/数组中补全缺失的逗号（如 {"a":1 "b":2}、[1 2]），不改动串内内容。
+                 * 若遇到非标准结构（如无引号 key），则停止结构化处理，原样拼上剩余文本。
+                 */
+                function insertMissingCommas(text) {
+                    var i = 0;
+                    var n = text.length;
+                    var out = [];
+                    function isWs(ch) {
+                        return ch === " " || ch === "\n" || ch === "\r" || ch === "\t";
+                    }
+                    function copyWs() {
+                        while (i < n && isWs(text[i])) {
+                            out.push(text[i++]);
+                        }
+                    }
+                    function peek() {
+                        return i < n ? text[i] : "";
+                    }
+                    function copyString() {
+                        if (peek() !== '"') {
+                            return;
+                        }
+                        out.push(text[i++]);
+                        while (i < n) {
+                            var ch = text[i++];
+                            out.push(ch);
+                            if (ch === "\\") {
+                                if (i < n) {
+                                    out.push(text[i++]);
+                                }
+                            } else if (ch === '"') {
+                                break;
+                            }
+                        }
+                    }
+                    function copyPrimitive() {
+                        if (i >= n) {
+                            return;
+                        }
+                        if (text.slice(i, i + 4) === "true") {
+                            out.push("true");
+                            i += 4;
+                            return;
+                        }
+                        if (text.slice(i, i + 5) === "false") {
+                            out.push("false");
+                            i += 5;
+                            return;
+                        }
+                        if (text.slice(i, i + 4) === "null") {
+                            out.push("null");
+                            i += 4;
+                            return;
+                        }
+                        var start = i;
+                        if (peek() === "-") {
+                            out.push(text[i++]);
+                        }
+                        if (i < n && text[i] >= "0" && text[i] <= "9") {
+                            while (i < n && text[i] >= "0" && text[i] <= "9") {
+                                out.push(text[i++]);
+                            }
+                            if (peek() === ".") {
+                                out.push(text[i++]);
+                                while (i < n && text[i] >= "0" && text[i] <= "9") {
+                                    out.push(text[i++]);
+                                }
+                            }
+                            if (peek() === "e" || peek() === "E") {
+                                out.push(text[i++]);
+                                if (peek() === "+" || peek() === "-") {
+                                    out.push(text[i++]);
+                                }
+                                while (i < n && text[i] >= "0" && text[i] <= "9") {
+                                    out.push(text[i++]);
+                                }
+                            }
+                            return;
+                        }
+                        if (i === start && i < n) {
+                            out.push(text[i++]);
+                        }
+                    }
+                    function parseValue() {
+                        copyWs();
+                        var c = peek();
+                        if (c === '"') {
+                            copyString();
+                            return;
+                        }
+                        if (c === "{") {
+                            parseObject();
+                            return;
+                        }
+                        if (c === "[") {
+                            parseArray();
+                            return;
+                        }
+                        copyPrimitive();
+                    }
+                    function parseObject() {
+                        out.push(text[i++]);
+                        copyWs();
+                        if (peek() === "}") {
+                            out.push(text[i++]);
+                            return;
+                        }
+                        var needComma = false;
+                        while (true) {
+                            copyWs();
+                            if (peek() === "}") {
+                                out.push(text[i++]);
+                                return;
+                            }
+                            if (peek() !== '"') {
+                                while (i < n) {
+                                    out.push(text[i++]);
+                                }
+                                return;
+                            }
+                            if (needComma) {
+                                if (peek() === ",") {
+                                    out.push(text[i++]);
+                                } else {
+                                    out.push(",");
+                                }
+                            }
+                            needComma = true;
+                            copyString();
+                            copyWs();
+                            if (peek() === ":") {
+                                out.push(text[i++]);
+                            } else {
+                                out.push(":");
+                            }
+                            copyWs();
+                            parseValue();
+                        }
+                    }
+                    function parseArray() {
+                        out.push(text[i++]);
+                        copyWs();
+                        if (peek() === "]") {
+                            out.push(text[i++]);
+                            return;
+                        }
+                        var needComma = false;
+                        while (true) {
+                            copyWs();
+                            if (peek() === "]") {
+                                out.push(text[i++]);
+                                return;
+                            }
+                            if (needComma) {
+                                if (peek() === ",") {
+                                    out.push(text[i++]);
+                                } else {
+                                    out.push(",");
+                                }
+                            }
+                            needComma = true;
+                            parseValue();
+                        }
+                    }
+
+                    copyWs();
+                    if (peek() === "{") {
+                        parseObject();
+                    } else if (peek() === "[") {
+                        parseArray();
+                    } else {
+                        parseValue();
+                    }
+                    while (i < n) {
+                        out.push(text[i++]);
+                    }
+                    return out.join("");
+                }
+
+                /** 先补全括号再补逗号，供 jsonrepair / 解析 前处理 */
+                function preprocessJsonForRepair(raw) {
+                    var s = String(raw).trim();
+                    if (!s) {
+                        return s;
+                    }
+                    s = balanceClosingBrackets(s);
+                    s = insertMissingCommas(s);
+                    return s;
+                }
+
                 function parseJsonStrict(text) {
                     return JSON.parse(text);
                 }
@@ -551,7 +818,11 @@
                             try {
                                 return JSON.parse(jr(text));
                             } catch (e2) {
-                                /* 仍按原解析错误抛出 */
+                                try {
+                                    return JSON.parse(jr(preprocessJsonForRepair(text)));
+                                } catch (e3) {
+                                    /* 仍按原解析错误抛出 */
+                                }
                             }
                         }
                         throw e1;
@@ -742,7 +1013,7 @@
                     panelCommon.classList.toggle("active", !isConvert);
                     panelConvert.classList.toggle("active", isConvert);
                     editorZone.classList.toggle("convert-mode", isConvert);
-                    headTitle.textContent = isConvert ? "Json · 双栏" : "Json 输入";
+                    headTitle.textContent = isConvert ? "JSON · 双栏" : "JSON 输入";
                     btnCopyOut.style.display = isConvert ? "inline-flex" : "none";
                     labelIn.style.display = isConvert ? "block" : "none";
                     wrapOut.style.display = isConvert ? "flex" : "none";
@@ -793,7 +1064,8 @@
                         if (!code) return;
                         var jr = getJsonRepair();
                         if (!jr) throw new Error("jsonrepair 未加载");
-                        mainInput.value = JSON.stringify(JSON.parse(jr(code)), null, 2);
+                        var pre = preprocessJsonForRepair(code);
+                        mainInput.value = JSON.stringify(JSON.parse(jr(pre)), null, 2);
                         mainInput.dispatchEvent(new Event("input", { bubbles: true }));
                         toast("已修复并格式化");
                     } catch (e) {

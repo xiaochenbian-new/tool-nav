@@ -1,9 +1,9 @@
 {
-	"main": "index-back.html",
+	"main": "index.html",
 	"logo": "pages/img/tool-cl.png",
 	"features": [
 		{
-		  "code": "tools-cl",
+		  "code": "tools",
 		  "explain": "DDL sql解析；Json/Excel/SQL转换等工具",
 			"cmds":["tool","json","excel","sql","nginx"]
 		}
