@@ -4,6 +4,8 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>Json工具</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.css" />
         <script src="https://cdn.jsdelivr.net/npm/jsonrepair@3.8.0/lib/umd/jsonrepair.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
         <style>
@@ -119,7 +121,7 @@
                 margin-bottom: 4px;
                 flex-shrink: 0;
             }
-            /* Monaco 风格：底层渲染文本+查找高亮，上层透明 textarea 负责输入与滚动 */
+            /* 主 JSON：CodeMirror；右侧输出区仍为 textarea + backdrop 查找高亮 */
             .editor-stack {
                 position: relative;
                 flex: 1;
@@ -127,6 +129,8 @@
                 min-height: 160px;
                 min-width: 0;
                 overflow: hidden;
+                display: flex;
+                flex-direction: column;
             }
             .editor-zone.convert-mode .editor-stack {
                 min-height: 0;
@@ -135,6 +139,62 @@
             }
             .editor-zone:not(.convert-mode) .editor-stack-main {
                 min-height: 160px;
+            }
+            #cm-json-mount {
+                flex: 1;
+                min-height: 0;
+                width: 100%;
+            }
+            #cm-json-mount .CodeMirror {
+                height: 100%;
+                font-size: 13px;
+                line-height: 1.6;
+                border: none;
+                border-radius: 0;
+            }
+            #cm-json-mount .CodeMirror-scroll {
+                min-height: 120px;
+            }
+            #cm-json-mount .CodeMirror-gutters {
+                background: #f4f8ff;
+                border-right: 1px solid #e4edff;
+            }
+            #cm-json-mount .CodeMirror-linenumber {
+                color: #8a9bb8;
+                padding: 0 6px 0 4px;
+            }
+            #cm-json-mount .CodeMirror-foldgutter-open,
+            #cm-json-mount .CodeMirror-foldgutter-folded {
+                color: var(--primary);
+                cursor: pointer;
+            }
+            /* 接近 Monaco vs / Ctool 的 JSON 配色 */
+            #cm-json-mount .cm-s-default .cm-property { color: #0451a5; }
+            #cm-json-mount .cm-s-default .cm-string { color: #a31515; }
+            #cm-json-mount .cm-s-default .cm-number { color: #098658; }
+            #cm-json-mount .cm-s-default .cm-atom { color: #0000ff; }
+            #cm-json-mount .cm-s-default .cm-punctuation,
+            #cm-json-mount .cm-s-default .cm-operator { color: #0431fa; }
+            #cm-json-mount .CodeMirror .cm-find-hl {
+                background: rgba(255, 220, 120, 0.55);
+                padding: 0 1px;
+                border-radius: 2px;
+            }
+            #cm-json-mount .CodeMirror .cm-find-hl-current {
+                background: rgba(255, 165, 60, 0.88);
+                box-shadow: 0 0 0 1px rgba(200, 100, 0, 0.35);
+            }
+            /* 与文本处理工具页一致：隐藏 textarea 供父页 localStorage 按 data-persist-key 同步 */
+            #main-input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
             }
             .editor-highlight-backdrop,
             .editor-text-layer {
@@ -400,9 +460,11 @@
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
                         <span id="head-title">JSON 输入</span>
-                        <span class="hint" title="与 Ctool Monaco 一致：查找高亮、当前匹配加粗色">Ctrl+F 查找 · Ctrl+H 替换 · 匹配高亮</span>
+                        <span class="hint" title="主编辑区为 CodeMirror：JSON 配色、行号、左侧折叠槽；Ctrl+F 查找">JSON 配色与折叠 · Ctrl+F 查找 · Ctrl+H 替换</span>
                     </div>
                     <div class="actions">
+                        <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
+                        <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
                         <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
                         <button type="button" class="title-btn" id="btn-copy">复制输入</button>
                         <button type="button" class="title-btn" id="btn-clear">清空</button>
@@ -412,8 +474,8 @@
                     <div class="ta-wrap" style="flex:1;min-height:0;display:flex;flex-direction:column;">
                         <span class="ta-label" id="label-in" style="display:none;padding:8px 10px 0;">JSON</span>
                         <div class="editor-stack editor-stack-main">
-                            <pre class="editor-highlight-backdrop" id="main-input-backdrop"></pre>
-                            <textarea id="main-input" class="editor-text-layer" data-persist-key="json_input" placeholder='{"name":"示例","items":[1,2]}'></textarea>
+                            <textarea id="main-input" data-persist-key="json_input" aria-hidden="true" tabindex="-1"></textarea>
+                            <div id="cm-json-mount"></div>
                         </div>
                     </div>
                     <div class="ta-wrap" id="wrap-out" style="display:none;flex:1;min-height:0;flex-direction:column;">
@@ -513,13 +575,32 @@
         </div>
         <div id="toast" role="status"></div>
 
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldcode.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/brace-fold.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/display/placeholder.js"></script>
+
         <script>
             (function () {
+                if (typeof CodeMirror === "undefined") {
+                    alert("CodeMirror 脚本未加载，请检查网络后刷新页面。");
+                    return;
+                }
+
                 var mainInput = document.getElementById("main-input");
                 var outputConvert = document.getElementById("output-convert");
-                var mainBackdrop = document.getElementById("main-input-backdrop");
                 var outBackdrop = document.getElementById("output-convert-backdrop");
+                var btnJsonExpandAll = document.getElementById("btn-json-expand-all");
+                var btnJsonCollapseAll = document.getElementById("btn-json-collapse-all");
                 var refreshFindHighlights = function () {};
+                var mainCm = null;
+                var findMarksMain = [];
+                var lastFindTargetIsOutput = false;
+                /** 查找导航：null 表示尚未开始；否则记录上次是否在输出框 */
+                var findNavWasOutput = null;
                 var editorZone = document.getElementById("editor-zone");
                 var headTitle = document.getElementById("head-title");
                 var btnCopyOut = document.getElementById("btn-copy-out");
@@ -531,6 +612,12 @@
                 var panelConvert = document.getElementById("panel-convert");
                 var toastEl = document.getElementById("toast");
                 var selIndent = document.getElementById("sel-indent");
+                var findBar = document.getElementById("find-bar");
+                var findInput = document.getElementById("find-input");
+                var findReplaceRow = document.getElementById("find-replace-row");
+                var replaceInput = document.getElementById("find-replace-input");
+                var findCountEl = document.getElementById("find-count");
+                var findCase = document.getElementById("find-case");
                 var currentTab = "common";
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
@@ -553,12 +640,110 @@
                             bd.scrollLeft = ta.scrollLeft;
                         });
                     }
-                    pair(mainInput, mainBackdrop);
                     pair(outputConvert, outBackdrop);
                 })();
 
+                mainCm = CodeMirror(document.getElementById("cm-json-mount"), {
+                    value: mainInput.value || "",
+                    mode: { name: "javascript", json: true },
+                    lineNumbers: true,
+                    lineWrapping: true,
+                    tabSize: 4,
+                    indentUnit: 2,
+                    indentWithTabs: false,
+                    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                    foldGutter: true,
+                    inputStyle: "textarea",
+                    spellcheck: false,
+                    autofocus: false,
+                    placeholder: '{"name":"示例","items":[1,2]}',
+                    extraKeys: {
+                        "Ctrl-Q": function (cm) {
+                            cm.foldCode(cm.getCursor());
+                        },
+                    },
+                });
+
+                function syncMainInputFromCm() {
+                    mainInput.value = mainCm.getValue();
+                }
+
+                function setMainInputContent(text) {
+                    mainCm.setValue(text == null ? "" : String(text));
+                }
+
+                function resizeMainCm() {
+                    if (!mainCm) return;
+                    var mount = document.getElementById("cm-json-mount");
+                    var stack = mount && mount.closest(".editor-stack");
+                    var h = stack ? stack.clientHeight : 300;
+                    mainCm.setSize(null, Math.max(120, h));
+                    mainCm.refresh();
+                }
+
+                if (typeof ResizeObserver !== "undefined") {
+                    var cmResizeEl = document.querySelector(".editor-stack-main");
+                    if (cmResizeEl) {
+                        new ResizeObserver(function () {
+                            resizeMainCm();
+                        }).observe(cmResizeEl);
+                    }
+                }
+                window.addEventListener("load", function () {
+                    if (mainInput.value && mainInput.value !== mainCm.getValue()) {
+                        mainCm.setValue(mainInput.value);
+                    }
+                    resizeMainCm();
+                });
+
+                mainCm.on("change", function () {
+                    syncMainInputFromCm();
+                    if (currentTab === "convert") doConvert(true);
+                    refreshFindHighlights();
+                });
+                mainCm.on("focus", function () {
+                    lastFindTargetIsOutput = false;
+                });
+                mainCm.on("cursorActivity", function () {
+                    if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                });
+
+                mainInput.addEventListener("input", function () {
+                    if (mainCm.getValue() !== mainInput.value) {
+                        mainCm.setValue(mainInput.value);
+                    }
+                });
+
                 function getTrimInput() {
-                    return mainInput.value.trim();
+                    return mainCm.getValue().trim();
+                }
+
+                function cmGetSelOffsets() {
+                    var a = mainCm.indexFromPos(mainCm.getCursor("from"));
+                    var b = mainCm.indexFromPos(mainCm.getCursor("to"));
+                    return { start: Math.min(a, b), end: Math.max(a, b) };
+                }
+
+                function cmSetSelOffsets(start, end) {
+                    mainCm.focus();
+                    var a = mainCm.posFromIndex(start);
+                    var b = mainCm.posFromIndex(end);
+                    mainCm.setSelection(a, b);
+                    mainCm.scrollIntoView({ from: a, to: b });
+                }
+
+                function clearMainFindMarks() {
+                    while (findMarksMain.length) {
+                        var m = findMarksMain.pop();
+                        if (m && m.clear) m.clear();
+                    }
+                }
+
+                function getFindTargetIsOutput() {
+                    var a = document.activeElement;
+                    if (mainCm && mainCm.getWrapperElement().contains(a)) return false;
+                    if (a === outputConvert) return true;
+                    return lastFindTargetIsOutput;
                 }
 
                 // UMD 包导出为 JSONRepair.jsonrepair，未必有全局 jsonrepair
@@ -995,13 +1180,11 @@
                     var code = getTrimInput();
                     if (!code) return;
                     var obj = parseJsonLenient(code);
-                    if (tab === 0 || tab === "0") {
-                        mainInput.value = JSON.stringify(obj);
-                    } else {
-                        var sp = tab === "tab" ? "\t" : Number(tab);
-                        mainInput.value = JSON.stringify(obj, null, sp);
-                    }
-                    mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                    var next =
+                        tab === 0 || tab === "0"
+                            ? JSON.stringify(obj)
+                            : JSON.stringify(obj, null, tab === "tab" ? "\t" : Number(tab));
+                    setMainInputContent(next);
                     toast("已格式化");
                 }
 
@@ -1019,6 +1202,7 @@
                     wrapOut.style.display = isConvert ? "flex" : "none";
                     if (isConvert) doConvert(true);
                     refreshFindHighlights();
+                    resizeMainCm();
                 }
 
                 document.getElementById("tab-common").addEventListener("click", function () {
@@ -1050,8 +1234,7 @@
                     try {
                         var code = getTrimInput();
                         if (!code) return;
-                        mainInput.value = JSON.stringify(parseJsonLenient(code));
-                        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        setMainInputContent(JSON.stringify(parseJsonLenient(code)));
                         toast("已压缩");
                     } catch (e) {
                         toast("压缩失败：" + e.message);
@@ -1065,8 +1248,7 @@
                         var jr = getJsonRepair();
                         if (!jr) throw new Error("jsonrepair 未加载");
                         var pre = preprocessJsonForRepair(code);
-                        mainInput.value = JSON.stringify(JSON.parse(jr(pre)), null, 2);
-                        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        setMainInputContent(JSON.stringify(JSON.parse(jr(pre)), null, 2));
                         toast("已修复并格式化");
                     } catch (e) {
                         toast("修复失败：" + e.message);
@@ -1083,12 +1265,11 @@
                     }
                     try {
                         if (v === "escape") {
-                            mainInput.value = code.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+                            setMainInputContent(code.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"'));
                         } else {
-                            mainInput.value = code.trim().replace(/\\\\/g, "\\").replace(/\\"/g, '"');
+                            setMainInputContent(code.trim().replace(/\\\\/g, "\\").replace(/\\"/g, '"'));
                         }
                         toast(v === "escape" ? "已添加转义" : "已去除转义");
-                        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
                     } catch (e) {
                         toast(e.message);
                     }
@@ -1098,13 +1279,12 @@
                 document.getElementById("dd-unicode").addEventListener("change", function () {
                     var v = this.value;
                     if (!v) return;
-                    var code = mainInput.value;
+                    var code = mainCm.getValue();
                     if (!code.trim()) {
                         this.value = "";
                         return;
                     }
-                    mainInput.value = v === "unicode2zh" ? unicode2zh(code) : zh2unicode(code);
-                    mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                    setMainInputContent(v === "unicode2zh" ? unicode2zh(code) : zh2unicode(code));
                     toast("已转换 Unicode");
                     this.value = "";
                 });
@@ -1124,8 +1304,7 @@
                         var obj = parseJsonLenient(code);
                         var sorted = sortKeysDeep(obj, v === "asc");
                         var ind = currentStringifyIndent();
-                        mainInput.value = ind === null ? JSON.stringify(sorted) : JSON.stringify(sorted, null, ind);
-                        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        setMainInputContent(ind === null ? JSON.stringify(sorted) : JSON.stringify(sorted, null, ind));
                         toast("键已排序");
                     } catch (e) {
                         toast("排序失败：" + e.message);
@@ -1142,8 +1321,7 @@
                         var obj = parseJsonLenient(code);
                         renameKeysDeep(obj, v);
                         var ind = currentStringifyIndent();
-                        mainInput.value = ind === null ? JSON.stringify(obj) : JSON.stringify(obj, null, ind);
-                        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        setMainInputContent(ind === null ? JSON.stringify(obj) : JSON.stringify(obj, null, ind));
                         toast("键名已转换");
                     } catch (e) {
                         toast("键名转换失败：" + e.message);
@@ -1441,7 +1619,7 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    var t = mainInput.value;
+                    var t = mainCm.getValue();
                     if (!t.trim()) return;
                     navigator.clipboard.writeText(t);
                     toast("已复制输入");
@@ -1454,39 +1632,21 @@
                     toast("已复制输出");
                 });
 
-                /* —— 查找 / 替换（Ctool Monaco：Ctrl+F / Ctrl+H + 匹配高亮） —— */
-                var findBar = document.getElementById("find-bar");
-                var findInput = document.getElementById("find-input");
-                var findReplaceRow = document.getElementById("find-replace-row");
-                var replaceInput = document.getElementById("find-replace-input");
-                var findCountEl = document.getElementById("find-count");
-                var findCase = document.getElementById("find-case");
-                var lastFocusTa = mainInput;
-                /** 查找条失焦时 textarea 的选区常被浏览器置 0，不能依赖 DOM 选区做「下一个」；用显式索引导航 */
+                /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
                 var findNavMatchIndex = -1;
-                var findNavTargetTa = null;
 
                 function resetFindNavigation() {
                     findNavMatchIndex = -1;
-                    findNavTargetTa = null;
+                    findNavWasOutput = null;
                 }
 
-                function getFindTarget() {
-                    var a = document.activeElement;
-                    if (a === mainInput || a === outputConvert) return a;
-                    return lastFocusTa;
-                }
-
-                mainInput.addEventListener("focus", function () {
-                    lastFocusTa = mainInput;
-                });
                 outputConvert.addEventListener("focus", function () {
-                    lastFocusTa = outputConvert;
-                });
-                mainInput.addEventListener("mousedown", function () {
-                    resetFindNavigation();
+                    lastFindTargetIsOutput = true;
                 });
                 outputConvert.addEventListener("mousedown", function () {
+                    resetFindNavigation();
+                });
+                mainCm.getWrapperElement().addEventListener("mousedown", function () {
                     resetFindNavigation();
                 });
 
@@ -1545,39 +1705,53 @@
                     return parts.join("");
                 }
 
-                function renderFindBackdrop(ta, backdrop, highlightActive) {
-                    if (!ta || !backdrop) return;
+                function renderOutputFindBackdrop(highlightActive) {
+                    if (!outputConvert || !outBackdrop) return;
                     if (!highlightActive || !findInput.value) {
-                        backdrop.innerHTML = escapeHtmlPlain(ta.value);
+                        outBackdrop.innerHTML = escapeHtmlPlain(outputConvert.value);
                         return;
                     }
-                    if (ta !== getFindTarget()) {
-                        backdrop.innerHTML = escapeHtmlPlain(ta.value);
-                        return;
+                    if (getFindTargetIsOutput()) {
+                        outBackdrop.innerHTML = buildFindHighlightHtml(
+                            outputConvert.value,
+                            findInput.value,
+                            findCase.checked,
+                            outputConvert.selectionStart,
+                            outputConvert.selectionEnd
+                        );
+                    } else {
+                        outBackdrop.innerHTML = escapeHtmlPlain(outputConvert.value);
                     }
-                    backdrop.innerHTML = buildFindHighlightHtml(
-                        ta.value,
-                        findInput.value,
-                        findCase.checked,
-                        ta.selectionStart,
-                        ta.selectionEnd
-                    );
                 }
 
                 refreshFindHighlights = function () {
                     var on = !findBar.hidden && findInput.value.length > 0;
-                    var st0 = mainInput.scrollTop;
-                    var sl0 = mainInput.scrollLeft;
+                    clearMainFindMarks();
                     var st1 = outputConvert.scrollTop;
                     var sl1 = outputConvert.scrollLeft;
-                    renderFindBackdrop(mainInput, mainBackdrop, on);
-                    renderFindBackdrop(outputConvert, outBackdrop, on);
-                    mainInput.scrollTop = st0;
-                    mainInput.scrollLeft = sl0;
+                    if (on && mainCm && !getFindTargetIsOutput()) {
+                        var needle = findInput.value;
+                        var text = mainCm.getValue();
+                        var caseSens = findCase.checked;
+                        var positions = getMatchPositions(text, needle, caseSens);
+                        var sel = cmGetSelOffsets();
+                        for (var pi = 0; pi < positions.length; pi++) {
+                            var p = positions[pi];
+                            var isCur =
+                                (p.start === sel.start && p.end === sel.end) ||
+                                (sel.start === sel.end &&
+                                    sel.start >= p.start &&
+                                    sel.start < p.end);
+                            findMarksMain.push(
+                                mainCm.markText(mainCm.posFromIndex(p.start), mainCm.posFromIndex(p.end), {
+                                    className: "cm-find-hl" + (isCur ? " cm-find-hl-current" : ""),
+                                })
+                            );
+                        }
+                    }
+                    renderOutputFindBackdrop(on);
                     outputConvert.scrollTop = st1;
                     outputConvert.scrollLeft = sl1;
-                    mainBackdrop.scrollTop = st0;
-                    mainBackdrop.scrollLeft = sl0;
                     outBackdrop.scrollTop = st1;
                     outBackdrop.scrollLeft = sl1;
                 };
@@ -1591,6 +1765,14 @@
                     });
                 }
 
+                function selectionMatchesFindMainCm(needle, caseSens) {
+                    if (!needle) return false;
+                    var fr = mainCm.getCursor("from");
+                    var to = mainCm.getCursor("to");
+                    var s = mainCm.getRange(fr, to);
+                    return caseSens ? s === needle : s.toLowerCase() === needle.toLowerCase();
+                }
+
                 function selectionMatchesFind(ta, needle, caseSens) {
                     if (!needle) return false;
                     var sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
@@ -1599,21 +1781,30 @@
                 }
 
                 function updateFindCount() {
-                    var ta = getFindTarget();
                     var needle = findInput.value;
                     if (!needle) {
                         findCountEl.textContent = "";
                         refreshFindHighlights();
                         return;
                     }
-                    var positions = getMatchPositions(ta.value, needle, findCase.checked);
+                    var out = getFindTargetIsOutput();
+                    var text = out ? outputConvert.value : mainCm.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
                     if (!positions.length) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
-                    var s = ta.selectionStart;
-                    var e = ta.selectionEnd;
+                    var s;
+                    var e;
+                    if (out) {
+                        s = outputConvert.selectionStart;
+                        e = outputConvert.selectionEnd;
+                    } else {
+                        var o = cmGetSelOffsets();
+                        s = o.start;
+                        e = o.end;
+                    }
                     var idx = -1;
                     for (var i = 0; i < positions.length; i++) {
                         if (positions[i].start === s && positions[i].end === e) {
@@ -1688,7 +1879,7 @@
                         Math.min(targetX - vw / 2 + selW / 2, ta.scrollWidth - vw)
                     );
 
-                    var bd = ta === mainInput ? mainBackdrop : ta === outputConvert ? outBackdrop : null;
+                    var bd = ta === outputConvert ? outBackdrop : null;
                     if (bd) {
                         bd.scrollTop = ta.scrollTop;
                         bd.scrollLeft = ta.scrollLeft;
@@ -1696,26 +1887,34 @@
                 }
 
                 function findNext() {
-                    var ta = getFindTarget();
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
                         return;
                     }
-                    var positions = getMatchPositions(ta.value, needle, findCase.checked);
+                    var out = getFindTargetIsOutput();
+                    var text = out ? outputConvert.value : mainCm.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
                     if (!positions.length) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
-                    if (findNavTargetTa !== ta) {
+                    if (findNavWasOutput !== null && findNavWasOutput !== out) {
                         resetFindNavigation();
                     }
-                    findNavTargetTa = ta;
+                    findNavWasOutput = out;
                     var i;
                     if (findNavMatchIndex < 0) {
-                        var from =
-                            document.activeElement === ta ? ta.selectionEnd : 0;
+                        var from;
+                        if (out) {
+                            from = document.activeElement === outputConvert ? outputConvert.selectionEnd : 0;
+                        } else {
+                            var wrap = mainCm.getWrapperElement();
+                            from = wrap.contains(document.activeElement)
+                                ? mainCm.indexFromPos(mainCm.getCursor("head"))
+                                : 0;
+                        }
                         var qi;
                         for (qi = 0; qi < positions.length; qi++) {
                             var pm = positions[qi];
@@ -1734,35 +1933,48 @@
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
-                    ta.focus();
-                    ta.setSelectionRange(p.start, p.end);
-                    scrollTextareaMatchIntoView(ta);
+                    if (out) {
+                        outputConvert.focus();
+                        outputConvert.setSelectionRange(p.start, p.end);
+                        scrollTextareaMatchIntoView(outputConvert);
+                    } else {
+                        cmSetSelOffsets(p.start, p.end);
+                    }
                     updateFindCount();
                 }
 
                 function findPrev() {
-                    var ta = getFindTarget();
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
                         return;
                     }
-                    var positions = getMatchPositions(ta.value, needle, findCase.checked);
+                    var out = getFindTargetIsOutput();
+                    var text = out ? outputConvert.value : mainCm.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
                     if (!positions.length) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
-                    if (findNavTargetTa !== ta) {
+                    if (findNavWasOutput !== null && findNavWasOutput !== out) {
                         resetFindNavigation();
                     }
-                    findNavTargetTa = ta;
+                    findNavWasOutput = out;
                     var i;
                     if (findNavMatchIndex < 0) {
-                        var from =
-                            document.activeElement === ta
-                                ? ta.selectionStart
-                                : ta.value.length;
+                        var from;
+                        if (out) {
+                            from =
+                                document.activeElement === outputConvert
+                                    ? outputConvert.selectionStart
+                                    : outputConvert.value.length;
+                        } else {
+                            var wrap2 = mainCm.getWrapperElement();
+                            from = wrap2.contains(document.activeElement)
+                                ? mainCm.indexFromPos(mainCm.getCursor("head"))
+                                : mainCm.getValue().length;
+                        }
                         var qj;
                         for (qj = 0; qj < positions.length; qj++) {
                             var pn = positions[qj];
@@ -1785,9 +1997,13 @@
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
-                    ta.focus();
-                    ta.setSelectionRange(p.start, p.end);
-                    scrollTextareaMatchIntoView(ta);
+                    if (out) {
+                        outputConvert.focus();
+                        outputConvert.setSelectionRange(p.start, p.end);
+                        scrollTextareaMatchIntoView(outputConvert);
+                    } else {
+                        cmSetSelOffsets(p.start, p.end);
+                    }
                     updateFindCount();
                 }
 
@@ -1795,9 +2011,15 @@
                     findBar.removeAttribute("hidden");
                     findReplaceRow.hidden = !withReplace;
                     resetFindNavigation();
-                    var ta = getFindTarget();
-                    if (ta.selectionStart !== ta.selectionEnd) {
-                        findInput.value = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+                    if (getFindTargetIsOutput()) {
+                        if (outputConvert.selectionStart !== outputConvert.selectionEnd) {
+                            findInput.value = outputConvert.value.slice(
+                                outputConvert.selectionStart,
+                                outputConvert.selectionEnd
+                            );
+                        }
+                    } else if (mainCm.somethingSelected()) {
+                        findInput.value = mainCm.getSelection();
                     }
                     findInput.focus();
                     findInput.select();
@@ -1809,42 +2031,65 @@
                     findReplaceRow.hidden = true;
                     resetFindNavigation();
                     refreshFindHighlights();
-                    (lastFocusTa || mainInput).focus();
+                    if (lastFindTargetIsOutput) outputConvert.focus();
+                    else mainCm.focus();
                 }
 
                 function replaceOne() {
-                    var ta = getFindTarget();
-                    if (ta.readOnly) {
-                        toast("输出区为只读，无法替换");
-                        return;
-                    }
                     var needle = findInput.value;
                     if (!needle) return;
-                    if (selectionMatchesFind(ta, needle, findCase.checked)) {
-                        var rep = replaceInput.value;
-                        var s = ta.selectionStart;
-                        ta.value = ta.value.slice(0, s) + rep + ta.value.slice(ta.selectionEnd);
-                        var np = s + rep.length;
-                        ta.setSelectionRange(np, np);
-                        ta.dispatchEvent(new Event("input", { bubbles: true }));
+                    if (getFindTargetIsOutput()) {
+                        if (outputConvert.readOnly) {
+                            toast("输出区为只读，无法替换");
+                            return;
+                        }
+                        if (selectionMatchesFind(outputConvert, needle, findCase.checked)) {
+                            var rep = replaceInput.value;
+                            var s = outputConvert.selectionStart;
+                            outputConvert.value =
+                                outputConvert.value.slice(0, s) +
+                                rep +
+                                outputConvert.value.slice(outputConvert.selectionEnd);
+                            var np = s + rep.length;
+                            outputConvert.setSelectionRange(np, np);
+                            outputConvert.dispatchEvent(new Event("input", { bubbles: true }));
+                            resetFindNavigation();
+                            updateFindCount();
+                        } else {
+                            findNext();
+                        }
+                    } else {
+                        if (!selectionMatchesFindMainCm(needle, findCase.checked)) {
+                            findNext();
+                            return;
+                        }
+                        mainCm.replaceSelection(replaceInput.value);
                         resetFindNavigation();
                         updateFindCount();
-                    } else {
-                        findNext();
                     }
                 }
 
                 function replaceAll() {
-                    var ta = getFindTarget();
-                    if (ta.readOnly) {
-                        toast("输出区为只读，无法替换");
-                        return;
-                    }
                     var needle = findInput.value;
                     if (!needle) return;
                     var rep = replaceInput.value;
-                    ta.value = replaceAllString(ta.value, needle, rep, findCase.checked);
-                    ta.dispatchEvent(new Event("input", { bubbles: true }));
+                    if (getFindTargetIsOutput()) {
+                        if (outputConvert.readOnly) {
+                            toast("输出区为只读，无法替换");
+                            return;
+                        }
+                        outputConvert.value = replaceAllString(
+                            outputConvert.value,
+                            needle,
+                            rep,
+                            findCase.checked
+                        );
+                        outputConvert.dispatchEvent(new Event("input", { bubbles: true }));
+                    } else {
+                        setMainInputContent(
+                            replaceAllString(mainCm.getValue(), needle, rep, findCase.checked)
+                        );
+                    }
                     resetFindNavigation();
                     updateFindCount();
                     toast("已全部替换");
@@ -1880,19 +2125,20 @@
 
                 document.addEventListener("selectionchange", function () {
                     if (findBar.hidden || !findInput.value) return;
-                    var a = document.activeElement;
-                    if (a === mainInput || a === outputConvert) refreshFindHighlights();
+                    if (document.activeElement === outputConvert) refreshFindHighlights();
                 });
 
-                mainInput.addEventListener("input", function () {
-                    if (currentTab === "convert") doConvert(true);
-                    refreshFindHighlights();
+                btnJsonExpandAll.addEventListener("click", function () {
+                    if (mainCm && CodeMirror.commands.unfoldAll) CodeMirror.commands.unfoldAll(mainCm);
+                });
+
+                btnJsonCollapseAll.addEventListener("click", function () {
+                    if (mainCm && CodeMirror.commands.foldAll) CodeMirror.commands.foldAll(mainCm);
                 });
 
                 document.getElementById("btn-clear").addEventListener("click", function () {
-                    mainInput.value = "";
+                    setMainInputContent("");
                     outputConvert.value = "";
-                    if (currentTab === "convert") doConvert(true);
                     refreshFindHighlights();
                     toast("已清空");
                 });
@@ -1931,6 +2177,7 @@
                 });
 
                 refreshFindHighlights();
+                resizeMainCm();
             })();
         </script>
     </body>

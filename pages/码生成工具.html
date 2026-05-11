@@ -2,117 +2,137 @@
 <html lang="zh-CN">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>二维码 / 条形码生成</title>
         <style>
-            * {
-                box-sizing: border-box;
-            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
-                --bg: #f3f7ff;
                 --card: #ffffff;
-                --primary: #2f6bff;
-                --primary-2: #5b8dff;
-                --danger: #f05656;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
                 --text: #1f2a44;
                 --muted: #6f7d96;
-                --border: #dbe6ff;
-                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #e04040;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
             }
-            body {
-                margin: 0;
-                min-height: 100vh;
-                padding: 8px;
-                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-                background: var(--bg);
+            html, body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
             }
-            .container {
-                height: calc(100vh - 16px);
+            .page {
+                height: 100%;
+                padding: 10px;
                 display: flex;
+                flex-direction: column;
                 gap: 8px;
                 min-height: 0;
             }
-            .panel {
+            .editor-wrap {
                 flex: 1;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
                 background: var(--card);
                 border: 1px solid var(--border);
-                border-radius: 8px;
+                border-radius: 10px;
                 box-shadow: var(--shadow);
-                padding: 8px;
+                overflow: hidden;
             }
-            .title {
-                margin: 0 0 8px;
+            .panel-title {
+                padding: 8px 10px;
+                font-size: 14px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .editor-head {
+                flex: 0 0 auto;
+                gap: 8px;
+            }
+            .editor-head-main {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                flex-wrap: wrap;
+                flex: 1;
+            }
+            .editor-head .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
                 font-size: 13px;
-                font-weight: 700;
-                color: var(--text);
+                cursor: pointer;
             }
-            .form-area {
+            .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .title-btn.primary:hover {
+                filter: brightness(1.05);
+                color: #fff;
+            }
+            .title-btn.danger {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--danger), #ff7979);
+            }
+            .editor-zone {
                 flex: 1;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
+                padding: 0 8px 8px;
+                gap: 6px;
             }
-            label {
-                display: block;
-                margin-bottom: 6px;
-                font-size: 12px;
-                color: var(--muted);
-            }
-            textarea,
-            select,
-            input {
+            #input-text {
+                flex: 1;
                 width: 100%;
+                min-height: 160px;
+                padding: 10px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
-                padding: 8px 10px;
                 font-size: 13px;
+                line-height: 1.6;
+                font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif;
+                resize: none;
                 outline: none;
             }
-            textarea:focus,
-            select:focus,
-            input:focus {
-                border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
-            }
-            textarea {
-                min-height: 240px;
-                flex: 1;
-                resize: none;
-            }
-            .row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                margin-top: 8px;
-            }
-            .actions {
-                margin-top: auto;
-                padding-top: 10px;
-                border-top: 1px solid #dbe7ff;
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            button {
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
-                color: #fff;
-                padding: 7px 12px;
-                border: 0;
-                border-radius: 999px;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 600;
-            }
-            .danger {
-                background: linear-gradient(135deg, var(--danger), #ff7979);
+            #input-text:focus {
+                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
             }
             .preview-wrap {
-                flex: 1;
-                min-height: 0;
-                border: 1px solid #dbe7ff;
+                flex: 0 0 auto;
+                max-height: min(42vh, 360px);
+                min-height: 120px;
+                border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 background: #fff;
                 display: flex;
@@ -121,11 +141,6 @@
                 padding: 10px;
                 overflow: auto;
             }
-            #qrcode img,
-            #qrcode canvas {
-                max-width: 100%;
-                height: auto;
-            }
             #qrcode {
                 width: 100%;
                 display: flex;
@@ -133,6 +148,11 @@
                 gap: 10px;
                 align-items: flex-start;
                 justify-content: center;
+            }
+            #qrcode img,
+            #qrcode canvas {
+                max-width: 100%;
+                height: auto;
             }
             .qr-item {
                 display: flex;
@@ -152,343 +172,583 @@
                 max-width: 100%;
                 height: auto;
             }
-            .status {
-                margin-top: 8px;
-                padding: 6px 8px;
-                border-radius: 6px;
-                background: #f8fbff;
-                border: 1px solid #dbe7ff;
-                font-size: 12px;
-                color: #2f3d5d;
-            }
             .hidden {
                 display: none !important;
             }
-            @media (max-width: 900px) {
-                .container {
-                    flex-direction: column;
-                }
-                .row {
-                    grid-template-columns: 1fr;
-                }
+            .ctool-page-option {
+                flex: 0 0 auto;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            .json-tabs-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #e4edff;
+                padding-bottom: 6px;
+                flex-wrap: wrap;
+            }
+            .json-tabs {
+                display: flex;
+                gap: 4px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .json-tabs button {
+                border: 1px solid #cfdcf7;
+                background: #fff;
+                padding: 7px 14px;
+                font-size: 14px;
+                border-radius: 8px;
+                cursor: pointer;
+                color: var(--text);
+            }
+            .json-tabs button:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .json-tabs button.active {
+                border-color: var(--primary);
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .align-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+                align-items: center;
+            }
+            .opt-label {
+                font-size: 13px;
+                color: var(--muted);
+                white-space: nowrap;
+            }
+            select.dd,
+            .num-in {
+                min-height: 2rem;
+                padding: 4px 8px;
+                font-size: 14px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                background: #fff;
+                color: var(--text);
+                outline: none;
+            }
+            select.dd:focus,
+            .num-in:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            select.dd {
+                min-width: 8rem;
+                max-width: 14rem;
+                cursor: pointer;
+            }
+            .num-in {
+                width: 5rem;
+            }
+            #status {
+                font-size: 13px;
+                color: #2f3d5d;
+                padding: 6px 4px 0;
+                line-height: 1.5;
+            }
+            #status.err {
+                color: #c62828;
+            }
+            #toast {
+                position: fixed;
+                bottom: 28px;
+                left: 50%;
+                transform: translateX(-50%) translateY(12px);
+                padding: 8px 18px;
+                background: rgba(31, 42, 68, 0.92);
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            #toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
             }
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="panel">
-                <h3 class="title">输入参数</h3>
-                <div class="form-area">
-                    <label for="input-text">字符串内容</label>
-                    <textarea id="input-text" placeholder="请输入要生成的字符串"></textarea>
-                    <div class="row">
-                        <div>
-                            <label for="code-type">码类型</label>
-                            <select id="code-type">
-                                <option value="qrcode">二维码（默认）</option>
-                                <option value="barcode">条形码 CODE128</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="code-size">尺寸（像素）</label>
-                            <input id="code-size" type="number" min="100" max="600" value="240" />
-                        </div>
+        <div class="page">
+            <div class="editor-wrap">
+                <div class="editor-head panel-title">
+                    <div class="editor-head-main">
+                        <span id="head-label">二维码</span>
+                        <span class="hint" id="head-hint">UTF-8 最多约 45KB；较长内容仅手动点「生成」预览</span>
                     </div>
-                    <div id="status" class="status">默认生成二维码，可通过下拉框切换条形码。</div>
+                    <div class="actions">
+                        <button type="button" class="title-btn primary" id="generate-btn">生成</button>
+                        <button type="button" class="title-btn" id="download-btn">下载图片</button>
+                        <button type="button" class="title-btn danger" id="clear-btn">清空</button>
+                    </div>
                 </div>
-                <div class="actions">
-                    <button id="generate-btn" type="button">生成</button>
-                    <button id="download-btn" type="button">下载图片</button>
-                    <button id="clear-btn" class="danger" type="button">清空</button>
+                <div class="editor-zone">
+                    <label for="input-text" class="opt-label" style="padding-top: 4px">字符串内容</label>
+                    <textarea id="input-text" name="qrInput" spellcheck="false" placeholder="网址、文本、Wi‑Fi 等；超长内容将生成多张二维码，扫码后按顺序拼接字节"></textarea>
+                    <div class="preview-wrap">
+                        <div id="qrcode"></div>
+                        <svg id="barcode" class="hidden"></svg>
+                    </div>
+                    <div id="status"></div>
                 </div>
             </div>
-            <div class="panel">
-                <h3 class="title">预览</h3>
-                <div class="preview-wrap">
-                    <div id="qrcode"></div>
-                    <svg id="barcode" class="hidden"></svg>
+
+            <div class="ctool-page-option">
+                <div class="json-tabs-row">
+                    <div class="json-tabs" id="mode-tabs" role="tablist">
+                        <button type="button" class="active" data-mode="qrcode">二维码</button>
+                        <button type="button" data-mode="barcode">条形码 CODE128</button>
+                    </div>
+                </div>
+                <div class="align-row" id="opts-qrcode">
+                    <span class="opt-label">纠错</span>
+                    <select id="sel-ecc" class="dd" name="qrEcc" title="纠错越高，同版本下可存数据越少">
+                        <option value="L" selected>L 低（约 2953 字节/码，最大）</option>
+                        <option value="M">M 中（约 2331）</option>
+                        <option value="Q">Q 较高（约 1663）</option>
+                        <option value="H">H 高（约 1273）</option>
+                    </select>
+                    <span class="opt-label">边长 px</span>
+                    <input id="code-size" class="num-in" name="qrSize" type="number" min="80" max="1200" value="280" title="二维码边长" />
+                    <span class="opt-label">分片余量</span>
+                    <select id="sel-margin-bytes" class="dd" name="qrChunkMargin" title="为编码开销预留的字节余量，异常内容可调大">
+                        <option value="24" selected>标准（24）</option>
+                        <option value="48">宽松（48）</option>
+                        <option value="80">更宽松（80）</option>
+                    </select>
+                </div>
+                <div class="align-row hidden" id="opts-barcode">
+                    <span class="opt-label">条高参考</span>
+                    <input id="bar-height" class="num-in" type="number" min="40" max="400" value="120" title="条形码高度" />
                 </div>
             </div>
         </div>
+        <div id="toast" aria-live="polite"></div>
 
         <script src="./libs/qrcode.min.js"></script>
         <script src="./libs/JsBarcode.all.min.js"></script>
         <script>
-            let qrInstance = null;
-            const QR_MAX_BYTES = {
-                L: 2953,
-                M: 2331
-            };
+            (function () {
+                /** 与 libs/qrcode.min.js 中 Version40 容量一致（8 位字节模式） */
+                var CAPACITY_V40 = { L: 2953, M: 2331, Q: 1663, H: 1273 };
+                /** 常见网页工具约 15KB 级限制，此处约 2.5～3 倍，兼顾流畅 */
+                var MAX_INPUT_UTF8_BYTES = 45000;
+                /** 超过此 UTF-8 长度不再输入时自动刷新，避免卡顿 */
+                var MAX_AUTO_PREVIEW_UTF8_BYTES = 9600;
+                /** 极端纠错下分片过多时保护主线程 */
+                var MAX_QR_CHUNKS = 80;
+                var teEnc = new TextEncoder();
+                var teDec = new TextDecoder("utf-8", { fatal: true });
+                var teDecLenient = new TextDecoder("utf-8", { fatal: false });
 
-            function setStatus(text, isError) {
-                const status = document.getElementById("status");
-                status.textContent = text;
-                status.style.color = isError ? "#c43d3d" : "#2f3d5d";
-            }
+                var mode = "qrcode";
+                var autoGenTimer = null;
 
-            function getUtf8ByteLength(text) {
-                return new TextEncoder().encode(text).length;
-            }
+                function toast(msg) {
+                    var el = document.getElementById("toast");
+                    el.textContent = msg;
+                    el.classList.add("show");
+                    clearTimeout(el._t);
+                    el._t = setTimeout(function () {
+                        el.classList.remove("show");
+                    }, 2000);
+                }
 
-            function normalizeInputText(rawText) {
-                return String(rawText || "")
-                    .replace(/<br\s*\/?>/gi, "\n")
-                    .replace(/\r\n/g, "\n");
-            }
+                function setStatus(text, isError) {
+                    var s = document.getElementById("status");
+                    s.textContent = text;
+                    s.classList.toggle("err", !!isError);
+                }
 
-            function clearPreview() {
-                document.getElementById("qrcode").innerHTML = "";
-                const barcode = document.getElementById("barcode");
-                barcode.innerHTML = "";
-            }
+                function normalizeInputText(raw) {
+                    return String(raw || "")
+                        .replace(/<br\s*\/?>/gi, "\n")
+                        .replace(/\r\n/g, "\n");
+                }
 
-            function renderQrCode(qrcodeEl, text, size) {
-                const levels = [
-                    { level: QRCode.CorrectLevel.M, name: "M" },
-                    { level: QRCode.CorrectLevel.L, name: "L" }
-                ];
-                let lastError = null;
-                for (let i = 0; i < levels.length; i++) {
-                    try {
-                        qrInstance = new QRCode(qrcodeEl, {
-                            text: text,
-                            width: size,
-                            height: size,
-                            colorDark: "#000000",
-                            colorLight: "#ffffff",
-                            correctLevel: levels[i].level
-                        });
-                        return levels[i].name;
-                    } catch (error) {
-                        lastError = error;
-                        qrcodeEl.innerHTML = "";
+                function getUtf8ByteLength(text) {
+                    return teEnc.encode(text).length;
+                }
+
+                function eccNameToLevel(name) {
+                    var d = typeof QRCode !== "undefined" && QRCode.CorrectLevel;
+                    if (!d) return null;
+                    switch (name) {
+                        case "L":
+                            return d.L;
+                        case "M":
+                            return d.M;
+                        case "Q":
+                            return d.Q;
+                        case "H":
+                            return d.H;
+                        default:
+                            return d.L;
                     }
                 }
-                throw lastError || new Error("二维码生成失败");
-            }
 
-            function toQrPayload(text) {
-                try {
-                    return unescape(encodeURIComponent(text));
-                } catch (error) {
-                    return text;
+                /** 按 UTF-8 边界切分，每段字节数不超过 maxBytes（二分找合法尾，避免逐字节回退） */
+                function splitUtf8ByMaxBytes(text, maxBytes) {
+                    if (maxBytes < 8) maxBytes = 8;
+                    var u8 = teEnc.encode(text);
+                    if (u8.length <= maxBytes) return [text];
+                    var out = [];
+                    var start = 0;
+                    while (start < u8.length) {
+                        var lo = start + 1;
+                        var hi = Math.min(u8.length, start + maxBytes);
+                        var end = start;
+                        while (lo <= hi) {
+                            var mid = (lo + hi) >> 1;
+                            try {
+                                teDec.decode(u8.subarray(start, mid));
+                                end = mid;
+                                lo = mid + 1;
+                            } catch (e) {
+                                hi = mid - 1;
+                            }
+                        }
+                        if (end <= start) {
+                            throw new Error("无法在 UTF-8 边界安全切分（请检查是否含非法代理项）");
+                        }
+                        out.push(teDecLenient.decode(u8.subarray(start, end)));
+                        start = end;
+                    }
+                    return out;
                 }
-            }
 
-            function canRenderQrChunk(payload) {
-                const probe = document.createElement("div");
-                try {
-                    renderQrCode(probe, payload, 120);
-                    return true;
-                } catch (error) {
-                    return false;
+                function renderQrOpts(text, size, level) {
+                    return {
+                        text: text,
+                        width: size,
+                        height: size,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: level
+                    };
                 }
-            }
 
-            function splitQrPayloadAdaptively(payload) {
-                const chunks = [];
-                let index = 0;
-                const targetMaxBytes = QR_MAX_BYTES.L;
-
-                while (index < payload.length) {
-                    let high = Math.min(payload.length - index, targetMaxBytes);
-                    let low = 1;
-                    let bestLen = 0;
-
-                    while (low <= high) {
-                        const mid = Math.floor((low + high) / 2);
-                        const candidate = payload.slice(index, index + mid);
-                        if (canRenderQrChunk(candidate)) {
-                            bestLen = mid;
-                            low = mid + 1;
-                        } else {
-                            high = mid - 1;
+                /**
+                 * 在目标节点直接尝试纠错（无额外探测 DOM），成功则返回所用级别名称。
+                 */
+                function renderChunkWithFallback(el, text, preferredName, size) {
+                    var pref = ["L", "M", "Q", "H"].indexOf(preferredName);
+                    if (pref < 0) pref = 0;
+                    var names = ["L", "M", "Q", "H"];
+                    var order = [];
+                    for (var i = 0; i < names.length; i++) {
+                        order.push(names[(pref + i) % names.length]);
+                    }
+                    var uniq = [];
+                    order.forEach(function (n) {
+                        if (uniq.indexOf(n) < 0) uniq.push(n);
+                    });
+                    var lastErr = null;
+                    for (var j = 0; j < uniq.length; j++) {
+                        var nm = uniq[j];
+                        var lv = eccNameToLevel(nm);
+                        el.innerHTML = "";
+                        try {
+                            new QRCode(el, renderQrOpts(text, size, lv));
+                            return nm;
+                        } catch (err) {
+                            lastErr = err;
                         }
                     }
+                    throw lastErr || new Error("单段无法编码");
+                }
 
-                    if (!bestLen) {
-                        throw new Error("内容包含无法编码的数据片段");
+                function clearPreview() {
+                    document.getElementById("qrcode").innerHTML = "";
+                    var barcode = document.getElementById("barcode");
+                    barcode.innerHTML = "";
+                }
+
+                function generateQrList(text, size, eccName, chunkMargin) {
+                    var cap = CAPACITY_V40[eccName] || CAPACITY_V40.L;
+                    var maxBytes = Math.max(32, cap - chunkMargin);
+                    var chunks = splitUtf8ByMaxBytes(text, maxBytes);
+                    if (chunks.length > MAX_QR_CHUNKS) {
+                        throw new Error(
+                            "分片数量超过 " +
+                                MAX_QR_CHUNKS +
+                                " 张，请缩短内容或改用纠错 L 并减小「分片余量」。当前约 " +
+                                chunks.length +
+                                " 张。"
+                        );
                     }
-                    chunks.push(payload.slice(index, index + bestLen));
-                    index += bestLen;
-                }
-                return chunks;
-            }
-
-            function renderQrChunkList(qrcodeEl, text, size) {
-                const payload = toQrPayload(text);
-                const chunks = splitQrPayloadAdaptively(payload);
-                const levels = [];
-                chunks.forEach(function (chunk, idx) {
-                    const item = document.createElement("div");
-                    item.className = "qr-item";
-                    const label = document.createElement("div");
-                    label.className = "qr-item-label";
-                    label.textContent = "第 " + (idx + 1) + " / " + chunks.length + " 张";
-                    const codeWrap = document.createElement("div");
-                    item.appendChild(label);
-                    item.appendChild(codeWrap);
-                    qrcodeEl.appendChild(item);
-                    const levelName = renderQrCode(codeWrap, chunk, size);
-                    levels.push(levelName);
-                });
-                return {
-                    chunks: chunks,
-                    levels: levels
-                };
-            }
-
-            function generateCode() {
-                const inputEl = document.getElementById("input-text");
-                const normalizedText = normalizeInputText(inputEl.value);
-                const text = normalizedText;
-                const codeType = document.getElementById("code-type").value;
-                const sizeValue = Number(document.getElementById("code-size").value) || 240;
-                const size = Math.max(100, Math.min(600, sizeValue));
-                const qrcodeEl = document.getElementById("qrcode");
-                const barcodeEl = document.getElementById("barcode");
-                const charLen = text.length;
-                const byteLen = getUtf8ByteLength(text);
-
-                if (!text.trim()) {
-                    clearPreview();
-                    setStatus("请输入要编码的字符串。", true);
-                    return;
+                    var qrcodeEl = document.getElementById("qrcode");
+                    qrcodeEl.innerHTML = "";
+                    var usedLevels = [];
+                    chunks.forEach(function (chunk, idx) {
+                        var item = document.createElement("div");
+                        item.className = "qr-item";
+                        var label = document.createElement("div");
+                        label.className = "qr-item-label";
+                        label.textContent = chunks.length > 1 ? "第 " + (idx + 1) + " / " + chunks.length + " 张" : "单张";
+                        var codeWrap = document.createElement("div");
+                        item.appendChild(label);
+                        item.appendChild(codeWrap);
+                        qrcodeEl.appendChild(item);
+                        var nm = renderChunkWithFallback(codeWrap, chunk, eccName, size);
+                        usedLevels.push(nm);
+                    });
+                    return { chunks: chunks, levels: usedLevels, maxBytes: maxBytes, cap: cap };
                 }
 
-                clearPreview();
-                if (codeType === "qrcode") {
-                    barcodeEl.classList.add("hidden");
-                    qrcodeEl.classList.remove("hidden");
-                    try {
-                        const qrResult = renderQrChunkList(qrcodeEl, text, size);
-                        const hasL = qrResult.levels.indexOf("L") >= 0;
-                        const maxBytes = hasL ? QR_MAX_BYTES.L : QR_MAX_BYTES.M;
-                        const extra = hasL
-                            ? " 部分二维码内容较大，已自动降级纠错级别为 L。"
-                            : "";
-                        const splitInfo =
-                            qrResult.chunks.length > 1
-                                ? " 已自动分片为 " + qrResult.chunks.length + " 张二维码。"
-                                : "";
+                function syncModeUi() {
+                    var qr = mode === "qrcode";
+                    document.getElementById("head-label").textContent = qr ? "二维码" : "条形码";
+                    document.getElementById("head-hint").textContent = qr
+                        ? "UTF-8 最多约 " +
+                          Math.floor(MAX_INPUT_UTF8_BYTES / 1024) +
+                          "KB；超过 " +
+                          Math.floor(MAX_AUTO_PREVIEW_UTF8_BYTES / 1024) +
+                          "KB 请点「生成」刷新"
+                        : "CODE128 适合字母数字与部分符号，中文/换行请用二维码";
+                    document.getElementById("opts-qrcode").classList.toggle("hidden", !qr);
+                    document.getElementById("opts-barcode").classList.toggle("hidden", qr);
+                    document.getElementById("qrcode").classList.toggle("hidden", !qr);
+                    document.getElementById("barcode").classList.toggle("hidden", qr);
+                }
+
+                function generateCode() {
+                    var inputEl = document.getElementById("input-text");
+                    var normalizedText = normalizeInputText(inputEl.value);
+                    var text = normalizedText;
+                    var sizeValue = Number(document.getElementById("code-size").value) || 280;
+                    var size = Math.max(80, Math.min(1200, sizeValue));
+                    var charLen = text.length;
+                    var byteLen = getUtf8ByteLength(text);
+
+                    if (!text.trim()) {
+                        clearPreview();
+                        setStatus("请输入要编码的字符串。", true);
+                        return;
+                    }
+
+                    if (byteLen > MAX_INPUT_UTF8_BYTES) {
+                        clearPreview();
                         setStatus(
-                            "二维码生成成功。" +
-                                "当前 " +
+                            "内容过长：当前 UTF-8 为 " +
+                                byteLen +
+                                " 字节，上限约 " +
+                                MAX_INPUT_UTF8_BYTES +
+                                " 字节（约为常见在线工具的 2～3 倍）。请删减后重试。",
+                            true
+                        );
+                        return;
+                    }
+
+                    clearPreview();
+
+                    if (mode === "qrcode") {
+                        var eccName = document.getElementById("sel-ecc").value || "L";
+                        var marginBytes = parseInt(document.getElementById("sel-margin-bytes").value, 10) || 24;
+                        try {
+                            var res = generateQrList(text, size, eccName, marginBytes);
+                            var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
+                            var splitNote =
+                                res.chunks.length > 1
+                                    ? " 已按 UTF-8 分为 " + res.chunks.length + " 张（每段 ≤ " + res.maxBytes + " 字节，Version40 " + eccName + " 容量 " + res.cap + "）。"
+                                    : " 单张二维码，UTF-8 " + byteLen + " 字节（Version40 " + eccName + " 最大约 " + res.cap + " 字节）。";
+                            setStatus(
+                                "共 " +
+                                    charLen +
+                                    " 字符 / " +
+                                    byteLen +
+                                    " 字节。" +
+                                    splitNote +
+                                    " " +
+                                    levelNote,
+                                false
+                            );
+                        } catch (error) {
+                            clearPreview();
+                            setStatus(
+                                "生成失败：" +
+                                    (error && error.message ? error.message : String(error)) +
+                                    "（当前 " +
+                                    charLen +
+                                    " 字符 / " +
+                                    byteLen +
+                                    " 字节）",
+                                true
+                            );
+                        }
+                        return;
+                    }
+
+                    var barcodeEl = document.getElementById("barcode");
+                    if (byteLen > 8000) {
+                        clearPreview();
+                        setStatus("条形码内容过长（>8000 字节），请缩短或改用二维码。", true);
+                        return;
+                    }
+                    var bh = Number(document.getElementById("bar-height").value) || 120;
+                    bh = Math.max(40, Math.min(400, bh));
+                    try {
+                        JsBarcode(barcodeEl, text, {
+                            format: "CODE128",
+                            width: 2,
+                            height: bh,
+                            displayValue: true,
+                            margin: 10
+                        });
+                        setStatus(
+                            "条形码已生成。" +
                                 charLen +
                                 " 字符 / " +
                                 byteLen +
-                                " 字节，当前级别最大 " +
-                                maxBytes +
-                                " 字节。" +
-                                splitInfo +
-                                extra,
+                                " 字节。若失败请缩短内容或改用二维码。",
                             false
                         );
                     } catch (error) {
                         clearPreview();
                         setStatus(
-                            "二维码生成失败：请检查输入内容或缩短文本后重试（当前 " +
-                                charLen +
-                                " 字符 / " +
-                                byteLen +
-                                " 字节，错误：" +
-                                (error && error.message ? error.message : "未知") +
-                                "）。",
+                            "条形码失败：CODE128 对中文、换行等支持有限，请改用二维码或仅使用 ASCII。",
                             true
                         );
                     }
-                    return;
                 }
 
-                qrcodeEl.classList.add("hidden");
-                barcodeEl.classList.remove("hidden");
-                try {
-                    JsBarcode(barcodeEl, text, {
-                        format: "CODE128",
-                        width: 2,
-                        height: Math.max(60, Math.floor(size * 0.45)),
-                        displayValue: true,
-                        margin: 10
-                    });
-                    setStatus("条形码生成成功。当前 " + charLen + " 字符 / " + byteLen + " 字节。", false);
-                } catch (error) {
-                    clearPreview();
-                    setStatus(
-                        "条形码生成失败：CODE128 对特殊字符支持有限，当前内容包含中文、制表符或换行时建议切换为二维码。",
-                        true
-                    );
-                }
-            }
-
-            let autoGenTimer = null;
-            function scheduleGenerate(delayMs) {
-                if (autoGenTimer) window.clearTimeout(autoGenTimer);
-                autoGenTimer = window.setTimeout(function () {
-                    generateCode();
-                }, delayMs);
-            }
-
-            function downloadCode() {
-                const codeType = document.getElementById("code-type").value;
-                const text = document.getElementById("input-text").value.trim();
-                if (!text) {
-                    setStatus("请先输入字符串并生成。", true);
-                    return;
-                }
-
-                if (codeType === "qrcode") {
-                    const canvas = document.querySelector("#qrcode canvas");
-                    const img = document.querySelector("#qrcode img");
-                    const src = canvas ? canvas.toDataURL("image/png") : img ? img.src : "";
-                    if (!src) {
-                        setStatus("未检测到二维码，请先生成。", true);
+                function downloadCode() {
+                    var text = document.getElementById("input-text").value.trim();
+                    if (!text) {
+                        toast("请先生成内容");
+                        setStatus("请先输入并生成。", true);
                         return;
                     }
-                    const a = document.createElement("a");
-                    a.href = src;
-                    a.download = "qrcode.png";
+
+                    if (mode === "qrcode") {
+                        var canvases = document.querySelectorAll("#qrcode canvas");
+                        var imgs = document.querySelectorAll("#qrcode img");
+                        if (!canvases.length && !imgs.length) {
+                            toast("请先生成二维码");
+                            return;
+                        }
+                        var list = canvases.length ? Array.prototype.slice.call(canvases) : Array.prototype.slice.call(imgs);
+                        list.forEach(function (node, i) {
+                            var src = node.tagName === "CANVAS" ? node.toDataURL("image/png") : node.src;
+                            if (!src) return;
+                            var a = document.createElement("a");
+                            a.href = src;
+                            a.download = list.length > 1 ? "qrcode-" + (i + 1) + ".png" : "qrcode.png";
+                            a.click();
+                        });
+                        toast(list.length > 1 ? "已依次下载 " + list.length + " 张 PNG" : "已下载 PNG");
+                        return;
+                    }
+
+                    var svg = document.getElementById("barcode");
+                    if (!svg || !svg.innerHTML.trim()) {
+                        toast("请先生成条形码");
+                        return;
+                    }
+                    var data = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+                    var url = URL.createObjectURL(data);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download = "barcode.svg";
                     a.click();
-                    return;
+                    URL.revokeObjectURL(url);
+                    toast("已下载 SVG");
                 }
 
-                const svg = document.getElementById("barcode");
-                if (!svg || !svg.innerHTML.trim()) {
-                    setStatus("未检测到条形码，请先生成。", true);
-                    return;
+                function clearAll() {
+                    document.getElementById("input-text").value = "";
+                    document.getElementById("code-size").value = "280";
+                    document.getElementById("sel-ecc").value = "L";
+                    document.getElementById("sel-margin-bytes").value = "24";
+                    mode = "qrcode";
+                    document.querySelectorAll("#mode-tabs button").forEach(function (b) {
+                        b.classList.toggle("active", b.getAttribute("data-mode") === "qrcode");
+                    });
+                    syncModeUi();
+                    clearPreview();
+                    setStatus("已清空。", false);
                 }
-                const data = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
-                const url = URL.createObjectURL(data);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "barcode.svg";
-                a.click();
-                URL.revokeObjectURL(url);
-            }
 
-            function clearAll() {
-                document.getElementById("input-text").value = "";
-                document.getElementById("code-type").value = "qrcode";
-                document.getElementById("code-size").value = "240";
-                document.getElementById("qrcode").classList.remove("hidden");
-                document.getElementById("barcode").classList.add("hidden");
-                clearPreview();
-                setStatus("已清空。", false);
-            }
+                function scheduleGenerate(delayMs) {
+                    if (autoGenTimer) window.clearTimeout(autoGenTimer);
+                    autoGenTimer = window.setTimeout(function () {
+                        var t = normalizeInputText(document.getElementById("input-text").value);
+                        var bl = getUtf8ByteLength(t);
+                        if (mode === "qrcode" && bl > MAX_AUTO_PREVIEW_UTF8_BYTES) {
+                            clearPreview();
+                            setStatus(
+                                "当前 UTF-8 约 " +
+                                    bl +
+                                    " 字节，已超过自动预览阈值（" +
+                                    MAX_AUTO_PREVIEW_UTF8_BYTES +
+                                    " 字节），请点击「生成」更新预览以减轻卡顿。",
+                                false
+                            );
+                            return;
+                        }
+                        generateCode();
+                    }, delayMs);
+                }
 
-            document.getElementById("generate-btn").addEventListener("click", generateCode);
-            document.getElementById("download-btn").addEventListener("click", downloadCode);
-            document.getElementById("clear-btn").addEventListener("click", clearAll);
-            document.getElementById("code-type").addEventListener("change", generateCode);
-            document.getElementById("code-size").addEventListener("change", generateCode);
-            document.getElementById("input-text").addEventListener("input", function () {
-                scheduleGenerate(120);
-            });
-            document.getElementById("input-text").addEventListener("paste", function () {
-                scheduleGenerate(50);
-            });
-            document.addEventListener("contextmenu", function (event) {
-                event.preventDefault();
-            });
+                document.getElementById("mode-tabs").addEventListener("click", function (e) {
+                    var btn = e.target.closest("button[data-mode]");
+                    if (!btn) return;
+                    mode = btn.getAttribute("data-mode") || "qrcode";
+                    document.querySelectorAll("#mode-tabs button").forEach(function (b) {
+                        b.classList.toggle("active", b === btn);
+                    });
+                    syncModeUi();
+                    generateCode();
+                });
+
+                document.getElementById("generate-btn").addEventListener("click", generateCode);
+                document.getElementById("download-btn").addEventListener("click", downloadCode);
+                document.getElementById("clear-btn").addEventListener("click", clearAll);
+                document.getElementById("sel-ecc").addEventListener("change", function () {
+                    scheduleGenerate(120);
+                });
+                document.getElementById("sel-margin-bytes").addEventListener("change", function () {
+                    scheduleGenerate(120);
+                });
+                document.getElementById("code-size").addEventListener("change", function () {
+                    scheduleGenerate(120);
+                });
+                document.getElementById("bar-height").addEventListener("change", function () {
+                    scheduleGenerate(120);
+                });
+                document.getElementById("input-text").addEventListener("input", function () {
+                    scheduleGenerate(400);
+                });
+                document.getElementById("input-text").addEventListener("paste", function () {
+                    scheduleGenerate(200);
+                });
+
+                syncModeUi();
+                setStatus(
+                    "二维码 UTF-8 上限约 " +
+                        MAX_INPUT_UTF8_BYTES +
+                        " 字节；≤ " +
+                        MAX_AUTO_PREVIEW_UTF8_BYTES +
+                        " 字节时输入会自动刷新。",
+                    false
+                );
+            })();
         </script>
     </body>
 </html>
