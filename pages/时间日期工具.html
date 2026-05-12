@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>时间日期</title>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                font-size: 13px;
+            }
+            .panel {
+                min-height: calc(100vh - 16px);
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 10px;
+                gap: 10px;
+            }
+            h3 { margin: 0; font-size: 14px; color: var(--text); }
+            .tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                border-bottom: 1px solid #e4edff;
+                padding-bottom: 8px;
+            }
+            .tab {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 12px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .tab:hover { border-color: var(--primary); color: var(--primary); }
+            .tab.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .tab-pane { display: none; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+            .tab-pane.active { display: flex; }
+            .row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            label { font-size: 12px; color: #465a84; white-space: nowrap; }
+            select, input, textarea, button {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                outline: none;
+                font-family: inherit;
+            }
+            select:focus, input:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            select.tz-wide { min-width: 220px; max-width: 100%; flex: 1; }
+            input.mono { font-family: Consolas, "Courier New", monospace; }
+            .btn {
+                background: #edf3ff;
+                color: #3c4f78;
+                cursor: pointer;
+                border: 1px solid #d8e5ff;
+            }
+            .btn:hover { border-color: var(--primary); color: var(--primary); }
+            .btn-primary {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border-color: transparent;
+            }
+            .btn-primary:hover { filter: brightness(1.05); color: #fff; }
+            .btn-sm { padding: 4px 8px; font-size: 11px; }
+            .field-block {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                flex: 1;
+                min-width: 140px;
+            }
+            .field-block.full { flex: 1 1 100%; }
+            .io-row {
+                display: flex;
+                gap: 8px;
+                align-items: flex-end;
+                flex-wrap: wrap;
+            }
+            .readonly-wrap { position: relative; flex: 1; min-width: 160px; }
+            .readonly-wrap input { width: 100%; background: #f8fbff; color: #1f2a44; }
+            .copy-tag {
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 11px;
+                color: var(--primary);
+                cursor: pointer;
+                user-select: none;
+            }
+            .copy-tag:hover { text-decoration: underline; }
+            .grid-2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            @media (max-width: 720px) {
+                .grid-2 { grid-template-columns: 1fr; }
+            }
+            .table-wrap {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                overflow: auto;
+                max-height: 220px;
+            }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td {
+                border: 1px solid #dbe7ff;
+                padding: 6px 8px;
+                text-align: left;
+            }
+            th { background: #f0f5ff; color: #324a76; }
+            td.val { font-family: Consolas, "Courier New", monospace; word-break: break-all; }
+            td.val a { color: var(--primary); cursor: pointer; text-decoration: none; }
+            td.val a:hover { text-decoration: underline; }
+            .card {
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 10px;
+                background: #fafcff;
+            }
+            .card h4 { margin: 0 0 8px; font-size: 13px; color: #324a76; }
+            .hint {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+            }
+            .err { color: #c0392b; }
+            .tz-row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .tz-row input { flex: 1; min-width: 160px; }
+            .num-in { width: 88px; }
+        </style>
+    </head>
+    <body>
+        <div class="panel">
+            <h3>时间日期</h3>
+            <div class="tabs" role="tablist">
+                <button type="button" class="tab active" data-tab="ts">时间戳</button>
+                <button type="button" class="tab" data-tab="tz">时区换算</button>
+                <button type="button" class="tab" data-tab="calc">计算与统计</button>
+            </div>
+
+            <!-- 时间戳 -->
+            <div id="pane-ts" class="tab-pane active" role="tabpanel">
+                <div class="row">
+                    <label for="ts-tz">时区</label>
+                    <select id="ts-tz" class="tz-wide" name="ts_tz"></select>
+                </div>
+                <div class="io-row">
+                    <div class="field-block full">
+                        <label for="ts-input">输入</label>
+                        <div class="row" style="align-items: stretch; width: 100%;">
+                            <input id="ts-input" class="mono" type="text" name="ts_input" placeholder="YYYY-MM-DD HH:mm:ss 或 Unix 时间戳" style="flex:1; min-width:0;" />
+                            <select id="ts-unix-fmt" name="ts_unix_fmt" title="Unix 输入精度" style="display:none;">
+                                <option value="auto">自动</option>
+                                <option value="second">秒</option>
+                                <option value="millisecond">毫秒</option>
+                                <option value="nanosecond">纳秒</option>
+                            </select>
+                            <button type="button" class="btn btn-sm" id="ts-clear">清空</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field-block">
+                        <label>秒 / 日期时间</label>
+                        <div class="readonly-wrap">
+                            <input id="ts-out-second" class="mono" type="text" readonly />
+                            <span class="copy-tag" data-copy="ts-out-second">复制</span>
+                        </div>
+                    </div>
+                    <div class="field-block">
+                        <label>毫秒</label>
+                        <div class="readonly-wrap">
+                            <input id="ts-out-ms" class="mono" type="text" readonly />
+                            <span class="copy-tag" data-copy="ts-out-ms">复制</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field-block">
+                        <label>纳秒（展示）</label>
+                        <div class="readonly-wrap">
+                            <input id="ts-out-ns" class="mono" type="text" readonly />
+                            <span class="copy-tag" data-copy="ts-out-ns">复制</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:28%">格式</th>
+                                <th>值</th>
+                                <th style="width:72px">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ts-example-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 时区 -->
+            <div id="pane-tz" class="tab-pane" role="tabpanel">
+                <p class="hint">在各时区输入框中填写「YYYY-MM-DD HH:mm:ss」或带毫秒；编辑任意一行将以其时区为基准同步到其他行。</p>
+                <div id="tz-rows"></div>
+                <div class="row" id="tz-actions-invalid">
+                    <button type="button" class="btn btn-primary" id="tz-fill-now">填入当前时间</button>
+                </div>
+                <div class="row" id="tz-actions-valid" style="display:none;">
+                    <button type="button" class="btn" id="tz-clear-all">清空</button>
+                </div>
+            </div>
+
+            <!-- 计算 -->
+            <div id="pane-calc" class="tab-pane" role="tabpanel">
+                <p class="hint">本节按本机本地时区解析日期时间字符串（与 Ctool 行为一致）。</p>
+                <div class="card">
+                    <h4>时间差</h4>
+                    <div class="row" style="align-items: flex-end;">
+                        <div class="field-block">
+                            <label for="calc-d1">时间 1</label>
+                            <input id="calc-d1" class="mono" name="calc_d1" type="text" />
+                        </div>
+                        <span>与</span>
+                        <div class="field-block">
+                            <label for="calc-d2">时间 2</label>
+                            <input id="calc-d2" class="mono" name="calc_d2" type="text" />
+                        </div>
+                        <span>相差</span>
+                        <div class="field-block" style="flex:0;">
+                            <label for="calc-diff">数值</label>
+                            <input id="calc-diff" class="mono num-in" type="text" readonly />
+                        </div>
+                        <div class="field-block" style="flex:0;">
+                            <label for="calc-diff-unit">单位</label>
+                            <select id="calc-diff-unit" name="calc_diff_unit">
+                                <option value="years">年</option>
+                                <option value="months">月</option>
+                                <option value="weeks">周</option>
+                                <option value="days">天</option>
+                                <option value="hours">小时</option>
+                                <option value="minutes">分钟</option>
+                                <option value="seconds" selected>秒</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h4>时间加减</h4>
+                    <div class="row" style="align-items: flex-end;">
+                        <div class="field-block">
+                            <label for="calc-op-in">基准时间</label>
+                            <input id="calc-op-in" class="mono" name="calc_op_in" type="text" />
+                        </div>
+                        <select id="calc-op-sign" name="calc_op_sign">
+                            <option value="+">加</option>
+                            <option value="-">减</option>
+                        </select>
+                        <div class="field-block" style="flex:0;">
+                            <label for="calc-op-len">数量</label>
+                            <input id="calc-op-len" class="num-in" type="number" step="1" value="1" name="calc_op_len" />
+                        </div>
+                        <div class="field-block" style="flex:0;">
+                            <label for="calc-op-unit">单位</label>
+                            <select id="calc-op-unit" name="calc_op_unit">
+                                <option value="years">年</option>
+                                <option value="months">月</option>
+                                <option value="weeks">周</option>
+                                <option value="days" selected>天</option>
+                                <option value="hours">小时</option>
+                                <option value="minutes">分钟</option>
+                                <option value="seconds">秒</option>
+                            </select>
+                        </div>
+                        <span>结果：</span>
+                        <div class="field-block" style="flex:1; min-width:180px;">
+                            <input id="calc-op-out" class="mono" type="text" readonly />
+                            <span class="copy-tag" style="position:static; transform:none; margin-top:4px; display:inline-block;" data-copy="calc-op-out">复制</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h4>年内统计</h4>
+                    <div class="row" style="align-items: flex-end;">
+                        <div class="field-block">
+                            <label for="calc-an-in">时间</label>
+                            <input id="calc-an-in" class="mono" name="calc_an_in" type="text" />
+                        </div>
+                        <div class="field-block" style="flex:0;">
+                            <label for="calc-an-type">粒度</label>
+                            <select id="calc-an-type" name="calc_an_type">
+                                <option value="year">年</option>
+                                <option value="quarter">季度</option>
+                                <option value="month">月</option>
+                            </select>
+                        </div>
+                        <div class="field-block" style="flex:1; min-width:200px;">
+                            <label>输出</label>
+                            <input id="calc-an-out" type="text" readonly style="width:100%;" />
+                        </div>
+                        <span class="copy-tag" data-copy="calc-an-out">复制</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                var IANA_LIST = [
+                    "Asia/Shanghai", "Asia/Hong_Kong", "Asia/Taipei", "Asia/Tokyo", "Asia/Seoul", "Asia/Singapore",
+                    "Asia/Kolkata", "Asia/Dubai", "Asia/Bangkok", "Asia/Jakarta", "Asia/Karachi", "Asia/Riyadh",
+                    "Asia/Jerusalem", "Asia/Tehran", "Asia/Urumqi", "Australia/Sydney", "Australia/Melbourne", "Pacific/Auckland",
+                    "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Moscow", "Europe/Amsterdam", "Europe/Rome",
+                    "Europe/Madrid", "Europe/Warsaw", "Europe/Istanbul", "Africa/Cairo", "Africa/Johannesburg",
+                    "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Toronto",
+                    "America/Vancouver", "America/Sao_Paulo", "America/Mexico_City", "America/Buenos_Aires", "Pacific/Honolulu",
+                    "Etc/UTC", "Atlantic/Reykjavik"
+                ];
+
+                function guessTimeZone() {
+                    try {
+                        return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
+                    } catch (e) {
+                        return "Asia/Shanghai";
+                    }
+                }
+
+                function utcOffsetLabel(tz, atDate) {
+                    try {
+                        var p = new Intl.DateTimeFormat("en-US", {
+                            timeZone: tz,
+                            timeZoneName: "shortOffset"
+                        }).formatToParts(atDate);
+                        var name = "";
+                        for (var i = 0; i < p.length; i++) {
+                            if (p[i].type === "timeZoneName") name = p[i].value;
+                        }
+                        if (name && name.indexOf("GMT") !== -1) return name.replace("GMT", "UTC");
+                        var d = new Date(atDate);
+                        var parts = new Intl.DateTimeFormat("en-US", {
+                            timeZone: tz,
+                            hour: "numeric",
+                            hour12: false,
+                            timeZoneName: "longOffset"
+                        }).formatToParts(d);
+                        for (var j = 0; j < parts.length; j++) {
+                            if (parts[j].type === "timeZoneName") return parts[j].value.replace("GMT", "UTC");
+                        }
+                    } catch (e2) {}
+                    return "UTC";
+                }
+
+                function fillTimeZoneSelect(selectEl, selected) {
+                    var now = Date.now();
+                    var items = IANA_LIST.map(function (tz) {
+                        var off = utcOffsetLabel(tz, now);
+                        return { tz: tz, label: off + " " + tz };
+                    });
+                    items.sort(function (a, b) {
+                        if (a.label < b.label) return -1;
+                        if (a.label > b.label) return 1;
+                        return 0;
+                    });
+                    selectEl.innerHTML = "";
+                    for (var i = 0; i < items.length; i++) {
+                        var o = document.createElement("option");
+                        o.value = items[i].tz;
+                        o.textContent = items[i].label;
+                        selectEl.appendChild(o);
+                    }
+                    if (selected && IANA_LIST.indexOf(selected) !== -1) selectEl.value = selected;
+                    else {
+                        var g = guessTimeZone();
+                        if (IANA_LIST.indexOf(g) !== -1) selectEl.value = g;
+                    }
+                }
+
+                var supportsFrac = false;
+                try {
+                    new Intl.DateTimeFormat("en", { fractionalSecondDigits: 3 }).format(new Date());
+                    supportsFrac = true;
+                } catch (e) {
+                    supportsFrac = false;
+                }
+
+                function partsInZone(ms, tz, withFrac) {
+                    var opt = {
+                        timeZone: tz,
+                        hour12: false,
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit"
+                    };
+                    if (supportsFrac) opt.fractionalSecondDigits = 3;
+                    var f = new Intl.DateTimeFormat("en-CA", opt);
+                    var map = {};
+                    var parts = f.formatToParts(new Date(ms));
+                    for (var i = 0; i < parts.length; i++) {
+                        if (parts[i].type !== "literal") map[parts[i].type] = parts[i].value;
+                    }
+                    var frac = 0;
+                    if (supportsFrac && map.fractionalSecond != null) {
+                        frac = Math.round(Number("0." + map.fractionalSecond) * 1000);
+                    } else if (withFrac) {
+                        frac = Math.floor(ms % 1000);
+                    }
+                    return {
+                        y: +map.year,
+                        m: +map.month,
+                        d: +map.day,
+                        h: +map.hour,
+                        mi: +map.minute,
+                        s: +map.second,
+                        ms: withFrac ? frac : 0
+                    };
+                }
+
+                /** 将「该时区墙上时钟」转为 UTC 毫秒（与 Ctool/dayjs.tz 等价思路，基于 Intl 迭代修正） */
+                function zonedLocalToUtcMs(y, mo, d, h, mi, s, subMs, tz) {
+                    var guess = Date.UTC(y, mo - 1, d, h, mi, s, subMs);
+                    for (var iter = 0; iter < 8; iter++) {
+                        var p = partsInZone(guess, tz, true);
+                        var got = Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s, p.ms);
+                        var want = Date.UTC(y, mo - 1, d, h, mi, s, subMs);
+                        var err = want - got;
+                        if (err === 0) break;
+                        guess += err;
+                    }
+                    return guess;
+                }
+
+                function parseNormalToUtcMs(str, tz) {
+                    str = str.trim();
+                    var m = str.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/);
+                    if (!m) return NaN;
+                    var y = +m[1],
+                        mo = +m[2],
+                        d = +m[3],
+                        h = +m[4],
+                        mi = +m[5],
+                        s = +m[6];
+                    var frac = m[7] != null ? m[7] : "";
+                    var subMs = 0;
+                    if (frac) {
+                        frac = (frac + "000000000").slice(0, 9);
+                        subMs = Math.floor(parseInt(frac.slice(0, 3), 10));
+                    }
+                    return zonedLocalToUtcMs(y, mo, d, h, mi, s, subMs, tz);
+                }
+
+                function formatZoned(ms, tz, withMs) {
+                    var p = partsInZone(ms, tz, !!withMs);
+                    var pad = function (n, l) {
+                        var t = String(n);
+                        while (t.length < l) t = "0" + t;
+                        return t;
+                    };
+                    var base =
+                        pad(p.y, 4) +
+                        "-" +
+                        pad(p.m, 2) +
+                        "-" +
+                        pad(p.d, 2) +
+                        " " +
+                        pad(p.h, 2) +
+                        ":" +
+                        pad(p.mi, 2) +
+                        ":" +
+                        pad(p.s, 2);
+                    if (withMs) return base + "." + pad(p.ms, 3);
+                    return base;
+                }
+
+                function parseTzWallClock(s, tz) {
+                    s = (s || "").trim();
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s))
+                        return { ok: true, ms: parseNormalToUtcMs(s, tz), hasMs: false };
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$/.test(s))
+                        return { ok: true, ms: parseNormalToUtcMs(s, tz), hasMs: true };
+                    return { ok: false };
+                }
+
+                function getTimeType(input) {
+                    if (input === "") return { type: "empty", format: "second" };
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(input))
+                        return { type: "normal", format: "second" };
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,3}$/.test(input))
+                        return { type: "normal", format: "millisecond" };
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{4,9}$/.test(input))
+                        return { type: "normal", format: "nanosecond" };
+                    if (/^-?\d{1,12}$/.test(input)) return { type: "unix", format: "second" };
+                    if (/^-?\d{13,16}$/.test(input)) return { type: "unix", format: "millisecond" };
+                    if (/^-?\d{17,}$/.test(input)) return { type: "unix", format: "nanosecond" };
+                    return { type: "error", format: "second" };
+                }
+
+                function resolveUnixFormat(input, autoFmt, manual) {
+                    var t = getTimeType(input);
+                    if (manual === "auto") return t.format;
+                    if (t.type === "unix") return manual;
+                    return t.format;
+                }
+
+                var DL = { second: 0, millisecond: 3, nanosecond: 9 };
+
+                function transform(input, tz, unixFmtChoice) {
+                    var trimmed = (input || "").trim();
+                    if (trimmed.toLowerCase().indexOf("e") !== -1) {
+                        var ef = parseFloat(trimmed);
+                        if (!isNaN(ef)) trimmed = String(Math.floor(ef));
+                    }
+                    var tinfo = getTimeType(trimmed);
+                    var fmt = resolveUnixFormat(trimmed, tinfo.format, unixFmtChoice);
+                    var decLen = DL[fmt];
+
+                    try {
+                        if (tinfo.type === "empty") {
+                            return {
+                                ok: false,
+                                second: "",
+                                millisecond: "",
+                                nanosecond: "",
+                                showUnixFmt: false,
+                                autoFmt: tinfo.format
+                            };
+                        }
+                        if (tinfo.type === "error") throw new Error("无法识别的格式");
+
+                        var ms;
+                        var decimal = "";
+                        if (tinfo.type === "normal") {
+                            var frag = trimmed.split(".");
+                            decimal = (frag[1] || "").slice(0, decLen);
+                            ms = parseNormalToUtcMs(frag[0] + (frag[1] != null ? "." + frag[1] : ""), tz);
+                            if (!isFinite(ms)) throw new Error("无效日期");
+                        } else {
+                            var intPart = decLen ? trimmed.slice(0, -decLen) : trimmed;
+                            var secInt = parseInt(intPart, 10);
+                            if (!isFinite(secInt)) throw new Error("无效时间戳");
+                            decimal = decLen ? trimmed.slice(-decLen) : "";
+                            ms = secInt * 1000;
+                        }
+
+                        var secondStr;
+                        var milliComb;
+                        var nanoComb;
+                        if (tinfo.type === "normal") {
+                            secondStr = String(Math.floor(ms / 1000));
+                            var milliPart = decimal.slice(0, 3).padEnd(3, "0");
+                            var nanoPart = decimal.slice(0, 9).padEnd(9, "0");
+                            milliComb = secondStr + milliPart;
+                            nanoComb = secondStr + nanoPart;
+                        } else {
+                            secondStr = formatZoned(ms, tz, false);
+                            var sep = ".";
+                            var msp = decimal.slice(0, 3).padEnd(3, "0");
+                            var nsp = decimal.slice(0, 9).padEnd(9, "0");
+                            milliComb = secondStr + sep + msp;
+                            nanoComb = secondStr + sep + nsp;
+                        }
+
+                        return {
+                            ok: true,
+                            second: secondStr,
+                            millisecond: milliComb,
+                            nanosecond: nanoComb,
+                            showUnixFmt: tinfo.type === "unix",
+                            autoFmt: tinfo.format
+                        };
+                    } catch (err) {
+                        var msg = err && err.message ? err.message : String(err);
+                        return {
+                            ok: false,
+                            second: msg,
+                            millisecond: msg,
+                            nanosecond: msg,
+                            showUnixFmt: tinfo.type === "unix",
+                            autoFmt: tinfo.format
+                        };
+                    }
+                }
+
+                function copyText(text, el) {
+                    text = String(text || "");
+                    function ok() {
+                        if (el) {
+                            el.textContent = "已复制";
+                            setTimeout(function () {
+                                el.textContent = "复制";
+                            }, 1200);
+                        }
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(ok).catch(function () {
+                            fallback();
+                        });
+                    } else fallback();
+
+                    function fallback() {
+                        var ta = document.createElement("textarea");
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try {
+                            document.execCommand("copy");
+                            ok();
+                        } catch (e) {}
+                        document.body.removeChild(ta);
+                    }
+                }
+
+                /* ----- 标签切换 ----- */
+                document.querySelectorAll(".tab").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        var id = btn.getAttribute("data-tab");
+                        document.querySelectorAll(".tab").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        document.querySelectorAll(".tab-pane").forEach(function (p) {
+                            p.classList.remove("active");
+                        });
+                        document.getElementById("pane-" + id).classList.add("active");
+                    });
+                });
+
+                /* ----- 时间戳页 ----- */
+                var tsTz = document.getElementById("ts-tz");
+                var tsInput = document.getElementById("ts-input");
+                var tsUnixFmt = document.getElementById("ts-unix-fmt");
+                var tsOutS = document.getElementById("ts-out-second");
+                var tsOutMs = document.getElementById("ts-out-ms");
+                var tsOutNs = document.getElementById("ts-out-ns");
+                var tsExampleBody = document.getElementById("ts-example-body");
+                var tickMs = Date.now();
+
+                fillTimeZoneSelect(tsTz, guessTimeZone());
+
+                function tsRefresh() {
+                    var choice = tsUnixFmt.value;
+                    if (tsUnixFmt.options[0] && choice === "auto") {
+                        var t0 = getTimeType(tsInput.value.trim());
+                        tsUnixFmt.options[0].textContent =
+                            t0.type === "unix" ? "自动:" + (t0.format === "second" ? "秒" : t0.format === "millisecond" ? "毫秒" : "纳秒") : "自动";
+                    }
+                    var r = transform(tsInput.value, tsTz.value, choice);
+                    tsUnixFmt.style.display = r.showUnixFmt ? "inline-block" : "none";
+                    tsOutS.value = r.second;
+                    tsOutMs.value = r.millisecond;
+                    tsOutNs.value = r.nanosecond;
+                    tsOutS.className = "mono" + (r.ok ? "" : " err");
+                    tsOutMs.className = "mono" + (r.ok ? "" : " err");
+                    tsOutNs.className = "mono" + (r.ok ? "" : " err");
+                }
+
+                function tsFillExamples() {
+                    var ms = tickMs;
+                    var tz = tsTz.value;
+                    var p = partsInZone(ms, tz, true);
+                    var pad = function (n, l) {
+                        var t = String(n);
+                        while (t.length < l) t = "0" + t;
+                        return t;
+                    };
+                    var normS =
+                        pad(p.y, 4) +
+                        "-" +
+                        pad(p.m, 2) +
+                        "-" +
+                        pad(p.d, 2) +
+                        " " +
+                        pad(p.h, 2) +
+                        ":" +
+                        pad(p.mi, 2) +
+                        ":" +
+                        pad(p.s, 2);
+                    var normMs = normS + "." + pad(p.ms, 3);
+                    var unixS = String(Math.floor(ms / 1000));
+                    var unixMs = String(ms);
+                    var rows = [
+                        { label: "标准日期时间（秒）", val: normS },
+                        { label: "Unix（秒）", val: unixS },
+                        { label: "标准日期时间（毫秒）", val: normMs },
+                        { label: "Unix（毫秒）", val: unixMs }
+                    ];
+                    tsExampleBody.innerHTML = "";
+                    for (var i = 0; i < rows.length; i++) {
+                        var tr = document.createElement("tr");
+                        tr.innerHTML =
+                            "<td>" +
+                            rows[i].label +
+                            '</td><td class="val"><a href="#" data-load="' +
+                            encodeURIComponent(rows[i].val) +
+                            '">' +
+                            rows[i].val.replace(/</g, "&lt;") +
+                            "</a></td><td><button type=\"button\" class=\"btn btn-sm ts-load\" data-v=\"" +
+                            encodeURIComponent(rows[i].val) +
+                            "\">填入</button></td>";
+                        tsExampleBody.appendChild(tr);
+                    }
+                }
+
+                tsInput.addEventListener("input", tsRefresh);
+                tsInput.addEventListener("change", tsRefresh);
+                tsTz.addEventListener("change", function () {
+                    tsRefresh();
+                    tsFillExamples();
+                });
+                tsUnixFmt.addEventListener("change", tsRefresh);
+                document.getElementById("ts-clear").addEventListener("click", function () {
+                    tsInput.value = "";
+                    tsRefresh();
+                });
+                tsExampleBody.addEventListener("click", function (e) {
+                    var t = e.target;
+                    if (t.classList.contains("ts-load")) {
+                        e.preventDefault();
+                        tsInput.value = decodeURIComponent(t.getAttribute("data-v"));
+                        tsRefresh();
+                    } else if (t.tagName === "A" && t.getAttribute("data-load")) {
+                        e.preventDefault();
+                        tsInput.value = decodeURIComponent(t.getAttribute("data-load"));
+                        tsRefresh();
+                    }
+                });
+                document.querySelectorAll(".copy-tag").forEach(function (tag) {
+                    tag.addEventListener("click", function () {
+                        var id = tag.getAttribute("data-copy");
+                        if (!id) return;
+                        var inp = document.getElementById(id);
+                        if (inp) copyText(inp.value, tag);
+                    });
+                });
+
+                setInterval(function () {
+                    tickMs = Date.now();
+                    if (document.getElementById("pane-ts").classList.contains("active")) tsFillExamples();
+                }, 200);
+
+                tsRefresh();
+                tsFillExamples();
+
+                /* ----- 时区页 ----- */
+                var defaultTzRow = [
+                    guessTimeZone(),
+                    "Asia/Shanghai",
+                    "Europe/London",
+                    "Asia/Tokyo",
+                    "America/Chicago",
+                    "Europe/Berlin",
+                    "Africa/Cairo"
+                ];
+                for (var di = 0; di < defaultTzRow.length; di++) {
+                    if (IANA_LIST.indexOf(defaultTzRow[di]) === -1) {
+                        defaultTzRow[di] = "Asia/Shanghai";
+                    }
+                }
+                defaultTzRow[0] = guessTimeZone();
+                if (IANA_LIST.indexOf(defaultTzRow[0]) === -1) defaultTzRow[0] = "Asia/Shanghai";
+
+                var tzRowsEl = document.getElementById("tz-rows");
+                var tzSourceIdx = -1;
+                var tzSourceVal = "";
+
+                function buildTzRows() {
+                    tzRowsEl.innerHTML = "";
+                    for (var r = 0; r < 7; r++) {
+                        var wrap = document.createElement("div");
+                        wrap.className = "tz-row";
+                        wrap.style.marginBottom = "6px";
+                        var sel = document.createElement("select");
+                        sel.name = "tz_row_" + r;
+                        sel.className = "tz-wide";
+                        fillTimeZoneSelect(sel, defaultTzRow[r] || IANA_LIST[0]);
+                        var inp = document.createElement("input");
+                        inp.type = "text";
+                        inp.className = "mono";
+                        inp.placeholder = "YYYY-MM-DD HH:mm:ss";
+                        inp.name = "tz_in_" + r;
+                        var btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.className = "btn btn-sm btn-primary";
+                        btn.textContent = "复制";
+                        btn.style.display = "none";
+                        wrap.appendChild(inp);
+                        wrap.appendChild(sel);
+                        wrap.appendChild(btn);
+                        tzRowsEl.appendChild(wrap);
+
+                        (function (idx, inputEl, selectEl, copyBtn) {
+                            function parseRow(s) {
+                                return parseTzWallClock(s, selectEl.value);
+                            }
+
+                            function syncFromSource() {
+                                if (tzSourceIdx < 0 || !tzSourceVal) return;
+                                var srcTz = tzRowsEl.children[tzSourceIdx].querySelector("select").value;
+                                var p0 = parseTzWallClock(tzSourceVal, srcTz);
+                                if (!p0.ok) return;
+                                for (var j = 0; j < 7; j++) {
+                                    var row = tzRowsEl.children[j];
+                                    var iel = row.querySelector("input");
+                                    var stz = row.querySelector("select").value;
+                                    if (j === tzSourceIdx) {
+                                        iel.value = tzSourceVal;
+                                        continue;
+                                    }
+                                    iel.value = formatZoned(p0.ms, stz, p0.hasMs);
+                                }
+                            }
+
+                            inputEl.addEventListener("input", function () {
+                                var pr = parseRow(inputEl.value);
+                                if (pr.ok) {
+                                    tzSourceIdx = idx;
+                                    tzSourceVal = inputEl.value.trim();
+                                    syncFromSource();
+                                }
+                                tzUpdateUi();
+                            });
+                            selectEl.addEventListener("change", function () {
+                                if (tzSourceIdx === idx && tzSourceVal) {
+                                    var pr = parseRow(inputEl.value);
+                                    if (pr.ok) {
+                                        tzSourceVal = inputEl.value.trim();
+                                        syncFromSource();
+                                    }
+                                } else if (tzSourceIdx >= 0) {
+                                    syncFromSource();
+                                }
+                                tzUpdateUi();
+                            });
+                            copyBtn.addEventListener("click", function () {
+                                copyText(inputEl.value, null);
+                            });
+                        })(r, inp, sel, btn);
+                    }
+                }
+
+                function tzUpdateUi() {
+                    var valid = false;
+                    if (tzSourceIdx >= 0 && tzRowsEl.children[tzSourceIdx]) {
+                        var iv = tzRowsEl.children[tzSourceIdx].querySelector("input").value.trim();
+                        valid =
+                            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(iv);
+                    }
+                    document.getElementById("tz-actions-invalid").style.display = valid ? "none" : "flex";
+                    document.getElementById("tz-actions-valid").style.display = valid ? "flex" : "none";
+                    for (var i = 0; i < 7; i++) {
+                        var row = tzRowsEl.children[i];
+                        var cb = row.querySelector("button");
+                        var iv = row.querySelector("input").value.trim();
+                        cb.style.display = valid && iv ? "inline-block" : "none";
+                    }
+                }
+
+                document.getElementById("tz-fill-now").addEventListener("click", function () {
+                    var ms = Date.now();
+                    for (var i = 0; i < 7; i++) {
+                        var row = tzRowsEl.children[i];
+                        var tz = row.querySelector("select").value;
+                        row.querySelector("input").value = formatZoned(ms, tz, true);
+                    }
+                    tzSourceIdx = 0;
+                    tzSourceVal = tzRowsEl.children[0].querySelector("input").value.trim();
+                    tzUpdateUi();
+                });
+                document.getElementById("tz-clear-all").addEventListener("click", function () {
+                    for (var i = 0; i < 7; i++) {
+                        tzRowsEl.children[i].querySelector("input").value = "";
+                    }
+                    tzSourceIdx = -1;
+                    tzSourceVal = "";
+                    tzUpdateUi();
+                });
+
+                buildTzRows();
+                tzUpdateUi();
+
+                /* ----- 计算页（本地时区，对齐 Ctool dayjs 默认） ----- */
+                function parseLocal(str) {
+                    str = str.trim();
+                    var m = str.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+                    if (!m) return null;
+                    var ms = +m[7] || 0;
+                    return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], ms);
+                }
+
+                function fmtLocal(d) {
+                    if (!d || !isFinite(d.getTime())) return "";
+                    var p = function (n) {
+                        return (n < 10 ? "0" : "") + n;
+                    };
+                    return (
+                        d.getFullYear() +
+                        "-" +
+                        p(d.getMonth() + 1) +
+                        "-" +
+                        p(d.getDate()) +
+                        " " +
+                        p(d.getHours()) +
+                        ":" +
+                        p(d.getMinutes()) +
+                        ":" +
+                        p(d.getSeconds())
+                    );
+                }
+
+                function calcDiff() {
+                    var u = document.getElementById("calc-diff-unit").value;
+                    var d1 = parseLocal(document.getElementById("calc-d1").value);
+                    var d2 = parseLocal(document.getElementById("calc-d2").value);
+                    var el = document.getElementById("calc-diff");
+                    if (!d1 || !d2) {
+                        el.value = "";
+                        return;
+                    }
+                    var a = d1.getTime();
+                    var b = d2.getTime();
+                    if (u === "years") {
+                        var ydiff = d2.getFullYear() - d1.getFullYear();
+                        var md = d2.getMonth() - d1.getMonth();
+                        var dd = d2.getDate() - d1.getDate();
+                        if (md < 0 || (md === 0 && dd < 0)) ydiff--;
+                        el.value = String(ydiff);
+                        return;
+                    }
+                    if (u === "months") {
+                        var months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                        if (d2.getDate() < d1.getDate()) months--;
+                        el.value = String(months);
+                        return;
+                    }
+                    var div = 1000;
+                    if (u === "minutes") div *= 60;
+                    else if (u === "hours") div *= 3600;
+                    else if (u === "days") div *= 86400;
+                    else if (u === "weeks") div *= 604800;
+                    else if (u === "seconds") div = 1000;
+                    el.value = String((b - a) / div);
+                }
+
+                function calcOp() {
+                    var d = parseLocal(document.getElementById("calc-op-in").value);
+                    var sign = document.getElementById("calc-op-sign").value;
+                    var len = parseFloat(document.getElementById("calc-op-len").value, 10);
+                    var unit = document.getElementById("calc-op-unit").value;
+                    var out = document.getElementById("calc-op-out");
+                    if (!d || !isFinite(len)) {
+                        out.value = "";
+                        return;
+                    }
+                    var mult = sign === "-" ? -1 : 1;
+                    var nd = new Date(d.getTime());
+                    if (unit === "years") nd.setFullYear(nd.getFullYear() + mult * len);
+                    else if (unit === "months") nd.setMonth(nd.getMonth() + mult * len);
+                    else {
+                        var rate =
+                            unit === "weeks"
+                                ? 604800000
+                                : unit === "days"
+                                  ? 86400000
+                                  : unit === "hours"
+                                    ? 3600000
+                                    : unit === "minutes"
+                                      ? 60000
+                                      : 1000;
+                        nd = new Date(d.getTime() + mult * len * rate);
+                    }
+                    out.value = fmtLocal(nd);
+                }
+
+                function dayOfYear(d) {
+                    var start = new Date(d.getFullYear(), 0, 0);
+                    return Math.floor((d - start) / 86400000);
+                }
+
+                function isoWeek(d) {
+                    var t = new Date(d.getTime());
+                    t.setHours(0, 0, 0, 0);
+                    t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
+                    var w1 = new Date(t.getFullYear(), 0, 4);
+                    return 1 + Math.round(((t - w1) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
+                }
+
+                function quarterOf(d) {
+                    return Math.floor(d.getMonth() / 3) + 1;
+                }
+
+                function calcAnalyze() {
+                    var d = parseLocal(document.getElementById("calc-an-in").value);
+                    var typ = document.getElementById("calc-an-type").value;
+                    var out = document.getElementById("calc-an-out");
+                    if (!d) {
+                        out.value = "";
+                        return;
+                    }
+                    var y = d.getFullYear();
+                    var q = quarterOf(d);
+                    if (typ === "quarter") {
+                        var qStart = new Date(y, (q - 1) * 3, 1);
+                        var secQ = Math.floor((d - qStart) / 1000);
+                        out.value =
+                            "第 " +
+                            q +
+                            " 季度：第 " +
+                            Math.ceil(secQ / (86400 * 7)) +
+                            " 周，第 " +
+                            Math.ceil(secQ / 86400) +
+                            " 天，第 " +
+                            Math.ceil(secQ / 3600) +
+                            " 小时，第 " +
+                            Math.ceil(secQ / 60) +
+                            " 分钟，" +
+                            secQ +
+                            " 秒（自季度起算，与 Ctool 展示一致）";
+                        return;
+                    }
+                    if (typ === "month") {
+                        var mo = d.getMonth() + 1;
+                        var mStart = new Date(y, mo - 1, 1);
+                        var secM = Math.floor((d - mStart) / 1000);
+                        out.value =
+                            mo +
+                            " 月：第 " +
+                            Math.ceil(secM / (86400 * 7)) +
+                            " 周，第 " +
+                            Math.ceil(secM / 3600) +
+                            " 小时，第 " +
+                            Math.ceil(secM / 60) +
+                            " 分钟，" +
+                            secM +
+                            " 秒（自月初起算）";
+                        return;
+                    }
+                    var yStart = new Date(y, 0, 1);
+                    var secY = Math.floor((d - yStart) / 1000);
+                    out.value =
+                        y +
+                        " 年：第 " +
+                        q +
+                        " 季度，ISO 第 " +
+                        isoWeek(d) +
+                        " 周，第 " +
+                        dayOfYear(d) +
+                        " 天，第 " +
+                        Math.ceil(secY / 3600) +
+                        " 小时，第 " +
+                        Math.ceil(secY / 60) +
+                        " 分钟，" +
+                        secY +
+                        " 秒（自年初起算）";
+                }
+
+                var now = new Date();
+                var fmt0 = fmtLocal(now);
+                document.getElementById("calc-d1").value = fmt0;
+                document.getElementById("calc-d2").value = fmtLocal(new Date(now.getTime() + 86400000));
+                document.getElementById("calc-op-in").value = fmt0;
+                document.getElementById("calc-an-in").value = fmt0;
+
+                ["calc-d1", "calc-d2", "calc-diff-unit"].forEach(function (id) {
+                    document.getElementById(id).addEventListener("input", calcDiff);
+                    document.getElementById(id).addEventListener("change", calcDiff);
+                });
+                ["calc-op-in", "calc-op-sign", "calc-op-len", "calc-op-unit"].forEach(function (id) {
+                    document.getElementById(id).addEventListener("input", calcOp);
+                    document.getElementById(id).addEventListener("change", calcOp);
+                });
+                ["calc-an-in", "calc-an-type"].forEach(function (id) {
+                    document.getElementById(id).addEventListener("input", calcAnalyze);
+                    document.getElementById(id).addEventListener("change", calcAnalyze);
+                });
+                calcDiff();
+                calcOp();
+                calcAnalyze();
+            })();
+        </script>
+    </body>
+</html>
