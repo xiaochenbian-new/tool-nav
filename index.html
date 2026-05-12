@@ -299,6 +299,7 @@
                 { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", keywords: ["json", "format", "yaml", "xml", "toml", "转换"] },
                 { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", keywords: ["format", "json", "xml", "sql", "css", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
                 { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", keywords: ["ddl", "mysql", "pgsql", "oracle"] },
+                { id: "tab21", name: "MyBatis SQL 填充", category: "解析与转换", path: "pages/MyBatisSql日志填充.html", keywords: ["mybatis", "sql", "日志", "jdbc", "参数", "preparing", "ibatis", "完整sql"] },
                 { id: "tab2", name: "Java 与 JSON", category: "解析与转换", path: "pages/JavaToJson.html", keywords: ["java", "json"] },
                 { id: "tab3", name: "JSON/Excel/SQL", category: "解析与转换", path: "pages/JsonToExcel.html", keywords: ["json", "excel", "csv", "sql", "insert"] },
                 { id: "tab4", name: "Tester 文档解析", category: "解析与转换", path: "pages/TesterJSON.html", keywords: ["tester", "talend", "api"] },
@@ -307,13 +308,13 @@
                 { id: "tab6", name: "Crontab", category: "运维工具", path: "pages/Crontab工具.html", keywords: ["cron", "schedule"] },
                 { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", keywords: ["curl", "linux", "http", "api"] },
                 { id: "tab7", name: "身份证生成", category: "生成", path: "pages/身份证号码生成器.html", keywords: ["idcard", "身份证"] },
-                { id: "tab10", name: "文本对比", category: "其他", path: "pages/文本对比.html", keywords: ["文本对比", "diff", "compare"] },
                 { id: "tab18", name: "文本处理", category: "其他", path: "pages/文本处理工具.html", keywords: ["文本", "trim", "排序", "去重", "base64", "url", "行号", "换行", "text"] },
                 { id: "tab11", name: "二维码/条形码生成", category: "生成", path: "pages/码生成工具.html", keywords: ["二维码", "条形码", "qrcode", "barcode"] },
                 { id: "tab20", name: "UUID 工具", category: "生成", path: "pages/UUID工具.html", keywords: ["uuid", "guid", "唯一标识", "生成", "rfc4122"] },
-                { id: "tab13", name: "集合比较", category: "其他", path: "pages/集合比较工具.html", keywords: ["集合", "交集", "差异", "compare", "set"] },
                 { id: "tab14", name: "Excel SQL 查询", category: "其他", path: "pages/ExcelSQL查询工具.html", keywords: ["excel", "sql", "查询", "数据分析", "时间筛选"] },
                 { id: "tab15", name: "统一社会信用代码生成", category: "生成", path: "pages/统一社会信用代码生成工具.html", keywords: ["统一社会信用代码", "社会信用代码", "信用代码", "生成", "校验"] },
+                { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
+                { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "比较", "对比", "交集", "差异", "compare", "set", "diff"] },
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "重量", "温度", "功率"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] }
             ];
@@ -652,7 +653,6 @@
 
             function renderOverviewPanel() {
                 const panel = document.getElementById("overview-panel");
-                const commonIdSet = new Set(COMMON_TOOL_IDS);
                 const grouped = {};
                 TOOLS.forEach((tool) => {
                     if (!grouped[tool.category]) grouped[tool.category] = [];
@@ -689,12 +689,25 @@
                     panel.appendChild(group);
                 }
 
+                /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
+                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
                 appendToolGroup("常用", commonTools);
 
+                const categoryOrder = [];
+                const seenCat = new Set();
+                OVERVIEW_CATEGORY_ORDER.forEach((cat) => {
+                    if (grouped[cat] && grouped[cat].length) {
+                        categoryOrder.push(cat);
+                        seenCat.add(cat);
+                    }
+                });
                 Object.keys(grouped).forEach((cat) => {
-                    const toolsInCat = grouped[cat].filter((t) => !commonIdSet.has(t.id));
-                    appendToolGroup(cat, toolsInCat);
+                    if (!seenCat.has(cat)) categoryOrder.push(cat);
+                });
+
+                categoryOrder.forEach((cat) => {
+                    appendToolGroup(cat, grouped[cat]);
                 });
 
                 const closeBtn = document.getElementById("overview-close");

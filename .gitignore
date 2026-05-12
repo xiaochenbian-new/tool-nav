@@ -9,6 +9,9 @@ bin-release/
 
 .idea
 
+# Monaco 本地拷贝（npm install / npm run copy:monaco 生成，体积大勿提交）
+vendor/monaco/
+
 # Executables
 *.swf
 *.air

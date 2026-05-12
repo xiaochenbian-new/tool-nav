@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>MyBatis SQL 日志填充</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/eclipse.css" />
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --danger: #c62828;
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+            }
+            .input-wrap {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .panel-title {
+                padding: 8px 10px;
+                font-size: 14px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .panel-title-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .title-btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .title-btn.primary:hover {
+                filter: brightness(1.05);
+                color: #fff;
+            }
+            select.dd {
+                border: 1px solid #cfdcf7;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                outline: none;
+                background: #fff;
+                color: var(--text);
+                max-width: 140px;
+            }
+            select.dd:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            #log-input {
+                width: 100%;
+                flex: 1;
+                min-height: 0;
+                border: none;
+                outline: none;
+                resize: none;
+                padding: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--text);
+                background: #fff;
+                font-family: Consolas, "Courier New", monospace;
+                tab-size: 4;
+            }
+            #log-input:focus {
+                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.2);
+            }
+            .sql-editor-wrap {
+                flex: 1;
+                min-height: 0;
+                position: relative;
+                background: #fff;
+            }
+            .sql-editor-wrap .CodeMirror {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                height: auto;
+                font-size: 13px;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .sql-editor-wrap .CodeMirror-scroll {
+                min-height: 120px;
+            }
+            .panel-foot {
+                flex: 0 0 auto;
+                padding: 6px 10px;
+                font-size: 12px;
+                min-height: 2em;
+                color: var(--danger);
+                border-top: 1px solid #eef3ff;
+                background: #fff;
+            }
+            .panel-foot.muted {
+                color: var(--muted);
+            }
+            @media (max-width: 900px) {
+                .input-wrap {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="input-wrap">
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>日志原文</span>
+                        <div class="panel-title-actions">
+                            <button type="button" class="title-btn primary" id="btn-fill">生成完整 SQL</button>
+                        </div>
+                    </div>
+                    <textarea
+                        id="log-input"
+                        placeholder="粘贴含 Preparing: 与 Parameters: 的 MyBatis 日志；或「SQL 模板 + 空一行 + 参数行」"
+                    ></textarea>
+                    <div class="panel-foot" id="msg-err"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>完整 SQL</span>
+                        <div class="panel-title-actions">
+                            <select id="sql-dialect" class="dd" title="SQL 格式化与高亮方言">
+                                <option value="mysql" selected>MySQL</option>
+                                <option value="sql">标准 SQL</option>
+                                <option value="postgresql">PostgreSQL</option>
+                                <option value="plsql">PL/SQL</option>
+                            </select>
+                            <button type="button" class="title-btn" id="btn-format-sql">格式化</button>
+                            <button type="button" class="title-btn" id="btn-copy-out">复制</button>
+                        </div>
+                    </div>
+                    <div class="sql-editor-wrap">
+                        <textarea id="sql-out" aria-label="完整 SQL"></textarea>
+                    </div>
+                    <div class="panel-foot muted" id="format-msg"></div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.js"></script>
+        <script>
+            (function () {
+                var DEBOUNCE_MS = 320;
+
+                function dialectToMime(d) {
+                    if (d === "mysql") return "text/x-mysql";
+                    if (d === "postgresql") return "text/x-pgsql";
+                    if (d === "plsql") return "text/x-plsql";
+                    return "text/x-sql";
+                }
+
+                function splitSqlAndParamsFromLog(text) {
+                    var prepMarker = "Preparing:";
+                    var paramMarker = "Parameters:";
+                    var pi = text.indexOf(prepMarker);
+                    var pj = text.indexOf(paramMarker);
+                    var sql = "";
+                    var params = "";
+                    if (pi >= 0) {
+                        var start = pi + prepMarker.length;
+                        var tail = text.slice(start);
+                        var nl = tail.search(/\r?\n/);
+                        sql = (nl >= 0 ? tail.slice(0, nl) : tail).trim();
+                    }
+                    if (pj >= 0) {
+                        var pstart = pj + paramMarker.length;
+                        var ptail = text.slice(pstart);
+                        var pnl = ptail.search(/\r?\n/);
+                        params = (pnl >= 0 ? ptail.slice(0, pnl) : ptail).trim();
+                    }
+                    return { sql: sql, params: params };
+                }
+
+                function splitManualBlocks(text) {
+                    var t = text.trim();
+                    var m = t.split(/\r?\n\r?\n/);
+                    if (m.length < 2) return null;
+                    var sql = m[0].trim();
+                    var rest = m.slice(1).join("\n\n").trim();
+                    var params = rest;
+                    var pm = rest.indexOf("Parameters:");
+                    if (pm >= 0) {
+                        params = rest.slice(pm + "Parameters:".length).trim();
+                        var nl = params.search(/\r?\n/);
+                        if (nl >= 0) params = params.slice(0, nl).trim();
+                    }
+                    if (sql.indexOf("?") < 0) return null;
+                    return { sql: sql, params: params };
+                }
+
+                function convertParam(paramsStr) {
+                    if (!paramsStr || !paramsStr.trim()) return [];
+                    var tempList = paramsStr.split(",");
+                    var paramStrList = [];
+                    var paramIndex = 0;
+                    var combining = false;
+                    tempList.forEach(function (x) {
+                        if (x.endsWith("null")) {
+                            paramStrList.push(x);
+                            paramIndex++;
+                        } else if (x.endsWith(")")) {
+                            if (combining) {
+                                paramStrList[paramIndex] += "," + x;
+                                combining = false;
+                            } else {
+                                paramStrList.push(x);
+                            }
+                            paramIndex++;
+                        } else {
+                            var tempStr = paramStrList[paramIndex];
+                            if (!tempStr) {
+                                paramStrList.push(x);
+                                combining = true;
+                            } else {
+                                paramStrList[paramIndex] += "," + x;
+                            }
+                        }
+                    });
+                    return paramStrList.map(function (x) {
+                        var trimmed = x.trim();
+                        if (/^null$/i.test(trimmed)) {
+                            return { value: null, type: null };
+                        }
+                        var valueEndIndex = x.lastIndexOf("(");
+                        if (valueEndIndex < 0) {
+                            return { value: x.trim(), type: null };
+                        }
+                        var value = x.substring(0, valueEndIndex).trim();
+                        var typeEndIndex = x.lastIndexOf(")");
+                        var type = x.substring(valueEndIndex + 1, typeEndIndex >= 0 ? typeEndIndex : x.length).trim();
+                        return { value: value, type: type };
+                    });
+                }
+
+                var NUMERIC_TYPES = {
+                    Integer: 1,
+                    Long: 1,
+                    Short: 1,
+                    Byte: 1,
+                    Double: 1,
+                    Float: 1,
+                    BigDecimal: 1,
+                    int: 1,
+                    long: 1,
+                    short: 1,
+                    byte: 1,
+                    double: 1,
+                    float: 1
+                };
+
+                function sqlQuoteString(raw) {
+                    return "'" + String(raw).replace(/'/g, "''") + "'";
+                }
+
+                function formatOneParam(p) {
+                    if (p.value === null || (typeof p.value === "string" && /^null$/i.test(p.value.trim()) && !p.type)) {
+                        return "NULL";
+                    }
+                    var t = (p.type || "").trim();
+                    if (NUMERIC_TYPES[t]) {
+                        return String(p.value).trim();
+                    }
+                    if (t === "Boolean") {
+                        return /^true$/i.test(String(p.value).trim()) ? "TRUE" : "FALSE";
+                    }
+                    return sqlQuoteString(p.value);
+                }
+
+                function fillSqlTemplate(sql, paramList) {
+                    var result = "";
+                    var paramIndex = 0;
+                    for (var i = 0; i < sql.length; i++) {
+                        var c = sql.charAt(i);
+                        if (c === "?") {
+                            if (paramIndex >= paramList.length) {
+                                throw new Error("占位符 ? 数量多于参数个数（已用 " + paramIndex + " 个，共 " + paramList.length + " 个参数）。");
+                            }
+                            result += formatOneParam(paramList[paramIndex]);
+                            paramIndex++;
+                        } else {
+                            result += c;
+                        }
+                    }
+                    if (paramIndex < paramList.length) {
+                        throw new Error("参数未用完：SQL 中 ? 共 " + paramIndex + " 个，日志中参数共 " + paramList.length + " 个。");
+                    }
+                    return result;
+                }
+
+                function parseAndFill(text) {
+                    var trimmed = text.trim();
+                    if (!trimmed) {
+                        return { ok: true, sql: "" };
+                    }
+                    var pair = splitSqlAndParamsFromLog(text);
+                    if (!pair.sql || !pair.params) {
+                        var manual = splitManualBlocks(text);
+                        if (manual && manual.sql && manual.params) {
+                            pair = manual;
+                        }
+                    }
+                    if (!pair.sql) {
+                        return { ok: false, err: "未识别到 Preparing: 后的 SQL，请检查日志或使用「SQL + 空行 + 参数」格式。" };
+                    }
+                    if (!pair.params) {
+                        return { ok: false, err: "未识别到 Parameters: 后的参数列表。" };
+                    }
+                    var paramList = convertParam(pair.params);
+                    try {
+                        return { ok: true, sql: fillSqlTemplate(pair.sql, paramList) };
+                    } catch (e) {
+                        return { ok: false, err: e.message || String(e) };
+                    }
+                }
+
+                var sqlFormatLoad = null;
+                function getSqlFormatFn() {
+                    if (typeof window._sqlFormatFn === "function") {
+                        return Promise.resolve(window._sqlFormatFn);
+                    }
+                    sqlFormatLoad =
+                        sqlFormatLoad ||
+                        import("https://esm.sh/sql-formatter@15.4.6").then(function (m) {
+                            var fn = typeof m.format === "function" ? m.format : null;
+                            if (!fn && typeof m.default === "function") fn = m.default;
+                            if (!fn && m.default && typeof m.default.format === "function") fn = m.default.format;
+                            if (typeof fn !== "function") throw new Error("sql-formatter 导出异常");
+                            window._sqlFormatFn = fn;
+                            return fn;
+                        });
+                    return sqlFormatLoad;
+                }
+
+                var sqlEditor = CodeMirror.fromTextArea(document.getElementById("sql-out"), {
+                    mode: dialectToMime(document.getElementById("sql-dialect").value),
+                    readOnly: true,
+                    lineNumbers: true,
+                    lineWrapping: true,
+                    theme: "eclipse",
+                    viewportMargin: 80
+                });
+
+                var inputEl = document.getElementById("log-input");
+                var errEl = document.getElementById("msg-err");
+                var formatMsgEl = document.getElementById("format-msg");
+                var dialectEl = document.getElementById("sql-dialect");
+                var btnFormat = document.getElementById("btn-format-sql");
+                var timer = null;
+
+                function setSqlText(s) {
+                    sqlEditor.setValue(s || "");
+                    sqlEditor.refresh();
+                }
+
+                function getSqlText() {
+                    return sqlEditor.getValue();
+                }
+
+                function run() {
+                    errEl.textContent = "";
+                    formatMsgEl.textContent = "";
+                    var r = parseAndFill(inputEl.value);
+                    if (r.ok) {
+                        setSqlText(r.sql || "");
+                    } else {
+                        setSqlText("");
+                        errEl.textContent = r.err || "解析失败";
+                    }
+                }
+
+                function scheduleRun() {
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(run, DEBOUNCE_MS);
+                }
+
+                inputEl.addEventListener("input", scheduleRun);
+                document.getElementById("btn-fill").addEventListener("click", function () {
+                    if (timer) clearTimeout(timer);
+                    run();
+                });
+
+                dialectEl.addEventListener("change", function () {
+                    sqlEditor.setOption("mode", dialectToMime(dialectEl.value));
+                });
+
+                btnFormat.addEventListener("click", function () {
+                    var text = getSqlText().trim();
+                    formatMsgEl.textContent = "";
+                    if (!text) {
+                        formatMsgEl.textContent = "请先生成完整 SQL";
+                        return;
+                    }
+                    btnFormat.disabled = true;
+                    getSqlFormatFn()
+                        .then(function (format) {
+                            setSqlText(
+                                format(text, {
+                                    language: dialectEl.value || "mysql",
+                                    tabWidth: 2,
+                                    useTabs: false,
+                                    keywordCase: "upper"
+                                })
+                            );
+                            formatMsgEl.textContent = "已格式化";
+                        })
+                        .catch(function (e) {
+                            formatMsgEl.textContent = "格式化失败：" + (e.message || String(e));
+                        })
+                        .then(function () {
+                            btnFormat.disabled = false;
+                        });
+                });
+
+                document.getElementById("btn-copy-out").addEventListener("click", function () {
+                    var t = getSqlText();
+                    if (!t) return;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(t).catch(function () {
+                            copyViaHidden(t);
+                        });
+                    } else {
+                        copyViaHidden(t);
+                    }
+                });
+
+                function copyViaHidden(t) {
+                    var ta = document.createElement("textarea");
+                    ta.value = t;
+                    ta.setAttribute("readonly", "readonly");
+                    ta.style.cssText = "position:fixed;left:-9999px;top:0";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand("copy");
+                    } finally {
+                        document.body.removeChild(ta);
+                    }
+                }
+
+                window.addEventListener("resize", function () {
+                    sqlEditor.refresh();
+                });
+            })();
+        </script>
+    </body>
+</html>

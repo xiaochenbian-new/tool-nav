@@ -15,10 +15,6 @@
                 --primary: #2f6bff;
                 --primary-2: #5b8dff;
                 --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
-                --ok-bg: #ecfff2;
-                --ok-color: #18834f;
-                --diff-bg: #fff3f3;
-                --diff-color: #c03434;
             }
             html, body {
                 width: 100%;
@@ -30,6 +26,7 @@
             .page {
                 width: 100%;
                 height: 100%;
+                min-height: 480px;
                 padding: 10px;
                 display: flex;
                 flex-direction: column;
@@ -55,6 +52,10 @@
                 font-size: 12px;
                 cursor: pointer;
             }
+            .btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
             .btn.primary {
                 color: #fff;
                 border-color: transparent;
@@ -63,180 +64,423 @@
             .hint {
                 color: var(--muted);
                 font-size: 12px;
+                max-width: 220px;
             }
-            .editor-wrap {
+            .toolbar-spacer {
+                flex: 1;
+                min-width: 4px;
+            }
+            .nav-group {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                padding: 2px 4px;
+            }
+            .nav-group .btn {
+                padding: 4px 10px;
+                min-width: 32px;
+            }
+            .change-pos {
+                font-size: 12px;
+                color: #324a76;
+                min-width: 52px;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
+            .chk {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 12px;
+                color: #324a76;
+                user-select: none;
+                white-space: nowrap;
+            }
+            .chk input {
+                accent-color: var(--primary);
+            }
+            .lang-select {
+                font-size: 12px;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                padding: 5px 8px;
+                background: #fff;
+                color: #324a76;
+                min-width: 120px;
+            }
+            .diff-shell {
                 flex: 1;
                 min-height: 0;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-            .editor-card {
+                display: flex;
+                flex-direction: column;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 10px;
                 box-shadow: var(--shadow);
-                min-height: 0;
-                display: flex;
-                flex-direction: column;
                 overflow: hidden;
             }
-            .editor-title {
-                padding: 8px 10px;
-                font-size: 12px;
-                color: #324a76;
+            .diff-shell .editor-hint {
+                padding: 6px 10px;
+                font-size: 11px;
+                color: var(--muted);
                 border-bottom: 1px solid #e4edff;
                 background: #f8fbff;
             }
-            textarea {
+            #monaco-container {
                 flex: 1;
+                min-height: 280px;
                 width: 100%;
-                border: none;
-                outline: none;
-                resize: none;
-                padding: 10px;
-                font-size: 13px;
-                line-height: 1.6;
-                color: var(--text);
-                background: #fff;
-                font-family: Consolas, "Courier New", monospace;
             }
-            .result {
-                max-height: 38%;
-                overflow: auto;
-                background: var(--card);
-                border: 1px solid var(--border);
-                border-radius: 10px;
-                box-shadow: var(--shadow);
-                padding: 8px;
+            .loading-mask {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                color: var(--muted);
+                background: rgba(255, 255, 255, 0.85);
+            }
+            .diff-inner {
+                position: relative;
+                flex: 1;
+                min-height: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
-            }
-            .line {
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 12px;
-                line-height: 1.5;
-                font-family: Consolas, "Courier New", monospace;
-                white-space: pre-wrap;
-                word-break: break-word;
-                border: 1px solid #e6eeff;
-                background: #f8fbff;
-            }
-            .line.same {
-                background: var(--ok-bg);
-                color: var(--ok-color);
-                border-color: #bde8cf;
-            }
-            .line.diff {
-                background: var(--diff-bg);
-                color: var(--diff-color);
-                border-color: #ffd1d1;
-            }
-            @media (max-width: 900px) {
-                .editor-wrap { grid-template-columns: 1fr; }
-                .result { max-height: 42%; }
             }
         </style>
     </head>
     <body>
         <div class="page">
             <div class="toolbar">
-                <button id="compare-btn" class="btn primary" type="button">开始对比</button>
                 <button id="swap-btn" class="btn" type="button">左右互换</button>
                 <button id="clear-btn" class="btn" type="button">清空</button>
-                <span id="summary" class="hint">输入左右文本后点击“开始对比”</span>
+                <span id="summary" class="hint">正在加载对比引擎…</span>
+                <span class="toolbar-spacer"></span>
+                <div class="nav-group" title="差异块跳转（与 Ctool 文本对比一致）">
+                    <button id="prev-change" class="btn" type="button" disabled>&lt;</button>
+                    <span id="change-pos" class="change-pos">0 / 0</span>
+                    <button id="next-change" class="btn" type="button" disabled>&gt;</button>
+                </div>
+                <label class="chk" title="行内合并显示">
+                    <input id="inline-mode" type="checkbox" />
+                    行内对比
+                </label>
+                <label class="chk" title="隐藏大段相同内容，仅保留差异附近若干行；点击中间条可展开">
+                    <input id="fold-same" type="checkbox" checked />
+                    折叠相同
+                </label>
+                <label class="chk">
+                    <input id="wrap-mode" type="checkbox" checked />
+                    自动换行
+                </label>
+                <label class="chk">
+                    <input id="line-num-mode" type="checkbox" checked />
+                    行号
+                </label>
+                <select id="lang-select" class="lang-select" title="语法高亮语言"></select>
             </div>
 
-            <div class="editor-wrap">
-                <div class="editor-card">
-                    <div class="editor-title">左侧文本</div>
-                    <textarea id="left-text" placeholder="请输入左侧文本"></textarea>
-                </div>
-                <div class="editor-card">
-                    <div class="editor-title">右侧文本</div>
-                    <textarea id="right-text" placeholder="请输入右侧文本"></textarea>
+            <div class="diff-shell">
+                <div class="editor-hint">左侧为原始内容，右侧为修改后内容。「折叠相同」仅在左右分栏模式下生效；若勾选「行内对比」则会自动关闭折叠。嵌入导航 iframe 时已强制分栏，避免被误判为窄屏。点击中间折叠条可展开。</div>
+                <div class="diff-inner">
+                    <div id="monaco-container"></div>
+                    <div id="loading" class="loading-mask">加载编辑器…</div>
                 </div>
             </div>
-
-            <div id="result" class="result"></div>
         </div>
 
+        <script src="../vendor/monaco/min/vs/loader.js"></script>
         <script>
-            function normalizeLines(text) {
-                return String(text || "").replace(/\r\n/g, "\n").split("\n");
-            }
+            (function () {
+                /** 与 node_modules/monaco-editor/min/vs 一致，由 npm run copy:monaco / postinstall 复制到 vendor */
+                var MONACO_ROOT = new URL("../vendor/monaco/min/vs/", window.location.href).href.replace(/\/?$/, "");
 
-            function compareLines(leftText, rightText) {
-                const left = normalizeLines(leftText);
-                const right = normalizeLines(rightText);
-                const maxLen = Math.max(left.length, right.length);
-                const rows = [];
-                let sameCount = 0;
-                let diffCount = 0;
-                for (let i = 0; i < maxLen; i += 1) {
-                    const l = left[i] === undefined ? "" : left[i];
-                    const r = right[i] === undefined ? "" : right[i];
-                    const same = l === r;
-                    if (same) sameCount += 1;
-                    else diffCount += 1;
-                    rows.push({
-                        lineNo: i + 1,
-                        same: same,
-                        left: l,
-                        right: r
+                self.MonacoEnvironment = {
+                    getWorkerUrl: function (_moduleId, label) {
+                        var base = MONACO_ROOT + "/";
+                        if (label === "json") return base + "language/json/json.worker.js";
+                        if (label === "css" || label === "scss" || label === "less") return base + "language/css/css.worker.js";
+                        if (label === "html" || label === "handlebars" || label === "razor") return base + "language/html/html.worker.js";
+                        if (label === "typescript" || label === "javascript") return base + "language/typescript/ts.worker.js";
+                        return base + "editor/editor.worker.js";
+                    }
+                };
+
+                var LANG_OPTIONS = [
+                    { id: "plaintext", name: "纯文本" },
+                    { id: "json", name: "JSON" },
+                    { id: "javascript", name: "JavaScript" },
+                    { id: "typescript", name: "TypeScript" },
+                    { id: "html", name: "HTML" },
+                    { id: "css", name: "CSS" },
+                    { id: "scss", name: "SCSS" },
+                    { id: "less", name: "Less" },
+                    { id: "xml", name: "XML" },
+                    { id: "markdown", name: "Markdown" },
+                    { id: "yaml", name: "YAML" },
+                    { id: "sql", name: "SQL" },
+                    { id: "mysql", name: "MySQL" },
+                    { id: "python", name: "Python" },
+                    { id: "java", name: "Java" },
+                    { id: "csharp", name: "C#" },
+                    { id: "cpp", name: "C++" },
+                    { id: "c", name: "C" },
+                    { id: "go", name: "Go" },
+                    { id: "rust", name: "Rust" },
+                    { id: "php", name: "PHP" },
+                    { id: "shell", name: "Shell" },
+                    { id: "powershell", name: "PowerShell" },
+                    { id: "dockerfile", name: "Dockerfile" },
+                    { id: "ini", name: "INI" },
+                    { id: "bat", name: "批处理" }
+                ];
+
+                var monacoRef = null;
+                var diffEditor = null;
+                var originalModel = null;
+                var modifiedModel = null;
+                var changes = 0;
+                var currentChange = 0;
+
+                function $(id) {
+                    return document.getElementById(id);
+                }
+
+                function fillLangSelect() {
+                    var sel = $("lang-select");
+                    LANG_OPTIONS.forEach(function (opt) {
+                        var o = document.createElement("option");
+                        o.value = opt.id;
+                        o.textContent = opt.name;
+                        sel.appendChild(o);
                     });
                 }
-                return { rows, sameCount, diffCount, total: maxLen };
-            }
 
-            function escapeHtml(input) {
-                return String(input)
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;");
-            }
-
-            function renderDiff() {
-                const leftText = document.getElementById("left-text").value;
-                const rightText = document.getElementById("right-text").value;
-                const result = document.getElementById("result");
-                const summary = document.getElementById("summary");
-                const data = compareLines(leftText, rightText);
-
-                if (!data.total) {
-                    result.innerHTML = "<div class=\"line\">暂无内容</div>";
-                    summary.textContent = "输入左右文本后点击“开始对比”";
-                    return;
+                function setLanguage(langId) {
+                    if (!diffEditor || !monacoRef || !originalModel || !modifiedModel) return;
+                    try {
+                        monacoRef.editor.setModelLanguage(originalModel, langId);
+                        monacoRef.editor.setModelLanguage(modifiedModel, langId);
+                    } catch (_e) {
+                        monacoRef.editor.setModelLanguage(originalModel, "plaintext");
+                        monacoRef.editor.setModelLanguage(modifiedModel, "plaintext");
+                    }
                 }
 
-                summary.textContent = "总行数 " + data.total + "，相同 " + data.sameCount + "，差异 " + data.diffCount;
-                result.innerHTML = data.rows.map(function (row) {
-                    const cls = row.same ? "same" : "diff";
-                    return "<div class=\"line " + cls + "\">"
-                        + "第 " + row.lineNo + " 行"
-                        + "\n左: " + escapeHtml(row.left)
-                        + "\n右: " + escapeHtml(row.right)
-                        + "</div>";
-                }).join("");
-            }
+                function updateChangeNav() {
+                    var pos = $("change-pos");
+                    var prev = $("prev-change");
+                    var next = $("next-change");
+                    if (!diffEditor) return;
+                    var lineChanges = diffEditor.getLineChanges() || [];
+                    changes = lineChanges.length;
+                    if (currentChange > changes) currentChange = changes > 0 ? changes : 0;
+                    if (changes === 0) currentChange = 0;
+                    pos.textContent = changes ? currentChange + " / " + changes : "0 / 0";
+                    prev.disabled = changes === 0 || currentChange <= 1;
+                    next.disabled = changes === 0 || currentChange >= changes;
+                }
 
-            document.getElementById("compare-btn").addEventListener("click", renderDiff);
-            document.getElementById("swap-btn").addEventListener("click", function () {
-                const left = document.getElementById("left-text");
-                const right = document.getElementById("right-text");
-                const tmp = left.value;
-                left.value = right.value;
-                right.value = tmp;
-            });
-            document.getElementById("clear-btn").addEventListener("click", function () {
-                document.getElementById("left-text").value = "";
-                document.getElementById("right-text").value = "";
-                renderDiff();
-            });
+                function updateSummary() {
+                    var el = $("summary");
+                    if (!originalModel || !modifiedModel) return;
+                    var left = originalModel.getValue();
+                    var right = modifiedModel.getValue();
+                    var leftLines = left.length ? left.split("\n").length : 0;
+                    var rightLines = right.length ? right.split("\n").length : 0;
+                    el.textContent =
+                        "左侧 " +
+                        leftLines +
+                        " 行 · 右侧 " +
+                        rightLines +
+                        " 行 · 差异块 " +
+                        changes +
+                        " 处";
+                }
 
-            renderDiff();
+                function gotoChange(dir) {
+                    if (!diffEditor || changes === 0) return;
+                    var lineChanges = diffEditor.getLineChanges() || [];
+                    var next = dir === "next" ? currentChange + 1 : currentChange - 1;
+                    if (next < 1 || next > changes) return;
+                    var change = lineChanges[next - 1];
+                    if (!change) return;
+                    var line = change.originalEndLineNumber || change.modifiedEndLineNumber || 1;
+                    diffEditor.revealLineInCenter(line);
+                    currentChange = next;
+                    updateChangeNav();
+                }
+
+                function layoutEditor() {
+                    if (diffEditor) diffEditor.layout();
+                }
+
+                /** Monaco：折叠未改区域；行内对比时不可用（Monaco 限制）。需关闭 useInlineViewWhenSpaceIsLimited，否则 iframe 内易被误判为窄屏而不生效。 */
+                function hideUnchangedRegionsOptions() {
+                    var inlineOn = $("inline-mode").checked;
+                    var want = $("fold-same").checked && !inlineOn;
+                    return {
+                        enabled: want,
+                        contextLineCount: 3,
+                        minimumLineCount: 2,
+                        revealLineCount: 20
+                    };
+                }
+
+                function applyFoldUnchangedAndRefreshDiff() {
+                    if (!diffEditor || !originalModel || !modifiedModel) return;
+                    var o = originalModel;
+                    var m = modifiedModel;
+                    diffEditor.updateOptions({
+                        useInlineViewWhenSpaceIsLimited: false,
+                        hideUnchangedRegions: hideUnchangedRegionsOptions()
+                    });
+                    diffEditor.setModel(null);
+                    diffEditor.setModel({ original: o, modified: m });
+                    requestAnimationFrame(function () {
+                        diffEditor.layout();
+                    });
+                }
+
+                function syncFoldSameDisabled() {
+                    var inlineOn = $("inline-mode").checked;
+                    $("fold-same").disabled = inlineOn;
+                    $("fold-same").parentElement.title = inlineOn
+                        ? "行内对比模式下不支持折叠相同（Monaco 限制）"
+                        : "隐藏大段相同内容，仅保留差异附近若干行；点击中间条可展开";
+                }
+
+                function initMonaco(monaco) {
+                    monacoRef = monaco;
+                    var container = $("monaco-container");
+                    originalModel = monaco.editor.createModel("", "plaintext");
+                    modifiedModel = monaco.editor.createModel("", "plaintext");
+
+                    diffEditor = monaco.editor.createDiffEditor(container, {
+                        lineNumbers: $("line-num-mode").checked ? "on" : "off",
+                        wordWrap: $("wrap-mode").checked ? "on" : "off",
+                        minimap: { enabled: false },
+                        automaticLayout: true,
+                        originalEditable: true,
+                        scrollBeyondLastLine: false,
+                        renderSideBySide: !$("inline-mode").checked,
+                        useInlineViewWhenSpaceIsLimited: false,
+                        enableSplitViewResizing: false,
+                        readOnly: false,
+                        scrollbar: { verticalScrollbarSize: 5 },
+                        fontFamily: "Consolas, 'Courier New', monospace",
+                        fontSize: 13,
+                        hideUnchangedRegions: hideUnchangedRegionsOptions()
+                    });
+
+                    diffEditor.setModel({
+                        original: originalModel,
+                        modified: modifiedModel
+                    });
+
+                    syncFoldSameDisabled();
+                    applyFoldUnchangedAndRefreshDiff();
+                    monaco.editor.setTheme("vs");
+
+                    diffEditor.onDidUpdateDiff(function () {
+                        var lc = diffEditor.getLineChanges() || [];
+                        changes = lc.length;
+                        currentChange = changes > 0 ? 1 : 0;
+                        updateChangeNav();
+                        updateSummary();
+                    });
+
+                    originalModel.onDidChangeContent(function () {
+                        updateSummary();
+                    });
+                    modifiedModel.onDidChangeContent(function () {
+                        updateSummary();
+                    });
+
+                    $("loading").style.display = "none";
+                    $("summary").textContent = "在下方两侧编辑或粘贴文本，差异会实时显示";
+                    updateChangeNav();
+                    updateSummary();
+
+                    window.addEventListener("resize", layoutEditor);
+                    setTimeout(layoutEditor, 50);
+                    setTimeout(function () {
+                        if (!diffEditor) return;
+                        applyFoldUnchangedAndRefreshDiff();
+                    }, 120);
+                }
+
+                function bindControls() {
+                    $("swap-btn").addEventListener("click", function () {
+                        if (!originalModel || !modifiedModel) return;
+                        var a = originalModel.getValue();
+                        var b = modifiedModel.getValue();
+                        originalModel.setValue(b);
+                        modifiedModel.setValue(a);
+                    });
+                    $("clear-btn").addEventListener("click", function () {
+                        if (!originalModel || !modifiedModel) return;
+                        originalModel.setValue("");
+                        modifiedModel.setValue("");
+                    });
+                    $("prev-change").addEventListener("click", function () {
+                        gotoChange("prev");
+                    });
+                    $("next-change").addEventListener("click", function () {
+                        gotoChange("next");
+                    });
+                    $("inline-mode").addEventListener("change", function () {
+                        if (!diffEditor) return;
+                        syncFoldSameDisabled();
+                        diffEditor.updateOptions({ renderSideBySide: !$("inline-mode").checked });
+                        applyFoldUnchangedAndRefreshDiff();
+                        layoutEditor();
+                    });
+                    $("fold-same").addEventListener("change", function () {
+                        if (!diffEditor) return;
+                        applyFoldUnchangedAndRefreshDiff();
+                    });
+                    $("wrap-mode").addEventListener("change", function () {
+                        if (!diffEditor) return;
+                        diffEditor.updateOptions({ wordWrap: $("wrap-mode").checked ? "on" : "off" });
+                    });
+                    $("line-num-mode").addEventListener("change", function () {
+                        if (!diffEditor) return;
+                        diffEditor.updateOptions({ lineNumbers: $("line-num-mode").checked ? "on" : "off" });
+                    });
+                    $("lang-select").addEventListener("change", function () {
+                        setLanguage($("lang-select").value);
+                    });
+                }
+
+                fillLangSelect();
+                bindControls();
+
+                require.config({ paths: { vs: MONACO_ROOT } });
+                require(
+                    ["vs/editor/editor.main"],
+                    function () {
+                        var monacoGlobal =
+                            typeof monaco !== "undefined" ? monaco : window.monaco || self.monaco;
+                        if (!monacoGlobal) {
+                            $("summary").textContent =
+                                "对比引擎未就绪：请在 tool-nav 目录执行 npm install（会复制 vendor/monaco）";
+                            $("loading").textContent = "Monaco 未就绪";
+                            return;
+                        }
+                        initMonaco(monacoGlobal);
+                    },
+                    function (err) {
+                        $("summary").textContent =
+                            "脚本加载失败：请确认已执行 npm install，且存在 vendor/monaco/min/vs/loader.js";
+                        $("loading").textContent = String(err && err.message ? err.message : err);
+                    }
+                );
+            })();
         </script>
     </body>
 </html>

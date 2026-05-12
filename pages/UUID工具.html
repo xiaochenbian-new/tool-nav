@@ -251,7 +251,7 @@
                     </div>
                 </div>
                 <div class="editor-zone">
-                    <textarea id="uuid-out" name="uuidOut" spellcheck="false" placeholder="点击下方选项后点「生成」"></textarea>
+                    <textarea id="uuid-out" name="uuidOut" spellcheck="false" placeholder="点击下方选项即自动生成；也可点「生成」刷新"></textarea>
                 </div>
             </div>
 
@@ -385,7 +385,9 @@
                     return n;
                 }
 
-                function doGenerate() {
+                function doGenerate(opts) {
+                    opts = opts || {};
+                    var silent = !!opts.silent;
                     var ver = selVer.value;
                     var n = clampCount();
                     var fmt = selFmt.value;
@@ -395,7 +397,7 @@
                     if (ver === "nil") {
                         var nilStd = "00000000-0000-0000-0000-000000000000";
                         out.value = formatOutput(nilStd, fmt, upper);
-                        toast("已生成空 UUID");
+                        if (!silent) toast("已生成空 UUID");
                         return;
                     }
 
@@ -403,7 +405,7 @@
                         var lines = [];
                         for (var i = 0; i < n; i++) lines.push(formatOutput(uuidV4(), fmt, upper));
                         out.value = joinSep(lines, sep);
-                        toast("已生成 " + n + " 条 v4");
+                        if (!silent) toast("已生成 " + n + " 条 v4");
                         return;
                     }
 
@@ -415,7 +417,7 @@
                                     lines.push(formatOutput(m.v1(), fmt, upper));
                                 }
                                 out.value = joinSep(lines, sep);
-                                toast("已生成 " + n + " 条 v1");
+                                if (!silent) toast("已生成 " + n + " 条 v1");
                             })
                             .catch(function (e) {
                                 toast("v1 依赖加载失败：" + (e.message || String(e)));
@@ -475,7 +477,33 @@
                     checkMsg.classList.add(r.ok ? "ok" : "bad");
                 }
 
-                document.getElementById("btn-gen").addEventListener("click", doGenerate);
+                document.getElementById("btn-gen").addEventListener("click", function () {
+                    doGenerate({ silent: false });
+                });
+
+                function debounce(fn, ms) {
+                    var t = null;
+                    return function () {
+                        var ctx = this;
+                        var args = arguments;
+                        clearTimeout(t);
+                        t = setTimeout(function () {
+                            fn.apply(ctx, args);
+                        }, ms);
+                    };
+                }
+
+                var regenSilent = function () {
+                    doGenerate({ silent: true });
+                };
+                var regenCountDebounced = debounce(regenSilent, 350);
+
+                selVer.addEventListener("change", regenSilent);
+                selFmt.addEventListener("change", regenSilent);
+                selCase.addEventListener("change", regenSilent);
+                selSep.addEventListener("change", regenSilent);
+                inpCount.addEventListener("change", regenSilent);
+                inpCount.addEventListener("input", regenCountDebounced);
                 document.getElementById("btn-copy").addEventListener("click", function () {
                     var v = out.value;
                     if (!v) {
