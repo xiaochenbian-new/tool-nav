@@ -26,12 +26,23 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "monaco-editor": "0.50.0"
+    "@iarna/toml": "^2.2.5",
+    "alasql": "^4.6.5",
+    "chinese-simple2traditional": "^2.2.2",
+    "codemirror": "^5.65.16",
+    "js-beautify": "^1.15.1",
+    "js-yaml": "^4.1.0",
+    "jsonrepair": "^3.8.0",
+    "monaco-editor": "0.50.0",
+    "qs": "^6.11.2",
+    "sql-formatter": "^15.4.6",
+    "uuid": "^9.0.1"
   },
   "scripts": {
     "build:qrcode-lib": "npx --yes browserify node_modules/qrcode/lib/browser.js -s QRCodeLib -o pages/libs/qrcode-lib.bundle.js",
-    "copy:monaco": "node scripts/copy-monaco.cjs",
-    "postinstall": "node scripts/copy-monaco.cjs",
+    "copy:vendor": "node scripts/copy-vendor-all.cjs",
+    "copy:monaco": "node scripts/copy-vendor-all.cjs",
+    "postinstall": "node scripts/copy-vendor-all.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

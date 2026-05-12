@@ -4,8 +4,8 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>MyBatis SQL 日志填充</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/eclipse.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/theme/eclipse.css" />
         <style>
             * {
                 margin: 0;
@@ -209,8 +209,8 @@
                 </div>
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.js"></script>
+        <script src="../vendor/codemirror/lib/codemirror.js"></script>
+        <script src="../vendor/codemirror/mode/sql/sql.js"></script>
         <script>
             (function () {
                 var DEBOUNCE_MS = 320;
@@ -393,7 +393,7 @@
                     }
                     sqlFormatLoad =
                         sqlFormatLoad ||
-                        import("https://esm.sh/sql-formatter@15.4.6").then(function (m) {
+                        import("../vendor/bundles/sql-formatter.mjs").then(function (m) {
                             var fn = typeof m.format === "function" ? m.format : null;
                             if (!fn && typeof m.default === "function") fn = m.default;
                             if (!fn && m.default && typeof m.default.format === "function") fn = m.default.format;

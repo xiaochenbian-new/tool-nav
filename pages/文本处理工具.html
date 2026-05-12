@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>文本处理工具</title>
-        <link rel="stylesheet" href="vendor/codemirror.min.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -500,11 +500,11 @@
 
         <div id="toast" role="status" aria-live="polite"></div>
 
-        <script src="vendor/codemirror.min.js"></script>
+        <script src="../vendor/codemirror/lib/codemirror.js"></script>
         <script>
             (function () {
                 if (typeof CodeMirror === "undefined") {
-                    alert("编辑器脚本缺失：请确认与本页同级的 vendor/codemirror.min.js、codemirror.min.css 存在。");
+                    alert("编辑器脚本缺失：请先在项目根目录执行 npm install（生成 vendor/codemirror）。");
                     return;
                 }
 
@@ -915,11 +915,7 @@
                 function loadZhTran() {
                     if (!zhLibPromise) {
                         zhLibPromise = (async function () {
-                            var mod = await import("https://esm.sh/chinese-simple2traditional@2.2.2");
-                            try {
-                                var enh = await import("https://esm.sh/chinese-simple2traditional@2.2.2/enhance");
-                                if (typeof enh.setupEnhance === "function") enh.setupEnhance();
-                            } catch (e) {}
+                            var mod = await import("../vendor/bundles/zh-tran.mjs");
                             return mod;
                         })();
                     }

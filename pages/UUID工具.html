@@ -318,7 +318,7 @@
 
                 function ensureUuidLib() {
                     if (uuidModPromise) return uuidModPromise;
-                    uuidModPromise = import("https://esm.sh/uuid@9.0.1").then(function (m) {
+                    uuidModPromise = import("../vendor/bundles/uuid.mjs").then(function (m) {
                         if (typeof m.v1 !== "function" || typeof m.v4 !== "function") {
                             throw new Error("uuid 模块不完整");
                         }

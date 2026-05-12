@@ -4,9 +4,9 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>格式化工具</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
+        <script src="../vendor/js-beautify/beautify.js"></script>
+        <script src="../vendor/js-beautify/beautify-html.js"></script>
+        <script src="../vendor/js-beautify/beautify-css.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -430,7 +430,7 @@
                     }
                     sqlFormatLoad =
                         sqlFormatLoad ||
-                        import("https://esm.sh/sql-formatter@15.4.6").then(function (m) {
+                        import("../vendor/bundles/sql-formatter.mjs").then(function (m) {
                             var fn = typeof m.format === "function" ? m.format : null;
                             if (!fn && typeof m.default === "function") fn = m.default;
                             if (!fn && m.default && typeof m.default.format === "function") fn = m.default.format;
