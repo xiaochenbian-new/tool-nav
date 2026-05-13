@@ -122,6 +122,14 @@ async function main() {
         "sql-formatter (UMD，file:// 离线可用)"
     );
 
+    const codepageDest = path.join(vendor, "codepage");
+    copyThing(
+        path.join(root, "node_modules", "codepage", "dist", "cpexcel.full.js"),
+        path.join(codepageDest, "cpexcel.full.js"),
+        "codepage/cpexcel.full.js（GBK/CP936 等）"
+    );
+    copyThing(path.join(root, "node_modules", "codepage", "cputils.js"), path.join(codepageDest, "cputils.js"), "codepage/cputils.js");
+
     await buildEsm("sql-formatter.mjs", path.join(bundlesDir, "sql-formatter.mjs"), "sql-formatter");
     await buildEsm("qs.mjs", path.join(bundlesDir, "qs.mjs"), "qs");
     await buildEsm("toml.mjs", path.join(bundlesDir, "toml.mjs"), "toml");

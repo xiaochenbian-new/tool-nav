@@ -184,6 +184,156 @@
                 color: #324a76;
                 margin-bottom: 6px;
             }
+            .overview-group-title-with-action {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .overview-group-title-text {
+                flex: 0 1 auto;
+            }
+            .crypto-algo-help-btn {
+                flex: 0 0 16px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                margin: 0;
+                border: 1px solid #ffb74d;
+                border-radius: 50%;
+                background: linear-gradient(180deg, #fff8e1, #ffe0b2);
+                color: #e65100;
+                font-size: 10px;
+                font-weight: 700;
+                line-height: 1;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .crypto-algo-help-btn:hover {
+                border-color: #f57c00;
+                color: #bf360c;
+            }
+            .crypto-algo-modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 60;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 16px 28px;
+                box-sizing: border-box;
+            }
+            .crypto-algo-modal.visible {
+                display: flex;
+            }
+            .crypto-algo-modal-backdrop {
+                position: absolute;
+                inset: 0;
+                background: rgba(31, 42, 68, 0.45);
+            }
+            .crypto-algo-modal-dialog {
+                position: relative;
+                z-index: 1;
+                max-width: min(98vw, 1120px);
+                width: 100%;
+                max-height: min(90vh, 840px);
+                background: #fff;
+                border-radius: 12px;
+                border: 1px solid #dbe6ff;
+                box-shadow: 0 16px 48px rgba(36, 90, 190, 0.22);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                min-height: 0;
+            }
+            .crypto-algo-modal-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+                padding: 12px 16px;
+                background: #f8fbff;
+                border-bottom: 1px solid #e4edff;
+                font-size: 16px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .crypto-algo-modal-close {
+                width: 28px;
+                height: 28px;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #fff;
+                color: #3c4f78;
+                font-size: 18px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .crypto-algo-modal-close:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .crypto-algo-modal-body {
+                flex: 1;
+                min-height: 0;
+                padding: 14px 16px 18px;
+                overflow: hidden;
+                font-size: 14px;
+                line-height: 1.45;
+                color: #1f2a44;
+                display: flex;
+                flex-direction: column;
+            }
+            .crypto-algo-table-scroll {
+                flex: 1;
+                min-height: 160px;
+                max-height: min(58vh, 560px);
+                overflow: auto;
+                border: 1px solid #d0d8e8;
+                border-radius: 8px;
+                background: #fff;
+            }
+            .crypto-algo-table {
+                width: 100%;
+                min-width: 920px;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            .crypto-algo-table th,
+            .crypto-algo-table td {
+                border: 1px solid #b8c5db;
+                padding: 11px 14px;
+                text-align: left;
+                vertical-align: top;
+            }
+            .crypto-algo-table thead th {
+                position: sticky;
+                top: 0;
+                z-index: 3;
+                background: #eef4ff;
+                color: #324a76;
+                font-weight: 600;
+                font-size: 14px;
+                white-space: nowrap;
+                box-shadow: 0 1px 0 #b8c5db;
+            }
+            .crypto-algo-table td[rowspan] {
+                vertical-align: middle;
+            }
+            /* 按算法类型整块（每个 tbody 合并后视为一行）：第 1 类白、第 2 类灰、第 3 类白… */
+            .crypto-algo-table > tbody.crypto-algo-cat:nth-of-type(odd) td {
+                background: #ffffff;
+            }
+            .crypto-algo-table > tbody.crypto-algo-cat:nth-of-type(even) td {
+                background: #e8ecf2;
+            }
+            .crypto-algo-table td:first-child {
+                font-weight: 600;
+                color: #3c4f78;
+                white-space: nowrap;
+            }
             .overview-group-tools {
                 display: flex;
                 flex-wrap: wrap;
@@ -285,6 +435,114 @@
                 </div>
             </div>
             <div id="overview-panel" class="overview-panel"></div>
+            <div id="crypto-algo-modal" class="crypto-algo-modal" aria-hidden="true">
+                <div class="crypto-algo-modal-backdrop" id="crypto-algo-modal-backdrop"></div>
+                <div class="crypto-algo-modal-dialog" role="dialog" aria-labelledby="crypto-algo-modal-title">
+                    <div class="crypto-algo-modal-head">
+                        <span id="crypto-algo-modal-title">国密（SM）与国际标准算法一览</span>
+                        <button type="button" class="crypto-algo-modal-close" id="crypto-algo-modal-close" title="关闭">×</button>
+                    </div>
+                    <div class="crypto-algo-modal-body">
+                        <div class="crypto-algo-table-scroll">
+                            <table class="crypto-algo-table">
+                                <thead>
+                                    <tr>
+                                        <th>算法类型</th>
+                                        <th>签名算法</th>
+                                        <th>主要用途</th>
+                                        <th>密钥长度</th>
+                                        <th>速度</th>
+                                        <th>是否可逆</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="crypto-algo-cat">
+                                    <tr>
+                                        <td rowspan="4">对称加密</td>
+                                        <td>SM4</td>
+                                        <td rowspan="2">数据加密/解密</td>
+                                        <td>128 bit</td>
+                                        <td>最快（适合大数据量）</td>
+                                        <td rowspan="4">可逆（用密钥解密）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>AES（含 AES-GCM 等）</td>
+                                        <td>128 / 192 / 256 bit（常见 128、256）</td>
+                                        <td>快（AES-NI 下更快）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ChaCha20-Poly1305</td>
+                                        <td>认证加密（AEAD）、TLS、移动端与流式场景</td>
+                                        <td>256 bit（ChaCha20）</td>
+                                        <td>快</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3DES（Triple DES）</td>
+                                        <td>金融/电信等遗留系统互操作</td>
+                                        <td>有效密钥约 112 / 168 bit</td>
+                                        <td>较慢（新系统不推荐）</td>
+                                    </tr>
+                                </tbody>
+                                <tbody class="crypto-algo-cat">
+                                    <tr>
+                                        <td rowspan="4">非对称加密</td>
+                                        <td>SM2</td>
+                                        <td rowspan="4">数字签名、身份认证、密钥交换、公钥加密与数字信封</td>
+                                        <td>256 bit（公钥常为 512 bit hex）</td>
+                                        <td>较慢</td>
+                                        <td rowspan="4">可逆（公钥解密或验签等，依协议与用途）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>RSA</td>
+                                        <td>常见 2048 / 3072 bit（依安全策略）</td>
+                                        <td>较慢（模长越大越慢）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ECC（ECDSA、ECDH 等）</td>
+                                        <td>如 P-256 / P-384 曲线与密钥长度对应</td>
+                                        <td>较慢（通常快于同等安全强度的 RSA）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ed25519 / X25519</td>
+                                        <td>典型 256 bit 曲线（Curve25519 族）；Ed25519 签名、X25519 常用于 ECDH</td>
+                                        <td>较快（现代实现常见优化）</td>
+                                    </tr>
+                                </tbody>
+                                <tbody class="crypto-algo-cat">
+                                    <tr>
+                                        <td rowspan="5">哈希</td>
+                                        <td>SM3</td>
+                                        <td rowspan="4">完整性校验、摘要、证书与数字签名的摘要输入</td>
+                                        <td>输出固定 256 bit</td>
+                                        <td>快</td>
+                                        <td rowspan="5">不可逆（单向杂凑）</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SHA-2（SHA-224/256/384/512）</td>
+                                        <td>输出 224～512 bit（依算法）</td>
+                                        <td>快</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SHA-3</td>
+                                        <td>输出长度依参数与模式</td>
+                                        <td>快</td>
+                                    </tr>
+                                    <tr>
+                                        <td>BLAKE2 / BLAKE3</td>
+                                        <td>输出长度可调（常见 256 bit）</td>
+                                        <td>快</td>
+                                    </tr>
+                                    <tr>
+                                        <td>MD5、SHA-1</td>
+                                        <td>遗留校验、旧协议与格式兼容；不宜用于安全敏感完整性或新系统</td>
+                                        <td>MD5 输出 128 bit；SHA-1 输出 160 bit</td>
+                                        <td>快</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="content">
                 <div id="tool-frame-container"></div>
             </div>
@@ -317,7 +575,8 @@
                 { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
                 { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "比较", "对比", "交集", "差异", "compare", "set", "diff"] },
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "重量", "温度", "功率"] },
-                { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] }
+                { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
+                { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序） */
             const COMMON_TOOL_IDS = ["tab8", "tab18", "tab13", "tab14", "tab5"];
@@ -666,13 +925,32 @@
                     + "<button id=\"overview-close\" type=\"button\" class=\"overview-close\" title=\"关闭\">×</button>"
                     + "</div>";
 
-                function appendToolGroup(titleText, tools) {
+                function appendToolGroup(titleText, tools, options) {
+                    options = options || {};
                     if (!tools.length) return;
                     const group = document.createElement("div");
                     group.className = "overview-group";
                     const title = document.createElement("div");
-                    title.className = "overview-group-title";
-                    title.textContent = titleText;
+                    title.className = "overview-group-title" + (options.cryptoHelp ? " overview-group-title-with-action" : "");
+                    if (options.cryptoHelp) {
+                        const span = document.createElement("span");
+                        span.className = "overview-group-title-text";
+                        span.textContent = titleText;
+                        title.appendChild(span);
+                        const helpBtn = document.createElement("button");
+                        helpBtn.type = "button";
+                        helpBtn.className = "crypto-algo-help-btn";
+                        helpBtn.setAttribute("aria-label", "国密 SM 与国际标准算法说明");
+                        helpBtn.title = "国密 SM 与国际标准算法说明";
+                        helpBtn.textContent = "!";
+                        helpBtn.addEventListener("click", function (e) {
+                            e.stopPropagation();
+                            showCryptoAlgoModal();
+                        });
+                        title.appendChild(helpBtn);
+                    } else {
+                        title.textContent = titleText;
+                    }
                     group.appendChild(title);
                     const toolsWrap = document.createElement("div");
                     toolsWrap.className = "overview-group-tools";
@@ -691,9 +969,9 @@
                 }
 
                 /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
-                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "其他"];
+                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
-                appendToolGroup("常用", commonTools);
+                appendToolGroup("常用", commonTools, {});
 
                 const categoryOrder = [];
                 const seenCat = new Set();
@@ -708,7 +986,7 @@
                 });
 
                 categoryOrder.forEach((cat) => {
-                    appendToolGroup(cat, grouped[cat]);
+                    appendToolGroup(cat, grouped[cat], { cryptoHelp: cat === "加解密" });
                 });
 
                 const closeBtn = document.getElementById("overview-close");
@@ -738,6 +1016,21 @@
                 overviewVisible = false;
                 document.getElementById("overview-panel").classList.remove("visible");
                 document.getElementById("clover-toggle").classList.remove("active");
+                hideCryptoAlgoModal();
+            }
+
+            function showCryptoAlgoModal() {
+                const el = document.getElementById("crypto-algo-modal");
+                if (!el) return;
+                el.classList.add("visible");
+                el.setAttribute("aria-hidden", "false");
+            }
+
+            function hideCryptoAlgoModal() {
+                const el = document.getElementById("crypto-algo-modal");
+                if (!el) return;
+                el.classList.remove("visible");
+                el.setAttribute("aria-hidden", "true");
             }
 
             function toggleOverviewPanel() {
@@ -797,6 +1090,7 @@
             });
 
             document.addEventListener("click", function (e) {
+                if (e.target.closest("#crypto-algo-modal")) return;
                 if (e.target.closest(".search-wrap")) return;
                 if (e.target.closest("#clover-toggle")) return;
                 if (e.target.closest("#overview-panel")) return;
@@ -821,6 +1115,15 @@
             });
 
             document.addEventListener("DOMContentLoaded", function () {
+                var bd = document.getElementById("crypto-algo-modal-backdrop");
+                var closeBtn = document.getElementById("crypto-algo-modal-close");
+                if (bd) bd.addEventListener("click", hideCryptoAlgoModal);
+                if (closeBtn) closeBtn.addEventListener("click", hideCryptoAlgoModal);
+                document.addEventListener("keydown", function (e) {
+                    if (e.key !== "Escape") return;
+                    var modal = document.getElementById("crypto-algo-modal");
+                    if (modal && modal.classList.contains("visible")) hideCryptoAlgoModal();
+                });
                 renderRecentNav();
                 openTool(getInitialTab(), false);
                 if (!window.location.hash) {
