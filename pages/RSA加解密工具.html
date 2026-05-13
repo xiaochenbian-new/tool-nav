@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>RSA 加解密</title>
+        <script src="libs/jsencrypt.min.js"></script>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --foot-bg: #f8fbff;
+            }
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                gap: 8px;
+            }
+            .keys-row {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                flex-shrink: 0;
+                min-height: 140px;
+            }
+            .key-pane {
+                flex: 1 1 0;
+                min-width: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .key-hd {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-bottom: 1px solid #e4edff;
+            }
+            .key-ta {
+                flex: 1;
+                min-height: 100px;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                resize: vertical;
+                outline: none;
+            }
+            .opts {
+                flex-shrink: 0;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 14px;
+                align-items: center;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 10px 12px;
+            }
+            .opts label {
+                font-size: 13px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .opts select {
+                border: 1px solid #cfdcf7;
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+            .split {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+            }
+            .pane {
+                flex: 1 1 0;
+                min-width: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .pane-hd {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-bottom: 1px solid #e4edff;
+            }
+            .pane-body {
+                flex: 1;
+                min-height: 0;
+                padding: 10px;
+            }
+            .pane-ta {
+                width: 100%;
+                height: 100%;
+                min-height: 120px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 10px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 14px;
+                line-height: 1.55;
+                resize: none;
+                outline: none;
+            }
+            .pane-ta:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            .actions {
+                flex-shrink: 0;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+                padding: 10px 12px;
+                margin-top: 2px;
+                border-radius: 10px;
+                border: 1px solid var(--border);
+                background: var(--foot-bg);
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 6px 16px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .btn-primary {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border-color: transparent;
+            }
+            .hint {
+                font-size: 13px;
+                color: var(--muted);
+                flex: 1;
+                min-width: 200px;
+            }
+            .err {
+                color: #c62828;
+                font-size: 13px;
+            }
+            @media (max-width: 900px) {
+                .keys-row {
+                    flex-direction: column;
+                }
+                .split {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="keys-row">
+                <section class="key-pane">
+                    <div class="key-hd">公钥 PEM（加密用）</div>
+                    <textarea id="pubTa" name="pubTa" class="key-ta" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
+                </section>
+                <section class="key-pane">
+                    <div class="key-hd">私钥 PEM（解密用）</div>
+                    <textarea id="privTa" name="privTa" class="key-ta" placeholder="-----BEGIN RSA PRIVATE KEY-----"></textarea>
+                </section>
+            </div>
+            <div class="opts">
+                <label>
+                    密钥长度
+                    <select id="keyBits" name="keyBits">
+                        <option value="1024">1024</option>
+                        <option value="2048" selected>2048</option>
+                        <option value="3072">3072</option>
+                    </select>
+                </label>
+                <button type="button" class="btn btn-primary" id="btnGen">生成密钥对</button>
+                <span class="hint">JSEncrypt 使用 PKCS#1 v1.5；2048 位密钥下单次加密明文不宜超过约 214 字节（UTF-8 计）。</span>
+            </div>
+            <div class="err" id="errBox" style="display: none"></div>
+            <div class="split">
+                <section class="pane">
+                    <div class="pane-hd">明文（加密前）/ Base64 密文（解密前）</div>
+                    <div class="pane-body">
+                        <textarea id="inTa" name="inTa" class="pane-ta" placeholder="加密：输入短文本。解密：将 Base64 密文放在此处。"></textarea>
+                    </div>
+                </section>
+                <section class="pane">
+                    <div class="pane-hd">输出（密文 Base64 或解密后的文本）</div>
+                    <div class="pane-body">
+                        <textarea id="outTa" name="outTa" class="pane-ta" readonly placeholder="结果"></textarea>
+                    </div>
+                </section>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" id="btnEnc">公钥加密</button>
+                <button type="button" class="btn btn-primary" id="btnDec">私钥解密</button>
+                <button type="button" class="btn" id="btnSwap">左右互换</button>
+                <button type="button" class="btn" id="btnClear">清空输出</button>
+            </div>
+        </div>
+        <script>
+            (function () {
+                var JSEncrypt = window.JSEncrypt;
+                if (!JSEncrypt) {
+                    document.getElementById("errBox").style.display = "block";
+                    document.getElementById("errBox").textContent = "未加载 JSEncrypt（libs/jsencrypt.min.js）";
+                    return;
+                }
+
+                function showErr(msg) {
+                    var el = document.getElementById("errBox");
+                    if (!msg) {
+                        el.style.display = "none";
+                        el.textContent = "";
+                        return;
+                    }
+                    el.style.display = "block";
+                    el.textContent = msg;
+                }
+
+                document.getElementById("btnGen").addEventListener("click", function () {
+                    showErr("");
+                    try {
+                        var bits = parseInt(document.getElementById("keyBits").value, 10) || 2048;
+                        var crypt = new JSEncrypt({ default_key_size: bits });
+                        crypt.getKey();
+                        document.getElementById("pubTa").value = crypt.getPublicKey() || "";
+                        document.getElementById("privTa").value = crypt.getPrivateKey() || "";
+                        if (!document.getElementById("pubTa").value) throw new Error("生成失败");
+                    } catch (e) {
+                        showErr(e.message || String(e));
+                    }
+                });
+
+                document.getElementById("btnEnc").addEventListener("click", function () {
+                    showErr("");
+                    var plain = document.getElementById("inTa").value;
+                    var pub = document.getElementById("pubTa").value.trim();
+                    if (!pub) {
+                        showErr("请填写公钥 PEM");
+                        return;
+                    }
+                    var crypt = new JSEncrypt();
+                    crypt.setPublicKey(pub);
+                    var out = crypt.encrypt(plain);
+                    if (!out) {
+                        showErr("加密失败：请检查公钥或明文是否过长");
+                        return;
+                    }
+                    document.getElementById("outTa").value = out;
+                });
+
+                document.getElementById("btnDec").addEventListener("click", function () {
+                    showErr("");
+                    var b64 = document.getElementById("inTa").value.trim().replace(/\s/g, "");
+                    var priv = document.getElementById("privTa").value.trim();
+                    if (!priv) {
+                        showErr("请填写私钥 PEM");
+                        return;
+                    }
+                    var crypt = new JSEncrypt();
+                    crypt.setPrivateKey(priv);
+                    var out = crypt.decrypt(b64);
+                    if (out === false || out == null) {
+                        showErr("解密失败：请检查私钥与 Base64 密文是否匹配");
+                        return;
+                    }
+                    document.getElementById("outTa").value = out;
+                });
+
+                document.getElementById("btnSwap").addEventListener("click", function () {
+                    var a = document.getElementById("inTa").value;
+                    var b = document.getElementById("outTa").value;
+                    document.getElementById("inTa").value = b;
+                    document.getElementById("outTa").value = a;
+                });
+
+                document.getElementById("btnClear").addEventListener("click", function () {
+                    document.getElementById("outTa").value = "";
+                    showErr("");
+                });
+            })();
+        </script>
+    </body>
+</html>

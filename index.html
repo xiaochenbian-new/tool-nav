@@ -194,26 +194,28 @@
                 flex: 0 1 auto;
             }
             .crypto-algo-help-btn {
-                flex: 0 0 16px;
-                width: 16px;
-                height: 16px;
+                flex: 0 0 20px;
+                width: 20px;
+                height: 20px;
                 padding: 0;
                 margin: 0;
-                border: 1px solid #ffb74d;
-                border-radius: 50%;
-                background: linear-gradient(180deg, #fff8e1, #ffe0b2);
-                color: #e65100;
-                font-size: 10px;
-                font-weight: 700;
-                line-height: 1;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: var(--primary);
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
             }
             .crypto-algo-help-btn:hover {
-                border-color: #f57c00;
-                color: #bf360c;
+                border-color: var(--primary);
+                color: #1e56d8;
+                background: #e8f0ff;
+            }
+            .crypto-algo-help-btn svg {
+                display: block;
+                flex-shrink: 0;
             }
             .crypto-algo-modal {
                 display: none;
@@ -372,6 +374,14 @@
                 color: #3c4f78;
                 border-radius: 999px;
                 cursor: pointer;
+            }
+            a.tool-chip {
+                text-decoration: none;
+            }
+            .tool-chip-external::after {
+                content: " \2197";
+                font-size: 11px;
+                opacity: 0.75;
             }
             .tool-chip.active,
             .result-item.active,
@@ -576,7 +586,11 @@
                 { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "比较", "对比", "交集", "差异", "compare", "set", "diff"] },
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "重量", "温度", "功率"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
-                { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] }
+                { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
+                { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
+                { id: "tab25", name: "RSA 加解密", category: "加解密", path: "pages/RSA加解密工具.html", keywords: ["rsa", "pem", "公钥", "私钥", "加密", "解密", "jsencrypt", "pkcs", "离线"] },
+                { id: "tab26", name: "HMAC", category: "加解密", path: "pages/HMAC工具.html", keywords: ["hmac", "sha256", "sha1", "md5", "消息认证", "密钥", "签名", "离线"] },
+                { id: "tab27", name: "证件照冲印排版", category: "其他", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序） */
             const COMMON_TOOL_IDS = ["tab8", "tab18", "tab13", "tab14", "tab5"];
@@ -925,6 +939,35 @@
                     + "<button id=\"overview-close\" type=\"button\" class=\"overview-close\" title=\"关闭\">×</button>"
                     + "</div>";
 
+                function appendExternalLinksGroup(titleText, items) {
+                    if (!items || !items.length) return;
+                    const group = document.createElement("div");
+                    group.className = "overview-group";
+                    const title = document.createElement("div");
+                    title.className = "overview-group-title";
+                    title.textContent = titleText;
+                    group.appendChild(title);
+                    const toolsWrap = document.createElement("div");
+                    toolsWrap.className = "overview-group-tools";
+                    items.forEach((item) => {
+                        const a = document.createElement("a");
+                        a.className = "tool-chip tool-chip-external";
+                        a.href = item.url;
+                        a.target = "_blank";
+                        a.rel = "noopener noreferrer";
+                        a.textContent = item.name;
+                        a.title = item.title || item.name + "（新标签页打开）";
+                        a.addEventListener("click", function () {
+                            try {
+                                hideOverviewPanel();
+                            } catch (err) {}
+                        });
+                        toolsWrap.appendChild(a);
+                    });
+                    group.appendChild(toolsWrap);
+                    panel.appendChild(group);
+                }
+
                 function appendToolGroup(titleText, tools, options) {
                     options = options || {};
                     if (!tools.length) return;
@@ -941,8 +984,11 @@
                         helpBtn.type = "button";
                         helpBtn.className = "crypto-algo-help-btn";
                         helpBtn.setAttribute("aria-label", "国密 SM 与国际标准算法说明");
-                        helpBtn.title = "国密 SM 与国际标准算法说明";
-                        helpBtn.textContent = "!";
+                        helpBtn.title = "查看算法说明";
+                        helpBtn.innerHTML =
+                            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">' +
+                            '<path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H7.17L5 17.17V5h14v10zM7 9h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z"/>' +
+                            "</svg>";
                         helpBtn.addEventListener("click", function (e) {
                             e.stopPropagation();
                             showCryptoAlgoModal();
@@ -985,8 +1031,19 @@
                     if (!seenCat.has(cat)) categoryOrder.push(cat);
                 });
 
+                const STATION_EXTERNAL_LINKS = [
+                    {
+                        name: "码工具",
+                        url: "https://www.matools.com/",
+                        title: "码工具（matools.com，新标签页打开）",
+                    },
+                ];
+
                 categoryOrder.forEach((cat) => {
                     appendToolGroup(cat, grouped[cat], { cryptoHelp: cat === "加解密" });
+                    if (cat === "加解密") {
+                        appendExternalLinksGroup("站外工具", STATION_EXTERNAL_LINKS);
+                    }
                 });
 
                 const closeBtn = document.getElementById("overview-close");
