@@ -96,6 +96,12 @@ async function main() {
         copyThing(path.join(jbLib, f), path.join(vendor, "js-beautify", f), "js-beautify/" + f);
     });
 
+    copyThing(
+        path.join(root, "node_modules", "sql-formatter", "dist", "sql-formatter.min.js"),
+        path.join(vendor, "sql-formatter", "sql-formatter.min.js"),
+        "sql-formatter (UMD，file:// 离线可用)"
+    );
+
     await buildEsm("sql-formatter.mjs", path.join(bundlesDir, "sql-formatter.mjs"), "sql-formatter");
     await buildEsm("qs.mjs", path.join(bundlesDir, "qs.mjs"), "qs");
     await buildEsm("toml.mjs", path.join(bundlesDir, "toml.mjs"), "toml");

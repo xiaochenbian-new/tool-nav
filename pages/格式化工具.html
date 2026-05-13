@@ -4,6 +4,8 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>格式化工具</title>
+        <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/theme/eclipse.css" />
         <script src="../vendor/js-beautify/beautify.js"></script>
         <script src="../vendor/js-beautify/beautify-html.js"></script>
         <script src="../vendor/js-beautify/beautify-css.js"></script>
@@ -100,13 +102,38 @@
                 padding: 0 8px 8px;
                 gap: 0;
             }
-            #main-input {
+            .cm-editor-wrap {
                 flex: 1;
+                min-height: 0;
+                position: relative;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+            }
+            .cm-editor-wrap .CodeMirror {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                height: auto;
+                font-size: 13px;
+                line-height: 1.6;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .cm-editor-wrap .CodeMirror-scroll {
+                min-height: 120px;
+            }
+            .cm-editor-wrap .CodeMirror-focused {
+                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
+            }
+            #main-input {
                 width: 100%;
                 min-height: 120px;
-                margin-top: 0;
+                margin: 0;
                 padding: 10px;
-                border: 1px solid #cfdcf7;
+                border: none;
                 border-radius: 8px;
                 font-size: 13px;
                 line-height: 1.6;
@@ -116,9 +143,6 @@
                 tab-size: 4;
                 -moz-tab-size: 4;
                 background: #fff;
-            }
-            #main-input:focus {
-                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
             }
             /* 与 Json工具 Ctool 区块一致 */
             .ctool-page-option {
@@ -275,7 +299,9 @@
                     </div>
                 </div>
                 <div class="editor-zone">
-                    <textarea id="main-input" name="mainInput" spellcheck="false" placeholder='例如 JSON：{"a":1,"b":[2,3]}'></textarea>
+                    <div class="cm-editor-wrap">
+                        <textarea id="main-input" name="mainInput" spellcheck="false" placeholder='例如 JSON：{"a":1,"b":[2,3]}'></textarea>
+                    </div>
                 </div>
             </div>
 
@@ -320,6 +346,14 @@
             </div>
         </div>
         <div id="toast" aria-live="polite"></div>
+        <script src="../vendor/codemirror/lib/codemirror.js"></script>
+        <script src="../vendor/codemirror/mode/xml/xml.js"></script>
+        <script src="../vendor/codemirror/mode/javascript/javascript.js"></script>
+        <script src="../vendor/codemirror/mode/css/css.js"></script>
+        <script src="../vendor/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+        <script src="../vendor/codemirror/mode/sql/sql.js"></script>
+        <script src="../vendor/codemirror/addon/display/placeholder.js"></script>
+        <script src="../vendor/sql-formatter/sql-formatter.min.js"></script>
         <script>
             (function () {
                 var ta = document.getElementById("main-input");
@@ -330,7 +364,7 @@
                 var sqlDialect = document.getElementById("sql-dialect");
                 var selIndent = document.getElementById("sel-indent");
                 var kind = "json";
-                var sqlFormatLoad = null;
+                var cm;
 
                 var kindLabels = {
                     json: "JSON",
@@ -340,6 +374,62 @@
                     css: "CSS",
                     html: "HTML"
                 };
+
+                var kindPlaceholders = {
+                    json: '例如 JSON：{"a":1,"b":[2,3]}',
+                    xml: "例如：<root><item>1</item></root>",
+                    sql: "例如：SELECT id, name FROM users WHERE status = 1",
+                    javascript: "例如：function hello() { return 1; }",
+                    css: "例如：.box { margin: 8px; color: #333; }",
+                    html: "例如：<div class=\"x\"><span>hi</span></div>"
+                };
+
+                function dialectToMime(d) {
+                    if (d === "mysql") return "text/x-mysql";
+                    if (d === "mariadb") return "text/x-mariadb";
+                    if (d === "postgresql") return "text/x-pgsql";
+                    if (d === "sqlite") return "text/x-sqlite";
+                    if (d === "tsql") return "text/x-mssql";
+                    if (d === "plsql") return "text/x-plsql";
+                    if (d === "bigquery") return "text/x-sql";
+                    return "text/x-sql";
+                }
+
+                function kindToMode(k) {
+                    if (k === "json") return { name: "javascript", json: true };
+                    if (k === "javascript") return { name: "javascript", json: false };
+                    if (k === "css") return "css";
+                    if (k === "html") return "text/html";
+                    if (k === "xml") return "application/xml";
+                    if (k === "sql") return dialectToMime(sqlDialect.value || "sql");
+                    return { name: "javascript", json: true };
+                }
+
+                function applyCmIndentFromReadIndent() {
+                    if (!cm) return;
+                    var ind = readIndent();
+                    if (ind.char === "\t") {
+                        cm.setOption("indentWithTabs", true);
+                        cm.setOption("tabSize", Math.max(ind.size, 1));
+                        cm.setOption("indentUnit", "\t");
+                    } else if (ind.size === 0) {
+                        cm.setOption("indentWithTabs", false);
+                        cm.setOption("tabSize", 2);
+                        cm.setOption("indentUnit", "  ");
+                    } else {
+                        cm.setOption("indentWithTabs", false);
+                        cm.setOption("tabSize", ind.size);
+                        cm.setOption("indentUnit", new Array(ind.size + 1).join(" "));
+                    }
+                }
+
+                function refreshEditorMode() {
+                    if (!cm) return;
+                    cm.setOption("mode", kindToMode(kind));
+                    cm.setOption("placeholder", kindPlaceholders[kind] || "");
+                    applyCmIndentFromReadIndent();
+                    cm.refresh();
+                }
 
                 function toast(msg) {
                     toastEl.textContent = msg;
@@ -364,8 +454,9 @@
                 }
 
                 function updateStat() {
-                    var n = ta.value.length;
-                    var lines = ta.value ? ta.value.split(/\r\n|\r|\n/).length : 0;
+                    var val = cm.getValue();
+                    var n = val.length;
+                    var lines = val ? val.split(/\r\n|\r|\n/).length : 0;
                     statHint.textContent = n ? "字符 " + n + " · 行 " + lines : "粘贴内容后在下方选择类型并操作";
                 }
 
@@ -424,25 +515,36 @@
                     return str.replace(/>\s+</g, "><").trim();
                 }
 
+                cm = CodeMirror.fromTextArea(ta, {
+                    lineNumbers: true,
+                    lineWrapping: true,
+                    theme: "eclipse",
+                    mode: kindToMode("json"),
+                    tabSize: 2,
+                    indentUnit: "  ",
+                    indentWithTabs: false,
+                    inputStyle: "textarea",
+                    spellcheck: false,
+                    autofocus: false,
+                    placeholder: kindPlaceholders.json
+                });
+
                 function getSqlFormatFn() {
                     if (typeof window._sqlFormatFn === "function") {
                         return Promise.resolve(window._sqlFormatFn);
                     }
-                    sqlFormatLoad =
-                        sqlFormatLoad ||
-                        import("../vendor/bundles/sql-formatter.mjs").then(function (m) {
-                            var fn = typeof m.format === "function" ? m.format : null;
-                            if (!fn && typeof m.default === "function") fn = m.default;
-                            if (!fn && m.default && typeof m.default.format === "function") fn = m.default.format;
-                            if (typeof fn !== "function") throw new Error("sql-formatter 导出异常");
-                            window._sqlFormatFn = fn;
-                            return fn;
-                        });
-                    return sqlFormatLoad;
+                    var s = window.sqlFormatter;
+                    if (s && typeof s.format === "function") {
+                        window._sqlFormatFn = s.format;
+                        return Promise.resolve(window._sqlFormatFn);
+                    }
+                    return Promise.reject(
+                        new Error("未加载 sql-formatter（请运行 npm install 生成 vendor/sql-formatter/sql-formatter.min.js）")
+                    );
                 }
 
                 function doFormat() {
-                    var text = ta.value;
+                    var text = cm.getValue();
                     if (!text.trim()) {
                         toast("请先输入内容");
                         return;
@@ -450,22 +552,27 @@
                     var ind = readIndent();
                     try {
                         if (kind === "json") {
-                            ta.value = JSON.stringify(JSON.parse(text), null, ind.jsonThird);
+                            cm.setValue(JSON.stringify(JSON.parse(text), null, ind.jsonThird));
                         } else if (kind === "xml") {
-                            ta.value = formatXmlStr(text, ind.size);
+                            cm.setValue(formatXmlStr(text, ind.size));
                         } else if (kind === "sql") {
                             getSqlFormatFn()
                                 .then(function (format) {
-                                    var tw = ind.char === "\t" ? 1 : ind.size;
-                                    if (!tw) tw = 2;
-                                    ta.value = format(text, {
-                                        language: sqlDialect.value || "sql",
-                                        tabWidth: tw,
-                                        useTabs: ind.char === "\t",
-                                        keywordCase: "upper"
-                                    });
-                                    updateStat();
-                                    toast("已格式化");
+                                    try {
+                                        var tw = ind.char === "\t" ? 1 : ind.size;
+                                        if (!tw) tw = 2;
+                                        var out = format(text, {
+                                            language: sqlDialect.value || "sql",
+                                            tabWidth: tw,
+                                            useTabs: ind.char === "\t",
+                                            keywordCase: "upper"
+                                        });
+                                        cm.setValue(out);
+                                        updateStat();
+                                        toast("已格式化");
+                                    } catch (inner) {
+                                        toast("SQL 格式化失败：" + (inner.message || String(inner)));
+                                    }
                                 })
                                 .catch(function (e) {
                                     toast("SQL 模块加载失败：" + (e.message || String(e)));
@@ -473,13 +580,13 @@
                             return;
                         } else if (kind === "javascript") {
                             if (typeof js_beautify !== "function") throw new Error("js-beautify 未加载");
-                            ta.value = js_beautify(text, getBeautifyBase());
+                            cm.setValue(js_beautify(text, getBeautifyBase()));
                         } else if (kind === "css") {
                             if (typeof css_beautify !== "function") throw new Error("css-beautify 未加载");
-                            ta.value = css_beautify(text, getBeautifyBase());
+                            cm.setValue(css_beautify(text, getBeautifyBase()));
                         } else if (kind === "html") {
                             if (typeof html_beautify !== "function") throw new Error("html-beautify 未加载");
-                            ta.value = html_beautify(text, getBeautifyBase());
+                            cm.setValue(html_beautify(text, getBeautifyBase()));
                         }
                         updateStat();
                         toast("已格式化");
@@ -489,7 +596,7 @@
                 }
 
                 function doMinify() {
-                    var text = ta.value;
+                    var text = cm.getValue();
                     if (!text.trim()) {
                         toast("请先输入内容");
                         return;
@@ -497,28 +604,34 @@
                     var ind = readIndent();
                     try {
                         if (kind === "json") {
-                            ta.value = JSON.stringify(JSON.parse(text));
+                            cm.setValue(JSON.stringify(JSON.parse(text)));
                         } else if (kind === "xml") {
-                            ta.value = minifyXml(text);
+                            cm.setValue(minifyXml(text));
                         } else if (kind === "sql") {
                             getSqlFormatFn()
                                 .then(function (format) {
-                                    var tw2 = ind.char === "\t" ? 1 : ind.size;
-                                    if (!tw2) tw2 = 2;
-                                    var pretty = format(text, {
-                                        language: sqlDialect.value || "sql",
-                                        tabWidth: tw2,
-                                        useTabs: ind.char === "\t",
-                                        keywordCase: "upper"
-                                    });
-                                    ta.value = pretty
-                                        .split(/\r?\n/)
-                                        .map(function (line) {
-                                            return line.trim();
-                                        })
-                                        .join(" ");
-                                    updateStat();
-                                    toast("已压缩为紧凑单行");
+                                    try {
+                                        var tw2 = ind.char === "\t" ? 1 : ind.size;
+                                        if (!tw2) tw2 = 2;
+                                        var pretty = format(text, {
+                                            language: sqlDialect.value || "sql",
+                                            tabWidth: tw2,
+                                            useTabs: ind.char === "\t",
+                                            keywordCase: "upper"
+                                        });
+                                        cm.setValue(
+                                            pretty
+                                                .split(/\r?\n/)
+                                                .map(function (line) {
+                                                    return line.trim();
+                                                })
+                                                .join(" ")
+                                        );
+                                        updateStat();
+                                        toast("已压缩为紧凑单行");
+                                    } catch (inner) {
+                                        toast("SQL 压缩失败：" + (inner.message || String(inner)));
+                                    }
                                 })
                                 .catch(function (e) {
                                     toast("SQL 模块加载失败：" + (e.message || String(e)));
@@ -526,32 +639,38 @@
                             return;
                         } else if (kind === "javascript") {
                             if (typeof js_beautify !== "function") throw new Error("js-beautify 未加载");
-                            ta.value = js_beautify(text, {
-                                indent_size: 0,
-                                indent_char: " ",
-                                preserve_newlines: false,
-                                max_preserve_newlines: 0,
-                                space_in_empty_paren: false,
-                                end_with_newline: false
-                            });
+                            cm.setValue(
+                                js_beautify(text, {
+                                    indent_size: 0,
+                                    indent_char: " ",
+                                    preserve_newlines: false,
+                                    max_preserve_newlines: 0,
+                                    space_in_empty_paren: false,
+                                    end_with_newline: false
+                                })
+                            );
                         } else if (kind === "css") {
                             if (typeof css_beautify !== "function") throw new Error("css-beautify 未加载");
-                            ta.value = css_beautify(text, {
-                                indent_size: 0,
-                                indent_char: " ",
-                                preserve_newlines: false,
-                                newline_between_rules: false,
-                                end_with_newline: false
-                            });
+                            cm.setValue(
+                                css_beautify(text, {
+                                    indent_size: 0,
+                                    indent_char: " ",
+                                    preserve_newlines: false,
+                                    newline_between_rules: false,
+                                    end_with_newline: false
+                                })
+                            );
                         } else if (kind === "html") {
                             if (typeof html_beautify !== "function") throw new Error("html-beautify 未加载");
-                            ta.value = html_beautify(text, {
-                                indent_size: 0,
-                                indent_char: " ",
-                                preserve_newlines: false,
-                                max_preserve_newlines: 0,
-                                end_with_newline: false
-                            });
+                            cm.setValue(
+                                html_beautify(text, {
+                                    indent_size: 0,
+                                    indent_char: " ",
+                                    preserve_newlines: false,
+                                    max_preserve_newlines: 0,
+                                    end_with_newline: false
+                                })
+                            );
                         }
                         updateStat();
                         toast("已压缩");
@@ -561,7 +680,7 @@
                 }
 
                 function copyText() {
-                    var v = ta.value;
+                    var v = cm.getValue();
                     if (!v) {
                         toast("没有可复制的内容");
                         return;
@@ -581,13 +700,25 @@
                 }
 
                 function fallbackCopy() {
-                    ta.select();
+                    var v = cm.getValue();
+                    if (!v) {
+                        toast("没有可复制的内容");
+                        return;
+                    }
+                    var t2 = document.createElement("textarea");
+                    t2.value = v;
+                    t2.setAttribute("readonly", "");
+                    t2.style.position = "fixed";
+                    t2.style.left = "-9999px";
+                    document.body.appendChild(t2);
+                    t2.select();
                     try {
                         document.execCommand("copy");
                         toast("已复制到剪贴板");
                     } catch (e) {
                         toast("复制失败");
                     }
+                    document.body.removeChild(t2);
                 }
 
                 document.getElementById("fmt-tabs").addEventListener("click", function (e) {
@@ -598,18 +729,45 @@
                         b.classList.toggle("active", b === btn);
                     });
                     syncHeadUi();
+                    refreshEditorMode();
                 });
 
                 document.getElementById("btn-format").addEventListener("click", doFormat);
                 document.getElementById("btn-minify").addEventListener("click", doMinify);
                 document.getElementById("btn-copy").addEventListener("click", copyText);
                 document.getElementById("btn-clear").addEventListener("click", function () {
-                    ta.value = "";
+                    cm.setValue("");
                     updateStat();
                 });
 
-                ta.addEventListener("input", updateStat);
+                sqlDialect.addEventListener("change", function () {
+                    if (kind === "sql") {
+                        cm.setOption("mode", dialectToMime(sqlDialect.value || "sql"));
+                        cm.refresh();
+                    }
+                });
+
+                selIndent.addEventListener("change", applyCmIndentFromReadIndent);
+
+                function resizeCm() {
+                    var wrap = ta.closest(".cm-editor-wrap");
+                    if (!wrap || !cm) return;
+                    cm.setSize(null, Math.max(120, wrap.clientHeight));
+                    cm.refresh();
+                }
+                if (typeof ResizeObserver !== "undefined") {
+                    var wrapEl = ta.closest(".cm-editor-wrap");
+                    if (wrapEl) {
+                        new ResizeObserver(resizeCm).observe(wrapEl);
+                    }
+                }
+                window.addEventListener("load", resizeCm);
+                window.addEventListener("resize", resizeCm);
+                setTimeout(resizeCm, 0);
+
+                cm.on("change", updateStat);
                 syncHeadUi();
+                refreshEditorMode();
                 updateStat();
             })();
         </script>

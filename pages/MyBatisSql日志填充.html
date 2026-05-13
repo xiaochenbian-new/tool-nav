@@ -211,6 +211,7 @@
         </div>
         <script src="../vendor/codemirror/lib/codemirror.js"></script>
         <script src="../vendor/codemirror/mode/sql/sql.js"></script>
+        <script src="../vendor/sql-formatter/sql-formatter.min.js"></script>
         <script>
             (function () {
                 var DEBOUNCE_MS = 320;
@@ -386,22 +387,18 @@
                     }
                 }
 
-                var sqlFormatLoad = null;
                 function getSqlFormatFn() {
                     if (typeof window._sqlFormatFn === "function") {
                         return Promise.resolve(window._sqlFormatFn);
                     }
-                    sqlFormatLoad =
-                        sqlFormatLoad ||
-                        import("../vendor/bundles/sql-formatter.mjs").then(function (m) {
-                            var fn = typeof m.format === "function" ? m.format : null;
-                            if (!fn && typeof m.default === "function") fn = m.default;
-                            if (!fn && m.default && typeof m.default.format === "function") fn = m.default.format;
-                            if (typeof fn !== "function") throw new Error("sql-formatter 导出异常");
-                            window._sqlFormatFn = fn;
-                            return fn;
-                        });
-                    return sqlFormatLoad;
+                    var s = window.sqlFormatter;
+                    if (s && typeof s.format === "function") {
+                        window._sqlFormatFn = s.format;
+                        return Promise.resolve(window._sqlFormatFn);
+                    }
+                    return Promise.reject(
+                        new Error("未加载 sql-formatter（请运行 npm install 生成 vendor/sql-formatter/sql-formatter.min.js）")
+                    );
                 }
 
                 var sqlEditor = CodeMirror.fromTextArea(document.getElementById("sql-out"), {

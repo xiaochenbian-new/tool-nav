@@ -111,7 +111,12 @@
                 flex-wrap: wrap;
             }
             .readonly-wrap { position: relative; flex: 1; min-width: 160px; }
-            .readonly-wrap input { width: 100%; background: #f8fbff; color: #1f2a44; }
+            .readonly-wrap input {
+                width: 100%;
+                background: #f8fbff;
+                color: #1f2a44;
+                padding-right: 44px;
+            }
             .copy-tag {
                 position: absolute;
                 right: 6px;
@@ -253,7 +258,6 @@
 
             <!-- 计算 -->
             <div id="pane-calc" class="tab-pane" role="tabpanel">
-                <p class="hint">本节按本机本地时区解析日期时间字符串（与 Ctool 行为一致）。</p>
                 <div class="card">
                     <h4>时间差</h4>
                     <div class="row" style="align-items: flex-end;">
@@ -312,10 +316,12 @@
                                 <option value="seconds">秒</option>
                             </select>
                         </div>
-                        <span>结果：</span>
                         <div class="field-block" style="flex:1; min-width:180px;">
-                            <input id="calc-op-out" class="mono" type="text" readonly />
-                            <span class="copy-tag" style="position:static; transform:none; margin-top:4px; display:inline-block;" data-copy="calc-op-out">复制</span>
+                            <label for="calc-op-out">结果</label>
+                            <div class="readonly-wrap">
+                                <input id="calc-op-out" class="mono" type="text" readonly />
+                                <span class="copy-tag" data-copy="calc-op-out">复制</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -335,10 +341,12 @@
                             </select>
                         </div>
                         <div class="field-block" style="flex:1; min-width:200px;">
-                            <label>输出</label>
-                            <input id="calc-an-out" type="text" readonly style="width:100%;" />
+                            <label for="calc-an-out">输出</label>
+                            <div class="readonly-wrap">
+                                <input id="calc-an-out" type="text" readonly />
+                                <span class="copy-tag" data-copy="calc-an-out">复制</span>
+                            </div>
                         </div>
-                        <span class="copy-tag" data-copy="calc-an-out">复制</span>
                     </div>
                 </div>
             </div>
