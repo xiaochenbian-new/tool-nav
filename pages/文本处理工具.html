@@ -322,6 +322,82 @@
                 opacity: 1;
                 transform: translateX(-50%) translateY(0);
             }
+            /* 与 Json 工具 / Ctool Monaco「查找替换」类似的底部工具条 */
+            .find-bar {
+                flex: 0 0 auto;
+                border-top: 1px solid #dbe6ff;
+                background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+                padding: 6px 8px 8px;
+                font-size: 12px;
+                box-shadow: 0 -4px 14px rgba(36, 90, 190, 0.08);
+                z-index: 5;
+            }
+            .find-bar .btn {
+                min-height: 1.75rem;
+                padding: 0 10px;
+                font-size: 12px;
+            }
+            .find-bar[hidden] { display: none !important; }
+            .find-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin-top: 4px;
+            }
+            .find-row:first-child { margin-top: 0; }
+            .find-label {
+                flex: 0 0 auto;
+                width: 2.5rem;
+                color: var(--muted);
+                text-align: right;
+            }
+            .find-input {
+                flex: 1 1 120px;
+                min-width: 100px;
+                max-width: 100%;
+                height: 1.75rem;
+                padding: 0 8px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                font-size: 12px;
+                font-family: Consolas, "Courier New", monospace;
+                outline: none;
+            }
+            .find-input:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.15);
+            }
+            .find-bar .btn-icon {
+                min-width: 1.75rem;
+                padding: 0 8px;
+            }
+            .find-count {
+                color: var(--muted);
+                font-size: 11px;
+                min-width: 3.5rem;
+            }
+            .find-bar label.chk {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+                color: #3c4f78;
+                user-select: none;
+            }
+            .editor-head .hint {
+                color: var(--muted);
+                font-size: 13px;
+            }
+            #cm-editor .CodeMirror .cm-find-hl {
+                background: rgba(255, 220, 120, 0.55);
+                padding: 0 1px;
+                border-radius: 2px;
+            }
+            #cm-editor .CodeMirror .cm-find-hl-current {
+                background: rgba(255, 165, 60, 0.88);
+                box-shadow: 0 0 0 1px rgba(200, 100, 0, 0.35);
+            }
         </style>
     </head>
     <body>
@@ -330,6 +406,7 @@
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
                         <span>文本内容</span>
+                        <span class="hint" title="与 Ctool 文本工具中 Monaco 查找类似：底部查找条">Ctrl+F 查找 · Ctrl+H 替换</span>
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
@@ -340,6 +417,23 @@
                 <div id="editor-mount">
                     <textarea id="main-input" tabindex="-1" aria-hidden="true"></textarea>
                     <div id="cm-editor"></div>
+                </div>
+                <div id="find-bar" class="find-bar" hidden>
+                    <div class="find-row">
+                        <span class="find-label">查找</span>
+                        <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
+                        <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter)">↑</button>
+                        <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter)">↓</button>
+                        <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
+                        <span id="find-count" class="find-count"></span>
+                        <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
+                    </div>
+                    <div class="find-row" id="find-replace-row" hidden>
+                        <span class="find-label">替换</span>
+                        <input type="text" id="find-replace-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="替换为" />
+                        <button type="button" class="btn" id="find-rep-one">替换</button>
+                        <button type="button" class="btn" id="find-rep-all">全部替换</button>
+                    </div>
                 </div>
             </div>
 
@@ -511,8 +605,15 @@
 
                 var persistTa = document.getElementById("main-input");
                 var cmMount = document.getElementById("cm-editor");
+                var findBar = document.getElementById("find-bar");
+                var findInput = document.getElementById("find-input");
+                var findReplaceRow = document.getElementById("find-replace-row");
+                var replaceInput = document.getElementById("find-replace-input");
+                var findCase = document.getElementById("find-case");
+                var findCountEl = document.getElementById("find-count");
 
                 var afterDocChange = function () {};
+                var refreshFindHighlights = function () {};
 
                 var editor = CodeMirror(cmMount, {
                     value: persistTa.value || "",
@@ -532,6 +633,7 @@
                     var t = editor.getValue();
                     if (persistTa.value !== t) persistTa.value = t;
                     afterDocChange();
+                    if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
                 });
 
                 function getInputValue() {
@@ -576,6 +678,329 @@
                     if (action === "undo") CodeMirror.commands.undo(editor);
                     else CodeMirror.commands.redo(editor);
                 }, true);
+
+                /* —— 查找 / 替换（与 Json 工具条一致，交互对齐 Ctool Monaco：Ctrl+F / Ctrl+H） —— */
+                var findMarks = [];
+                var findNavMatchIndex = -1;
+
+                function resetFindNavigation() {
+                    findNavMatchIndex = -1;
+                }
+
+                editor.getWrapperElement().addEventListener("mousedown", function () {
+                    resetFindNavigation();
+                });
+
+                function getMatchPositions(text, needle, caseSens) {
+                    var res = [];
+                    if (!needle) return res;
+                    if (caseSens) {
+                        var pos = 0;
+                        var step = Math.max(1, needle.length);
+                        while ((pos = text.indexOf(needle, pos)) !== -1) {
+                            res.push({ start: pos, end: pos + needle.length });
+                            pos += step;
+                        }
+                    } else {
+                        var lower = text.toLowerCase();
+                        var n = needle.toLowerCase();
+                        var pos2 = 0;
+                        var step2 = Math.max(1, n.length);
+                        while ((pos2 = lower.indexOf(n, pos2)) !== -1) {
+                            res.push({ start: pos2, end: pos2 + needle.length });
+                            pos2 += step2;
+                        }
+                    }
+                    return res;
+                }
+
+                function cmGetSelOffsets() {
+                    var a = editor.indexFromPos(editor.getCursor("from"));
+                    var b = editor.indexFromPos(editor.getCursor("to"));
+                    return { start: Math.min(a, b), end: Math.max(a, b) };
+                }
+
+                function cmSetSelOffsets(start, end) {
+                    editor.focus();
+                    var a = editor.posFromIndex(start);
+                    var b = editor.posFromIndex(end);
+                    editor.setSelection(a, b);
+                    editor.scrollIntoView({ from: a, to: b });
+                }
+
+                function clearFindMarks() {
+                    while (findMarks.length) {
+                        var m = findMarks.pop();
+                        if (m && m.clear) m.clear();
+                    }
+                }
+
+                refreshFindHighlights = function () {
+                    var on = !findBar.hidden && findInput.value.length > 0;
+                    clearFindMarks();
+                    if (on) {
+                        var needle = findInput.value;
+                        var text = editor.getValue();
+                        var caseSens = findCase.checked;
+                        var positions = getMatchPositions(text, needle, caseSens);
+                        var sel = cmGetSelOffsets();
+                        for (var pi = 0; pi < positions.length; pi++) {
+                            var p = positions[pi];
+                            var isCur =
+                                (p.start === sel.start && p.end === sel.end) ||
+                                (sel.start === sel.end && sel.start >= p.start && sel.start < p.end);
+                            findMarks.push(
+                                editor.markText(editor.posFromIndex(p.start), editor.posFromIndex(p.end), {
+                                    className: "cm-find-hl" + (isCur ? " cm-find-hl-current" : ""),
+                                })
+                            );
+                        }
+                    }
+                };
+
+                function replaceAllString(text, needle, repl, caseSens) {
+                    if (!needle) return text;
+                    var esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    var re = new RegExp(esc, caseSens ? "g" : "gi");
+                    return text.replace(re, function () {
+                        return repl;
+                    });
+                }
+
+                function selectionMatchesFind(needle, caseSens) {
+                    if (!needle) return false;
+                    var fr = editor.getCursor("from");
+                    var to = editor.getCursor("to");
+                    var s = editor.getRange(fr, to);
+                    return caseSens ? s === needle : s.toLowerCase() === needle.toLowerCase();
+                }
+
+                function updateFindCount() {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        findCountEl.textContent = "";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var text = editor.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var o = cmGetSelOffsets();
+                    var s = o.start;
+                    var e = o.end;
+                    var idx = -1;
+                    for (var i = 0; i < positions.length; i++) {
+                        if (positions[i].start === s && positions[i].end === e) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx < 0) {
+                        for (var j = 0; j < positions.length; j++) {
+                            if (s >= positions[j].start && s < positions[j].end) {
+                                idx = j;
+                                break;
+                            }
+                        }
+                    }
+                    findCountEl.textContent = (idx >= 0 ? idx + 1 : "—") + " / " + positions.length;
+                    refreshFindHighlights();
+                }
+
+                function findNext() {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        updateFindCount();
+                        return;
+                    }
+                    var text = editor.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var i;
+                    if (findNavMatchIndex < 0) {
+                        var wrap = editor.getWrapperElement();
+                        var from = wrap.contains(document.activeElement)
+                            ? editor.indexFromPos(editor.getCursor("head"))
+                            : 0;
+                        var qi;
+                        for (qi = 0; qi < positions.length; qi++) {
+                            var pm = positions[qi];
+                            if (from > pm.start && from < pm.end) {
+                                from = pm.end;
+                                break;
+                            }
+                        }
+                        i = positions.findIndex(function (p) {
+                            return p.start >= from;
+                        });
+                        if (i === -1) i = 0;
+                    } else {
+                        i = findNavMatchIndex + 1;
+                        if (i >= positions.length) i = 0;
+                    }
+                    findNavMatchIndex = i;
+                    var p = positions[i];
+                    cmSetSelOffsets(p.start, p.end);
+                    updateFindCount();
+                }
+
+                function findPrev() {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        updateFindCount();
+                        return;
+                    }
+                    var text = editor.getValue();
+                    var positions = getMatchPositions(text, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var i;
+                    if (findNavMatchIndex < 0) {
+                        var wrap2 = editor.getWrapperElement();
+                        var from = wrap2.contains(document.activeElement)
+                            ? editor.indexFromPos(editor.getCursor("head"))
+                            : editor.getValue().length;
+                        var qj;
+                        for (qj = 0; qj < positions.length; qj++) {
+                            var pn = positions[qj];
+                            if (from > pn.start && from < pn.end) {
+                                from = pn.start;
+                                break;
+                            }
+                        }
+                        i = -1;
+                        for (var k = positions.length - 1; k >= 0; k--) {
+                            if (positions[k].start < from) {
+                                i = k;
+                                break;
+                            }
+                        }
+                        if (i === -1) i = positions.length - 1;
+                    } else {
+                        i = findNavMatchIndex - 1;
+                        if (i < 0) i = positions.length - 1;
+                    }
+                    findNavMatchIndex = i;
+                    var p = positions[i];
+                    cmSetSelOffsets(p.start, p.end);
+                    updateFindCount();
+                }
+
+                function openFind(withReplace) {
+                    findBar.removeAttribute("hidden");
+                    findReplaceRow.hidden = !withReplace;
+                    resetFindNavigation();
+                    if (editor.somethingSelected()) {
+                        findInput.value = editor.getSelection();
+                    }
+                    findInput.focus();
+                    findInput.select();
+                    updateFindCount();
+                }
+
+                function closeFind() {
+                    findBar.setAttribute("hidden", "");
+                    findReplaceRow.hidden = true;
+                    resetFindNavigation();
+                    refreshFindHighlights();
+                    editor.focus();
+                }
+
+                function replaceOne() {
+                    var needle = findInput.value;
+                    if (!needle) return;
+                    if (!selectionMatchesFind(needle, findCase.checked)) {
+                        findNext();
+                        return;
+                    }
+                    editor.replaceSelection(replaceInput.value);
+                    resetFindNavigation();
+                    updateFindCount();
+                }
+
+                function replaceAll() {
+                    var needle = findInput.value;
+                    if (!needle) return;
+                    var rep = replaceInput.value;
+                    setInputValue(replaceAllString(editor.getValue(), needle, rep, findCase.checked));
+                    resetFindNavigation();
+                    updateFindCount();
+                    showToast("已全部替换");
+                }
+
+                editor.on("cursorActivity", function () {
+                    if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                });
+
+                document.getElementById("find-prev").addEventListener("click", findPrev);
+                document.getElementById("find-next").addEventListener("click", findNext);
+                document.getElementById("find-close").addEventListener("click", closeFind);
+                findCase.addEventListener("change", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                findInput.addEventListener("input", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                document.getElementById("find-rep-one").addEventListener("click", replaceOne);
+                document.getElementById("find-rep-all").addEventListener("click", replaceAll);
+
+                findInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (e.shiftKey) findPrev();
+                        else findNext();
+                    }
+                });
+                replaceInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        replaceOne();
+                    }
+                });
+
+                window.addEventListener(
+                    "keydown",
+                    function (e) {
+                        var mod = e.ctrlKey || e.metaKey;
+                        var k = String(e.key || "").toLowerCase();
+                        if (mod && k === "f") {
+                            e.preventDefault();
+                            openFind(false);
+                            return;
+                        }
+                        if (mod && k === "h" && !e.shiftKey) {
+                            e.preventDefault();
+                            openFind(true);
+                            return;
+                        }
+                        if (!findBar.hidden && e.key === "Escape") {
+                            e.preventDefault();
+                            closeFind();
+                            return;
+                        }
+                        if (!findBar.hidden && e.key === "F3") {
+                            e.preventDefault();
+                            if (e.shiftKey) findPrev();
+                            else findNext();
+                        }
+                    },
+                    true
+                );
+
+                refreshFindHighlights();
 
                 var spaceCaseToPascalCaseSpace = "spaceCaseToPascalCaseSpace";
                 var pascalCaseSpaceToKebabCase = "pascalCaseSpaceToKebabCase";
@@ -1171,6 +1596,7 @@
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     setInputValue("");
                     refreshStatPreviewBtn();
+                    refreshFindHighlights();
                 });
 
                 refreshStatPreviewBtn();
