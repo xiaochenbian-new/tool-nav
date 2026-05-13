@@ -359,7 +359,7 @@
                         <option value="zh">英文标点 → 中文标点</option>
                         <option value="en">中文标点 → 英文标点</option>
                     </select>
-                    <select id="dd-zh" class="dd" title="简繁转换（需联网）">
+                    <select id="dd-zh" class="dd" title="简繁转换（离线）">
                         <option value="">简繁转换</option>
                         <option value="simplified">简体 → 繁体</option>
                         <option value="traditional">繁体 → 简体</option>
@@ -501,6 +501,7 @@
         <div id="toast" role="status" aria-live="polite"></div>
 
         <script src="../vendor/codemirror/lib/codemirror.js"></script>
+        <script src="../vendor/zh-tran/zh-tran-offline.js"></script>
         <script>
             (function () {
                 if (typeof CodeMirror === "undefined") {
@@ -911,15 +912,14 @@
                     setInputValue(api[method](opt));
                 }
 
-                var zhLibPromise = null;
                 function loadZhTran() {
-                    if (!zhLibPromise) {
-                        zhLibPromise = (async function () {
-                            var mod = await import("../vendor/bundles/zh-tran.mjs");
-                            return mod;
-                        })();
+                    var z = typeof window !== "undefined" && window._zhTran;
+                    if (z && typeof z.toTraditional === "function" && typeof z.toSimplified === "function") {
+                        return Promise.resolve(z);
                     }
-                    return zhLibPromise;
+                    return Promise.reject(
+                        new Error("未加载简繁库（请运行 npm install 生成 vendor/zh-tran/zh-tran-offline.js）")
+                    );
                 }
 
                 async function handleZhTran(type) {
@@ -930,7 +930,7 @@
                         var out = type === "simplified" ? mod.toTraditional(t) : mod.toSimplified(t);
                         setInputValue(out);
                     } catch (e) {
-                        alert((e && e.message) || String(e));
+                        showToast((e && e.message) || String(e));
                     }
                 }
 

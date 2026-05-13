@@ -33,7 +33,7 @@ function copyThing(src, dest, label) {
 }
 
 async function buildEsm(entryFile, outFile, label) {
-    const entryPath = path.join(entriesDir, entryFile);
+    var entryPath = path.join(entriesDir, entryFile);
     if (!fs.existsSync(entryPath)) {
         console.warn("[copy-vendor] 跳过 bundle " + label + "：无入口 " + entryPath);
         return;
@@ -49,6 +49,26 @@ async function buildEsm(entryFile, outFile, label) {
         logLevel: "warning"
     });
     console.log("[copy-vendor] bundle " + label + " -> " + path.relative(root, outFile));
+}
+
+async function buildZhTranIife() {
+    var entryPath = path.join(entriesDir, "zh-tran-global.mjs");
+    if (!fs.existsSync(entryPath)) {
+        console.warn("[copy-vendor] 跳过 zh-tran-offline：无入口 " + entryPath);
+        return;
+    }
+    var outFile = path.join(vendor, "zh-tran", "zh-tran-offline.js");
+    mustDir(path.dirname(outFile));
+    await esbuild.build({
+        entryPoints: [entryPath],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: ["es2020"],
+        outfile: outFile,
+        logLevel: "warning"
+    });
+    console.log("[copy-vendor] zh-tran IIFE（file:// 离线）-> " + path.relative(root, outFile));
 }
 
 async function main() {
@@ -107,6 +127,7 @@ async function main() {
     await buildEsm("toml.mjs", path.join(bundlesDir, "toml.mjs"), "toml");
     await buildEsm("uuid.mjs", path.join(bundlesDir, "uuid.mjs"), "uuid");
     await buildEsm("zh-tran.mjs", path.join(bundlesDir, "zh-tran.mjs"), "zh-tran");
+    await buildZhTranIife();
 }
 
 main().catch(function (e) {
