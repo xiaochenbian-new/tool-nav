@@ -23,57 +23,75 @@
             body {
                 margin: 0;
                 height: 100%;
+                overflow: hidden;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-                font-size: 14px;
+                font-size: 13px;
                 background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
                 color: var(--text);
             }
             .page {
                 height: 100%;
-                padding: 10px;
+                max-height: 100%;
+                box-sizing: border-box;
+                padding: 6px 8px;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 6px;
                 min-height: 0;
+                overflow: hidden;
             }
             .toolbar {
-                flex-shrink: 0;
+                flex: 0 1 auto;
+                min-height: 0;
+                max-height: min(22%, 200px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
                 display: flex;
                 flex-wrap: wrap;
-                gap: 10px 14px;
+                gap: 6px 8px;
                 align-items: flex-start;
                 background: var(--card);
                 border: 1px solid var(--border);
-                border-radius: 10px;
+                border-radius: 8px;
                 box-shadow: var(--shadow);
-                padding: 10px 12px;
+                padding: 6px 8px;
             }
-            .toolbar label {
+            .toolbar label,
+            .single-preview-root label {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
-                font-size: 13px;
+                gap: 2px;
+                font-size: 11px;
                 color: #324a76;
             }
             .toolbar select,
             .toolbar input[type="text"],
-            .toolbar input[type="number"] {
+            .toolbar input[type="number"],
+            .single-preview-root select,
+            .single-preview-root input[type="text"],
+            .single-preview-root input[type="number"] {
                 border: 1px solid #cfdcf7;
-                border-radius: 6px;
-                padding: 5px 10px;
-                font-size: 13px;
-                min-width: 120px;
+                border-radius: 4px;
+                padding: 3px 6px;
+                font-size: 12px;
+                min-width: 88px;
+            }
+            #presetSel {
+                min-width: 0;
+                width: 100%;
+                max-width: min(420px, 100%);
             }
             .swatches {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 6px;
+                gap: 4px;
                 align-items: center;
             }
             .sw {
-                width: 26px;
-                height: 26px;
-                border-radius: 6px;
+                width: 22px;
+                height: 22px;
+                border-radius: 4px;
                 border: 2px solid #cfdcf7;
                 cursor: pointer;
                 padding: 0;
@@ -84,11 +102,11 @@
             }
             .btn {
                 border: 1px solid #d8e5ff;
-                border-radius: 6px;
+                border-radius: 4px;
                 background: #edf3ff;
                 color: #3c4f78;
-                padding: 6px 14px;
-                font-size: 13px;
+                padding: 4px 10px;
+                font-size: 12px;
                 cursor: pointer;
                 align-self: flex-end;
             }
@@ -105,15 +123,18 @@
                 color: #fff;
                 opacity: 0.95;
             }
+            .btn.btn-primary {
+                align-self: center;
+            }
             .drop {
                 border: 1px dashed #cfdcf7;
-                border-radius: 8px;
-                padding: 12px 14px;
+                border-radius: 6px;
+                padding: 6px 10px;
                 background: #fcfdff;
                 cursor: pointer;
-                font-size: 13px;
+                font-size: 12px;
                 color: var(--muted);
-                min-width: 200px;
+                min-width: 140px;
             }
             .drop:hover {
                 border-color: var(--primary);
@@ -123,64 +144,224 @@
                 display: none;
             }
             .hint {
-                font-size: 12px;
+                font-size: 11px;
                 color: var(--muted);
-                max-width: 520px;
-                line-height: 1.45;
+                line-height: 1.35;
+                margin: 0;
+                max-width: 56em;
+            }
+            .toolbar-inner {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                width: 100%;
+                min-width: 0;
+            }
+            .toolbar-section {
+                border: 1px solid #e8eefc;
+                border-radius: 6px;
+                padding: 6px 8px;
+                background: #fbfcff;
+            }
+            .toolbar-section-hd {
+                font-size: 11px;
+                font-weight: 600;
+                color: #5a6f94;
+                letter-spacing: 0.02em;
+                margin-bottom: 4px;
+                line-height: 1.2;
+            }
+            .toolbar-fields {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 8px;
+                align-items: flex-end;
+            }
+            .toolbar-fields label {
+                min-width: 0;
+            }
+            .toolbar-sw-label {
+                font-size: 11px;
+                color: #324a76;
+                display: block;
+                margin-bottom: 2px;
+            }
+            .toolbar-fields .field-grow {
+                flex: 1 1 160px;
+                min-width: 120px;
+            }
+            .toolbar-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+            }
+            .toolbar-upload-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 10px;
+                align-items: center;
+            }
+            .custom-size-row {
+                display: none;
+                flex-wrap: wrap;
+                gap: 6px 8px;
+                align-items: flex-end;
+                margin-top: 4px;
+                padding-top: 4px;
+                border-top: 1px dashed #dbe6ff;
+            }
+            .custom-size-row.is-on {
+                display: flex;
+            }
+            .custom-size-row input[type="number"] {
+                width: 88px;
+            }
+            #customMmHint {
+                font-size: 11px;
+                color: var(--muted);
+                align-self: center;
             }
             .main {
-                flex: 1;
+                flex: 1 1 0%;
                 min-height: 0;
                 display: flex;
                 flex-direction: row;
-                gap: 10px;
+                gap: 6px;
+                overflow: hidden;
             }
             .panel {
                 flex: 1 1 0;
                 min-width: 0;
+                min-height: 0;
                 background: var(--card);
                 border: 1px solid var(--border);
-                border-radius: 10px;
+                border-radius: 8px;
                 box-shadow: var(--shadow);
                 display: flex;
                 flex-direction: column;
-                min-height: 0;
+                overflow: hidden;
             }
             .panel-hd {
-                padding: 8px 10px;
+                padding: 5px 8px;
                 font-weight: 600;
-                font-size: 14px;
+                font-size: 12px;
                 color: #324a76;
                 background: var(--foot-bg);
                 border-bottom: 1px solid #e4edff;
+                flex-shrink: 0;
             }
-            .panel-bd {
-                flex: 1;
+            .panel-bd--layout {
+                align-items: center;
+            }
+            .panel-hd-with-meta {
+                display: flex;
+                align-items: baseline;
+                flex-wrap: wrap;
+                gap: 4px 10px;
+            }
+            .panel-hd-title {
+                flex-shrink: 0;
+            }
+            .panel-hd-meta {
+                font-weight: 500;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.35;
+                word-break: break-all;
+            }
+            .single-preview-root {
+                width: 100%;
+                flex: 1 1 auto;
                 min-height: 0;
-                padding: 10px;
-                overflow: auto;
                 display: flex;
                 flex-direction: column;
+                gap: 6px;
+            }
+            .single-band {
+                flex-shrink: 0;
+                width: 100%;
+            }
+            .single-band--spec {
+                padding: 4px 6px;
+                border: 1px solid #e8eefc;
+                border-radius: 6px;
+                background: #fbfcff;
+            }
+            .single-band--spec .toolbar-fields {
+                align-items: flex-end;
+            }
+            .single-mid {
+                flex: 1 1 0%;
+                min-height: 0;
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .single-compose-rail {
+                flex: 0 0 auto;
+                width: 180px;
+                max-width: 42%;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                padding: 4px 6px;
+                border: 1px solid #e8eefc;
+                border-radius: 6px;
+                background: #fbfcff;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+            .single-compose-rail .band-lab {
+                font-size: 10px;
+                font-weight: 600;
+                color: #5a6f94;
+                margin-bottom: 2px;
+            }
+            .single-compose-rail .btn {
+                align-self: stretch;
+                margin-top: 2px;
+            }
+            .single-preview-root .preview-stage-wrap {
+                flex: 1 1 0%;
+                min-width: 0;
+                justify-content: center;
                 align-items: center;
-                justify-content: flex-start;
             }
             #previewWrap {
                 width: 100%;
                 text-align: center;
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow: auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
             }
             #previewCanvas {
                 max-width: 100%;
+                width: auto;
                 height: auto;
+                max-height: min(64vh, 560px);
+                max-height: min(64dvh, 560px);
                 border: 1px solid #e4edff;
-                border-radius: 8px;
+                border-radius: 6px;
                 background: #eee;
             }
             #singlePreview {
                 display: block;
-                max-width: min(320px, 100%);
+                max-width: 100%;
+                width: auto;
                 height: auto;
+                max-height: min(64vh, 520px);
+                max-height: min(64dvh, 520px);
+                object-fit: contain;
                 border: 1px solid #e4edff;
-                border-radius: 8px;
+                border-radius: 6px;
                 background: #eee;
                 vertical-align: top;
                 pointer-events: auto;
@@ -188,17 +369,26 @@
             .preview-stage-wrap {
                 width: 100%;
                 text-align: center;
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                overflow: auto;
             }
             .preview-tip {
-                font-size: 12px;
+                font-size: 11px;
                 color: var(--muted);
-                margin: 0 0 8px;
-                line-height: 1.4;
+                margin: 0 0 4px;
+                line-height: 1.3;
+                flex-shrink: 0;
             }
             .preview-stage {
                 position: relative;
                 display: inline-block;
                 max-width: 100%;
+                max-height: 100%;
                 touch-action: none;
                 user-select: none;
                 -webkit-user-select: none;
@@ -214,10 +404,10 @@
             }
             .rotate-handle {
                 position: absolute;
-                top: 4px;
-                right: 4px;
-                width: 30px;
-                height: 30px;
+                top: 2px;
+                right: 2px;
+                width: 26px;
+                height: 26px;
                 border-radius: 50%;
                 border: 1px solid #d8e5ff;
                 background: rgba(255, 255, 255, 0.94);
@@ -243,6 +433,7 @@
                 color: #c62828;
                 font-size: 13px;
                 padding: 4px 0;
+                flex-shrink: 0;
             }
             .row-inline {
                 display: flex;
@@ -254,117 +445,166 @@
                 .main {
                     flex-direction: column;
                 }
+                .single-mid {
+                    flex-direction: column;
+                }
+                .single-compose-rail {
+                    width: 100%;
+                    max-width: none;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    align-items: flex-end;
+                }
+                .single-compose-rail .band-lab {
+                    width: 100%;
+                }
+                .single-compose-rail label {
+                    flex: 1 1 120px;
+                }
             }
         </style>
     </head>
     <body>
         <div class="page">
             <div class="toolbar">
-                <div>
-                    <input type="file" id="fileIn" accept="image/*" />
-                    <button type="button" class="drop" id="btnPick" title="支持 JPG / PNG 等">点击上传证件照</button>
+                <div class="toolbar-inner">
+                    <div class="toolbar-section" style="background: #fff">
+                        <div class="toolbar-upload-row">
+                            <div>
+                                <input type="file" id="fileIn" accept="image/*" />
+                                <button type="button" class="drop" id="btnPick" title="支持 JPG / PNG 等">点击上传证件照</button>
+                            </div>
+                            <p class="hint">
+                                本地处理；单张可拖拽/滚轮/右上旋转；排版实时（需上传照片）。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="toolbar-section">
+                        <div class="toolbar-section-hd">冲印 / 排版</div>
+                        <div class="toolbar-fields">
+                            <label>
+                                相纸
+                                <select id="paperSel"></select>
+                            </label>
+                            <label>
+                                DPI
+                                <select id="dpiSel">
+                                    <option value="300" selected>300</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </label>
+                            <label>
+                                边距 mm
+                                <input type="number" id="marginMm" value="4" min="0" max="20" step="0.5" />
+                            </label>
+                            <label>
+                                间距 mm
+                                <input type="number" id="gapMm" value="2" min="0" max="10" step="0.5" />
+                            </label>
+                            <label style="flex-direction: row; align-items: center; gap: 4px; align-self: center">
+                                <input type="checkbox" id="chkCut" checked />
+                                裁切线
+                            </label>
+                            <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
+                        </div>
+                    </div>
                 </div>
-                <label>
-                    照片规格（像素）
-                    <select id="presetSel"></select>
-                </label>
-                <div>
-                    <span style="font-size: 13px; color: #324a76">背景色</span>
-                    <div class="swatches" id="swatches"></div>
-                </div>
-                <label id="overlayWrap" style="display: none">
-                    底部加字
-                    <input type="text" id="overlayText" name="overlayText" placeholder="可选，如姓名" maxlength="24" autocomplete="off" style="min-width: 160px" />
-                </label>
-                <label>
-                    绘入方式
-                    <select id="fitSel" title="完整显示：缩小以露出底色；铺满裁切：放大裁切，底色主要在边缘">
-                        <option value="contain" selected>完整显示（可见底色）</option>
-                        <option value="cover">铺满裁切</option>
-                    </select>
-                </label>
-                <label>
-                    旋转
-                    <select id="rotSel">
-                        <option value="0" selected>0°</option>
-                        <option value="90">90°</option>
-                        <option value="180">180°</option>
-                        <option value="270">270°</option>
-                        <option value="custom">自定义</option>
-                    </select>
-                </label>
-                <label>
-                    角度值(°)
-                    <input type="number" id="rotDegIn" value="0" step="0.1" min="-720" max="720" style="width: 88px" title="与拖拽旋转、上方快捷角度同步" />
-                </label>
-                <label>
-                    缩放 <span id="zoomLab">100%</span>
-                    <input type="range" id="zoomR" min="50" max="200" value="100" step="1" style="width: 140px" />
-                </label>
-                <label>
-                    左右平移
-                    <input type="range" id="panXR" min="-45" max="45" value="0" step="1" style="width: 120px" />
-                </label>
-                <label>
-                    上下平移
-                    <input type="range" id="panYR" min="-45" max="45" value="0" step="1" style="width: 120px" />
-                </label>
-                <button type="button" class="btn" id="btnResetView" title="缩放、平移、旋转恢复默认">重置构图</button>
-                <label>
-                    相纸
-                    <select id="paperSel"></select>
-                </label>
-                <label>
-                    冲印 DPI
-                    <select id="dpiSel">
-                        <option value="300" selected>300（推荐）</option>
-                        <option value="200">200</option>
-                    </select>
-                </label>
-                <label>
-                    页边距(mm)
-                    <input type="number" id="marginMm" value="4" min="0" max="20" step="0.5" />
-                </label>
-                <label>
-                    间距(mm)
-                    <input type="number" id="gapMm" value="2" min="0" max="10" step="0.5" />
-                </label>
-                <label style="flex-direction: row; align-items: center; gap: 6px; margin-top: 18px">
-                    <input type="checkbox" id="chkCut" checked />
-                    裁切线
-                </label>
-                <div class="row-inline">
-                    <button type="button" class="btn btn-primary" id="btnGen">生成排版</button>
-                    <button type="button" class="btn" id="btnDl" disabled>下载 PNG</button>
-                </div>
-                <p class="hint">
-                    本地处理、不上传服务器。单张预览区可<strong>拖拽平移</strong>、<strong>滚轮缩放</strong>，右上角手柄<strong>按住左键拖拽</strong>绕中心旋转（与下方滑块/角度框同步）。「完整显示」易露出底色；改构图后请再点「生成排版」。
-                </p>
             </div>
             <div class="err" id="errBox" style="display: none"></div>
             <div class="main">
                 <section class="panel">
-                    <div class="panel-hd">单张预览（按所选规格与底色）</div>
+                    <div class="panel-hd panel-hd-with-meta">
+                        <span class="panel-hd-title">单张预览</span>
+                        <span class="panel-hd-meta" id="singlePanelMeta"></span>
+                    </div>
                     <div class="panel-bd">
                         <canvas id="singleCanvas" width="295" height="413" style="display: none"></canvas>
-                        <div class="preview-stage-wrap">
-                            <p class="preview-tip" id="previewTip" style="display: none">拖拽平移 · 滚轮缩放 · 右上角↻按住拖拽旋转</p>
-                            <div class="preview-stage" id="singleStage">
-                                <img id="singlePreview" alt="单张预览" style="display: none" draggable="false" />
-                                <button type="button" class="rotate-handle" id="rotateHandle" title="按住左键拖拽旋转" aria-label="旋转">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                                        <path d="M12 5v4M12 15v4M5 12H1M23 12h-4" />
-                                        <path d="M7 7a7 7 0 1 1 3 13" />
-                                        <path d="M17 17l2 2" />
-                                    </svg>
-                                </button>
+                        <div class="single-preview-root">
+                            <div class="single-band single-band--spec">
+                                <div class="toolbar-fields">
+                                    <label class="field-grow">
+                                        规格
+                                        <select id="presetSel"></select>
+                                    </label>
+                                    <div>
+                                        <span class="toolbar-sw-label">背景</span>
+                                        <div class="swatches" id="swatches"></div>
+                                    </div>
+                                    <label id="overlayWrap" style="display: none" class="field-grow">
+                                        <span id="overlayLabel">底部加字</span>
+                                        <input type="text" id="overlayText" name="overlayText" placeholder="可选，如姓名" maxlength="24" autocomplete="off" style="min-width: 0; width: 100%" />
+                                    </label>
+                                </div>
+                                <div id="customSizeRow" class="custom-size-row">
+                                    <label>
+                                        宽 px
+                                        <input type="number" id="customW" min="1" max="4000" value="295" step="1" />
+                                    </label>
+                                    <label>
+                                        高 px
+                                        <input type="number" id="customH" min="1" max="4000" value="413" step="1" />
+                                    </label>
+                                    <span id="customMmHint"></span>
+                                </div>
+                            </div>
+                            <div class="single-mid">
+                                <div class="single-compose-rail">
+                                    <span class="band-lab">构图</span>
+                                    <label>
+                                        绘入
+                                        <select id="fitSel" title="完整显示：缩小以露出底色；铺满裁切：放大裁切">
+                                            <option value="contain" selected>完整显示</option>
+                                            <option value="cover">铺满裁切</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        旋转
+                                        <select id="rotSel">
+                                            <option value="0" selected>0°</option>
+                                            <option value="90">90°</option>
+                                            <option value="180">180°</option>
+                                            <option value="270">270°</option>
+                                            <option value="custom">自定义</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        角度 °
+                                        <input type="number" id="rotDegIn" value="0" step="0.1" min="-720" max="720" style="width: 100%" title="与拖拽旋转同步" />
+                                    </label>
+                                    <label>
+                                        缩放 <span id="zoomLab">100%</span>
+                                        <input type="range" id="zoomR" min="50" max="200" value="100" step="1" style="width: 100%" />
+                                    </label>
+                                    <label>
+                                        左右
+                                        <input type="range" id="panXR" min="-45" max="45" value="0" step="1" style="width: 100%" />
+                                    </label>
+                                    <label>
+                                        上下
+                                        <input type="range" id="panYR" min="-45" max="45" value="0" step="1" style="width: 100%" />
+                                    </label>
+                                    <button type="button" class="btn" id="btnResetView" title="缩放、平移、旋转恢复默认">重置</button>
+                                </div>
+                                <div class="preview-stage-wrap">
+                                    <p class="preview-tip" id="previewTip" style="display: none">拖拽平移 · 滚轮缩放 · 右上旋转</p>
+                                    <div class="preview-stage" id="singleStage">
+                                        <img id="singlePreview" alt="单张预览" style="display: none" draggable="false" />
+                                        <button type="button" class="rotate-handle" id="rotateHandle" title="按住左键拖拽旋转" aria-label="旋转">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                                <path d="M12 5v4M12 15v4M5 12H1M23 12h-4" />
+                                                <path d="M7 7a7 7 0 1 1 3 13" />
+                                                <path d="M17 17l2 2" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
                 <section class="panel" style="flex: 1.4 1 0%">
-                    <div class="panel-hd">排版预览（按 DPI 生成，显示为缩放图）</div>
-                    <div class="panel-bd">
+                    <div class="panel-hd">排版预览</div>
+                    <div class="panel-bd panel-bd--layout">
                         <div id="previewWrap">
                             <canvas id="previewCanvas" style="display: none"></canvas>
                         </div>
@@ -387,23 +627,24 @@
                     threeBRW: ["blue", "white", "red"],
                     access: ["blue", "white", "red", "darkBlue", "steel", "gray"],
                 };
+                var CUSTOM_PRESET_ID = "custom";
                 var PRESETS = [
-                    { id: "y1", label: "一寸（295×413）", w: 295, h: 413, set: "all6", text: false },
-                    { id: "e2", label: "二寸（413×579）", w: 413, h: 579, set: "all6", text: false },
-                    { id: "xe2", label: "小二寸（413×531）", w: 413, h: 531, set: "all6", text: false },
-                    { id: "xy1", label: "小一寸（260×378）", w: 260, h: 378, set: "all6", text: false },
-                    { id: "dy1", label: "大一寸（390×567）", w: 390, h: 567, set: "all6", text: false },
-                    { id: "w5", label: "五寸（1050×1499）", w: 1050, h: 1499, set: "all6", text: false },
-                    { id: "s3", label: "三寸（649×991）", w: 649, h: 991, set: "all6", text: false },
-                    { id: "y1t", label: "一寸（可加字）（295×413）", w: 295, h: 413, set: "all6", text: true },
-                    { id: "e2m", label: "二寸（2M～5M）（413×579）", w: 413, h: 579, set: "all6", text: false },
-                    { id: "de2t", label: "大二寸（可加字）（413×626）", w: 413, h: 626, set: "threeBRW", text: true },
-                    { id: "s4", label: "四寸（898×1205）", w: 898, h: 1205, set: "all6", text: false },
-                    { id: "y1mj", label: "一寸（门禁系统）（295×413）", w: 295, h: 413, set: "access", text: false },
-                    { id: "e2t", label: "二寸（可加字）（413×579）", w: 413, h: 579, set: "all6", text: true },
-                    { id: "de2", label: "大二寸（413×626）", w: 413, h: 626, set: "all6", text: false },
-                    { id: "dy1t", label: "大一寸（可加字）（390×567）", w: 390, h: 567, set: "all6", text: true },
-                    { id: "w5t", label: "五寸（可加字）（1050×1499）", w: 1050, h: 1499, set: "all6", text: true },
+                    { id: "y1", name: "一寸", w: 295, h: 413, set: "all6", text: false },
+                    { id: "e2", name: "二寸", w: 413, h: 579, set: "all6", text: false },
+                    { id: "xe2", name: "小二寸", w: 413, h: 531, set: "all6", text: false },
+                    { id: "xy1", name: "小一寸", w: 260, h: 378, set: "all6", text: false },
+                    { id: "dy1", name: "大一寸", w: 390, h: 567, set: "all6", text: false },
+                    { id: "w5", name: "五寸 / 3R", w: 1051, h: 1500, set: "all6", text: false },
+                    { id: "s3", name: "三寸", w: 650, h: 992, set: "all6", text: false },
+                    { id: "y1t", name: "一寸（可加字）", w: 295, h: 413, set: "all6", text: true },
+                    { id: "e2m", name: "二寸（2M～5M）", w: 413, h: 579, set: "all6", text: false },
+                    { id: "de2t", name: "大二寸（可加字）", w: 413, h: 626, set: "threeBRW", text: true },
+                    { id: "s4", name: "四寸（小四寸）", w: 898, h: 1205, set: "all6", text: false },
+                    { id: "y1mj", name: "一寸（门禁系统）", w: 295, h: 413, set: "access", text: false },
+                    { id: "e2t", name: "二寸（可加字）", w: 413, h: 579, set: "all6", text: true },
+                    { id: "de2", name: "大二寸", w: 413, h: 626, set: "all6", text: false },
+                    { id: "dy1t", name: "大一寸（可加字）", w: 390, h: 567, set: "all6", text: true },
+                    { id: "w5t", name: "五寸（可加字）", w: 1051, h: 1500, set: "all6", text: true },
                 ];
                 var PAPERS = [
                     { id: "r3", label: "五寸相纸（3R｜12.7×8.9cm）", wcm: 12.7, hcm: 8.9 },
@@ -424,6 +665,72 @@
                 var currentColorKey = "blue";
                 var layoutCanvas = null;
                 var lastPaperPx = { w: 0, h: 0 };
+                var layoutRefreshTimer = null;
+                var lastPresetIdBeforeCustom = "y1";
+
+                function clamp(n, lo, hi) {
+                    return Math.max(lo, Math.min(hi, n));
+                }
+
+                function pxToMm(px, dpi) {
+                    return (px / dpi) * 25.4;
+                }
+
+                function formatMmPair(wPx, hPx, dpi) {
+                    var a = Math.round(pxToMm(wPx, dpi) * 10) / 10;
+                    var b = Math.round(pxToMm(hPx, dpi) * 10) / 10;
+                    return a + "×" + b;
+                }
+
+                function presetOptionText(p, dpi) {
+                    var mm = formatMmPair(p.w, p.h, dpi);
+                    var tail = p.text ? " · 可加字" : "";
+                    return p.name + " · " + p.w + "×" + p.h + " px · " + mm + " mm @" + dpi + " DPI" + tail;
+                }
+
+                function customPresetOptionText(dpi) {
+                    var cw = clamp(parseInt(document.getElementById("customW").value, 10) || 295, 1, 4000);
+                    var ch = clamp(parseInt(document.getElementById("customH").value, 10) || 413, 1, 4000);
+                    var mm = formatMmPair(cw, ch, dpi);
+                    return "自定义 · " + cw + "×" + ch + " px · " + mm + " mm @" + dpi + " DPI · 可加字";
+                }
+
+                function updatePresetSelectLabels() {
+                    var dpi = getDpi();
+                    var sel = document.getElementById("presetSel");
+                    for (var i = 0; i < sel.options.length; i++) {
+                        var o = sel.options[i];
+                        if (o.value === CUSTOM_PRESET_ID) o.textContent = customPresetOptionText(dpi);
+                        else {
+                            for (var j = 0; j < PRESETS.length; j++) {
+                                if (PRESETS[j].id === o.value) {
+                                    o.textContent = presetOptionText(PRESETS[j], dpi);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    updateSinglePanelMeta();
+                }
+
+                function updateSinglePanelMeta() {
+                    var el = document.getElementById("singlePanelMeta");
+                    if (!el) return;
+                    var p = getPreset();
+                    var dpi = getDpi();
+                    var mm = formatMmPair(p.w, p.h, dpi);
+                    var nm = p.id === CUSTOM_PRESET_ID ? "自定义" : p.name || "";
+                    el.textContent = "· " + nm + " " + p.w + "×" + p.h + " px · " + mm + " mm @" + dpi + " DPI";
+                }
+
+                function syncCustomSizeRow() {
+                    var on = document.getElementById("presetSel").value === CUSTOM_PRESET_ID;
+                    document.getElementById("customSizeRow").className = "custom-size-row" + (on ? " is-on" : "");
+                    var dpi = getDpi();
+                    var cw = clamp(parseInt(document.getElementById("customW").value, 10) || 295, 1, 4000);
+                    var ch = clamp(parseInt(document.getElementById("customH").value, 10) || 413, 1, 4000);
+                    document.getElementById("customMmHint").textContent = "≈ " + formatMmPair(cw, ch, dpi) + " mm（宽×高，按当前冲印 DPI）";
+                }
 
                 function showErr(msg) {
                     var el = document.getElementById("errBox");
@@ -450,6 +757,11 @@
 
                 function getPreset() {
                     var id = document.getElementById("presetSel").value;
+                    if (id === CUSTOM_PRESET_ID) {
+                        var cw = clamp(parseInt(document.getElementById("customW").value, 10) || 295, 1, 4000);
+                        var ch = clamp(parseInt(document.getElementById("customH").value, 10) || 413, 1, 4000);
+                        return { id: CUSTOM_PRESET_ID, name: "自定义", w: cw, h: ch, set: "all6", text: true };
+                    }
                     for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === id) return PRESETS[i];
                     return PRESETS[0];
                 }
@@ -489,7 +801,14 @@
                         box.appendChild(b);
                     });
                     document.getElementById("overlayWrap").style.display = p.text ? "flex" : "none";
+                    var ol = document.getElementById("overlayLabel");
+                    if (ol) ol.textContent = p.id === CUSTOM_PRESET_ID ? "底部加字（可选）" : "底部加字";
+                    syncCustomSizeRow();
+                    updateSinglePanelMeta();
                     drawSingle();
+                    requestAnimationFrame(function () {
+                        scheduleLayoutRefresh(true);
+                    });
                 }
 
                 function luminance(hex) {
@@ -562,10 +881,13 @@
                     var bb = rotBBox(iw, ih, rad);
                     var k0 = t.fit === "cover" ? Math.max(pw / bb.rw, ph / bb.rh) : Math.min(pw / bb.rw, ph / bb.rh);
                     var k = k0 * (t.zoom || 1);
+                    var px = t.panX * pw;
+                    var py = t.panY * ph;
                     ctx.save();
                     ctx.translate(cx, cy);
                     ctx.rotate(rad);
-                    ctx.translate(t.panX * pw, t.panY * ph);
+                    // 平移量按「出图画布 / 屏幕」水平、竖直方向理解；在 rotate 之后需换算到当前局部轴，旋转中心仍在 (cx,cy)
+                    ctx.translate(px * Math.cos(rad) + py * Math.sin(rad), -px * Math.sin(rad) + py * Math.cos(rad));
                     ctx.drawImage(image, (-iw * k) / 2, (-ih * k) / 2, iw * k, ih * k);
                     ctx.restore();
                 }
@@ -601,27 +923,34 @@
                 }
 
                 function drawSingle() {
-                    var p = getPreset();
-                    var bg = COLOR_HEX[currentColorKey];
-                    var c = document.getElementById("singleCanvas");
-                    c.width = p.w;
-                    c.height = p.h;
-                    var ctx = c.getContext("2d");
-                    var t = getTransform();
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(0, 0, p.w, p.h);
-                    ctx.clip();
-                    ctx.fillStyle = bg;
-                    ctx.fillRect(0, 0, p.w, p.h);
-                    if (img) drawPhotoTransformed(ctx, p.w / 2, p.h / 2, p.w, p.h, img, t);
-                    ctx.restore();
-                    var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
-                    if (ov) drawTextBottomInRect(ctx, 0, 0, p.w, p.h, ov, bg);
-                    var out = document.getElementById("singlePreview");
-                    out.src = c.toDataURL("image/png");
-                    out.style.display = "block";
-                    updatePreviewStageUI();
+                    try {
+                        var p = getPreset();
+                        var bg = COLOR_HEX[currentColorKey];
+                        var c = document.getElementById("singleCanvas");
+                        c.width = p.w;
+                        c.height = p.h;
+                        var ctx = c.getContext("2d");
+                        if (!ctx) throw new Error("no ctx");
+                        var t = getTransform();
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.rect(0, 0, p.w, p.h);
+                        ctx.clip();
+                        ctx.fillStyle = bg;
+                        ctx.fillRect(0, 0, p.w, p.h);
+                        if (img) drawPhotoTransformed(ctx, p.w / 2, p.h / 2, p.w, p.h, img, t);
+                        ctx.restore();
+                        var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
+                        if (ov) drawTextBottomInRect(ctx, 0, 0, p.w, p.h, ov, bg);
+                        var out = document.getElementById("singlePreview");
+                        out.src = c.toDataURL("image/png");
+                        out.style.display = "block";
+                        updatePreviewStageUI();
+                        showErr("");
+                    } catch (err) {
+                        console.error(err);
+                        showErr("单张预览生成失败（常见原因：自定义尺寸过大、内存不足）。请将宽高控制在 4000 以内或换小图重试。");
+                    }
                 }
 
                 function updatePreviewStageUI() {
@@ -714,6 +1043,10 @@
                 }
 
                 function computeGrid(paperW, paperH, cellW, cellH, marginPx, gapPx) {
+                    if (!isFinite(paperW) || !isFinite(paperH) || !isFinite(cellW) || !isFinite(cellH) || !isFinite(marginPx) || !isFinite(gapPx)) {
+                        return { cols: 0, rows: 0, ox: 0, oy: 0 };
+                    }
+                    if (paperW < 2 || paperH < 2 || cellW < 1 || cellH < 1) return { cols: 0, rows: 0, ox: 0, oy: 0 };
                     var aw = paperW - 2 * marginPx;
                     var ah = paperH - 2 * marginPx;
                     if (aw < cellW || ah < cellH) return { cols: 0, rows: 0, ox: marginPx, oy: marginPx };
@@ -752,63 +1085,127 @@
                     ctx.restore();
                 }
 
-                function generateLayout() {
-                    showErr("");
-                    if (!img) {
-                        showErr("请先上传证件照图片。");
+                function scheduleLayoutRefresh(immediate) {
+                    if (layoutRefreshTimer) {
+                        clearTimeout(layoutRefreshTimer);
+                        layoutRefreshTimer = null;
+                    }
+                    if (immediate) {
+                        refreshLayoutPreview();
                         return;
                     }
-                    var p = getPreset();
-                    var paper = getPaperPx();
-                    lastPaperPx = { w: paper.w, h: paper.h };
-                    var dpi = getDpi();
-                    var marginPx = mmToPx(parseFloat(document.getElementById("marginMm").value) || 0, dpi);
-                    var gapPx = mmToPx(parseFloat(document.getElementById("gapMm").value) || 0, dpi);
-                    var bg = COLOR_HEX[currentColorKey];
-                    var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
+                    layoutRefreshTimer = setTimeout(function () {
+                        layoutRefreshTimer = null;
+                        refreshLayoutPreview();
+                    }, 90);
+                }
 
-                    var cw = p.w,
-                        ch = p.h;
-                    var grid = computeGrid(paper.w, paper.h, cw, ch, marginPx, gapPx);
-                    if (grid.cols < 1 || grid.rows < 1) {
-                        showErr("当前相纸在设定边距下容纳不下该证件尺寸，请换大相纸或减小边距/照片规格。");
+                function drawLayoutPlaceholder(paper, msg) {
+                    try {
+                        var canvas = document.getElementById("previewCanvas");
+                        if (!paper || !paper.w || !paper.h || paper.w < 2 || paper.h < 2) {
+                            paper = { w: 600, h: 800 };
+                        }
+                        canvas.width = paper.w;
+                        canvas.height = paper.h;
+                        var ctx = canvas.getContext("2d");
+                        if (!ctx) throw new Error("no ctx");
+                        ctx.fillStyle = "#e8ecf4";
+                        ctx.fillRect(0, 0, paper.w, paper.h);
+                        var fs = Math.max(16, Math.min(48, Math.floor(Math.min(paper.w, paper.h) / 18)));
+                        ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
+                        ctx.fillStyle = "#6f7d96";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(msg, paper.w / 2, paper.h / 2);
+                        layoutCanvas = null;
+                        canvas.style.display = "inline-block";
                         document.getElementById("btnDl").disabled = true;
-                        document.getElementById("previewCanvas").style.display = "none";
-                        return;
+                    } catch (e2) {
+                        console.error(e2);
+                        showErr("排版预览画布创建失败，请尝试更换相纸或降低冲印 DPI。");
                     }
+                }
 
-                    var canvas = document.getElementById("previewCanvas");
-                    canvas.width = paper.w;
-                    canvas.height = paper.h;
-                    var ctx = canvas.getContext("2d");
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, paper.w, paper.h);
+                function refreshLayoutPreview() {
+                    try {
+                        showErr("");
+                        var paper = getPaperPx();
+                        if (!paper || !paper.w || !paper.h || paper.w < 2 || paper.h < 2) {
+                            showErr("相纸尺寸无效，请重新选择相纸。");
+                            drawLayoutPlaceholder({ w: 600, h: 800 }, "相纸参数异常");
+                            return;
+                        }
+                        lastPaperPx = { w: paper.w, h: paper.h };
+                        if (!img) {
+                            drawLayoutPlaceholder(paper, "请先上传证件照以预览排版");
+                            return;
+                        }
+                        var p = getPreset();
+                        var dpi = getDpi();
+                        var marginPx = mmToPx(parseFloat(document.getElementById("marginMm").value) || 0, dpi);
+                        var gapPx = mmToPx(parseFloat(document.getElementById("gapMm").value) || 0, dpi);
+                        var bg = COLOR_HEX[currentColorKey];
+                        var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
 
-                    for (var r = 0; r < grid.rows; r++) {
-                        for (var c = 0; c < grid.cols; c++) {
-                            var x = grid.ox + c * (cw + gapPx);
-                            var y = grid.oy + r * (ch + gapPx);
-                            renderCellToCtx(ctx, x, y, cw, ch, bg, ov);
+                        var cw = p.w,
+                            ch = p.h;
+                        var grid = computeGrid(paper.w, paper.h, cw, ch, marginPx, gapPx);
+                        if (grid.cols < 1 || grid.rows < 1) {
+                            showErr("当前相纸在设定边距下容纳不下该证件尺寸，请换大相纸、减小边距，或调整自定义宽高。");
+                            drawLayoutPlaceholder(paper, "无法排版：请调整相纸或尺寸");
+                            return;
+                        }
+
+                        var canvas = document.getElementById("previewCanvas");
+                        canvas.width = paper.w;
+                        canvas.height = paper.h;
+                        var ctx = canvas.getContext("2d");
+                        if (!ctx) throw new Error("no ctx");
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillRect(0, 0, paper.w, paper.h);
+
+                        for (var r = 0; r < grid.rows; r++) {
+                            for (var c = 0; c < grid.cols; c++) {
+                                var x = grid.ox + c * (cw + gapPx);
+                                var y = grid.oy + r * (ch + gapPx);
+                                renderCellToCtx(ctx, x, y, cw, ch, bg, ov);
+                            }
+                        }
+                        if (document.getElementById("chkCut").checked) {
+                            drawCutLines(ctx, grid.ox, grid.oy, grid.cols, grid.rows, cw, ch, gapPx);
+                        }
+
+                        layoutCanvas = canvas;
+                        canvas.style.display = "inline-block";
+                        document.getElementById("btnDl").disabled = false;
+                    } catch (err) {
+                        console.error(err);
+                        showErr("排版预览生成失败（画布过大或内存不足）。请换小相纸、降低 DPI 或缩小照片像素规格。");
+                        try {
+                            drawLayoutPlaceholder({ w: 900, h: 600 }, "预览失败：请缩小规格或相纸后重试");
+                        } catch (e3) {
+                            console.error(e3);
                         }
                     }
-                    if (document.getElementById("chkCut").checked) {
-                        drawCutLines(ctx, grid.ox, grid.oy, grid.cols, grid.rows, cw, ch, gapPx);
-                    }
-
-                    layoutCanvas = canvas;
-                    canvas.style.display = "inline-block";
-                    document.getElementById("btnDl").disabled = false;
                 }
 
                 function fillSelects() {
                     var ps = document.getElementById("presetSel");
+                    ps.innerHTML = "";
+                    var dpi = getDpi();
                     PRESETS.forEach(function (p) {
                         var o = document.createElement("option");
                         o.value = p.id;
-                        o.textContent = p.label;
+                        o.textContent = presetOptionText(p, dpi);
                         ps.appendChild(o);
                     });
+                    var oc = document.createElement("option");
+                    oc.value = CUSTOM_PRESET_ID;
+                    oc.textContent = customPresetOptionText(dpi);
+                    ps.appendChild(oc);
                     var pp = document.getElementById("paperSel");
+                    pp.innerHTML = "";
                     PAPERS.forEach(function (p) {
                         var o = document.createElement("option");
                         o.value = p.id;
@@ -832,6 +1229,7 @@
                             showErr("");
                             resetViewControls();
                             drawSingle();
+                            scheduleLayoutRefresh(true);
                         };
                         im.onerror = function () {
                             showErr("图片无法解析。");
@@ -842,13 +1240,31 @@
                 });
 
                 document.getElementById("presetSel").addEventListener("change", function () {
+                    var v = document.getElementById("presetSel").value;
+                    if (v === CUSTOM_PRESET_ID) {
+                        var base = null;
+                        for (var i = 0; i < PRESETS.length; i++) {
+                            if (PRESETS[i].id === lastPresetIdBeforeCustom) {
+                                base = PRESETS[i];
+                                break;
+                            }
+                        }
+                        if (!base) base = PRESETS[0];
+                        document.getElementById("customW").value = String(base.w);
+                        document.getElementById("customH").value = String(base.h);
+                    } else {
+                        lastPresetIdBeforeCustom = v;
+                    }
+                    updatePresetSelectLabels();
                     rebuildSwatches();
                 });
                 document.getElementById("overlayText").addEventListener("input", function () {
                     drawSingle();
+                    scheduleLayoutRefresh(false);
                 });
                 function bindViewRefresh() {
                     drawSingle();
+                    scheduleLayoutRefresh(false);
                 }
                 document.getElementById("fitSel").addEventListener("change", bindViewRefresh);
                 document.getElementById("rotSel").addEventListener("change", function () {
@@ -904,10 +1320,34 @@
                         { passive: false }
                     );
                 })();
-                document.getElementById("dpiSel").addEventListener("change", function () {});
-                document.getElementById("btnGen").addEventListener("click", function () {
-                    generateLayout();
+                document.getElementById("dpiSel").addEventListener("change", function () {
+                    updatePresetSelectLabels();
+                    syncCustomSizeRow();
+                    rebuildSwatches();
                 });
+                document.getElementById("paperSel").addEventListener("change", function () {
+                    scheduleLayoutRefresh(true);
+                });
+                function bindMarginGapCut() {
+                    scheduleLayoutRefresh(true);
+                }
+                document.getElementById("marginMm").addEventListener("input", bindMarginGapCut);
+                document.getElementById("marginMm").addEventListener("change", bindMarginGapCut);
+                document.getElementById("gapMm").addEventListener("input", bindMarginGapCut);
+                document.getElementById("gapMm").addEventListener("change", bindMarginGapCut);
+                document.getElementById("chkCut").addEventListener("change", bindMarginGapCut);
+                function onCustomSizeInput() {
+                    updatePresetSelectLabels();
+                    syncCustomSizeRow();
+                    if (document.getElementById("presetSel").value === CUSTOM_PRESET_ID) {
+                        drawSingle();
+                        scheduleLayoutRefresh(true);
+                    }
+                }
+                document.getElementById("customW").addEventListener("input", onCustomSizeInput);
+                document.getElementById("customH").addEventListener("input", onCustomSizeInput);
+                document.getElementById("customW").addEventListener("change", onCustomSizeInput);
+                document.getElementById("customH").addEventListener("change", onCustomSizeInput);
                 document.getElementById("btnDl").addEventListener("click", function () {
                     if (!layoutCanvas) return;
                     var a = document.createElement("a");
