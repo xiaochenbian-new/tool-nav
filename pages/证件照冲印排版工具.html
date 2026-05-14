@@ -25,7 +25,7 @@
                 height: 100%;
                 overflow: hidden;
                 font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-                font-size: 13px;
+                font-size: 15px;
                 background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
                 color: var(--text);
             }
@@ -62,7 +62,7 @@
                 display: flex;
                 flex-direction: column;
                 gap: 2px;
-                font-size: 11px;
+                font-size: 13px;
                 color: #324a76;
             }
             .toolbar select,
@@ -74,7 +74,7 @@
                 border: 1px solid #cfdcf7;
                 border-radius: 4px;
                 padding: 3px 6px;
-                font-size: 12px;
+                font-size: 14px;
                 min-width: 88px;
             }
             #presetSel {
@@ -106,7 +106,7 @@
                 background: #edf3ff;
                 color: #3c4f78;
                 padding: 4px 10px;
-                font-size: 12px;
+                font-size: 14px;
                 cursor: pointer;
                 align-self: flex-end;
             }
@@ -132,7 +132,7 @@
                 padding: 6px 10px;
                 background: #fcfdff;
                 cursor: pointer;
-                font-size: 12px;
+                font-size: 14px;
                 color: var(--muted);
                 min-width: 140px;
             }
@@ -144,7 +144,7 @@
                 display: none;
             }
             .hint {
-                font-size: 11px;
+                font-size: 13px;
                 color: var(--muted);
                 line-height: 1.35;
                 margin: 0;
@@ -164,7 +164,7 @@
                 background: #fbfcff;
             }
             .toolbar-section-hd {
-                font-size: 11px;
+                font-size: 13px;
                 font-weight: 600;
                 color: #5a6f94;
                 letter-spacing: 0.02em;
@@ -181,7 +181,7 @@
                 min-width: 0;
             }
             .toolbar-sw-label {
-                font-size: 11px;
+                font-size: 13px;
                 color: #324a76;
                 display: block;
                 margin-bottom: 2px;
@@ -218,7 +218,7 @@
                 width: 88px;
             }
             #customMmHint {
-                font-size: 11px;
+                font-size: 13px;
                 color: var(--muted);
                 align-self: center;
             }
@@ -242,17 +242,24 @@
                 flex-direction: column;
                 overflow: hidden;
             }
+            .panel-bd {
+                flex: 1 1 0%;
+                min-height: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
             .panel-hd {
                 padding: 5px 8px;
                 font-weight: 600;
-                font-size: 12px;
+                font-size: 14px;
                 color: #324a76;
                 background: var(--foot-bg);
                 border-bottom: 1px solid #e4edff;
                 flex-shrink: 0;
             }
             .panel-bd--layout {
-                align-items: center;
+                align-items: stretch;
             }
             .panel-hd-with-meta {
                 display: flex;
@@ -265,7 +272,7 @@
             }
             .panel-hd-meta {
                 font-weight: 500;
-                font-size: 11px;
+                font-size: 13px;
                 color: var(--muted);
                 line-height: 1.35;
                 word-break: break-all;
@@ -302,7 +309,7 @@
             }
             .single-compose-rail {
                 flex: 0 0 auto;
-                width: 180px;
+                width: 200px;
                 max-width: 42%;
                 min-width: 0;
                 display: flex;
@@ -317,7 +324,7 @@
                 -webkit-overflow-scrolling: touch;
             }
             .single-compose-rail .band-lab {
-                font-size: 10px;
+                font-size: 12px;
                 font-weight: 600;
                 color: #5a6f94;
                 margin-bottom: 2px;
@@ -378,7 +385,7 @@
                 overflow: auto;
             }
             .preview-tip {
-                font-size: 11px;
+                font-size: 13px;
                 color: var(--muted);
                 margin: 0 0 4px;
                 line-height: 1.3;
@@ -429,9 +436,25 @@
                 cursor: default;
                 pointer-events: none;
             }
+            .layout-meta-bar {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-size: 14px;
+                line-height: 1.45;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-top: 1px solid #e4edff;
+                text-align: center;
+            }
+            .toolbar-actions-inline {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: flex-end;
+            }
             .err {
                 color: #c62828;
-                font-size: 13px;
+                font-size: 15px;
                 padding: 4px 0;
                 flex-shrink: 0;
             }
@@ -505,7 +528,14 @@
                                 <input type="checkbox" id="chkCut" checked />
                                 裁切线
                             </label>
-                            <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
+                            <div>
+                                <span class="toolbar-sw-label">证件底色（冲印）</span>
+                                <div class="swatches" id="swatches"></div>
+                            </div>
+                            <div class="toolbar-actions-inline">
+                                <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
+                                <button type="button" class="btn btn-primary" id="btnPrint" disabled>打印排版</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -526,10 +556,6 @@
                                         规格
                                         <select id="presetSel"></select>
                                     </label>
-                                    <div>
-                                        <span class="toolbar-sw-label">背景</span>
-                                        <div class="swatches" id="swatches"></div>
-                                    </div>
                                     <label id="overlayWrap" style="display: none" class="field-grow">
                                         <span id="overlayLabel">底部加字</span>
                                         <input type="text" id="overlayText" name="overlayText" placeholder="可选，如姓名" maxlength="24" autocomplete="off" style="min-width: 0; width: 100%" />
@@ -608,6 +634,7 @@
                         <div id="previewWrap">
                             <canvas id="previewCanvas" style="display: none"></canvas>
                         </div>
+                        <div class="layout-meta-bar" id="layoutMetaBar"></div>
                     </div>
                 </section>
             </div>
@@ -771,10 +798,79 @@
                     var id = document.getElementById("paperSel").value;
                     for (var i = 0; i < PAPERS.length; i++) {
                         if (PAPERS[i].id === id) {
-                            return { w: cmToPx(PAPERS[i].wcm, dpi), h: cmToPx(PAPERS[i].hcm, dpi), label: PAPERS[i].label };
+                            return {
+                                w: cmToPx(PAPERS[i].wcm, dpi),
+                                h: cmToPx(PAPERS[i].hcm, dpi),
+                                label: PAPERS[i].label,
+                                wcm: PAPERS[i].wcm,
+                                hcm: PAPERS[i].hcm,
+                            };
                         }
                     }
-                    return { w: cmToPx(15.2, dpi), h: cmToPx(10.2, dpi), label: "" };
+                    return { w: cmToPx(15.2, dpi), h: cmToPx(10.2, dpi), label: "", wcm: 15.2, hcm: 10.2 };
+                }
+
+                function layoutSizeCaptionText(paperPx, dpi) {
+                    if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return "";
+                    return "打印尺寸 " + paperPx.wcm + "×" + paperPx.hcm + " cm · " + dpi + " DPI · 画布 " + paperPx.w + "×" + paperPx.h + " px";
+                }
+
+                function updateLayoutMetaBar() {
+                    var el = document.getElementById("layoutMetaBar");
+                    if (!el) return;
+                    var p = getPaperPx();
+                    el.textContent = layoutSizeCaptionText(p, getDpi()) || "请选择相纸与 DPI。";
+                }
+
+                function setLayoutExportEnabled(on) {
+                    document.getElementById("btnDl").disabled = !on;
+                    document.getElementById("btnPrint").disabled = !on;
+                }
+
+                function drawLayoutCaptionOnCanvas(ctx, paperPx, dpi, grid, cw, ch, gapPx, marginPx) {
+                    if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return;
+                    var pw = paperPx.w,
+                        ph = paperPx.h;
+                    var text = layoutSizeCaptionText(paperPx, dpi);
+                    var gridBottom = grid.oy + grid.rows * ch + Math.max(0, grid.rows - 1) * gapPx;
+                    var availBelow = ph - marginPx - gridBottom;
+                    var availAbove = grid.oy - marginPx;
+                    var fs = Math.round(clamp((dpi / 300) * 15, 12, Math.min(pw, ph) / 17));
+                    var lineH = fs * 1.4;
+                    var y;
+                    ctx.save();
+                    ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
+                    ctx.fillStyle = "rgba(48, 70, 110, 0.9)";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    if (availBelow >= lineH + 6) {
+                        y = gridBottom + availBelow / 2;
+                    } else if (availAbove >= lineH + 6) {
+                        y = marginPx + availAbove / 2;
+                    } else {
+                        fs = Math.max(10, Math.floor(fs * 0.7));
+                        ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
+                        ctx.shadowColor = "rgba(255,255,255,0.9)";
+                        ctx.shadowBlur = Math.max(2, Math.round(fs * 0.35));
+                        y = ph - Math.max(8, marginPx * 0.4);
+                    }
+                    ctx.fillText(text, pw / 2, y);
+                    ctx.restore();
+                }
+
+                function drawPlaceholderLayoutCaption(ctx, paperPx, dpi) {
+                    if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return;
+                    var pw = paperPx.w,
+                        ph = paperPx.h;
+                    var text = layoutSizeCaptionText(paperPx, dpi);
+                    var fs = Math.max(14, Math.min(40, Math.floor(Math.min(pw, ph) / 16)));
+                    ctx.save();
+                    ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
+                    ctx.fillStyle = "rgba(48, 70, 110, 0.88)";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "bottom";
+                    ctx.fillText(text, pw / 2, ph - Math.max(10, fs));
+                    ctx.restore();
                 }
 
                 function presetColors(p) {
@@ -1118,12 +1214,17 @@
                         ctx.textAlign = "center";
                         ctx.textBaseline = "middle";
                         ctx.fillText(msg, paper.w / 2, paper.h / 2);
+                        var sel = getPaperPx();
+                        var merge = { w: paper.w, h: paper.h, wcm: sel.wcm, hcm: sel.hcm, label: sel.label };
+                        drawPlaceholderLayoutCaption(ctx, merge, getDpi());
                         layoutCanvas = null;
                         canvas.style.display = "inline-block";
-                        document.getElementById("btnDl").disabled = true;
+                        setLayoutExportEnabled(false);
+                        updateLayoutMetaBar();
                     } catch (e2) {
                         console.error(e2);
                         showErr("排版预览画布创建失败，请尝试更换相纸或降低冲印 DPI。");
+                        updateLayoutMetaBar();
                     }
                 }
 
@@ -1175,10 +1276,12 @@
                         if (document.getElementById("chkCut").checked) {
                             drawCutLines(ctx, grid.ox, grid.oy, grid.cols, grid.rows, cw, ch, gapPx);
                         }
+                        drawLayoutCaptionOnCanvas(ctx, paper, dpi, grid, cw, ch, gapPx, marginPx);
 
                         layoutCanvas = canvas;
                         canvas.style.display = "inline-block";
-                        document.getElementById("btnDl").disabled = false;
+                        setLayoutExportEnabled(true);
+                        updateLayoutMetaBar();
                     } catch (err) {
                         console.error(err);
                         showErr("排版预览生成失败（画布过大或内存不足）。请换小相纸、降低 DPI 或缩小照片像素规格。");
@@ -1323,9 +1426,11 @@
                 document.getElementById("dpiSel").addEventListener("change", function () {
                     updatePresetSelectLabels();
                     syncCustomSizeRow();
+                    updateLayoutMetaBar();
                     rebuildSwatches();
                 });
                 document.getElementById("paperSel").addEventListener("change", function () {
+                    updateLayoutMetaBar();
                     scheduleLayoutRefresh(true);
                 });
                 function bindMarginGapCut() {
@@ -1350,13 +1455,39 @@
                 document.getElementById("customH").addEventListener("change", onCustomSizeInput);
                 document.getElementById("btnDl").addEventListener("click", function () {
                     if (!layoutCanvas) return;
+                    var p = getPaperPx();
+                    var dpi = getDpi();
+                    var wmm = Math.round(p.wcm * 10);
+                    var hmm = Math.round(p.hcm * 10);
+                    var name = "证件照排版_" + wmm + "x" + hmm + "mm_" + dpi + "dpi.png";
                     var a = document.createElement("a");
-                    a.download = "证件照排版.png";
+                    a.download = name;
                     a.href = layoutCanvas.toDataURL("image/png");
                     a.click();
                 });
+                document.getElementById("btnPrint").addEventListener("click", function () {
+                    if (!layoutCanvas) return;
+                    var dataUrl = layoutCanvas.toDataURL("image/png");
+                    var doc = window.open("");
+                    if (!doc) {
+                        showErr("无法打开打印窗口：请允许本站弹出窗口后重试。");
+                        return;
+                    }
+                    doc.document.open();
+                    doc.document.write(
+                        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>打印排版</title></head><body style="margin:0;padding:16px;text-align:center;background:#fff">'
+                    );
+                    doc.document.write(
+                        '<img src="' +
+                            dataUrl +
+                            '" style="max-width:100%;height:auto" alt="排版" onload="window.focus();setTimeout(function(){window.print();},50);" />'
+                    );
+                    doc.document.write("</body></html>");
+                    doc.document.close();
+                });
 
                 fillSelects();
+                updateLayoutMetaBar();
                 syncRotUI();
                 updatePreviewStageUI();
                 rebuildSwatches();

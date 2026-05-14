@@ -4,250 +4,569 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>单位换算工具</title>
+        <script src="../vendor/mathjs/math.js"></script>
+        <script src="libs/unit-convert-config.js"></script>
+        <script src="libs/unit-convert-engine.js"></script>
         <style>
-            * { box-sizing: border-box; }
+            /* 排版同 Ctool Unit.vue；视觉与 index / UUID 等 tool-nav 页面一致 */
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
             :root {
+                --card: #ffffff;
                 --bg: #f3f7ff;
-                --card: #fff;
-                --primary: #2f6bff;
-                --primary-2: #5b8dff;
                 --border: #dbe6ff;
                 --text: #1f2a44;
-                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --toolbar-bg: #f8fbff;
+                --toolbar-border: #e4edff;
+                --input-border: #cfdcf7;
+                --chip-bg: #edf3ff;
+                --chip-text: #3c4f78;
+                --chip-border: #d8e5ff;
+                --radius: 8px;
+                --focus-ring: 0 0 0 3px rgba(47, 107, 255, 0.15);
+                --row-hover: rgba(47, 107, 255, 0.06);
+                --form-item-height: 2rem;
+                --form-font-size: 12px;
             }
+            html,
             body {
-                margin: 0;
-                min-height: 100vh;
-                padding: 8px;
-                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-                background: var(--bg);
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
             }
             .panel {
-                height: calc(100vh - 16px);
+                flex: 1;
+                min-height: 0;
                 display: flex;
                 flex-direction: column;
                 background: var(--card);
                 border: 1px solid var(--border);
-                border-radius: 8px;
+                border-radius: 10px;
                 box-shadow: var(--shadow);
-                padding: 10px;
-                gap: 8px;
+                overflow: hidden;
             }
-            h3 { margin: 0; font-size: 14px; color: var(--text); }
-            .row {
+            .panel-toolbar {
+                flex-shrink: 0;
+                background: var(--toolbar-bg);
+                border-bottom: 1px solid var(--toolbar-border);
+                padding: 10px 10px 12px;
+            }
+            .ctool-page-option {
                 display: flex;
-                gap: 8px;
+                flex-direction: column;
                 align-items: center;
-                flex-wrap: wrap;
+                gap: 10px;
             }
-            label { font-size: 12px; color: #465a84; }
-            select, input, textarea {
-                border: 1px solid #cfdcf7;
-                border-radius: 8px;
-                padding: 6px 8px;
-                font-size: 12px;
+            .ctool-radio {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 6px;
+                max-width: 100%;
+            }
+            .ctool-radio .ctool-button {
+                display: inline-flex;
+                height: var(--form-item-height);
+            }
+            .ctool-radio .ctool-button button {
+                height: 100%;
+                padding: 0 calc(var(--form-font-size) * 0.85);
+                font-size: var(--form-font-size);
+                border: 1px solid var(--chip-border);
+                border-radius: var(--radius);
+                background: var(--chip-bg);
+                color: var(--chip-text);
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .ctool-radio .ctool-button button:hover,
+            .ctool-radio .ctool-button button:focus-visible {
+                border-color: var(--primary);
+                color: var(--primary);
                 outline: none;
             }
-            select:focus, input:focus, textarea:focus {
-                border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            .ctool-radio .ctool-button.is-active button {
+                border-color: transparent;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .result {
+            .ctool-controls-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 8px 10px;
+                width: 100%;
+            }
+            .ctool-field-label {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                font-size: var(--form-font-size);
+                color: var(--muted);
+            }
+            .ctool-field-label span {
+                line-height: 1;
+            }
+            .ctool-field-label input {
+                width: 170px;
+                height: var(--form-item-height);
+                text-align: center;
+                font-size: var(--form-font-size);
+                border: 1px solid var(--input-border);
+                border-radius: var(--radius);
+                background: var(--card);
+                color: var(--text);
+            }
+            .ctool-field-label input:focus {
+                border-color: var(--primary);
+                outline: none;
+                box-shadow: var(--focus-ring);
+            }
+            .ctool-select-wrap select {
+                min-width: 200px;
+                max-width: min(420px, 92vw);
+                height: var(--form-item-height);
+                font-size: var(--form-font-size);
+                border: 1px solid var(--input-border);
+                border-radius: var(--radius);
+                background: var(--card);
+                color: var(--text);
+                padding: 0 8px;
+            }
+            .ctool-select-wrap select:focus {
+                border-color: var(--primary);
+                outline: none;
+                box-shadow: var(--focus-ring);
+            }
+            .ctool-swap .ctool-button {
+                display: inline-flex;
+                height: var(--form-item-height);
+            }
+            .ctool-swap button {
+                height: 100%;
+                min-width: 2.5rem;
+                padding: 0 10px;
+                font-size: var(--form-font-size);
+                border: 1px solid var(--chip-border);
+                border-radius: var(--radius);
+                background: var(--chip-bg);
+                color: var(--chip-text);
+                cursor: pointer;
+            }
+            .ctool-swap button:hover:not(:disabled),
+            .ctool-swap button:focus-visible:not(:disabled) {
+                border-color: var(--primary);
+                color: var(--primary);
+                outline: none;
+            }
+            .ctool-swap button:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .panel-main {
                 flex: 1;
                 min-height: 0;
-                border: 1px solid #dbe7ff;
-                border-radius: 8px;
-                background: #f8fbff;
-                padding: 8px;
-                font-size: 12px;
-                line-height: 1.7;
-                overflow: auto;
-                white-space: pre-wrap;
+                display: flex;
+                flex-direction: column;
+                background: var(--toolbar-bg);
             }
-            .hint {
-                border: 1px solid #dbe7ff;
-                border-radius: 8px;
-                background: #f8fbff;
+            .ctool-card-body {
+                flex: 1;
+                min-height: 0;
                 padding: 8px;
-                font-size: 12px;
-                color: #33496f;
+                overflow-y: auto;
+            }
+            .ctool-unit-eq {
+                font-size: 1.5rem;
+                padding: 0 0.6rem;
+                color: #324a76;
+            }
+            .ctool-unit-all {
+                display: grid;
+                grid-template-columns: minmax(0px, 1fr) minmax(0px, 1fr);
+                width: 100%;
+                font-size: 0.875rem;
+            }
+            .ctool-unit-all > div {
+                cursor: pointer;
+                padding: 7px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #e8eef9;
+            }
+            .ctool-unit-all > div:hover {
+                background-color: var(--row-hover);
+            }
+            .ctool-unit-all > div > span:last-child {
+                color: var(--muted);
+                font-size: 0.75rem;
+                text-align: right;
+                margin-left: 8px;
+                word-break: break-word;
+            }
+            .ctool-unit-all > div > span:first-child {
+                color: var(--primary);
+                font-weight: 600;
+                word-break: break-all;
+            }
+            .ctool-unit-simple {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 120px;
+                padding: 16px 8px;
+            }
+            .ctool-unit-simple-inner {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                justify-content: center;
+                gap: 4px 6px;
+                max-width: 100%;
+            }
+            .ctool-unit-simple-value {
+                font-size: 2rem;
+                font-weight: 500;
+                cursor: pointer;
+                color: var(--primary);
+            }
+            .ctool-unit-simple-title {
+                font-size: 1.2rem;
+                color: var(--muted);
+                max-width: 36vw;
+                word-break: break-word;
+            }
+            @media (max-width: 640px) {
+                .ctool-unit-simple-title {
+                    max-width: 85vw;
+                }
+                .ctool-select-wrap select {
+                    max-width: 100%;
+                    min-width: 0;
+                    width: 100%;
+                }
             }
         </style>
     </head>
     <body>
-        <div class="panel">
-            <h3>单位换算工具</h3>
-            <div class="row">
-                <label for="category">类别</label>
-                <select id="category"></select>
-                <label for="fromUnit">从</label>
-                <select id="fromUnit"></select>
-                <label for="toUnit">到</label>
-                <select id="toUnit"></select>
+        <div class="page">
+            <div class="panel">
+                <div class="panel-toolbar">
+                    <div class="ctool-page-option">
+                        <div id="typeRadios" class="ctool-radio" role="radiogroup" aria-label="换算类别"></div>
+                        <div class="ctool-controls-row">
+                            <label class="ctool-field-label" for="inputValue">
+                                <span>输入</span>
+                                <input id="inputValue" type="text" inputmode="decimal" value="1" autocomplete="off" />
+                            </label>
+                            <div class="ctool-select-wrap">
+                                <select id="fromUnit" aria-label="从单位"></select>
+                            </div>
+                            <div class="ctool-swap">
+                                <div class="ctool-button">
+                                    <button type="button" id="btnSwap" title="交换「从」与「到」">&lt;-&gt;</button>
+                                </div>
+                            </div>
+                            <div class="ctool-select-wrap">
+                                <select id="toUnit" aria-label="到单位"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-main">
+                    <div id="mainResult" class="ctool-card-body"></div>
+                </div>
             </div>
-            <div class="row">
-                <label for="inputValue">输入值</label>
-                <input id="inputValue" type="number" step="any" value="1" />
-                <label for="precision">小数位</label>
-                <input id="precision" type="number" min="0" max="12" value="6" />
-            </div>
-            <div id="mainResult" class="hint">结果：--</div>
-            <div id="allResult" class="result"></div>
         </div>
         <script>
-            const CATEGORY_DEFS = {
-                "时间": {
-                    base: "秒",
-                    units: {
-                        "毫秒": 0.001,
-                        "秒": 1,
-                        "分钟": 60,
-                        "小时": 3600,
-                        "天": 86400,
-                        "周": 604800
-                    }
-                },
-                "长度": {
-                    base: "米",
-                    units: {
-                        "毫米": 0.001,
-                        "厘米": 0.01,
-                        "米": 1,
-                        "千米": 1000,
-                        "英寸": 0.0254,
-                        "英尺": 0.3048
-                    }
-                },
-                "面积": {
-                    base: "平方米",
-                    units: {
-                        "平方厘米": 0.0001,
-                        "平方米": 1,
-                        "平方千米": 1000000,
-                        "公顷": 10000,
-                        "亩": 666.6666666667
-                    }
-                },
-                "重量": {
-                    base: "千克",
-                    units: {
-                        "毫克": 0.000001,
-                        "克": 0.001,
-                        "千克": 1,
-                        "吨": 1000,
-                        "磅": 0.45359237
-                    }
-                },
-                "温度": {
-                    base: "摄氏度",
-                    units: {
-                        "摄氏度": { toBase: function (v) { return v; }, fromBase: function (v) { return v; } },
-                        "华氏度": { toBase: function (v) { return (v - 32) * 5 / 9; }, fromBase: function (v) { return v * 9 / 5 + 32; } },
-                        "开尔文": { toBase: function (v) { return v - 273.15; }, fromBase: function (v) { return v + 273.15; } }
-                    }
-                },
-                "功率": {
-                    base: "瓦",
-                    units: {
-                        "毫瓦": 0.001,
-                        "瓦": 1,
-                        "千瓦": 1000,
-                        "马力": 745.6998715823
-                    }
-                }
-            };
+            (function () {
+                var eng = window.UnitConvertEngine;
+                var cfg = window.UnitConvertConfig;
 
-            function formatNum(value, precision) {
-                if (!isFinite(value)) return "NaN";
-                const p = Math.max(0, Math.min(12, precision));
-                return Number(value.toFixed(p)).toString();
-            }
+                var TYPE_ZH = {
+                    length: "长度",
+                    area: "面积",
+                    volume: "体积",
+                    weight: "质量",
+                    temperature: "温度",
+                    pressure: "压强",
+                    power: "功率",
+                    work: "功/能",
+                    density: "密度",
+                    strength: "力",
+                    time: "时间",
+                    speed: "速度",
+                    byte: "数据存储",
+                    angle: "角度",
+                };
 
-            function isTempCategory(cat) {
-                return cat === "温度";
-            }
+                var GROUP_ZH = {
+                    metric_system: "公制",
+                    imperial_units: "英制",
+                    chinese_units: "市制",
+                    angle_units: "角度",
+                    radian_units: "弧度",
+                    "": "",
+                };
 
-            function convertValue(cat, value, fromUnit, toUnit) {
-                if (isTempCategory(cat)) {
-                    const u = CATEGORY_DEFS[cat].units;
-                    const baseVal = u[fromUnit].toBase(value);
-                    return u[toUnit].fromBase(baseVal);
-                }
-                const units = CATEGORY_DEFS[cat].units;
-                const baseVal = value * units[fromUnit];
-                return baseVal / units[toUnit];
-            }
-
-            const categoryEl = document.getElementById("category");
-            const fromUnitEl = document.getElementById("fromUnit");
-            const toUnitEl = document.getElementById("toUnit");
-            const inputValueEl = document.getElementById("inputValue");
-            const precisionEl = document.getElementById("precision");
-            const mainResultEl = document.getElementById("mainResult");
-            const allResultEl = document.getElementById("allResult");
-
-            function fillCategory() {
-                categoryEl.innerHTML = "";
-                Object.keys(CATEGORY_DEFS).forEach(function (cat) {
-                    const opt = document.createElement("option");
-                    opt.value = cat;
-                    opt.textContent = cat;
-                    categoryEl.appendChild(opt);
-                });
-            }
-
-            function fillUnits() {
-                const cat = categoryEl.value;
-                const units = Object.keys(CATEGORY_DEFS[cat].units);
-                fromUnitEl.innerHTML = "";
-                toUnitEl.innerHTML = "";
-                units.forEach(function (unit) {
-                    const fromOpt = document.createElement("option");
-                    fromOpt.value = unit;
-                    fromOpt.textContent = unit;
-                    fromUnitEl.appendChild(fromOpt);
-                    const toOpt = document.createElement("option");
-                    toOpt.value = unit;
-                    toOpt.textContent = unit;
-                    toUnitEl.appendChild(toOpt);
-                });
-                if (units.length > 1) toUnitEl.value = units[1];
-            }
-
-            function runConvert() {
-                const cat = categoryEl.value;
-                const fromUnit = fromUnitEl.value;
-                const toUnit = toUnitEl.value;
-                const input = Number(inputValueEl.value);
-                const precision = Number(precisionEl.value) || 6;
-                if (!isFinite(input)) {
-                    mainResultEl.textContent = "结果：请输入有效数字";
-                    allResultEl.textContent = "";
-                    return;
+                function unitFullName(typeKey, unitKey) {
+                    var u = eng.getUnit(typeKey, unitKey);
+                    var gk = eng.getGroupByUnit(typeKey, unitKey);
+                    var prefix = GROUP_ZH[gk] ? GROUP_ZH[gk] + " - " : "";
+                    return prefix + u.unit + " (" + u.key + ")";
                 }
 
-                const value = convertValue(cat, input, fromUnit, toUnit);
-                mainResultEl.textContent = "结果：" + formatNum(input, precision) + " " + fromUnit + " = " + formatNum(value, precision) + " " + toUnit;
+                function getCurrentTypeKey() {
+                    var active = document.querySelector("#typeRadios .ctool-button.is-active");
+                    return active ? active.getAttribute("data-type") : cfg[0].key;
+                }
 
-                const lines = [];
-                const units = Object.keys(CATEGORY_DEFS[cat].units);
-                units.forEach(function (unit) {
-                    const v = convertValue(cat, input, fromUnit, unit);
-                    lines.push(formatNum(input, precision) + " " + fromUnit + " = " + formatNum(v, precision) + " " + unit);
+                function renderTypeRadios() {
+                    var host = document.getElementById("typeRadios");
+                    host.innerHTML = "";
+                    for (var i = 0; i < cfg.length; i++) {
+                        var t = cfg[i];
+                        var wrap = document.createElement("div");
+                        wrap.className = "ctool-button";
+                        wrap.setAttribute("data-type", t.key);
+                        var btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.setAttribute("role", "radio");
+                        btn.setAttribute("aria-checked", "false");
+                        btn.textContent = TYPE_ZH[t.key] || t.key;
+                        btn.addEventListener("click", function (ev) {
+                            var typeKey = ev.currentTarget.closest(".ctool-button").getAttribute("data-type");
+                            setActiveType(typeKey);
+                        });
+                        wrap.appendChild(btn);
+                        host.appendChild(wrap);
+                    }
+                }
+
+                function setActiveType(typeKey) {
+                    var host = document.getElementById("typeRadios");
+                    var wraps = host.querySelectorAll(".ctool-button");
+                    for (var i = 0; i < wraps.length; i++) {
+                        var on = wraps[i].getAttribute("data-type") === typeKey;
+                        wraps[i].classList.toggle("is-active", on);
+                        var b = wraps[i].querySelector("button");
+                        if (b) {
+                            b.setAttribute("aria-checked", on ? "true" : "false");
+                        }
+                    }
+                    fillFromUnits(typeKey);
+                    fillToUnits(typeKey);
+                    runConvert();
+                }
+
+                function fillFromUnits(typeKey) {
+                    var sel = document.getElementById("fromUnit");
+                    sel.innerHTML = "";
+                    var t = eng.getType(typeKey);
+                    for (var gi = 0; gi < t.group.length; gi++) {
+                        var g = t.group[gi];
+                        for (var li = 0; li < g.list.length; li++) {
+                            var uk = g.list[li];
+                            var opt = document.createElement("option");
+                            opt.value = uk;
+                            opt.textContent = unitFullName(typeKey, uk);
+                            sel.appendChild(opt);
+                        }
+                    }
+                    sel.value = t.main;
+                }
+
+                function fillToUnits(typeKey) {
+                    var sel = document.getElementById("toUnit");
+                    sel.innerHTML = "";
+                    var allOpt = document.createElement("option");
+                    allOpt.value = "__all__";
+                    allOpt.textContent = "全部";
+                    sel.appendChild(allOpt);
+                    var t = eng.getType(typeKey);
+                    for (var gi = 0; gi < t.group.length; gi++) {
+                        var g = t.group[gi];
+                        for (var li = 0; li < g.list.length; li++) {
+                            var uk = g.list[li];
+                            var opt = document.createElement("option");
+                            opt.value = uk;
+                            opt.textContent = unitFullName(typeKey, uk);
+                            sel.appendChild(opt);
+                        }
+                    }
+                    sel.value = "__all__";
+                }
+
+                function parseInput(str) {
+                    var s = (str || "").trim().replace(/,/g, "");
+                    if (s === "" || s === "-" || s === "." || s === "-.") {
+                        return NaN;
+                    }
+                    return Number(s);
+                }
+
+                function copyText(text) {
+                    if (!text) {
+                        return;
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).catch(function () {});
+                    } else {
+                        var ta = document.createElement("textarea");
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try {
+                            document.execCommand("copy");
+                        } catch (e) {}
+                        document.body.removeChild(ta);
+                    }
+                }
+
+                function escapeAttr(s) {
+                    return String(s)
+                        .replace(/&/g, "&amp;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+                }
+
+                function escHtml(s) {
+                    return String(s)
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+                }
+
+                function bindCopy(root, selector) {
+                    var nodes = root.querySelectorAll(selector || "[data-copy]");
+                    for (var i = 0; i < nodes.length; i++) {
+                        nodes[i].addEventListener("click", function () {
+                            copyText(this.getAttribute("data-copy"));
+                        });
+                    }
+                }
+
+                function renderSimple(typeKey, inputStr, fromKey, toKey) {
+                    var wrap = document.getElementById("mainResult");
+                    var val = eng.calculate(typeKey, inputStr, fromKey, toKey);
+                    var nameFrom = unitFullName(typeKey, fromKey);
+                    var nameTo = unitFullName(typeKey, toKey);
+                    wrap.innerHTML =
+                        '<div class="ctool-unit-simple"><div class="ctool-unit-simple-inner">' +
+                        '<span class="ctool-unit-simple-value" data-copy="' +
+                        escapeAttr(inputStr) +
+                        '">' +
+                        escHtml(inputStr) +
+                        "</span>" +
+                        '<span class="ctool-unit-simple-title">' +
+                        escHtml(nameFrom) +
+                        "</span>" +
+                        '<span class="ctool-unit-eq">=</span>' +
+                        '<span class="ctool-unit-simple-value" data-copy="' +
+                        escapeAttr(val) +
+                        '">' +
+                        escHtml(val) +
+                        "</span>" +
+                        '<span class="ctool-unit-simple-title">' +
+                        escHtml(nameTo) +
+                        "</span>" +
+                        "</div></div>";
+                    bindCopy(wrap);
+                }
+
+                function renderAll(typeKey, inputStr, fromKey) {
+                    var wrap = document.getElementById("mainResult");
+                    var t = eng.getType(typeKey);
+                    var html = '<div class="ctool-unit-all">';
+                    for (var ui = 0; ui < t.unit.length; ui++) {
+                        var u = t.unit[ui];
+                        var val = eng.calculate(typeKey, inputStr, fromKey, u.key);
+                        var name = unitFullName(typeKey, u.key);
+                        html +=
+                            '<div data-copy="' +
+                            escapeAttr(val) +
+                            '"><span>' +
+                            escHtml(val) +
+                            '</span><span>' +
+                            escHtml(name) +
+                            "</span></div>";
+                    }
+                    html += "</div>";
+                    wrap.innerHTML = html;
+                    var rows = wrap.querySelectorAll(".ctool-unit-all > div");
+                    for (var r = 0; r < rows.length; r++) {
+                        rows[r].addEventListener("click", function () {
+                            copyText(this.getAttribute("data-copy"));
+                        });
+                    }
+                }
+
+                function runConvert() {
+                    var typeKey = getCurrentTypeKey();
+                    var fromKey = document.getElementById("fromUnit").value;
+                    var toSel = document.getElementById("toUnit").value;
+                    var raw = document.getElementById("inputValue").value;
+                    var inputNum = parseInput(raw);
+
+                    document.getElementById("btnSwap").disabled = toSel === "__all__";
+
+                    if (!isFinite(inputNum)) {
+                        document.getElementById("mainResult").innerHTML =
+                            '<div class="ctool-unit-simple"><div class="ctool-unit-simple-inner"><span class="ctool-unit-simple-title">请输入有效数值</span></div></div>';
+                        return;
+                    }
+
+                    var inputStr = String(raw).trim().replace(/,/g, "");
+
+                    if (toSel === "__all__") {
+                        renderAll(typeKey, inputStr, fromKey);
+                    } else {
+                        renderSimple(typeKey, inputStr, fromKey, toSel);
+                    }
+                }
+
+                renderTypeRadios();
+                setActiveType(cfg[0].key);
+
+                document.getElementById("fromUnit").addEventListener("change", runConvert);
+                document.getElementById("toUnit").addEventListener("change", runConvert);
+                document.getElementById("inputValue").addEventListener("input", runConvert);
+                document.getElementById("btnSwap").addEventListener("click", function () {
+                    var fromEl = document.getElementById("fromUnit");
+                    var toEl = document.getElementById("toUnit");
+                    if (toEl.value === "__all__") {
+                        return;
+                    }
+                    var a = fromEl.value;
+                    fromEl.value = toEl.value;
+                    toEl.value = a;
+                    runConvert();
                 });
-                allResultEl.textContent = lines.join("\n");
-            }
-
-            fillCategory();
-            fillUnits();
-            runConvert();
-
-            categoryEl.addEventListener("change", function () { fillUnits(); runConvert(); });
-            fromUnitEl.addEventListener("change", runConvert);
-            toUnitEl.addEventListener("change", runConvert);
-            inputValueEl.addEventListener("input", runConvert);
-            precisionEl.addEventListener("input", runConvert);
-            document.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+                document.addEventListener("contextmenu", function (event) {
+                    event.preventDefault();
+                });
+            })();
         </script>
     </body>
 </html>

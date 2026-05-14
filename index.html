@@ -584,12 +584,21 @@
                 { id: "tab15", name: "统一社会信用代码生成", category: "生成", path: "pages/统一社会信用代码生成工具.html", keywords: ["统一社会信用代码", "社会信用代码", "信用代码", "生成", "校验"] },
                 { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
                 { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "比较", "对比", "交集", "差异", "compare", "set", "diff"] },
-                { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "重量", "温度", "功率"] },
+                { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "体积", "质量", "温度", "压强", "功率", "能量", "密度", "力", "速度", "字节", "角度"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
                 { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
                 { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
                 { id: "tab25", name: "RSA 加解密", category: "加解密", path: "pages/RSA加解密工具.html", keywords: ["rsa", "pem", "公钥", "私钥", "加密", "解密", "jsencrypt", "pkcs", "离线"] },
                 { id: "tab26", name: "HMAC", category: "加解密", path: "pages/HMAC工具.html", keywords: ["hmac", "sha256", "sha1", "md5", "消息认证", "密钥", "签名", "离线"] },
+                { id: "tab28", name: "Base64 编解码", category: "编解码", path: "pages/Base64编解码工具.html", keywords: ["base64", "编码", "解码", "离线"] },
+                { id: "tab29", name: "URL 编解码", category: "编解码", path: "pages/URL编解码工具.html", keywords: ["url", "encodeURIComponent", "decodeURIComponent", "编码", "解码", "离线"] },
+                { id: "tab30", name: "Unicode 转义", category: "编解码", path: "pages/Unicode转义编解码工具.html", keywords: ["unicode", "\\u", "U+", "html entity", "css entity", "编码", "解码", "离线"] },
+                { id: "tab31", name: "JWT 解析", category: "编解码", path: "pages/JWT解析工具.html", keywords: ["jwt", "json", "token", "header", "payload", "离线"] },
+                { id: "tab32", name: "十六进制编解码", category: "编解码", path: "pages/十六进制编解码工具.html", keywords: ["hex", "十六进制", "utf-8", "编码", "解码", "离线"] },
+                { id: "tab33", name: "HTML 实体编解码", category: "编解码", path: "pages/HTML实体编解码工具.html", keywords: ["html", "entity", "&amp;", "编码", "解码", "离线"] },
+                { id: "tab34", name: "GZIP / Deflate", category: "编解码", path: "pages/GZIP编解码工具.html", keywords: ["gzip", "deflate", "压缩", "解压", "pako", "base64", "离线"] },
+                { id: "tab35", name: "ASN.1 DER 解析", category: "编解码", path: "pages/ASN1解析工具.html", keywords: ["asn1", "der", "证书", "x509", "xml", "离线"] },
+                { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
                 { id: "tab27", name: "证件照冲印排版", category: "其他", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序） */
@@ -1015,7 +1024,7 @@
                 }
 
                 /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
-                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "其他"];
+                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "编解码", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
                 appendToolGroup("常用", commonTools, {});
 
