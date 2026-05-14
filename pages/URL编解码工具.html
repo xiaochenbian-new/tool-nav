@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>URL 编解码</title>
+        <script src="libs/codec-url-iife.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-toolbar">
+                <div class="codec-seg" role="tablist">
+                    <button type="button" class="active" data-tab="enc">URL 编码</button>
+                    <button type="button" data-tab="dec">URL 解码</button>
+                </div>
+            </div>
+            <div class="codec-card">
+                <div id="p-enc" class="codec-panel">
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>编码</h3>
+                            <div class="codec-hint">使用 <code>strict-uri-encode</code> 思路实现（<code>libs/codec-url-iife.js</code>），适用于 URI 组件编码。</div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="encIn" class="codec-ta codec-ta-grow" placeholder="例如：q=你好&x=1"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="encOut" class="codec-ta codec-ta-grow" readonly placeholder="编码结果"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="p-dec" class="codec-panel" hidden>
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>解码</h3>
+                            <div class="codec-hint">使用 <code>decode-uri-component</code> 解码百分号编码。</div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="decIn" class="codec-ta codec-ta-grow" placeholder="例如 %E4%BD%A0%E5%A5%BD"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="decOut" class="codec-ta codec-ta-grow" readonly placeholder="解码结果"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof window.ctoolStrictUriEncode !== "function") {
+                    document.querySelector(".codec-card").innerHTML = "<p style='padding:12px'>缺少 libs/codec-url-iife.js</p>";
+                    return;
+                }
+                var encIn = document.getElementById("encIn");
+                var encOut = document.getElementById("encOut");
+                var decIn = document.getElementById("decIn");
+                var decOut = document.getElementById("decOut");
+                function runEnc() {
+                    try {
+                        encOut.value = encIn.value === "" ? "" : window.ctoolStrictUriEncode(encIn.value);
+                    } catch (e) {
+                        encOut.value = String(e && e.message ? e.message : e);
+                    }
+                }
+                function runDec() {
+                    try {
+                        decOut.value = decIn.value === "" ? "" : window.ctoolDecodeUriComponent(decIn.value);
+                    } catch (e) {
+                        decOut.value = String(e && e.message ? e.message : e);
+                    }
+                }
+                encIn.addEventListener("input", runEnc);
+                decIn.addEventListener("input", runDec);
+                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        var t = btn.getAttribute("data-tab");
+                        document.getElementById("p-enc").hidden = t !== "enc";
+                        document.getElementById("p-dec").hidden = t !== "dec";
+                    });
+                });
+                runEnc();
+                runDec();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

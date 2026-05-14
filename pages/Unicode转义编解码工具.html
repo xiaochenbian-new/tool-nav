@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Unicode 转义编解码</title>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-toolbar">
+                <div class="codec-seg" role="tablist">
+                    <button type="button" class="active" data-tab="enc">Unicode 编码</button>
+                    <button type="button" data-tab="dec">Unicode 解码</button>
+                </div>
+            </div>
+            <div class="codec-card">
+                <div id="p-enc" class="codec-panel">
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>Unicode 转义编码</h3>
+                            <div class="codec-hint">上方为输入与选项，下方为输出；支持 text / base64 / hex 输入。</div>
+                            <div class="codec-toolbar-inner">
+                                <label>输入类型 <select id="encSrc" class="codec-select"><option value="text">text</option><option value="base64">base64</option><option value="hex">hex</option></select></label>
+                                <label><input type="file" id="encFile" /> 文件（UTF-8 解码后再编码）</label>
+                            </div>
+                            <div class="codec-toolbar-inner">
+                                <label>模式 <select id="encType" class="codec-select"></select></label>
+                                <label><input type="checkbox" id="ignoreAscii" checked /> 忽略 ASCII</label>
+                            </div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="plainEnc" class="codec-ta codec-ta-grow" placeholder="文本；或按输入类型粘贴 base64 / hex"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="escOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="p-dec" class="codec-panel" hidden>
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>Unicode 转义解码</h3>
+                            <div class="codec-hint">上为转义串与模式，下为解码结果。</div>
+                            <div class="codec-toolbar-inner">
+                                <label>模式 <select id="decType" class="codec-select"></select></label>
+                            </div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="escIn" class="codec-ta codec-ta-grow" placeholder="例如 \\u4e2d 或 U+4E2D"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="plainDec" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                var TYPES = [
+                    { v: "unicode_point_default", n: "\\uXXXX（默认）" },
+                    { v: "unicode_point_wide", n: "\\u 可变长十六进制" },
+                    { v: "unicode_point_wide_brace", n: "\\u{…} 花括号" },
+                    { v: "unicode_number", n: "U+XXXX" },
+                    { v: "html_entity_10", n: "HTML 十进制 &#…;" },
+                    { v: "html_entity_16", n: "HTML 十六进制 &#x…;" },
+                    { v: "css_entity", n: "CSS \\xx" },
+                ];
+                var noIgnore = { unicode_point_wide: 1, unicode_number: 1, css_entity: 1 };
+                var Unicode = {
+                    repair: function (str) {
+                        return str.length > 3 ? str : "0000".slice(str.length) + str;
+                    },
+                    decode: function (str, type) {
+                        var err = function (item, fn) {
+                            try {
+                                return fn();
+                            } catch (e) {
+                                throw new Error(item + " decode error:" + e);
+                            }
+                        };
+                        switch (type) {
+                            case "unicode_point_default":
+                                return str.replace(/\\[Uu][0-9a-fA-F]{4}/g, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt("0x" + item.toLowerCase().replace(/\\u/g, ""), 16));
+                                    });
+                                });
+                            case "unicode_point_wide":
+                                return str.replace(/\\[Uu][0-9a-fA-F]{1,6}/g, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt("0x" + item.toLowerCase().replace(/\\u/g, ""), 16));
+                                    });
+                                });
+                            case "unicode_point_wide_brace":
+                                return str.replace(/\\[Uu]\{[0-9a-fA-F]{1,6}\}/g, function (item) {
+                                    return err(item, function () {
+                                        var h = item.toLowerCase().replace(/\\u/g, "").replace("{", "").replace("}", "");
+                                        return String.fromCodePoint(parseInt("0x" + h, 16));
+                                    });
+                                });
+                            case "unicode_number":
+                                return str.replace(/U\+[0-9a-fA-F]{1,6}/g, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt("0x" + item.replace(/U\+/i, "").toLowerCase(), 16));
+                                    });
+                                });
+                            case "html_entity_10":
+                                return str.replace(/&#[0-9]+;/g, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt(item.replace("&#", "").replace(";", ""), 10));
+                                    });
+                                });
+                            case "html_entity_16":
+                                return str.replace(/&#x[0-9a-fA-F]{1,6};/gi, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt("0x" + item.replace(/&#x/gi, "").replace(";", "").toLowerCase(), 16));
+                                    });
+                                });
+                            case "css_entity":
+                                return str.replace(/\\[0-9a-fA-F]{1,6}/g, function (item) {
+                                    return err(item, function () {
+                                        return String.fromCodePoint(parseInt("0x" + item.replace("\\", "").toLowerCase(), 16));
+                                    });
+                                });
+                            default:
+                                throw new Error("decode type error");
+                        }
+                    },
+                    encode: function (str, type, ignore_ascii) {
+                        var code = [];
+                        for (var i = 0; i < str.length; ) {
+                            var cp = str.codePointAt(i);
+                            var charLen = cp > 65535 ? 2 : 1;
+                            var hexStr = cp.toString(16);
+                            var decStr = cp.toString(10);
+                            if (hexStr.length < 3 && ignore_ascii && !noIgnore[type]) {
+                                code.push(str.slice(i, i + charLen));
+                                i += charLen;
+                                continue;
+                            }
+                            var hexRepairStr = this.repair(hexStr);
+                            switch (type) {
+                                case "unicode_point_default":
+                                    if (hexStr.length > 4) {
+                                        for (var j = 0; j < charLen; j++) {
+                                            code.push("\\u" + this.repair(str.charCodeAt(i + j).toString(16)));
+                                        }
+                                    } else {
+                                        code.push("\\u" + hexRepairStr);
+                                    }
+                                    break;
+                                case "unicode_point_wide":
+                                    code.push("\\u" + hexRepairStr);
+                                    break;
+                                case "unicode_point_wide_brace":
+                                    code.push("\\u{" + hexStr + "}");
+                                    break;
+                                case "unicode_number":
+                                    code.push("U+" + hexRepairStr.toUpperCase());
+                                    break;
+                                case "html_entity_10":
+                                    code.push("&#" + decStr + ";");
+                                    break;
+                                case "html_entity_16":
+                                    code.push("&#x" + hexStr + ";");
+                                    break;
+                                case "css_entity":
+                                    code.push("\\" + hexRepairStr);
+                                    break;
+                                default:
+                                    throw new Error("encode type error");
+                            }
+                            i += charLen;
+                        }
+                        return code.join("");
+                    },
+                };
+
+                var encType = document.getElementById("encType");
+                var decType = document.getElementById("decType");
+                TYPES.forEach(function (t) {
+                    var o1 = document.createElement("option");
+                    o1.value = t.v;
+                    o1.textContent = t.n;
+                    encType.appendChild(o1);
+                    var o2 = document.createElement("option");
+                    o2.value = t.v;
+                    o2.textContent = t.n;
+                    decType.appendChild(o2);
+                });
+                encType.value = "unicode_point_default";
+                decType.value = "unicode_point_default";
+
+                function normalizeHex(s) {
+                    return (s || "").replace(/0x/gi, "").replace(/[^0-9a-fA-F]/g, "");
+                }
+                function hexToUtf8(hex) {
+                    if (hex.length % 2 !== 0) throw new Error("hex 长度须为偶数");
+                    var u8 = new Uint8Array(hex.length / 2);
+                    for (var i = 0; i < u8.length; i++) u8[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+                    return new TextDecoder("utf-8", { fatal: false }).decode(u8);
+                }
+                function b64ToUtf8(s) {
+                    var t = (s || "").replace(/\s+/g, "");
+                    if (/^data:[^;]+;base64,/i.test(t)) t = t.split(",").pop() || "";
+                    var bin = atob(t);
+                    var u8 = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    return new TextDecoder("utf-8", { fatal: false }).decode(u8);
+                }
+                var encFileStr = null;
+                function encoderInputString() {
+                    if (encFileStr !== null) return encFileStr;
+                    var raw = document.getElementById("plainEnc").value;
+                    var src = document.getElementById("encSrc").value;
+                    if (src === "base64") return b64ToUtf8(raw);
+                    if (src === "hex") return hexToUtf8(normalizeHex(raw));
+                    return raw;
+                }
+                function syncIgnore() {
+                    var t = encType.value;
+                    document.getElementById("ignoreAscii").disabled = !!noIgnore[t];
+                }
+                function runEnc() {
+                    try {
+                        var ig = document.getElementById("ignoreAscii").checked && !noIgnore[encType.value];
+                        document.getElementById("escOut").value = Unicode.encode(encoderInputString(), encType.value, ig);
+                    } catch (e) {
+                        document.getElementById("escOut").value = String(e && e.message ? e.message : e);
+                    }
+                }
+                function runDec() {
+                    try {
+                        document.getElementById("plainDec").value = Unicode.decode(document.getElementById("escIn").value, decType.value);
+                    } catch (e) {
+                        document.getElementById("plainDec").value = String(e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("plainEnc").addEventListener("input", function () {
+                    encFileStr = null;
+                    runEnc();
+                });
+                document.getElementById("encSrc").addEventListener("change", function () {
+                    encFileStr = null;
+                    runEnc();
+                });
+                document.getElementById("encFile").addEventListener("change", function (ev) {
+                    var f = ev.target.files && ev.target.files[0];
+                    encFileStr = null;
+                    if (!f) {
+                        runEnc();
+                        return;
+                    }
+                    var r = new FileReader();
+                    r.onload = function () {
+                        encFileStr = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(r.result));
+                        runEnc();
+                    };
+                    r.readAsArrayBuffer(f);
+                });
+                encType.addEventListener("change", function () {
+                    syncIgnore();
+                    runEnc();
+                });
+                document.getElementById("ignoreAscii").addEventListener("change", runEnc);
+                document.getElementById("escIn").addEventListener("input", runDec);
+                decType.addEventListener("change", runDec);
+                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        var t = btn.getAttribute("data-tab");
+                        document.getElementById("p-enc").hidden = t !== "enc";
+                        document.getElementById("p-dec").hidden = t !== "dec";
+                    });
+                });
+                syncIgnore();
+                runEnc();
+                runDec();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

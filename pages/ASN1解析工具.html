@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>ASN.1 DER 解析</title>
+        <script src="libs/asn1-der-tool.bundle.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-card">
+                <div class="codec-panel-inner">
+                    <div class="codec-io-top">
+                        <h3>ASN.1 DER → XML</h3>
+                        <div class="codec-hint">输入十六进制或 Base64（自动识别）；输出 DER 结构的 XML。</div>
+                        <div class="codec-toolbar-inner">
+                            <span style="font-size: 13px; color: var(--muted)">输入格式</span>
+                            <label><input type="radio" name="fmt" value="auto" checked /> 自动</label>
+                            <label><input type="radio" name="fmt" value="hex" /> 十六进制</label>
+                            <label><input type="radio" name="fmt" value="b64" /> Base64</label>
+                        </div>
+                        <div class="codec-lbl">输入</div>
+                        <textarea id="derIn" class="codec-ta codec-ta-grow" placeholder="例如 3082… 或 MII…"></textarea>
+                    </div>
+                    <div class="codec-io-bottom">
+                        <div class="codec-lbl codec-lbl--title">解析结果</div>
+                        <textarea id="xmlOut" class="codec-ta codec-ta-grow" readonly placeholder="—" style="white-space: pre"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof window.ASN1 === "undefined" || typeof window.ASN1TOXML === "undefined") {
+                    document.getElementById("xmlOut").value = "未加载 asn1-der-tool.bundle.js";
+                    return;
+                }
+                function normalizeHex(s) {
+                    return (s || "").replace(/0x/gi, "").replace(/[^0-9a-fA-F]/g, "");
+                }
+                function looksLikeHex(s) {
+                    var t = normalizeHex(s);
+                    return t.length > 0 && /^[0-9a-fA-F]+$/.test(t) && t.length % 2 === 0;
+                }
+                function hexToU8(hex) {
+                    var u8 = new Uint8Array(hex.length / 2);
+                    for (var i = 0; i < u8.length; i++) {
+                        u8[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+                    }
+                    return u8;
+                }
+                function b64ToU8(s) {
+                    var t = (s || "").replace(/\s+/g, "");
+                    var bin = atob(t);
+                    var u8 = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    return u8;
+                }
+                function run() {
+                    var raw = document.getElementById("derIn").value.trim();
+                    var out = document.getElementById("xmlOut");
+                    out.value = "";
+                    if (!raw) return;
+                    var fmt = (document.querySelector("input[name=fmt]:checked") || {}).value || "auto";
+                    var u8;
+                    try {
+                        if (fmt === "hex") {
+                            u8 = hexToU8(normalizeHex(raw));
+                        } else if (fmt === "b64") {
+                            u8 = b64ToU8(raw);
+                        } else {
+                            if (looksLikeHex(raw)) u8 = hexToU8(normalizeHex(raw));
+                            else u8 = b64ToU8(raw);
+                        }
+                        var asn1 = window.ASN1.decode(u8);
+                        out.value = window.ASN1TOXML.decode2Xml(asn1);
+                    } catch (e) {
+                        out.value = "解析失败: " + (e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("derIn").addEventListener("input", run);
+                Array.prototype.forEach.call(document.querySelectorAll("input[name=fmt]"), function (r) {
+                    r.addEventListener("change", run);
+                });
+                run();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

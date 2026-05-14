@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>GZIP / Deflate 编解码</title>
+        <script src="libs/pako.min.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-toolbar">
+                <div class="codec-seg" role="tablist">
+                    <button type="button" class="active" data-tab="enc">压缩编码</button>
+                    <button type="button" data-tab="dec">解压解码</button>
+                </div>
+            </div>
+            <div class="codec-card">
+                <div id="p-enc" class="codec-panel">
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>GZIP / Deflate 压缩</h3>
+                            <div class="codec-hint">文本 → <code>pako.gzip</code> 或 <code>pako.deflate</code> → Base64 或 Hex。</div>
+                            <div class="codec-toolbar-inner">
+                                <label><input type="checkbox" id="useDeflate" /> Deflate（否则 GZIP）</label>
+                                <label>输出格式 <select id="encFmt" class="codec-select"><option value="base64">base64</option><option value="hex">hex</option></select></label>
+                            </div>
+                            <div class="codec-lbl">输入（UTF-8 文本）</div>
+                            <textarea id="plainZip" class="codec-ta codec-ta-grow" placeholder="要压缩的文本"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="zipOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="p-dec" class="codec-panel" hidden>
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>解压</h3>
+                            <div class="codec-hint">使用 <code>pako.inflate</code>；输入为 Base64 或 Hex 转成的字节。</div>
+                            <div class="codec-toolbar-inner">
+                                <label>输入格式 <select id="decFmt" class="codec-select"><option value="base64">base64</option><option value="hex">hex</option></select></label>
+                            </div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="zipIn" class="codec-ta codec-ta-grow" placeholder="压缩数据的 Base64 或 Hex"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">解压结果（UTF-8）</div>
+                            <textarea id="plainUnzip" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof pako === "undefined") {
+                    document.body.innerHTML = "<p style='padding:16px'>未加载 pako：请确认存在 pages/libs/pako.min.js</p>";
+                    return;
+                }
+                function u8ToB64(u8) {
+                    var bin = "";
+                    for (var i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+                    return btoa(bin);
+                }
+                function u8ToHex(u8) {
+                    var s = "";
+                    for (var i = 0; i < u8.length; i++) {
+                        var h = u8[i].toString(16);
+                        if (h.length < 2) h = "0" + h;
+                        s += h;
+                    }
+                    return s;
+                }
+                function b64ToU8(s) {
+                    var t = (s || "").replace(/\s+/g, "");
+                    if (/^data:[^;]+;base64,/i.test(t)) t = t.split(",").pop() || "";
+                    var bin = atob(t);
+                    var u8 = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    return u8;
+                }
+                function hexToU8(s) {
+                    var hex = (s || "").replace(/0x/gi, "").replace(/[^0-9a-fA-F]/g, "");
+                    if (hex.length % 2 !== 0) throw new Error("hex 长度须为偶数");
+                    var u8 = new Uint8Array(hex.length / 2);
+                    for (var i = 0; i < u8.length; i++) u8[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+                    return u8;
+                }
+                function zip() {
+                    var out = document.getElementById("zipOut");
+                    try {
+                        var bytes = new TextEncoder().encode(document.getElementById("plainZip").value);
+                        var u8 = document.getElementById("useDeflate").checked ? pako.deflate(bytes) : pako.gzip(bytes);
+                        out.value = document.getElementById("encFmt").value === "hex" ? u8ToHex(u8) : u8ToB64(u8);
+                    } catch (e) {
+                        out.value = "压缩失败: " + (e && e.message ? e.message : e);
+                    }
+                }
+                function unzip() {
+                    var out = document.getElementById("plainUnzip");
+                    try {
+                        var raw = document.getElementById("zipIn").value;
+                        var u8 = document.getElementById("decFmt").value === "hex" ? hexToU8(raw) : b64ToU8(raw);
+                        var dec = pako.inflate(u8, { to: "string" });
+                        out.value = dec;
+                    } catch (e) {
+                        out.value = "解压失败: " + (e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("plainZip").addEventListener("input", zip);
+                document.getElementById("useDeflate").addEventListener("change", zip);
+                document.getElementById("encFmt").addEventListener("change", zip);
+                document.getElementById("zipIn").addEventListener("input", unzip);
+                document.getElementById("decFmt").addEventListener("change", unzip);
+                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        var t = btn.getAttribute("data-tab");
+                        document.getElementById("p-enc").hidden = t !== "enc";
+                        document.getElementById("p-dec").hidden = t !== "dec";
+                    });
+                });
+                zip();
+                unzip();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

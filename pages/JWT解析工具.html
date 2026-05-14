@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>JWT 解析</title>
+        <script src="libs/jwt-decode-iife.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-card">
+                <div class="codec-panel-inner">
+                    <div class="codec-io-top">
+                        <h3>JWT 解析</h3>
+                        <div class="codec-hint">使用 <code>jwt-decode</code>；勾选 header / payload；下方为合并 JSON。</div>
+                        <div class="codec-toolbar-inner">
+                            <label><input type="checkbox" id="chkHeader" /> header</label>
+                            <label><input type="checkbox" id="chkPayload" checked /> payload</label>
+                        </div>
+                        <div class="codec-lbl">输入</div>
+                        <textarea id="jwtIn" class="codec-ta codec-ta-grow" placeholder="粘贴 JWT（eyJ...）"></textarea>
+                    </div>
+                    <div class="codec-io-bottom">
+                        <div class="codec-lbl codec-lbl--title">输出（JSON）</div>
+                        <textarea id="outJson" class="codec-ta codec-ta-grow" readonly placeholder="—"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof window.jwtDecode !== "function") {
+                    document.body.innerHTML = "<p style='padding:16px'>缺少 libs/jwt-decode-iife.js</p>";
+                    return;
+                }
+                function run() {
+                    var raw = document.getElementById("jwtIn").value.trim();
+                    var out = document.getElementById("outJson");
+                    out.value = "";
+                    if (!raw) return;
+                    try {
+                        var data = {};
+                        if (document.getElementById("chkHeader").checked) {
+                            data.header = window.jwtDecode(raw, { header: true });
+                        }
+                        if (document.getElementById("chkPayload").checked) {
+                            data.payload = window.jwtDecode(raw);
+                        }
+                        if (Object.keys(data).length === 0) {
+                            out.value = "请至少勾选 header 或 payload";
+                            return;
+                        }
+                        out.value = JSON.stringify(data, null, 2);
+                    } catch (e) {
+                        out.value = String(e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("jwtIn").addEventListener("input", run);
+                document.getElementById("chkHeader").addEventListener("change", run);
+                document.getElementById("chkPayload").addEventListener("change", run);
+                run();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

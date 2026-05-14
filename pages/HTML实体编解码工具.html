@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>HTML 实体编解码</title>
+        <script src="libs/js-htmlencode.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page codec-page--fill">
+            <div class="codec-split2">
+                <div class="codec-pane">
+                    <h3>编码侧（原文）</h3>
+                    <div class="codec-hint">左右双栏联动编辑；<code>js-htmlencode</code> 的 <code>htmlEncode</code> / <code>htmlDecode</code>。</div>
+                    <div class="codec-lbl">输入</div>
+                    <div class="codec-pane-body">
+                        <textarea id="taEnc" class="codec-ta codec-ta-grow" placeholder="在此输入要编码为实体的原文"></textarea>
+                    </div>
+                </div>
+                <div class="codec-pane">
+                    <h3>解码侧（含实体）</h3>
+                    <div class="codec-hint">在任一侧编辑，另一侧自动同步转换。</div>
+                    <div class="codec-lbl">输入</div>
+                    <div class="codec-pane-body">
+                        <textarea id="taDec" class="codec-ta codec-ta-grow" placeholder="在此输入含 &amp;lt; 等实体的文本"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof window.htmlEncode !== "function" || typeof window.htmlDecode !== "function") {
+                    document.body.innerHTML = "<p style='padding:16px'>缺少 libs/js-htmlencode.js</p>";
+                    return;
+                }
+                var taEnc = document.getElementById("taEnc");
+                var taDec = document.getElementById("taDec");
+                var state = { type: "", input: "" };
+                function getHandle(target) {
+                    if (state.type === "" || state.input === "") return "";
+                    if (state.type === target) return state.input;
+                    try {
+                        if (state.type === "encode") return window.htmlEncode(state.input);
+                        return window.htmlDecode(state.input);
+                    } catch (e) {
+                        return String(e && e.message ? e.message : e);
+                    }
+                }
+                function setHandle(source, value) {
+                    state.input = value;
+                    state.type = source;
+                    refresh();
+                }
+                var syncing = false;
+                function refresh() {
+                    syncing = true;
+                    taEnc.value = getHandle("encode");
+                    taDec.value = getHandle("decode");
+                    syncing = false;
+                }
+                taEnc.addEventListener("input", function () {
+                    if (syncing) return;
+                    setHandle("encode", taEnc.value);
+                });
+                taDec.addEventListener("input", function () {
+                    if (syncing) return;
+                    setHandle("decode", taDec.value);
+                });
+                refresh();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

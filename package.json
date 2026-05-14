@@ -39,8 +39,9 @@
     "uuid": "^9.0.1"
   },
   "scripts": {
-    "build:qrcode-lib": "npx --yes browserify node_modules/qrcode/lib/browser.js -s QRCodeLib -o pages/libs/qrcode-lib.bundle.js",
-    "copy:vendor": "node scripts/copy-vendor-all.cjs",
+        "build:qrcode-lib": "npx --yes browserify node_modules/qrcode/lib/browser.js -s QRCodeLib -o pages/libs/qrcode-lib.bundle.js",
+        "build:asn1-lib": "node -e \"require('esbuild').build({entryPoints:['scripts/asn1-bundle-entry.mjs'],bundle:true,format:'iife',outfile:'pages/libs/asn1-der-tool.bundle.js',platform:'browser'}).then(()=>console.log('asn1 bundle ok')).catch(e=>{console.error(e);process.exit(1)})\"",
+        "copy:vendor": "node scripts/copy-vendor-all.cjs",
     "copy:monaco": "node scripts/copy-vendor-all.cjs",
     "postinstall": "node scripts/copy-vendor-all.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"

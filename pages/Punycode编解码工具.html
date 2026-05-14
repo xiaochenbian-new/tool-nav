@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Punycode 编解码</title>
+        <script src="libs/punycode-global.js"></script>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-toolbar">
+                <div class="codec-seg" role="tablist">
+                    <button type="button" class="active" data-tab="enc">Punycode 编码</button>
+                    <button type="button" data-tab="dec">Punycode 解码</button>
+                </div>
+            </div>
+            <div class="codec-card">
+                <div id="p-enc" class="codec-panel">
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>Punycode 编码（toASCII）</h3>
+                            <div class="codec-hint">上方输入，下方输出。</div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="uniIn" class="codec-ta codec-ta-grow" placeholder="例如：例子.中国 或 müller.de"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出（ASCII / xn--）</div>
+                            <textarea id="asciiOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="p-dec" class="codec-panel" hidden>
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>Punycode 解码（toUnicode）</h3>
+                            <div class="codec-hint">将 Punycode / ASCII 域名还原为 Unicode 显示形式。</div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="asciiIn" class="codec-ta codec-ta-grow" placeholder="例如 xn--fsqu00a.xn--fiqs8s"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">输出</div>
+                            <textarea id="uniOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (typeof window.punycode === "undefined") {
+                    document.body.innerHTML = "<p style='padding:16px'>未加载 punycode：请确认存在 pages/libs/punycode-global.js</p>";
+                    return;
+                }
+                var pc = window.punycode;
+                function enc() {
+                    try {
+                        document.getElementById("asciiOut").value =
+                            document.getElementById("uniIn").value === "" ? "" : pc.toASCII(document.getElementById("uniIn").value);
+                    } catch (e) {
+                        document.getElementById("asciiOut").value = "编码失败: " + (e && e.message ? e.message : e);
+                    }
+                }
+                function dec() {
+                    try {
+                        document.getElementById("uniOut").value =
+                            document.getElementById("asciiIn").value === "" ? "" : pc.toUnicode(document.getElementById("asciiIn").value);
+                    } catch (e) {
+                        document.getElementById("uniOut").value = "解码失败: " + (e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("uniIn").addEventListener("input", enc);
+                document.getElementById("asciiIn").addEventListener("input", dec);
+                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        var t = btn.getAttribute("data-tab");
+                        document.getElementById("p-enc").hidden = t !== "enc";
+                        document.getElementById("p-dec").hidden = t !== "dec";
+                    });
+                });
+                enc();
+                dec();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>

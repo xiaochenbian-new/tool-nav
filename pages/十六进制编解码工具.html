@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>十六进制编解码</title>
+        <link rel="stylesheet" href="libs/codec-page.css" />
+    </head>
+    <body>
+        <div class="codec-page">
+            <div class="codec-toolbar">
+                <div class="codec-seg" role="tablist">
+                    <button type="button" class="active" data-tab="s2h">字符串 → Hex</button>
+                    <button type="button" data-tab="h2s">Hex → 字符串</button>
+                </div>
+            </div>
+            <div class="codec-card">
+                <div id="p-s2h" class="codec-panel">
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>字符串 → 十六进制</h3>
+                            <div class="codec-hint">按字节输出连续小写十六进制；支持文本、Base64 或文件字节。</div>
+                            <div class="codec-toolbar-inner">
+                                <label>输入来源 <select id="s2hMode" class="codec-select"><option value="text">文本（UTF-8）</option><option value="base64">Base64</option></select></label>
+                                <label><input type="file" id="s2hFile" /></label>
+                            </div>
+                            <div class="codec-lbl">输入</div>
+                            <textarea id="s2hIn" class="codec-ta codec-ta-grow" placeholder="文本或 Base64"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">Hex 输出（小写连续）</div>
+                            <textarea id="s2hOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="p-h2s" class="codec-panel" hidden>
+                    <div class="codec-panel-inner">
+                        <div class="codec-io-top">
+                            <h3>十六进制 → 字符串</h3>
+                            <div class="codec-hint">Hex → 字节 → 按编码解码为文本。</div>
+                            <div class="codec-toolbar-inner">
+                                <label>输出编码 <select id="h2sEnc" class="codec-select"><option value="utf-8">UTF-8</option><option value="latin1">Latin1</option><option value="utf-16le">UTF-16LE</option><option value="utf-16be">UTF-16BE</option></select></label>
+                                <label><input type="file" id="h2sFile" /></label>
+                            </div>
+                            <div class="codec-lbl">Hex 输入</div>
+                            <textarea id="h2sIn" class="codec-ta codec-ta-grow" placeholder="连续 hex 或带空格/0x"></textarea>
+                        </div>
+                        <div class="codec-io-bottom">
+                            <div class="codec-lbl">文本输出</div>
+                            <textarea id="h2sOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                function bytesToHexLower(u8) {
+                    var s = "";
+                    for (var i = 0; i < u8.length; i++) {
+                        var h = u8[i].toString(16);
+                        if (h.length < 2) h = "0" + h;
+                        s += h;
+                    }
+                    return s;
+                }
+                function normalizeHex(s) {
+                    return (s || "").replace(/0x/gi, "").replace(/[^0-9a-fA-F]/g, "");
+                }
+                function hexToBytes(hex) {
+                    if (hex.length % 2 !== 0) throw new Error("十六进制长度须为偶数");
+                    var u8 = new Uint8Array(hex.length / 2);
+                    for (var i = 0; i < u8.length; i++) u8[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+                    return u8;
+                }
+                function b64ToU8(s) {
+                    var t = (s || "").replace(/\s+/g, "");
+                    if (/^data:[^;]+;base64,/i.test(t)) t = t.split(",").pop() || "";
+                    var bin = atob(t);
+                    var u8 = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    return u8;
+                }
+                var s2hBuf = null;
+                function runS2h() {
+                    var out = document.getElementById("s2hOut");
+                    try {
+                        var u8;
+                        if (s2hBuf) {
+                            u8 = s2hBuf;
+                        } else if (document.getElementById("s2hMode").value === "base64") {
+                            u8 = b64ToU8(document.getElementById("s2hIn").value);
+                        } else {
+                            u8 = new TextEncoder().encode(document.getElementById("s2hIn").value);
+                        }
+                        out.value = bytesToHexLower(u8);
+                    } catch (e) {
+                        out.value = String(e && e.message ? e.message : e);
+                    }
+                }
+                function runH2s() {
+                    var out = document.getElementById("h2sOut");
+                    try {
+                        var hex = normalizeHex(document.getElementById("h2sIn").value);
+                        if (!hex) {
+                            out.value = "";
+                            return;
+                        }
+                        var u8 = hexToBytes(hex);
+                        var enc = document.getElementById("h2sEnc").value;
+                        out.value = new TextDecoder(enc, { fatal: false }).decode(u8);
+                    } catch (e) {
+                        out.value = String(e && e.message ? e.message : e);
+                    }
+                }
+                document.getElementById("s2hIn").addEventListener("input", function () {
+                    s2hBuf = null;
+                    runS2h();
+                });
+                document.getElementById("s2hMode").addEventListener("change", function () {
+                    s2hBuf = null;
+                    runS2h();
+                });
+                document.getElementById("s2hFile").addEventListener("change", function (ev) {
+                    var f = ev.target.files && ev.target.files[0];
+                    s2hBuf = null;
+                    if (!f) {
+                        runS2h();
+                        return;
+                    }
+                    var r = new FileReader();
+                    r.onload = function () {
+                        s2hBuf = new Uint8Array(r.result);
+                        runS2h();
+                    };
+                    r.readAsArrayBuffer(f);
+                });
+                document.getElementById("h2sIn").addEventListener("input", runH2s);
+                document.getElementById("h2sEnc").addEventListener("change", runH2s);
+                document.getElementById("h2sFile").addEventListener("change", function (ev) {
+                    var f = ev.target.files && ev.target.files[0];
+                    if (!f) return;
+                    var r = new FileReader();
+                    r.onload = function () {
+                        document.getElementById("h2sIn").value = String(r.result || "");
+                        runH2s();
+                    };
+                    r.readAsText(f, "utf-8");
+                });
+                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        var t = btn.getAttribute("data-tab");
+                        document.getElementById("p-s2h").hidden = t !== "s2h";
+                        document.getElementById("p-h2s").hidden = t !== "h2s";
+                    });
+                });
+                runS2h();
+                runH2s();
+            })();
+            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        </script>
+    </body>
+</html>
