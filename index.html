@@ -559,8 +559,9 @@
         </div>
         <script>
             const STORAGE_PREFIX = "tool_form_data_";
-            const RECENT_TOOLS_KEY = "tool_nav_recent_tool_ids";
             const RECENT_TOOLS_MAX = 5;
+            /** 当前页会话内头部最近工具槽位（刷新页面会重置为常用前五个） */
+            let recentNavState = null;
             const FORM_CACHE = {};
             const FRAME_CACHE = {};
             const TOOLS = [
@@ -606,6 +607,8 @@
             const DEFAULT_TAB_ID = "tab8";
             let currentId = "";
             let overviewVisible = false;
+            /** 首次根据 hash 打开工具时不写入最近槽位，保证刷新后头部仍为常用前五个 */
+            let isInitialPageLoad = true;
 
             function getFieldKey(field, idx) {
                 if (!field) return "";
@@ -719,6 +722,21 @@
                 }, 220);
             }
 
+            function buildDefaultRecentState() {
+                const slots = COMMON_TOOL_IDS.slice(0, RECENT_TOOLS_MAX).filter((id) => TOOLS.some((t) => t.id === id));
+                const lastUsed = {};
+                const base = Date.now();
+                slots.forEach((id, i) => {
+                    lastUsed[id] = base - i * 1000;
+                });
+                return { slots, lastUsed };
+            }
+
+            /** 浏览器刷新后：头部导航恢复为「常用」分栏前五个工具 */
+            function resetRecentNavToCommon() {
+                recentNavState = buildDefaultRecentState();
+            }
+
             function dedupeRecentSlots(slots) {
                 const seen = new Set();
                 const out = [];
@@ -733,47 +751,33 @@
             }
 
             function loadRecentState() {
-                try {
-                    const raw = localStorage.getItem(RECENT_TOOLS_KEY);
-                    if (!raw) return { slots: [], lastUsed: {} };
-                    const parsed = JSON.parse(raw);
-                    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && Array.isArray(parsed.slots)) {
-                        let slots = dedupeRecentSlots(parsed.slots);
-                        const lastUsed = parsed.lastUsed && typeof parsed.lastUsed === "object" ? { ...parsed.lastUsed } : {};
-                        const slotSet = new Set(slots);
-                        Object.keys(lastUsed).forEach((k) => {
-                            if (!slotSet.has(k)) delete lastUsed[k];
-                        });
-                        const now = Date.now();
-                        slots.forEach((id, i) => {
-                            const t = lastUsed[id];
-                            if (typeof t !== "number" || !Number.isFinite(t)) {
-                                lastUsed[id] = now - (slots.length - i) * 1000;
-                            }
-                        });
-                        return { slots, lastUsed };
-                    }
-                    if (Array.isArray(parsed)) {
-                        const ids = dedupeRecentSlots(parsed);
-                        const lastUsed = {};
-                        const base = Date.now();
-                        ids.forEach((id, i) => {
-                            lastUsed[id] = base - i * 1000;
-                        });
-                        return { slots: ids, lastUsed };
-                    }
-                } catch (e) {
-                    // Ignore parse errors.
+                if (!recentNavState) {
+                    recentNavState = buildDefaultRecentState();
                 }
-                return { slots: [], lastUsed: {} };
+                const slots = dedupeRecentSlots(recentNavState.slots);
+                const lastUsed = recentNavState.lastUsed && typeof recentNavState.lastUsed === "object"
+                    ? { ...recentNavState.lastUsed }
+                    : {};
+                const slotSet = new Set(slots);
+                Object.keys(lastUsed).forEach((k) => {
+                    if (!slotSet.has(k)) delete lastUsed[k];
+                });
+                const now = Date.now();
+                slots.forEach((id, i) => {
+                    const t = lastUsed[id];
+                    if (typeof t !== "number" || !Number.isFinite(t)) {
+                        lastUsed[id] = now - (slots.length - i) * 1000;
+                    }
+                });
+                recentNavState = { slots, lastUsed };
+                return { slots, lastUsed };
             }
 
             function saveRecentState(state) {
-                try {
-                    localStorage.setItem(RECENT_TOOLS_KEY, JSON.stringify(state));
-                } catch (e) {
-                    // Ignore storage failures.
-                }
+                recentNavState = {
+                    slots: dedupeRecentSlots(state.slots),
+                    lastUsed: state.lastUsed && typeof state.lastUsed === "object" ? { ...state.lastUsed } : {},
+                };
             }
 
             /** 固定槽位顺序；已收录的工具只刷新使用时间，新工具满员时替换最久未使用项并占据其槽位 */
@@ -847,8 +851,10 @@
                             window.location.hash = sameHash;
                         }
                     }
-                    persistRecentToolId(tool.id);
-                    renderRecentNav();
+                    if (!isInitialPageLoad) {
+                        persistRecentToolId(tool.id);
+                        renderRecentNav();
+                    }
                     updateActiveStates();
                     return;
                 }
@@ -871,8 +877,10 @@
                         // Ignore runtime restore failures.
                     }
                 }
-                persistRecentToolId(tool.id);
-                renderRecentNav();
+                if (!isInitialPageLoad) {
+                    persistRecentToolId(tool.id);
+                    renderRecentNav();
+                }
                 updateActiveStates();
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
@@ -1050,10 +1058,9 @@
 
                 categoryOrder.forEach((cat) => {
                     appendToolGroup(cat, grouped[cat], { cryptoHelp: cat === "加解密" });
-                    if (cat === "加解密") {
-                        appendExternalLinksGroup("站外工具", STATION_EXTERNAL_LINKS);
-                    }
                 });
+                /** 站外链接统一放在全部分类列表最底部 */
+                appendExternalLinksGroup("站外工具", STATION_EXTERNAL_LINKS);
 
                 const closeBtn = document.getElementById("overview-close");
                 if (closeBtn) {
@@ -1190,8 +1197,10 @@
                     var modal = document.getElementById("crypto-algo-modal");
                     if (modal && modal.classList.contains("visible")) hideCryptoAlgoModal();
                 });
+                resetRecentNavToCommon();
                 renderRecentNav();
                 openTool(getInitialTab(), false);
+                isInitialPageLoad = false;
                 if (!window.location.hash) {
                     window.location.hash = "tab=" + DEFAULT_TAB_ID;
                 }
