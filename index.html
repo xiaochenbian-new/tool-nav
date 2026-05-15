@@ -178,6 +178,56 @@
                 padding: 6px;
                 margin-bottom: 6px;
             }
+            .overview-group-common {
+                position: relative;
+                border: 1px solid #b8cff5;
+                border-left: 3px solid var(--primary);
+                border-radius: 10px;
+                background: linear-gradient(135deg, #f5f9ff 0%, #eef4ff 62%, #fffaf0 100%);
+                padding: 8px 10px 10px;
+                margin-bottom: 10px;
+                box-shadow: 0 2px 10px rgba(47, 111, 235, 0.1);
+            }
+            .overview-group-common .overview-group-title {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 8px;
+                font-size: 14px;
+                font-weight: 700;
+                color: #1e4a9e;
+            }
+            .overview-group-common .overview-group-title::before {
+                content: "★";
+                font-size: 13px;
+                line-height: 1;
+                color: #d48806;
+            }
+            .overview-group-common-badge {
+                font-size: 11px;
+                font-weight: 500;
+                color: #8a6914;
+                background: #fff7e0;
+                border: 1px solid #f0d78a;
+                border-radius: 999px;
+                padding: 1px 8px;
+                line-height: 1.5;
+            }
+            .overview-group-common .overview-group-tools {
+                gap: 6px;
+            }
+            .tool-chip-common {
+                background: #fff;
+                border-color: #c5d8fa;
+                color: #2a4578;
+                font-weight: 500;
+                box-shadow: 0 1px 2px rgba(47, 111, 235, 0.06);
+            }
+            .tool-chip-common:hover {
+                border-color: var(--primary);
+                background: #e8f0ff;
+                color: #1e4a9e;
+            }
             .overview-group-title {
                 font-size: 14px;
                 font-weight: 600;
@@ -602,8 +652,8 @@
                 { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
                 { id: "tab27", name: "证件照冲印排版", category: "其他", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] }
             ];
-            /** 全部分类工具面板「常用」分栏（顺序即展示顺序） */
-            const COMMON_TOOL_IDS = ["tab8", "tab18", "tab13", "tab14", "tab5"];
+            /** 全部分类工具面板「常用」分栏（顺序即展示顺序；头部快捷入口取前 RECENT_TOOLS_MAX 个） */
+            const COMMON_TOOL_IDS = ["tab8", "tab18", "tab11", "tab13", "tab10", "tab14", "tab5"];
             const DEFAULT_TAB_ID = "tab8";
             let currentId = "";
             let overviewVisible = false;
@@ -989,10 +1039,19 @@
                     options = options || {};
                     if (!tools.length) return;
                     const group = document.createElement("div");
-                    group.className = "overview-group";
+                    group.className = "overview-group" + (options.commonGroup ? " overview-group-common" : "");
                     const title = document.createElement("div");
                     title.className = "overview-group-title" + (options.cryptoHelp ? " overview-group-title-with-action" : "");
-                    if (options.cryptoHelp) {
+                    if (options.commonGroup) {
+                        const titleTextEl = document.createElement("span");
+                        titleTextEl.className = "overview-group-title-text";
+                        titleTextEl.textContent = titleText;
+                        title.appendChild(titleTextEl);
+                        const badge = document.createElement("span");
+                        badge.className = "overview-group-common-badge";
+                        badge.textContent = "快捷入口";
+                        title.appendChild(badge);
+                    } else if (options.cryptoHelp) {
                         const span = document.createElement("span");
                         span.className = "overview-group-title-text";
                         span.textContent = titleText;
@@ -1019,7 +1078,7 @@
                     toolsWrap.className = "overview-group-tools";
                     tools.forEach((tool) => {
                         const chip = document.createElement("div");
-                        chip.className = "tool-chip clover-tool";
+                        chip.className = "tool-chip clover-tool" + (options.commonGroup ? " tool-chip-common" : "");
                         chip.setAttribute("data-id", tool.id);
                         chip.textContent = tool.name;
                         chip.addEventListener("click", function () {
@@ -1034,7 +1093,7 @@
                 /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
                 const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "编解码", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
-                appendToolGroup("常用", commonTools, {});
+                appendToolGroup("常用", commonTools, { commonGroup: true });
 
                 const categoryOrder = [];
                 const seenCat = new Set();
