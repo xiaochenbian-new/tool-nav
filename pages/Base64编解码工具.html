@@ -4,58 +4,606 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Base64 编解码</title>
-        <link rel="stylesheet" href="libs/codec-page.css" />
+        <script src="../vendor/codepage/cpexcel.full.js"></script>
+        <script src="../vendor/codepage/cputils.js"></script>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --foot-bg: #f8fbff;
+                --input-border: #cfdcf7;
+                --toolbar-line: #e4edff;
+            }
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+                overflow: hidden;
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                gap: 10px;
+            }
+            .opts {
+                flex-shrink: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px 12px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px 16px;
+            }
+            .mode-seg {
+                display: inline-flex;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
+            }
+            .mode-seg button {
+                border: none;
+                background: transparent;
+                padding: 6px 16px;
+                font-size: 13px;
+                cursor: pointer;
+                color: #3c4f78;
+            }
+            .mode-seg button:hover:not(.active) {
+                color: var(--primary);
+                background: rgba(47, 107, 255, 0.06);
+            }
+            .mode-seg button.active {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .mode-seg button.active:hover {
+                opacity: 0.95;
+                color: #fff;
+            }
+            .split {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .split[hidden] {
+                display: none !important;
+            }
+            .pane {
+                flex: 1 1 0;
+                min-width: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .pane-hd {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-bottom: 1px solid var(--toolbar-line);
+            }
+            .pane-body {
+                flex: 1;
+                min-height: 0;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+            .pane-ta {
+                flex: 1;
+                width: 100%;
+                min-height: 120px;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                padding: 10px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 14px;
+                line-height: 1.55;
+                resize: none;
+                outline: none;
+                background: #fff;
+                color: var(--text);
+            }
+            .pane-ta:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            .pane-ta[readonly] {
+                background: #fafcff;
+            }
+            .foot {
+                flex-shrink: 0;
+                border-top: 1px solid var(--toolbar-line);
+                background: var(--foot-bg);
+                padding: 8px 10px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 14px;
+                align-items: center;
+            }
+            .foot label {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 13px;
+                color: var(--text);
+            }
+            .foot select {
+                border: 1px solid var(--input-border);
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 13px;
+                background: #fff;
+                color: var(--text);
+            }
+            .foot select:disabled {
+                opacity: 0.55;
+                cursor: not-allowed;
+            }
+            .foot select:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.1);
+            }
+            .is-hidden {
+                display: none !important;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 6px 12px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .btn-primary {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border-color: transparent;
+            }
+            .btn-primary:hover {
+                opacity: 0.95;
+                color: #fff;
+            }
+            .upload-drop {
+                display: none;
+                flex: 1;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                min-height: 120px;
+                padding: 16px;
+                font-size: 13px;
+                color: var(--muted);
+                text-align: center;
+                border: 1px dashed var(--input-border);
+                border-radius: 8px;
+                background: #fafcff;
+            }
+            .upload-drop.visible {
+                display: flex;
+            }
+            .out-wrap {
+                position: relative;
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .out-empty {
+                position: absolute;
+                inset: 0;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                color: var(--muted);
+                font-size: 13px;
+                pointer-events: none;
+                background: #fafcff;
+                border-radius: 8px;
+                z-index: 1;
+            }
+            .out-empty.visible {
+                display: flex;
+            }
+            .out-empty-icon {
+                width: 40px;
+                height: 32px;
+                border: 2px solid #cfdcf7;
+                border-radius: 4px;
+                position: relative;
+                opacity: 0.85;
+            }
+            .out-empty-icon::before {
+                content: "";
+                position: absolute;
+                left: 5px;
+                right: 5px;
+                top: -5px;
+                height: 7px;
+                border: 2px solid #cfdcf7;
+                border-bottom: none;
+                border-radius: 4px 4px 0 0;
+            }
+            .dec-img {
+                display: none;
+                flex: 1;
+                min-height: 120px;
+                margin: 0 auto;
+                max-width: 100%;
+                max-height: min(360px, 55vh);
+                object-fit: contain;
+                cursor: pointer;
+                border: 1px dashed var(--input-border);
+                border-radius: 8px;
+            }
+            .dec-img.visible {
+                display: block;
+            }
+            .dec-down {
+                display: none;
+                flex: 1;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                min-height: 120px;
+                padding: 16px;
+                color: var(--muted);
+                font-size: 13px;
+            }
+            .dec-down.visible {
+                display: flex;
+            }
+            .dec-loading {
+                position: absolute;
+                inset: 0;
+                z-index: 6;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                background: rgba(248, 251, 255, 0.94);
+                border-radius: 8px;
+                border: 1px solid var(--input-border);
+                pointer-events: none;
+            }
+            .dec-loading.visible {
+                display: flex;
+            }
+            .dec-loading-spinner {
+                width: 36px;
+                height: 36px;
+                border: 3px solid #dbe6ff;
+                border-top-color: var(--primary);
+                border-radius: 50%;
+                animation: dec-spin 0.75s linear infinite;
+            }
+            @keyframes dec-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .dec-loading-text {
+                font-size: 14px;
+                font-weight: 600;
+                color: #324a76;
+            }
+            .dec-loading-sub {
+                font-size: 12px;
+                color: var(--muted);
+                max-width: 90%;
+                text-align: center;
+                line-height: 1.45;
+            }
+            .dec-mega-hint {
+                flex-shrink: 0;
+                margin: 0;
+                padding: 6px 2px 0;
+                font-size: 12px;
+                line-height: 1.5;
+                color: var(--muted);
+                display: none;
+            }
+            .dec-mega-hint.visible {
+                display: block;
+            }
+            .dec-mega-hint strong {
+                color: #324a76;
+            }
+            input[type="checkbox"] {
+                accent-color: var(--primary);
+            }
+            @media (max-width: 820px) {
+                .split {
+                    flex-direction: column;
+                }
+            }
+        </style>
     </head>
     <body>
-        <div class="codec-page">
-            <div class="codec-toolbar">
-                <div class="codec-seg" role="tablist">
-                    <button type="button" class="active" data-tab="enc">Base64 编码</button>
-                    <button type="button" data-tab="dec">Base64 解码</button>
+        <div class="page">
+            <div class="opts">
+                <div class="mode-seg" role="tablist">
+                    <button type="button" class="active" data-tab="enc">编码</button>
+                    <button type="button" data-tab="dec">解码</button>
                 </div>
             </div>
-            <div class="codec-card">
-                <div id="p-enc" class="codec-panel">
-                    <div class="codec-panel-inner">
-                        <div class="codec-io-top">
-                            <h3>Base64 编码</h3>
-                            <div class="codec-hint">UTF-8 文本或文件字节 → Base64；可选 URL-safe。</div>
-                            <div class="codec-toolbar-inner">
-                                <label><input type="checkbox" id="encUrlSafe" /> URL-safe（<code>-_</code> 替换 <code>+/</code>）</label>
-                                <label><input type="file" id="encFile" /></label>
-                            </div>
-                            <div class="codec-lbl">输入（文本）</div>
-                            <textarea id="encText" class="codec-ta codec-ta-grow" placeholder="文本；若选择了文件则优先使用文件字节"></textarea>
-                        </div>
-                        <div class="codec-io-bottom">
-                            <div class="codec-lbl">Base64 输出</div>
-                            <textarea id="encOut" class="codec-ta codec-ta-grow" readonly></textarea>
+
+            <div id="split-enc" class="split">
+                <section class="pane">
+                    <div class="pane-hd">输入</div>
+                    <div class="pane-body">
+                        <textarea id="encText" class="pane-ta" placeholder="输入内容…"></textarea>
+                        <div id="encFileNote" class="upload-drop">
+                            <span id="encFileNoteText">将按原始字节编码</span>
+                            <button type="button" class="btn btn-primary" id="encPickBtn">选择文件</button>
                         </div>
                     </div>
-                </div>
-                <div id="p-dec" class="codec-panel" hidden>
-                    <div class="codec-panel-inner">
-                        <div class="codec-io-top">
-                            <h3>Base64 解码</h3>
-                            <div class="codec-hint">兼容 Data URL；支持 URL-safe；按所选编码输出文本。</div>
-                            <div class="codec-toolbar-inner">
-                                <label><input type="checkbox" id="decUrlSafe" /> 输入为 URL-safe Base64</label>
-                                <label>输出编码 <select id="decEnc" class="codec-select"><option value="utf-8">UTF-8</option><option value="latin1">Latin1</option><option value="utf-16le">UTF-16LE</option><option value="utf-16be">UTF-16BE</option></select></label>
+                    <div class="foot">
+                        <button type="button" class="btn" id="encRun" title="执行编码">▶</button>
+                        <label id="encCharsetWrap">
+                            文本编码
+                            <select id="encCharset" aria-label="文本编码">
+                                <option value="utf-8">utf-8</option>
+                                <option value="gbk">gbk</option>
+                            </select>
+                        </label>
+                        <label>
+                            输入类型
+                            <select id="encInType" aria-label="输入类型">
+                                <option value="text">文本</option>
+                                <option value="hex">十六进制</option>
+                                <option value="upload">上传</option>
+                                <option value="url">链接</option>
+                            </select>
+                        </label>
+                        <label id="encHexPreserveWrap" class="is-hidden"><input type="checkbox" id="encHexPreserveLb" /> 换行→0a</label>
+                        <input type="file" id="encFile" hidden />
+                    </div>
+                </section>
+                <section class="pane">
+                    <div class="pane-hd">Base64 输出</div>
+                    <div class="pane-body">
+                        <div class="out-wrap">
+                            <div id="encEmpty" class="out-empty visible">
+                                <span class="out-empty-icon" aria-hidden="true"></span>
+                                <span>暂无输出</span>
                             </div>
-                            <div class="codec-lbl">Base64 输入</div>
-                            <textarea id="decB64" class="codec-ta codec-ta-grow" placeholder="Base64 或 data:...;base64,..."></textarea>
-                        </div>
-                        <div class="codec-io-bottom">
-                            <div class="codec-lbl">解码文本</div>
-                            <textarea id="decOut" class="codec-ta codec-ta-grow" readonly></textarea>
+                            <textarea id="encOut" class="pane-ta" readonly placeholder="Base64 结果"></textarea>
                         </div>
                     </div>
-                </div>
+                    <div class="foot">
+                        <label><input type="checkbox" id="encUrlSafe" /> URL-safe</label>
+                        <label><input type="checkbox" id="encDataUrl" /> Data URL</label>
+                    </div>
+                </section>
+            </div>
+
+            <div id="split-dec" class="split" hidden>
+                <section class="pane">
+                    <div class="pane-hd">Base64 输入</div>
+                    <div class="pane-body">
+                        <textarea id="decB64" class="pane-ta" placeholder="Base64 或 data:...;base64,..."></textarea>
+                        <p id="decMegaHint" class="dec-mega-hint" role="status"></p>
+                    </div>
+                    <div class="foot">
+                        <button type="button" class="btn" id="decRun" title="执行解码">▶</button>
+                        <label><input type="checkbox" id="decUrlSafe" /> URL-safe 输入</label>
+                        <button type="button" class="btn" id="decB64FileBtn" title="避免在输入框粘贴超大串导致卡顿">从文件加载</button>
+                        <input type="file" id="decB64File" accept=".txt,.b64,text/plain,application/octet-stream,*/*" hidden />
+                    </div>
+                </section>
+                <section class="pane">
+                    <div class="pane-hd">解码输出</div>
+                    <div class="pane-body">
+                        <div class="out-wrap">
+                            <div id="decEmpty" class="out-empty visible">
+                                <span class="out-empty-icon" aria-hidden="true"></span>
+                                <span>暂无输出</span>
+                            </div>
+                            <textarea id="decOut" class="pane-ta" readonly placeholder="解码结果"></textarea>
+                            <img id="decImg" class="dec-img" alt="解码图片预览" />
+                            <div id="decDownPanel" class="dec-down">
+                                <span>将二进制结果下载到本地</span>
+                                <button type="button" class="btn btn-primary" id="decDownBtn">下载</button>
+                            </div>
+                            <div id="decLoading" class="dec-loading" aria-live="polite" aria-busy="false">
+                                <div class="dec-loading-spinner" aria-hidden="true"></div>
+                                <div class="dec-loading-text" id="decLoadingText">正在解码…</div>
+                                <div class="dec-loading-sub" id="decLoadingSub"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="foot">
+                        <label>
+                            输出类型
+                            <select id="decViewKind" aria-label="输出类型">
+                                <option value="text">文本</option>
+                                <option value="hex">十六进制</option>
+                                <option value="image">图片</option>
+                                <option value="down">下载</option>
+                            </select>
+                        </label>
+                        <label id="decEncWrap">
+                            文本编码
+                            <select id="decEnc" aria-label="文本输出编码">
+                                <option value="utf-8">utf-8</option>
+                                <option value="gbk">gbk</option>
+                                <option value="latin1">latin1</option>
+                                <option value="utf-16le">utf-16le</option>
+                                <option value="utf-16be">utf-16be</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
             </div>
         </div>
         <script>
             (function () {
+                var encTimer = null;
+                var encUrlTimer = null;
                 var fileU8 = null;
+                var encLastU8 = null;
+                var decLastU8 = null;
+                var decDebounce = null;
+                var decImgObjectUrl = null;
+                var decOpSeq = 0;
+                /** 从文件异步读入的 Base64（不塞进输入框，避免 DOM 持有巨型字符串） */
+                var decExternalB64 = null;
+                var decExternalName = "";
+                /** 超过此字符数：暂停输入时自动解码，请点 ▶ 或「从文件加载」 */
+                var DEC_PAUSE_AUTO_LEN = 56000;
+                /** 原始输入超过此长度：规范化 + 解码尽量整段在 Worker 完成（含 fetch data URL） */
+                var DEC_WORKER_FULL_MIN = 12000;
+                /** 生成 Blob 预览可能阻塞，超过此字节数时先显示「生成预览」 */
+                var DEC_BLOB_PREVIEW_MIN = 900000;
+
+                /** 文本模式解码展示上限，避免大图当文本解码卡死主线程 */
+                var DEC_TEXT_MAX_BYTES = 384 * 1024;
+                /** 十六进制模式输出上限（字节） */
+                var DEC_HEX_MAX_BYTES = 128 * 1024;
+
+                function clearDecExternal() {
+                    decExternalB64 = null;
+                    decExternalName = "";
+                }
+
+                function updateDecMegaHint(len) {
+                    var el = document.getElementById("decMegaHint");
+                    if (!el) return;
+                    if (decExternalB64) {
+                        el.classList.add("visible");
+                        el.innerHTML =
+                            "<strong>已从文件加载</strong> " +
+                            (decExternalName ? escapeHtml(decExternalName) + " · " : "") +
+                            "约 <strong>" +
+                            fmtChars(decExternalB64.length) +
+                            "</strong> 字符 — 点击 <strong>▶ 解码</strong>。";
+                        return;
+                    }
+                    if (len >= DEC_PAUSE_AUTO_LEN) {
+                        el.classList.add("visible");
+                        el.innerHTML =
+                            "当前约 <strong>" +
+                            fmtChars(len) +
+                            "</strong> 字符：<strong>已暂停输入时自动解码</strong>（避免整页卡顿）。编辑完成后请点击 <strong>▶ 解码</strong>，或导出为 <code>.txt</code> 后用 <strong>从文件加载</strong>。";
+                    } else {
+                        el.classList.remove("visible");
+                        el.textContent = "";
+                    }
+                }
+
+                function fmtChars(n) {
+                    if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+                    if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
+                    return String(n);
+                }
+
+                function escapeHtml(s) {
+                    return String(s || "")
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/"/g, "&quot;");
+                }
+
+                function getDecRawInput() {
+                    if (decExternalB64 !== null) return decExternalB64;
+                    return document.getElementById("decB64").value;
+                }
+
+                function isEffectivelyEmptyDecRaw(raw) {
+                    if (!raw || !raw.length) return true;
+                    for (var i = 0; i < raw.length; i++) {
+                        if (raw.charCodeAt(i) > 32) return false;
+                    }
+                    return true;
+                }
+
+                function setDecLoading(on, mainText, subText) {
+                    var el = document.getElementById("decLoading");
+                    if (!el) return;
+                    el.classList.toggle("visible", !!on);
+                    el.setAttribute("aria-busy", on ? "true" : "false");
+                    if (document.getElementById("decLoadingText")) {
+                        document.getElementById("decLoadingText").textContent = mainText || (on ? "正在解码…" : "");
+                    }
+                    var sub = document.getElementById("decLoadingSub");
+                    if (sub) sub.textContent = subText || "";
+                }
+
+                function revokeDecImgObjectUrl() {
+                    if (decImgObjectUrl) {
+                        URL.revokeObjectURL(decImgObjectUrl);
+                        decImgObjectUrl = null;
+                    }
+                }
+
+                function stringToU8WithEnc(str, encVal) {
+                    if (encVal === "utf-8" || encVal === "utf8") return new TextEncoder().encode(str);
+                    if (encVal === "gbk") {
+                        if (typeof cptable === "undefined" || !cptable.utils) {
+                            throw new Error("GBK 需 codepage 库：请在 tool-nav 根目录执行 npm run copy:vendor");
+                        }
+                        return new Uint8Array(cptable.utils.encode(936, str));
+                    }
+                    throw new Error("未知编码: " + encVal);
+                }
+
+                function hexToU8(str, preserveLineBreaks) {
+                    var cleaned = String(str).replace(/\\x/gi, "").replace(/ /g, "");
+                    cleaned = preserveLineBreaks ? cleaned.replace(/\n/g, "0a") : cleaned.replace(/\n/g, "");
+                    cleaned = cleaned.trim();
+                    if (cleaned.length % 2 === 1) cleaned = "0" + cleaned;
+                    var n = cleaned.length / 2;
+                    var out = new Uint8Array(n);
+                    for (var i = 0; i < n; i++) {
+                        var b = parseInt(cleaned.substr(i * 2, 2), 16);
+                        if (Number.isNaN(b)) throw new Error("Hex 解析失败（含非法字符）");
+                        out[i] = b;
+                    }
+                    return out;
+                }
+
                 function u8ToB64(u8, urlSafe) {
                     var bin = "";
                     for (var i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
@@ -63,80 +611,625 @@
                     if (urlSafe) return b.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
                     return b;
                 }
+
                 function normalizeB64Input(s, urlSafe) {
-                    var t = (s || "").replace(/\s+/g, "");
-                    if (/^data:[^;]+;base64,/i.test(t)) t = t.split(",").pop() || "";
+                    var raw = s || "";
+                    var t;
+                    if (/^data:/i.test(raw)) {
+                        var idx = raw.indexOf("base64,");
+                        if (idx !== -1) t = raw.slice(idx + 7);
+                        else t = raw;
+                    } else {
+                        t = raw;
+                    }
+                    if (/\s/.test(t)) t = t.replace(/\s+/g, "");
+                    else t = t.trim();
                     if (urlSafe) t = t.replace(/-/g, "+").replace(/_/g, "/");
                     var pad = t.length % 4;
                     if (pad) t += "====".slice(pad);
                     return t;
                 }
-                function b64ToU8(s) {
+
+                function b64ToU8Sync(s) {
                     var bin = atob(s);
-                    var u8 = new Uint8Array(bin.length);
-                    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    var n = bin.length;
+                    var u8 = new Uint8Array(n);
+                    for (var i = 0; i < n; i++) u8[i] = bin.charCodeAt(i) & 255;
                     return u8;
                 }
-                function runEnc() {
-                    var out = document.getElementById("encOut");
-                    try {
-                        var u8 = fileU8 || new TextEncoder().encode(document.getElementById("encText").value);
-                        out.value = u8ToB64(u8, document.getElementById("encUrlSafe").checked);
-                    } catch (e) {
-                        out.value = "编码失败: " + (e && e.message ? e.message : e);
+
+                function decodeB64InWorkerFull(raw, urlSafe, cb) {
+                    if (!window.Worker) {
+                        try {
+                            cb(null, b64ToU8Sync(normalizeB64Input(raw, urlSafe)));
+                        } catch (e) {
+                            cb(e, null);
+                        }
+                        return;
                     }
-                }
-                function runDec() {
-                    var out = document.getElementById("decOut");
-                    try {
-                        var t = normalizeB64Input(document.getElementById("decB64").value, document.getElementById("decUrlSafe").checked);
-                        if (!t) {
-                            out.value = "";
+                    var src = [
+                        "self.onmessage=function(e){",
+                        "var d=e.data||{},raw=d.raw||'',us=!!d.urlSafe;",
+                        "function norm(s){var t;",
+                        "if(/^data:/i.test(s)){var ix=s.indexOf('base64,');t=ix!==-1?s.slice(ix+7):s;}",
+                        "else{t=s;}",
+                        "if(/\\s/.test(t))t=t.replace(/\\s+/g,\"\");else t=t.trim();",
+                        "if(us)t=t.replace(/-/g,'+').replace(/_/g,'/');var p=t.length%4;if(p)t+='===='.slice(p);return t;}",
+                        "function fail(m){self.postMessage({ok:0,em:m});}",
+                        "function okBuf(ab){self.postMessage({ok:1,ab:ab},[ab]);}",
+                        "try{var t=norm(raw);if(!t){okBuf(new ArrayBuffer(0));return;}",
+                        "var L=t.length,useFetch=L>=8192&&typeof fetch!=='undefined';",
+                        "if(useFetch){fetch('data:application/octet-stream;base64,'+t).then(function(r){return r.arrayBuffer();}).then(okBuf).catch(function(){try{var b=atob(t),n=b.length,buf=new ArrayBuffer(n),u=new Uint8Array(buf);for(var i=0;i<n;i++)u[i]=255&b.charCodeAt(i);okBuf(buf);}catch(x){fail(String(x.message||x));}});return;}",
+                        "var bin=atob(t),n2=bin.length,buf2=new ArrayBuffer(n2),u2=new Uint8Array(buf2);for(var j=0;j<n2;j++)u2[j]=255&bin.charCodeAt(j);okBuf(buf2);",
+                        "}catch(y){fail(String(y.message||y));}};",
+                    ].join("");
+                    var url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+                    var w = new Worker(url);
+                    w.onmessage = function (ev) {
+                        URL.revokeObjectURL(url);
+                        try {
+                            w.terminate();
+                        } catch (e2) {}
+                        var d = ev.data;
+                        if (!d || !d.ok) {
+                            cb(new Error((d && d.em) || "Worker 解码失败"), null);
                             return;
                         }
-                        var u8 = b64ToU8(t);
-                        var enc = document.getElementById("decEnc").value;
-                        out.value = new TextDecoder(enc, { fatal: false }).decode(u8);
+                        cb(null, new Uint8Array(d.ab));
+                    };
+                    w.onerror = function () {
+                        URL.revokeObjectURL(url);
+                        try {
+                            w.terminate();
+                        } catch (e3) {}
+                        cb(new Error("Worker 启动失败"), null);
+                    };
+                    try {
+                        w.postMessage({ raw: raw, urlSafe: urlSafe });
                     } catch (e) {
-                        out.value = "解码失败: " + (e && e.message ? e.message : e);
+                        URL.revokeObjectURL(url);
+                        try {
+                            w.terminate();
+                        } catch (e4) {}
+                        cb(e, null);
                     }
                 }
+
+                function b64ToU8(s) {
+                    return b64ToU8Sync(s);
+                }
+
+                function bytesToHexLower(u8) {
+                    var s = "";
+                    for (var i = 0; i < u8.length; i++) {
+                        var h = u8[i].toString(16);
+                        if (h.length < 2) h = "0" + h;
+                        s += h;
+                    }
+                    return s;
+                }
+
+                function sniffMime(u8) {
+                    if (!u8 || u8.length < 2) return "application/octet-stream";
+                    if (u8[0] === 0xff && u8[1] === 0xd8) return "image/jpeg";
+                    if (u8.length >= 8 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47) return "image/png";
+                    if (u8.length >= 6 && u8[0] === 0x47 && u8[1] === 0x49 && u8[2] === 0x46) return "image/gif";
+                    if (u8.length >= 12 && u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50)
+                        return "image/webp";
+                    return "application/octet-stream";
+                }
+
+                function isLikelyImage(u8) {
+                    return sniffMime(u8).indexOf("image/") === 0;
+                }
+
+                function u8ToString(u8, enc) {
+                    if (!u8 || u8.length === 0) return "";
+                    if (enc === "utf-8" || enc === "utf8") return new TextDecoder("utf-8", { fatal: false }).decode(u8);
+                    if (enc === "gbk") {
+                        if (typeof cptable === "undefined" || !cptable.utils) throw new Error("GBK 需 codepage 库");
+                        var arr = [];
+                        for (var i = 0; i < u8.length; i++) arr.push(u8[i]);
+                        return cptable.utils.decode(936, arr);
+                    }
+                    return new TextDecoder(enc, { fatal: false }).decode(u8);
+                }
+
+                function updateEncToolVisibility() {
+                    var t = document.getElementById("encInType").value;
+                    var cs = document.getElementById("encCharset");
+                    var ta = document.getElementById("encText");
+                    var hexWrap = document.getElementById("encHexPreserveWrap");
+                    document.getElementById("encCharsetWrap").classList.toggle("is-hidden", t !== "text");
+                    cs.disabled = t !== "text";
+                    hexWrap.classList.toggle("is-hidden", !(t === "hex" && (ta.value || "").indexOf("\n") !== -1));
+                }
+
+                function setEncLayout() {
+                    var t = document.getElementById("encInType").value;
+                    var ta = document.getElementById("encText");
+                    var note = document.getElementById("encFileNote");
+                    if (t === "upload") {
+                        ta.style.display = "none";
+                        note.classList.add("visible");
+                        document.getElementById("encFileNoteText").textContent = fileU8
+                            ? "已选文件，将按原始字节编码"
+                            : "请选择文件（将按原始字节编码）";
+                    } else {
+                        ta.style.display = "";
+                        note.classList.remove("visible");
+                        if (t !== "upload") {
+                            fileU8 = null;
+                            document.getElementById("encFile").value = "";
+                        }
+                    }
+                    if (t === "url") ta.placeholder = "https://… 资源链接";
+                    else if (t === "hex") ta.placeholder = "十六进制字节，如 48656c6c6f";
+                    else ta.placeholder = "输入内容…";
+                    updateEncToolVisibility();
+                }
+
+                function getEncInputU8Sync() {
+                    var t = document.getElementById("encInType").value;
+                    var raw = document.getElementById("encText").value;
+                    if (t === "text") return stringToU8WithEnc(raw, document.getElementById("encCharset").value);
+                    if (t === "hex") {
+                        if (!String(raw).trim()) return new Uint8Array(0);
+                        return hexToU8(raw, document.getElementById("encHexPreserveLb").checked);
+                    }
+                    if (t === "upload") {
+                        if (!fileU8) return null;
+                        return fileU8;
+                    }
+                    return null;
+                }
+
+                function syncEncEmpty() {
+                    var v = document.getElementById("encOut").value;
+                    var show = !v || !String(v).trim();
+                    document.getElementById("encEmpty").classList.toggle("visible", show);
+                }
+
+                function applyEncOutputFromU8(u8) {
+                    var out = document.getElementById("encOut");
+                    if (!u8 || u8.length === 0) {
+                        out.value = "";
+                        encLastU8 = null;
+                        syncEncEmpty();
+                        return;
+                    }
+                    encLastU8 = u8;
+                    var std = u8ToB64(u8, false);
+                    if (document.getElementById("encDataUrl").checked) {
+                        out.value = "data:" + sniffMime(u8) + ";base64," + std.replace(/\s/g, "");
+                    } else {
+                        out.value = u8ToB64(u8, document.getElementById("encUrlSafe").checked);
+                    }
+                    syncEncEmpty();
+                }
+
+                function runEnc() {
+                    var out = document.getElementById("encOut");
+                    var t = document.getElementById("encInType").value;
+                    if (t === "url") {
+                        var url = document.getElementById("encText").value.trim();
+                        if (!url) {
+                            out.value = "";
+                            encLastU8 = null;
+                            syncEncEmpty();
+                            return;
+                        }
+                        out.value = "加载中…";
+                        syncEncEmpty();
+                        fetch(url)
+                            .then(function (r) {
+                                if (!r.ok) throw new Error("[" + url + "] HTTP " + r.status);
+                                return r.arrayBuffer();
+                            })
+                            .then(function (ab) {
+                                applyEncOutputFromU8(new Uint8Array(ab));
+                            })
+                            .catch(function (e) {
+                                out.value = "编码失败: " + (e && e.message ? e.message : e);
+                                encLastU8 = null;
+                                syncEncEmpty();
+                            });
+                        return;
+                    }
+                    try {
+                        var u8 = getEncInputU8Sync();
+                        if (t === "upload" && !u8) {
+                            out.value = "";
+                            encLastU8 = null;
+                            syncEncEmpty();
+                            return;
+                        }
+                        applyEncOutputFromU8(u8);
+                    } catch (e) {
+                        out.value = "编码失败: " + (e && e.message ? e.message : e);
+                        encLastU8 = null;
+                        syncEncEmpty();
+                    }
+                }
+
+                function scheduleRunEnc() {
+                    clearTimeout(encTimer);
+                    encTimer = setTimeout(function () {
+                        var t = document.getElementById("encInType").value;
+                        if (t === "url") {
+                            clearTimeout(encUrlTimer);
+                            encUrlTimer = setTimeout(runEnc, 350);
+                        } else {
+                            runEnc();
+                        }
+                    }, t === "url" ? 0 : 80);
+                }
+
+                function syncDecEmpty() {
+                    var kind = document.getElementById("decViewKind").value;
+                    var ta = document.getElementById("decOut");
+                    var img = document.getElementById("decImg");
+                    var empty = document.getElementById("decEmpty");
+                    if (kind === "down") {
+                        empty.classList.remove("visible");
+                        return;
+                    }
+                    if (kind === "image") {
+                        if (img.classList.contains("visible")) empty.classList.remove("visible");
+                        else {
+                            var tv = ta.value ? String(ta.value).trim() : "";
+                            empty.classList.toggle("visible", !tv);
+                        }
+                        return;
+                    }
+                    var v = ta.value;
+                    empty.classList.toggle("visible", !v || !String(v).trim());
+                }
+
+                function renderDecOutput() {
+                    var kind = document.getElementById("decViewKind").value;
+                    var ta = document.getElementById("decOut");
+                    var img = document.getElementById("decImg");
+                    var down = document.getElementById("decDownPanel");
+                    var encSel = document.getElementById("decEnc");
+
+                    encSel.disabled = kind !== "text";
+                    document.getElementById("decEncWrap").classList.toggle("is-hidden", kind !== "text");
+
+                    revokeDecImgObjectUrl();
+                    img.classList.remove("visible");
+                    img.removeAttribute("src");
+                    down.classList.remove("visible");
+                    ta.style.display = "";
+
+                    if (!decLastU8 || decLastU8.length === 0) {
+                        ta.value = "";
+                        syncDecEmpty();
+                        setDecLoading(false);
+                        return;
+                    }
+
+                    try {
+                        if (kind === "text") {
+                            if (decLastU8.length > DEC_TEXT_MAX_BYTES) {
+                                ta.value =
+                                    "解码结果约 " +
+                                    (decLastU8.length / 1048576).toFixed(2) +
+                                    " MB，超过文本安全展示上限（" +
+                                    Math.round(DEC_TEXT_MAX_BYTES / 1024) +
+                                    " KB）。已自动识别为图片时请选「图片」；其它二进制请用「下载」或「十六进制」。";
+                            } else {
+                                ta.value = u8ToString(decLastU8, document.getElementById("decEnc").value);
+                            }
+                        } else if (kind === "hex") {
+                            if (decLastU8.length > DEC_HEX_MAX_BYTES) {
+                                ta.value =
+                                    "内容约 " +
+                                    (decLastU8.length / 1048576).toFixed(2) +
+                                    " MB，整段转十六进制会严重卡顿，请使用「下载」保存后查看。";
+                            } else {
+                                ta.value = bytesToHexLower(decLastU8);
+                            }
+                        } else if (kind === "image") {
+                            if (!isLikelyImage(decLastU8)) {
+                                ta.value = "当前字节流不像常见图片格式；可切换到「文本」查看解码结果。";
+                                ta.style.display = "";
+                                syncDecEmpty();
+                                setDecLoading(false);
+                                return;
+                            }
+                            ta.style.display = "none";
+                            ta.value = "";
+                            var bigPreview = decLastU8.length >= DEC_BLOB_PREVIEW_MIN;
+                            function mountDecImage() {
+                                var mime = sniffMime(decLastU8);
+                                var blob = new Blob([decLastU8], { type: mime });
+                                decImgObjectUrl = URL.createObjectURL(blob);
+                                var fin = function () {
+                                    setDecLoading(false);
+                                };
+                                img.onload = fin;
+                                img.onerror = fin;
+                                img.src = decImgObjectUrl;
+                                img.classList.add("visible");
+                                setTimeout(function () {
+                                    if (img.complete) fin();
+                                }, 80);
+                                setTimeout(fin, 12000);
+                                syncDecEmpty();
+                            }
+                            if (bigPreview) {
+                                setDecLoading(
+                                    true,
+                                    "正在加载预览…",
+                                    "约 " + (decLastU8.length / 1048576).toFixed(2) + " MB，大图片赋值可能稍慢",
+                                );
+                                requestAnimationFrame(function () {
+                                    requestAnimationFrame(mountDecImage);
+                                });
+                            } else {
+                                mountDecImage();
+                            }
+                        } else if (kind === "down") {
+                            ta.style.display = "none";
+                            ta.value = "";
+                            down.classList.add("visible");
+                        }
+                    } catch (e) {
+                        ta.style.display = "";
+                        ta.value = "输出失败: " + (e && e.message ? e.message : e);
+                    }
+                    syncDecEmpty();
+                    var holdSpinner = false;
+                    if (decLastU8 && decLastU8.length) {
+                        var vk2 = document.getElementById("decViewKind").value;
+                        if (
+                            vk2 === "image" &&
+                            decLastU8.length >= DEC_BLOB_PREVIEW_MIN &&
+                            isLikelyImage(decLastU8)
+                        ) {
+                            holdSpinner = true;
+                        }
+                    }
+                    if (!holdSpinner) setDecLoading(false);
+                }
+
+                function runDecCore() {
+                    var seq = ++decOpSeq;
+                    var outTxt = document.getElementById("decOut");
+
+                    function finish() {
+                        if (seq === decOpSeq) setDecLoading(false);
+                    }
+
+                    setDecLoading(true, "正在解码 Base64…", "");
+
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(function () {
+                            if (seq !== decOpSeq) return;
+
+                            var rawInput = getDecRawInput();
+                            var urlSafeEl = document.getElementById("decUrlSafe").checked;
+
+                            if (seq !== decOpSeq) return;
+
+                            if (isEffectivelyEmptyDecRaw(rawInput)) {
+                                decLastU8 = null;
+                                revokeDecImgObjectUrl();
+                                outTxt.value = "";
+                                renderDecOutput();
+                                finish();
+                                return;
+                            }
+
+                            var approxMb = (rawInput.length * 3) / 4 / 1048576;
+                            setDecLoading(
+                                true,
+                                "正在解码 Base64…",
+                                approxMb >= 0.05 ? "约 " + approxMb.toFixed(2) + " MB 二进制（大文件请稍候）" : "",
+                            );
+
+                            function afterBytes(u8) {
+                                if (seq !== decOpSeq) return;
+                                try {
+                                    decLastU8 = u8;
+                                    var vk = document.getElementById("decViewKind");
+                                    if (decLastU8.length && isLikelyImage(decLastU8) && vk.value === "text") {
+                                        vk.value = "image";
+                                    }
+                                    renderDecOutput();
+                                } catch (e) {
+                                    decLastU8 = null;
+                                    revokeDecImgObjectUrl();
+                                    outTxt.value = "解码失败: " + (e && e.message ? e.message : e);
+                                    document.getElementById("decImg").classList.remove("visible");
+                                    document.getElementById("decDownPanel").classList.remove("visible");
+                                    outTxt.style.display = "";
+                                    syncDecEmpty();
+                                    finish();
+                                }
+                            }
+
+                            function onErr(e) {
+                                if (seq !== decOpSeq) return;
+                                decLastU8 = null;
+                                revokeDecImgObjectUrl();
+                                outTxt.value = "解码失败: " + (e && e.message ? e.message : e);
+                                document.getElementById("decImg").classList.remove("visible");
+                                document.getElementById("decDownPanel").classList.remove("visible");
+                                outTxt.style.display = "";
+                                syncDecEmpty();
+                                finish();
+                            }
+
+                            var useFull = rawInput.length >= DEC_WORKER_FULL_MIN && window.Worker;
+                            if (useFull) {
+                                decodeB64InWorkerFull(rawInput, urlSafeEl, function (err, u8) {
+                                    if (seq !== decOpSeq) return;
+                                    if (err) onErr(err);
+                                    else afterBytes(u8);
+                                });
+                            } else {
+                                try {
+                                    var tSmall = normalizeB64Input(rawInput, urlSafeEl);
+                                    if (!tSmall) {
+                                        decLastU8 = null;
+                                        revokeDecImgObjectUrl();
+                                        outTxt.value = "";
+                                        renderDecOutput();
+                                        finish();
+                                        return;
+                                    }
+                                    afterBytes(b64ToU8Sync(tSmall));
+                                } catch (e) {
+                                    onErr(e);
+                                }
+                            }
+                        });
+                    });
+                }
+
+                function scheduleRunDec() {
+                    clearTimeout(decDebounce);
+                    if (decExternalB64 !== null) return;
+                    var raw = document.getElementById("decB64").value;
+                    updateDecMegaHint(raw.length);
+                    if (raw.length >= DEC_PAUSE_AUTO_LEN) return;
+                    var delay = raw.length > 200000 ? 500 : 220;
+                    decDebounce = setTimeout(runDecCore, delay);
+                }
+
+                function runDecNow() {
+                    clearTimeout(decDebounce);
+                    runDecCore();
+                }
+
                 document.getElementById("encText").addEventListener("input", function () {
+                    updateEncToolVisibility();
+                    scheduleRunEnc();
+                });
+                document.getElementById("encCharset").addEventListener("change", runEnc);
+                document.getElementById("encInType").addEventListener("change", function () {
+                    document.getElementById("encText").value = "";
                     fileU8 = null;
+                    document.getElementById("encFile").value = "";
+                    setEncLayout();
                     runEnc();
                 });
-                document.getElementById("encUrlSafe").addEventListener("change", runEnc);
+                document.getElementById("encHexPreserveLb").addEventListener("change", runEnc);
+                document.getElementById("encUrlSafe").addEventListener("change", function () {
+                    if (document.getElementById("encDataUrl").checked) return;
+                    if (encLastU8) applyEncOutputFromU8(encLastU8);
+                });
+                document.getElementById("encDataUrl").addEventListener("change", function () {
+                    var us = document.getElementById("encUrlSafe");
+                    if (this.checked) {
+                        us.checked = false;
+                        us.disabled = true;
+                    } else {
+                        us.disabled = false;
+                    }
+                    if (encLastU8) applyEncOutputFromU8(encLastU8);
+                });
+                document.getElementById("encRun").addEventListener("click", runEnc);
+                document.getElementById("encPickBtn").addEventListener("click", function () {
+                    document.getElementById("encFile").click();
+                });
                 document.getElementById("encFile").addEventListener("change", function (ev) {
                     var f = ev.target.files && ev.target.files[0];
                     fileU8 = null;
                     if (!f) {
                         runEnc();
+                        setEncLayout();
                         return;
                     }
                     var r = new FileReader();
                     r.onload = function () {
                         fileU8 = new Uint8Array(r.result);
+                        setEncLayout();
                         runEnc();
                     };
                     r.readAsArrayBuffer(f);
                 });
-                document.getElementById("decB64").addEventListener("input", runDec);
-                document.getElementById("decUrlSafe").addEventListener("change", runDec);
-                document.getElementById("decEnc").addEventListener("change", runDec);
-                document.querySelectorAll(".codec-seg button").forEach(function (btn) {
+
+                document.getElementById("decB64").addEventListener("input", function () {
+                    clearDecExternal();
+                    var L = this.value.length;
+                    updateDecMegaHint(L);
+                    if (L >= DEC_PAUSE_AUTO_LEN) return;
+                    scheduleRunDec();
+                });
+                document.getElementById("decB64FileBtn").addEventListener("click", function () {
+                    document.getElementById("decB64File").click();
+                });
+                document.getElementById("decB64File").addEventListener("change", function (ev) {
+                    var f = ev.target.files && ev.target.files[0];
+                    ev.target.value = "";
+                    if (!f) return;
+                    var r = new FileReader();
+                    r.onload = function () {
+                        decExternalB64 = String(r.result || "");
+                        decExternalName = f.name || "";
+                        document.getElementById("decB64").value = "";
+                        updateDecMegaHint(decExternalB64.length);
+                        decOpSeq++;
+                        runDecNow();
+                    };
+                    r.onerror = function () {
+                        decExternalB64 = null;
+                        decExternalName = "";
+                        document.getElementById("decOut").value = "读取文件失败";
+                        updateDecMegaHint(0);
+                    };
+                    r.readAsText(f);
+                });
+                document.getElementById("decUrlSafe").addEventListener("change", runDecNow);
+                document.getElementById("decEnc").addEventListener("change", function () {
+                    if (document.getElementById("decViewKind").value === "text") renderDecOutput();
+                });
+                document.getElementById("decViewKind").addEventListener("change", renderDecOutput);
+                document.getElementById("decRun").addEventListener("click", runDecNow);
+                document.getElementById("decDownBtn").addEventListener("click", function () {
+                    if (!decLastU8 || !decLastU8.length) return;
+                    var mime = sniffMime(decLastU8);
+                    var blob = new Blob([decLastU8], { type: mime });
+                    var a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "base64-decoded.bin";
+                    a.click();
+                    setTimeout(function () {
+                        URL.revokeObjectURL(a.href);
+                    }, 2500);
+                });
+                document.getElementById("decImg").addEventListener("click", function () {
+                    if (this.src) window.open(this.src, "_blank");
+                });
+
+                document.querySelectorAll(".mode-seg button").forEach(function (btn) {
                     btn.addEventListener("click", function () {
-                        document.querySelectorAll(".codec-seg button").forEach(function (b) {
+                        document.querySelectorAll(".mode-seg button").forEach(function (b) {
                             b.classList.toggle("active", b === btn);
                         });
-                        var t = btn.getAttribute("data-tab");
-                        document.getElementById("p-enc").hidden = t !== "enc";
-                        document.getElementById("p-dec").hidden = t !== "dec";
+                        var tab = btn.getAttribute("data-tab");
+                        document.getElementById("split-enc").hidden = tab !== "enc";
+                        document.getElementById("split-dec").hidden = tab !== "dec";
+                        if (tab === "enc") {
+                            decOpSeq++;
+                            clearDecExternal();
+                            updateDecMegaHint(document.getElementById("decB64").value.length);
+                            setDecLoading(false);
+                        }
                     });
                 });
+
+                setEncLayout();
                 runEnc();
-                runDec();
+                updateDecMegaHint(document.getElementById("decB64").value.length);
+                runDecNow();
             })();
-            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+            document.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+            });
         </script>
     </body>
 </html>

@@ -5,38 +5,206 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>HTML 实体编解码</title>
         <script src="libs/js-htmlencode.js"></script>
-        <link rel="stylesheet" href="libs/codec-page.css" />
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --foot-bg: #f8fbff;
+                --input-border: #cfdcf7;
+                --toolbar-line: #e4edff;
+            }
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+                overflow: hidden;
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                gap: 10px;
+            }
+            .opts {
+                flex-shrink: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px 12px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px 16px;
+            }
+            .opts-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #324a76;
+            }
+            .split {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .pane {
+                flex: 1 1 0;
+                min-width: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .pane-hd {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-bottom: 1px solid var(--toolbar-line);
+            }
+            .pane-body {
+                flex: 1;
+                min-height: 0;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+            .pane-ta {
+                flex: 1;
+                width: 100%;
+                min-height: 120px;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                padding: 10px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 14px;
+                line-height: 1.55;
+                resize: none;
+                outline: none;
+                background: #fff;
+                color: var(--text);
+            }
+            .pane-ta:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            .foot {
+                flex-shrink: 0;
+                border-top: 1px solid var(--toolbar-line);
+                background: var(--foot-bg);
+                padding: 8px 10px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 14px;
+                align-items: center;
+            }
+            .foot .foot-hint {
+                flex: 1 1 100%;
+                margin: 0;
+                font-size: 12px;
+                color: var(--muted);
+                line-height: 1.45;
+            }
+            .foot .foot-hint code {
+                font-size: 11px;
+                background: #eef3ff;
+                padding: 1px 5px;
+                border-radius: 4px;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 6px 12px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            @media (max-width: 820px) {
+                .split {
+                    flex-direction: column;
+                }
+            }
+        </style>
     </head>
     <body>
-        <div class="codec-page codec-page--fill">
-            <div class="codec-split2">
-                <div class="codec-pane">
-                    <h3>编码侧（原文）</h3>
-                    <div class="codec-hint">左右双栏联动编辑；<code>js-htmlencode</code> 的 <code>htmlEncode</code> / <code>htmlDecode</code>。</div>
-                    <div class="codec-lbl">输入</div>
-                    <div class="codec-pane-body">
-                        <textarea id="taEnc" class="codec-ta codec-ta-grow" placeholder="在此输入要编码为实体的原文"></textarea>
+        <div class="page">
+            <div class="opts">
+                <span class="opts-title">HTML 实体编解码</span>
+            </div>
+            <div class="split">
+                <section class="pane">
+                    <div class="pane-hd">编码侧（原文）</div>
+                    <div class="pane-body">
+                        <textarea
+                            id="taEnc"
+                            class="pane-ta"
+                            placeholder="在此输入要编码为实体的原文"
+                        ></textarea>
                     </div>
-                </div>
-                <div class="codec-pane">
-                    <h3>解码侧（含实体）</h3>
-                    <div class="codec-hint">在任一侧编辑，另一侧自动同步转换。</div>
-                    <div class="codec-lbl">输入</div>
-                    <div class="codec-pane-body">
-                        <textarea id="taDec" class="codec-ta codec-ta-grow" placeholder="在此输入含 &amp;lt; 等实体的文本"></textarea>
+                    <div class="foot">
+                        <button type="button" class="btn" id="htmlEncRun" title="以本侧为准同步">▶</button>
+                        <p class="foot-hint">
+                            左右双栏联动；<code>js-htmlencode</code> 的 <code>htmlEncode</code> /
+                            <code>htmlDecode</code>。编辑任一侧会更新另一侧；▶ 表示以当前侧为准立即同步。
+                        </p>
                     </div>
-                </div>
+                </section>
+                <section class="pane">
+                    <div class="pane-hd">解码侧（含实体）</div>
+                    <div class="pane-body">
+                        <textarea
+                            id="taDec"
+                            class="pane-ta"
+                            placeholder="在此输入含 &amp;lt; 等实体的文本"
+                        ></textarea>
+                    </div>
+                    <div class="foot">
+                        <button type="button" class="btn" id="htmlDecRun" title="以本侧为准同步">▶</button>
+                        <p class="foot-hint">在任一侧输入或粘贴，另一侧自动转换；也可点 ▶ 强制从该侧推导。</p>
+                    </div>
+                </section>
             </div>
         </div>
         <script>
             (function () {
                 if (typeof window.htmlEncode !== "function" || typeof window.htmlDecode !== "function") {
-                    document.body.innerHTML = "<p style='padding:16px'>缺少 libs/js-htmlencode.js</p>";
+                    document.querySelector(".page").innerHTML = "<p style='padding:16px'>缺少 libs/js-htmlencode.js</p>";
                     return;
                 }
                 var taEnc = document.getElementById("taEnc");
                 var taDec = document.getElementById("taDec");
                 var state = { type: "", input: "" };
+                var tEnc = null;
+                var tDec = null;
                 function getHandle(target) {
                     if (state.type === "" || state.input === "") return "";
                     if (state.type === target) return state.input;
@@ -59,17 +227,41 @@
                     taDec.value = getHandle("decode");
                     syncing = false;
                 }
+                function scheduleEnc() {
+                    clearTimeout(tEnc);
+                    tEnc = setTimeout(function () {
+                        setHandle("encode", taEnc.value);
+                    }, 80);
+                }
+                function scheduleDec() {
+                    clearTimeout(tDec);
+                    tDec = setTimeout(function () {
+                        setHandle("decode", taDec.value);
+                    }, 80);
+                }
                 taEnc.addEventListener("input", function () {
                     if (syncing) return;
-                    setHandle("encode", taEnc.value);
+                    scheduleEnc();
                 });
                 taDec.addEventListener("input", function () {
                     if (syncing) return;
+                    scheduleDec();
+                });
+                document.getElementById("htmlEncRun").addEventListener("click", function () {
+                    clearTimeout(tEnc);
+                    clearTimeout(tDec);
+                    setHandle("encode", taEnc.value);
+                });
+                document.getElementById("htmlDecRun").addEventListener("click", function () {
+                    clearTimeout(tEnc);
+                    clearTimeout(tDec);
                     setHandle("decode", taDec.value);
                 });
                 refresh();
             })();
-            document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+            document.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+            });
         </script>
     </body>
 </html>
