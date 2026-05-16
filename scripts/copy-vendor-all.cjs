@@ -111,6 +111,12 @@ async function main() {
         "alasql"
     );
 
+    copyThing(
+        path.join(root, "node_modules", "mathjs", "lib", "browser", "math.js"),
+        path.join(vendor, "mathjs", "math.js"),
+        "mathjs（浏览器 UMD，单位换算等离线）"
+    );
+
     const jbLib = path.join(root, "node_modules", "js-beautify", "js", "lib");
     ["beautify.js", "beautify-html.js", "beautify-css.js"].forEach(function (f) {
         copyThing(path.join(jbLib, f), path.join(vendor, "js-beautify", f), "js-beautify/" + f);
