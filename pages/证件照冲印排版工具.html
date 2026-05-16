@@ -82,6 +82,55 @@
                 width: 100%;
                 max-width: min(420px, 100%);
             }
+            .toolbar-sw-label {
+                font-size: 13px;
+                color: #324a76;
+                display: block;
+                margin-bottom: 2px;
+            }
+            .print-colors {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 10px;
+                align-items: flex-end;
+            }
+            .print-colors .color-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .print-colors .color-item .sw {
+                width: 26px;
+                height: 26px;
+                border-radius: 6px;
+                border: 2px solid #cfdcf7;
+                box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+            }
+            .print-colors .color-item .lab {
+                font-size: 11px;
+                color: #5a6f94;
+                line-height: 1.1;
+            }
+            .print-colors .color-item:hover .sw {
+                border-color: var(--primary);
+            }
+            .print-colors .color-item.active .sw {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.28);
+            }
+            .print-colors .color-item.other .sw {
+                background: linear-gradient(135deg, #fff 50%, #dbe6ff 50%);
+            }
+            #printCustomColor {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+            }
             .btn {
                 border: 1px solid #d8e5ff;
                 border-radius: 4px;
@@ -95,6 +144,27 @@
             .btn:hover {
                 border-color: var(--primary);
                 color: var(--primary);
+            }
+            .btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .btn-clear {
+                border: 1px solid transparent;
+                border-radius: 6px;
+                background: linear-gradient(135deg, #e04040, #ff7979);
+                color: #fff;
+                font-weight: 600;
+            }
+            .btn-clear:hover:not(:disabled) {
+                filter: brightness(1.05);
+                color: #fff;
+                border-color: transparent;
+            }
+            .btn-clear:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+                filter: none;
             }
             .btn-primary {
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
@@ -496,6 +566,7 @@
                                 <input type="file" id="fileIn" accept="image/*" />
                                 <button type="button" class="drop" id="btnPick" title="支持 JPG / PNG 等">点击上传证件照</button>
                                 <button type="button" class="btn-link-tool" id="btnToPhotoBg" disabled title="跳转到证件照换底色（带入原图）">🎨 去换底色 →</button>
+                                <button type="button" class="btn btn-clear" id="btnClear" disabled title="清除当前照片">🗑 清除</button>
                             </div>
                             <p class="hint">
                                 本地处理；单张可拖拽/滚轮/右上旋转；排版实时（需上传照片）。
@@ -528,6 +599,11 @@
                                 <input type="checkbox" id="chkCut" checked />
                                 裁切线
                             </label>
+                            <div class="print-bg-picker">
+                                <span class="toolbar-sw-label">证件底色（冲印）</span>
+                                <div class="print-colors" id="swatches"></div>
+                                <input type="color" id="printCustomColor" value="#1f8a7a" />
+                            </div>
                             <div class="toolbar-actions-inline">
                                 <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
                                 <button type="button" class="btn btn-primary" id="btnPrint" disabled>打印排版</button>
@@ -637,8 +713,19 @@
         </div>
         <script>
             (function () {
+                /** 与证件照换底色工具 SWATCHES 保持一致 */
+                var PRINT_SWATCHES = [
+                    { id: "w", label: "白", hex: "#ffffff" },
+                    { id: "lg", label: "浅灰", hex: "#e8eaed" },
+                    { id: "dr", label: "深红", hex: "#7a0c0c" },
+                    { id: "r", label: "红", hex: "#e60012" },
+                    { id: "tb", label: "钛蓝", hex: "#0d1b4d" },
+                    { id: "sq", label: "松青", hex: "#1f8a7a" },
+                    { id: "b", label: "蓝", hex: "#005bac" },
+                    { id: "sb", label: "天蓝", hex: "#7ec8e3" },
+                    { id: "cb", label: "青蓝", hex: "#00a0e9" },
+                ];
                 var CUSTOM_PRESET_ID = "custom";
-                var DEFAULT_PRINT_BG = "#438edb";
                 var PRESETS = [
                     { id: "y1", name: "一寸", w: 295, h: 413, set: "all6", text: false },
                     { id: "e2", name: "二寸", w: 413, h: 579, set: "all6", text: false },
@@ -673,6 +760,8 @@
                 /** 用户显式选了「自定义」时，在角度仍贴近快捷值前保持该项，避免被 sync 改回 0°/90°… */
                 var rotUserPickedCustom = false;
                 var stageDrag = null;
+                var currentColorKey = "sq";
+                var customPrintHex = "#1f8a7a";
                 var layoutCanvas = null;
                 var lastPaperPx = { w: 0, h: 0 };
                 var layoutRefreshTimer = null;
@@ -1052,17 +1141,90 @@
                     ctx.restore();
                 }
 
-                function refreshPresetUi() {
+                function getPrintBgHex() {
+                    if (currentColorKey === "other") return customPrintHex;
+                    for (var i = 0; i < PRINT_SWATCHES.length; i++) {
+                        if (PRINT_SWATCHES[i].id === currentColorKey) return PRINT_SWATCHES[i].hex;
+                    }
+                    return PRINT_SWATCHES[0].hex;
+                }
+
+                function refreshPrintPreview() {
+                    drawSingle();
+                    requestAnimationFrame(function () {
+                        scheduleLayoutRefresh(true);
+                    });
+                }
+
+                function syncPrintColorUi() {
+                    var box = document.getElementById("swatches");
+                    if (!box) return;
+                    box.querySelectorAll(".color-item[data-sid]").forEach(function (node) {
+                        node.classList.toggle("active", node.dataset.sid === currentColorKey);
+                    });
+                    var otherNode = box.querySelector(".color-item.other");
+                    if (otherNode) {
+                        otherNode.classList.toggle("active", currentColorKey === "other");
+                        var sw = otherNode.querySelector(".sw");
+                        if (sw && currentColorKey === "other") sw.style.background = customPrintHex;
+                    }
+                }
+
+                function buildPrintColors() {
+                    var box = document.getElementById("swatches");
+                    if (!box || box.getAttribute("data-built") === "1") return;
+                    box.setAttribute("data-built", "1");
+                    box.innerHTML = "";
+                    PRINT_SWATCHES.forEach(function (s) {
+                        var wrap = document.createElement("div");
+                        wrap.className = "color-item";
+                        wrap.dataset.sid = s.id;
+                        wrap.innerHTML =
+                            '<div class="sw" style="background:' +
+                            s.hex +
+                            '"></div><span class="lab">' +
+                            s.label +
+                            "</span>";
+                        wrap.addEventListener("click", function () {
+                            currentColorKey = s.id;
+                            syncPrintColorUi();
+                            refreshPrintPreview();
+                        });
+                        box.appendChild(wrap);
+                    });
+                    var otherEl = document.createElement("div");
+                    otherEl.className = "color-item other";
+                    otherEl.innerHTML = '<div class="sw"></div><span class="lab">其他</span>';
+                    otherEl.addEventListener("click", function () {
+                        document.getElementById("printCustomColor").click();
+                    });
+                    box.appendChild(otherEl);
+                    var colorIn = document.getElementById("printCustomColor");
+                    if (colorIn) {
+                        colorIn.addEventListener("input", function () {
+                            customPrintHex = colorIn.value;
+                            currentColorKey = "other";
+                            syncPrintColorUi();
+                            refreshPrintPreview();
+                        });
+                    }
+                    syncPrintColorUi();
+                }
+
+                function rebuildSwatches() {
+                    buildPrintColors();
                     var p = getPreset();
+                    syncPrintColorUi();
                     document.getElementById("overlayWrap").style.display = p.text ? "flex" : "none";
                     var ol = document.getElementById("overlayLabel");
                     if (ol) ol.textContent = p.id === CUSTOM_PRESET_ID ? "底部加字（可选）" : "底部加字";
                     syncCustomSizeRow();
                     updateSinglePanelMeta();
-                    drawSingle();
-                    requestAnimationFrame(function () {
-                        scheduleLayoutRefresh(true);
-                    });
+                    refreshPrintPreview();
+                }
+
+                function refreshPresetUi() {
+                    rebuildSwatches();
                 }
 
                 function luminance(hex) {
@@ -1179,7 +1341,7 @@
                 function drawSingle() {
                     try {
                         var p = getPreset();
-                        var bg = DEFAULT_PRINT_BG;
+                        var bg = getPrintBgHex();
                         var c = document.getElementById("singleCanvas");
                         c.width = p.w;
                         c.height = p.h;
@@ -1207,6 +1369,34 @@
                     }
                 }
 
+                function clearCurrentPhoto() {
+                    if (!img) {
+                        showErr("当前没有照片");
+                        return;
+                    }
+                    img = null;
+                    var fileIn = document.getElementById("fileIn");
+                    if (fileIn) fileIn.value = "";
+                    var out = document.getElementById("singlePreview");
+                    if (out) {
+                        out.style.display = "none";
+                        out.removeAttribute("src");
+                    }
+                    var singleCanvas = document.getElementById("singleCanvas");
+                    if (singleCanvas) {
+                        var sctx = singleCanvas.getContext("2d");
+                        if (sctx) sctx.clearRect(0, 0, singleCanvas.width, singleCanvas.height);
+                    }
+                    resetViewControls();
+                    showErr("");
+                    updatePreviewStageUI();
+                    try {
+                        drawLayoutPlaceholder(getPaperPx(), "请先上传证件照以预览排版");
+                    } catch (e) {
+                        drawLayoutPlaceholder({ w: 600, h: 800 }, "请先上传证件照以预览排版");
+                    }
+                }
+
                 function updatePreviewStageUI() {
                     var stage = document.getElementById("singleStage");
                     var tip = document.getElementById("previewTip");
@@ -1217,6 +1407,8 @@
                     handle.disabled = !ok;
                     var linkBtn = document.getElementById("btnToPhotoBg");
                     if (linkBtn) linkBtn.disabled = !ok;
+                    var clearBtn = document.getElementById("btnClear");
+                    if (clearBtn) clearBtn.disabled = !ok;
                     if (ok) stage.classList.add("can-interact");
                     else stage.classList.remove("can-interact");
                 }
@@ -1406,7 +1598,7 @@
                         var dpi = getDpi();
                         var marginPx = mmToPx(parseFloat(document.getElementById("marginMm").value) || 0, dpi);
                         var gapPx = mmToPx(parseFloat(document.getElementById("gapMm").value) || 0, dpi);
-                        var bg = DEFAULT_PRINT_BG;
+                        var bg = getPrintBgHex();
                         var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
 
                         var cw = p.w,
@@ -1481,6 +1673,7 @@
                 document.getElementById("btnPick").addEventListener("click", function () {
                     document.getElementById("fileIn").click();
                 });
+                document.getElementById("btnClear").addEventListener("click", clearCurrentPhoto);
                 document.getElementById("fileIn").addEventListener("change", function (e) {
                     var f = e.target.files && e.target.files[0];
                     if (!f) return;
