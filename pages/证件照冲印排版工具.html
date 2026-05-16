@@ -82,24 +82,6 @@
                 width: 100%;
                 max-width: min(420px, 100%);
             }
-            .swatches {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 4px;
-                align-items: center;
-            }
-            .sw {
-                width: 22px;
-                height: 22px;
-                border-radius: 4px;
-                border: 2px solid #cfdcf7;
-                cursor: pointer;
-                padding: 0;
-            }
-            .sw.active {
-                border-color: var(--primary);
-                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.25);
-            }
             .btn {
                 border: 1px solid #d8e5ff;
                 border-radius: 4px;
@@ -179,12 +161,6 @@
             }
             .toolbar-fields label {
                 min-width: 0;
-            }
-            .toolbar-sw-label {
-                font-size: 13px;
-                color: #324a76;
-                display: block;
-                margin-bottom: 2px;
             }
             .toolbar-fields .field-grow {
                 flex: 1 1 160px;
@@ -528,11 +504,8 @@
                                 <input type="checkbox" id="chkCut" checked />
                                 裁切线
                             </label>
-                            <div>
-                                <span class="toolbar-sw-label">证件底色（冲印）</span>
-                                <div class="swatches" id="swatches"></div>
-                            </div>
                             <div class="toolbar-actions-inline">
+                                <button type="button" class="btn" id="btnToPhotoBg" disabled title="将当前证件照带入换底色工具">🎨 换底色</button>
                                 <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
                                 <button type="button" class="btn btn-primary" id="btnPrint" disabled>打印排版</button>
                             </div>
@@ -641,20 +614,8 @@
         </div>
         <script>
             (function () {
-                var COLOR_HEX = {
-                    white: "#ffffff",
-                    blue: "#438edb",
-                    red: "#d0021b",
-                    gray: "#8e8e8e",
-                    steel: "#4682b4",
-                    darkBlue: "#0d3b66",
-                };
-                var COLOR_SETS = {
-                    all6: ["blue", "white", "red", "gray", "steel", "darkBlue"],
-                    threeBRW: ["blue", "white", "red"],
-                    access: ["blue", "white", "red", "darkBlue", "steel", "gray"],
-                };
                 var CUSTOM_PRESET_ID = "custom";
+                var DEFAULT_PRINT_BG = "#438edb";
                 var PRESETS = [
                     { id: "y1", name: "一寸", w: 295, h: 413, set: "all6", text: false },
                     { id: "e2", name: "二寸", w: 413, h: 579, set: "all6", text: false },
@@ -689,7 +650,6 @@
                 /** 用户显式选了「自定义」时，在角度仍贴近快捷值前保持该项，避免被 sync 改回 0°/90°… */
                 var rotUserPickedCustom = false;
                 var stageDrag = null;
-                var currentColorKey = "blue";
                 var layoutCanvas = null;
                 var lastPaperPx = { w: 0, h: 0 };
                 var layoutRefreshTimer = null;
@@ -764,11 +724,105 @@
                     if (!msg) {
                         el.style.display = "none";
                         el.textContent = "";
+                        el.style.color = "";
                         return;
                     }
                     el.style.display = "block";
+                    el.style.color = "#c62828";
                     el.textContent = msg;
                 }
+
+                var HANDOFF_PRINT_KEY = "tool-nav:handoff:photo-to-print";
+                var HANDOFF_DEFAULT_PRESET_ID = "y1";
+
+                function applyPresetFromPhotoHandoff() {
+                    var sel = document.getElementById("presetSel");
+                    sel.value = HANDOFF_DEFAULT_PRESET_ID;
+                    lastPresetIdBeforeCustom = HANDOFF_DEFAULT_PRESET_ID;
+                    syncCustomSizeRow();
+                    updatePresetSelectLabels();
+                    refreshPresetUi();
+                }
+
+                function consumeHandoffPayload(payload) {
+                    if (!payload || !payload.dataUrl) return false;
+                    if (payload.ts && Date.now() - payload.ts > 5 * 60 * 1000) {
+                        clearHandoffStorage();
+                        showErr("换底色带入的数据已过期，请重新在换底色工具中点击「冲印排版」。");
+                        return false;
+                    }
+                    clearHandoffStorage();
+                    applyPresetFromPhotoHandoff();
+                    var im = new Image();
+                    im.onload = function () {
+                        img = im;
+                        showErr("");
+                        resetViewControls();
+                        drawSingle();
+                        scheduleLayoutRefresh(true);
+                        var hint = payload.presetLabel ? "已从换底色载入（" + payload.presetLabel + "）" : "已从换底色工具载入证件照";
+                        var errEl = document.getElementById("errBox");
+                        errEl.style.display = "block";
+                        errEl.style.color = "#0d6b4a";
+                        errEl.textContent = hint;
+                    };
+                    im.onerror = function () {
+                        showErr("换底色带入的图片无法解析。");
+                    };
+                    im.src = payload.dataUrl;
+                    return true;
+                }
+
+                function readHandoffFromStorage() {
+                    var raw = null;
+                    try {
+                        raw = sessionStorage.getItem(HANDOFF_PRINT_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    if (!raw) {
+                        try {
+                            raw = localStorage.getItem(HANDOFF_PRINT_KEY);
+                        } catch (e2) {
+                            // ignore
+                        }
+                    }
+                    if (!raw) return null;
+                    try {
+                        return JSON.parse(raw);
+                    } catch (e3) {
+                        return null;
+                    }
+                }
+
+                function clearHandoffStorage() {
+                    try {
+                        sessionStorage.removeItem(HANDOFF_PRINT_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_PRINT_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+
+                function consumeHandoffFromPhotoBg(inlinePayload) {
+                    var payload = inlinePayload;
+                    if (!payload) payload = readHandoffFromStorage();
+                    if (!payload) return;
+                    clearHandoffStorage();
+                    consumeHandoffPayload(payload);
+                }
+
+                window.addEventListener("message", function (e) {
+                    var d = e.data;
+                    if (!d || d.type !== "tool-nav:consume-handoff") return;
+                    if (d.handoff === "photo-to-print") {
+                        consumeHandoffFromPhotoBg(d.payload || null);
+                    }
+                });
 
                 function getDpi() {
                     return parseInt(document.getElementById("dpiSel").value, 10) || 300;
@@ -810,9 +864,35 @@
                     return { w: cmToPx(15.2, dpi), h: cmToPx(10.2, dpi), label: "", wcm: 15.2, hcm: 10.2 };
                 }
 
-                function layoutSizeCaptionText(paperPx, dpi) {
+                function formatLayoutDateTime(now) {
+                    var d = now || new Date();
+                    var pad = function (n) {
+                        return n < 10 ? "0" + n : String(n);
+                    };
+                    return (
+                        d.getFullYear() +
+                        "-" +
+                        pad(d.getMonth() + 1) +
+                        "-" +
+                        pad(d.getDate()) +
+                        " " +
+                        pad(d.getHours()) +
+                        ":" +
+                        pad(d.getMinutes()) +
+                        ":" +
+                        pad(d.getSeconds())
+                    );
+                }
+
+                function layoutPaperSizeText(paperPx, dpi) {
                     if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return "";
                     return "打印尺寸 " + paperPx.wcm + "×" + paperPx.hcm + " cm · " + dpi + " DPI · 画布 " + paperPx.w + "×" + paperPx.h + " px";
+                }
+
+                function layoutSizeCaptionText(paperPx, dpi) {
+                    var base = layoutPaperSizeText(paperPx, dpi);
+                    if (!base) return "";
+                    return base + " · " + formatLayoutDateTime();
                 }
 
                 function updateLayoutMetaBar() {
@@ -827,34 +907,106 @@
                     document.getElementById("btnPrint").disabled = !on;
                 }
 
+                var HANDOFF_TO_PHOTO_BG_KEY = "tool-nav:handoff:print-to-photo-bg";
+                var HANDOFF_PHOTO_BG_TAB = "tab38";
+
+                function buildOriginalImageHandoffPayload() {
+                    var iw = img.naturalWidth || img.width;
+                    var ih = img.naturalHeight || img.height;
+                    if (!iw || !ih) return null;
+                    var c = document.createElement("canvas");
+                    c.width = iw;
+                    c.height = ih;
+                    var ctx = c.getContext("2d");
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = "high";
+                    ctx.drawImage(img, 0, 0, iw, ih);
+                    return {
+                        dataUrl: c.toDataURL("image/png"),
+                        ts: Date.now(),
+                        width: iw,
+                        height: ih,
+                        from: "print",
+                        source: "original"
+                    };
+                }
+
+                function handoffToPhotoBg() {
+                    if (!img) {
+                        showErr("请先上传证件照");
+                        return;
+                    }
+                    try {
+                        var payload = buildOriginalImageHandoffPayload();
+                        if (!payload) {
+                            showErr("无法读取原图，请重新上传后重试");
+                            return;
+                        }
+                        try {
+                            sessionStorage.setItem(HANDOFF_TO_PHOTO_BG_KEY, JSON.stringify(payload));
+                        } catch (storageErr) {
+                            // file:// 下 iframe 间 sessionStorage 可能不互通
+                        }
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: HANDOFF_PHOTO_BG_TAB,
+                                    handoff: "print-to-photo-bg",
+                                    payload: payload
+                                },
+                                "*"
+                            );
+                        } else {
+                            try {
+                                localStorage.setItem(HANDOFF_TO_PHOTO_BG_KEY, JSON.stringify(payload));
+                            } catch (storageErr2) {
+                                // ignore
+                            }
+                            window.location.href = "../index.html#tab=" + HANDOFF_PHOTO_BG_TAB;
+                        }
+                        var errEl = document.getElementById("errBox");
+                        errEl.style.display = "block";
+                        errEl.style.color = "#0d6b4a";
+                        errEl.textContent = "已带入换底色工具，正在切换…";
+                    } catch (e) {
+                        showErr("带入换底色失败：" + (e && e.message ? e.message : String(e)));
+                    }
+                }
+
                 function drawLayoutCaptionOnCanvas(ctx, paperPx, dpi, grid, cw, ch, gapPx, marginPx) {
                     if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return;
                     var pw = paperPx.w,
                         ph = paperPx.h;
-                    var text = layoutSizeCaptionText(paperPx, dpi);
+                    var line1 = layoutPaperSizeText(paperPx, dpi);
+                    var line2 = formatLayoutDateTime();
                     var gridBottom = grid.oy + grid.rows * ch + Math.max(0, grid.rows - 1) * gapPx;
                     var availBelow = ph - marginPx - gridBottom;
                     var availAbove = grid.oy - marginPx;
                     var fs = Math.round(clamp((dpi / 300) * 15, 12, Math.min(pw, ph) / 17));
                     var lineH = fs * 1.4;
+                    var blockH = lineH * 2;
                     var y;
                     ctx.save();
                     ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
                     ctx.fillStyle = "rgba(48, 70, 110, 0.9)";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    if (availBelow >= lineH + 6) {
+                    if (availBelow >= blockH + 6) {
                         y = gridBottom + availBelow / 2;
-                    } else if (availAbove >= lineH + 6) {
+                    } else if (availAbove >= blockH + 6) {
                         y = marginPx + availAbove / 2;
                     } else {
                         fs = Math.max(10, Math.floor(fs * 0.7));
+                        lineH = fs * 1.4;
+                        blockH = lineH * 2;
                         ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
                         ctx.shadowColor = "rgba(255,255,255,0.9)";
                         ctx.shadowBlur = Math.max(2, Math.round(fs * 0.35));
-                        y = ph - Math.max(8, marginPx * 0.4);
+                        y = ph - Math.max(8, marginPx * 0.4) - lineH * 0.5;
                     }
-                    ctx.fillText(text, pw / 2, y);
+                    ctx.fillText(line1, pw / 2, y - lineH * 0.5);
+                    ctx.fillText(line2, pw / 2, y + lineH * 0.5);
                     ctx.restore();
                 }
 
@@ -862,40 +1014,23 @@
                     if (!paperPx || paperPx.wcm == null || paperPx.hcm == null) return;
                     var pw = paperPx.w,
                         ph = paperPx.h;
-                    var text = layoutSizeCaptionText(paperPx, dpi);
-                    var fs = Math.max(14, Math.min(40, Math.floor(Math.min(pw, ph) / 16)));
+                    var line1 = layoutPaperSizeText(paperPx, dpi);
+                    var line2 = formatLayoutDateTime();
+                    var fs = Math.max(14, Math.min(40, Math.floor(Math.min(pw, ph) / 18)));
+                    var lineH = fs * 1.35;
+                    var bottom = ph - Math.max(10, fs);
                     ctx.save();
                     ctx.font = "600 " + fs + 'px "Microsoft YaHei","PingFang SC",sans-serif';
                     ctx.fillStyle = "rgba(48, 70, 110, 0.88)";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "bottom";
-                    ctx.fillText(text, pw / 2, ph - Math.max(10, fs));
+                    ctx.fillText(line2, pw / 2, bottom);
+                    ctx.fillText(line1, pw / 2, bottom - lineH);
                     ctx.restore();
                 }
 
-                function presetColors(p) {
-                    return COLOR_SETS[p.set] || COLOR_SETS.all6;
-                }
-
-                function rebuildSwatches() {
+                function refreshPresetUi() {
                     var p = getPreset();
-                    var keys = presetColors(p);
-                    if (keys.indexOf(currentColorKey) < 0) currentColorKey = keys[0];
-                    var box = document.getElementById("swatches");
-                    box.innerHTML = "";
-                    keys.forEach(function (k) {
-                        var b = document.createElement("button");
-                        b.type = "button";
-                        b.className = "sw" + (k === currentColorKey ? " active" : "");
-                        b.style.background = COLOR_HEX[k];
-                        b.title = k;
-                        b.setAttribute("data-key", k);
-                        b.addEventListener("click", function () {
-                            currentColorKey = k;
-                            rebuildSwatches();
-                        });
-                        box.appendChild(b);
-                    });
                     document.getElementById("overlayWrap").style.display = p.text ? "flex" : "none";
                     var ol = document.getElementById("overlayLabel");
                     if (ol) ol.textContent = p.id === CUSTOM_PRESET_ID ? "底部加字（可选）" : "底部加字";
@@ -1021,7 +1156,7 @@
                 function drawSingle() {
                     try {
                         var p = getPreset();
-                        var bg = COLOR_HEX[currentColorKey];
+                        var bg = DEFAULT_PRINT_BG;
                         var c = document.getElementById("singleCanvas");
                         c.width = p.w;
                         c.height = p.h;
@@ -1057,6 +1192,8 @@
                     tip.style.display = ok ? "block" : "none";
                     handle.style.visibility = ok ? "visible" : "hidden";
                     handle.disabled = !ok;
+                    var bgBtn = document.getElementById("btnToPhotoBg");
+                    if (bgBtn) bgBtn.disabled = !ok;
                     if (ok) stage.classList.add("can-interact");
                     else stage.classList.remove("can-interact");
                 }
@@ -1246,7 +1383,7 @@
                         var dpi = getDpi();
                         var marginPx = mmToPx(parseFloat(document.getElementById("marginMm").value) || 0, dpi);
                         var gapPx = mmToPx(parseFloat(document.getElementById("gapMm").value) || 0, dpi);
-                        var bg = COLOR_HEX[currentColorKey];
+                        var bg = DEFAULT_PRINT_BG;
                         var ov = p.text ? document.getElementById("overlayText").value.trim() : "";
 
                         var cw = p.w,
@@ -1359,7 +1496,7 @@
                         lastPresetIdBeforeCustom = v;
                     }
                     updatePresetSelectLabels();
-                    rebuildSwatches();
+                    refreshPresetUi();
                 });
                 document.getElementById("overlayText").addEventListener("input", function () {
                     drawSingle();
@@ -1427,7 +1564,7 @@
                     updatePresetSelectLabels();
                     syncCustomSizeRow();
                     updateLayoutMetaBar();
-                    rebuildSwatches();
+                    refreshPresetUi();
                 });
                 document.getElementById("paperSel").addEventListener("change", function () {
                     updateLayoutMetaBar();
@@ -1453,6 +1590,7 @@
                 document.getElementById("customH").addEventListener("input", onCustomSizeInput);
                 document.getElementById("customW").addEventListener("change", onCustomSizeInput);
                 document.getElementById("customH").addEventListener("change", onCustomSizeInput);
+                document.getElementById("btnToPhotoBg").addEventListener("click", handoffToPhotoBg);
                 document.getElementById("btnDl").addEventListener("click", function () {
                     if (!layoutCanvas) return;
                     var p = getPaperPx();
@@ -1490,7 +1628,8 @@
                 updateLayoutMetaBar();
                 syncRotUI();
                 updatePreviewStageUI();
-                rebuildSwatches();
+                refreshPresetUi();
+                consumeHandoffFromPhotoBg();
             })();
         </script>
     </body>

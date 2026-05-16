@@ -651,12 +651,19 @@
                 { id: "tab35", name: "ASN.1 DER 解析", category: "编解码", path: "pages/ASN1解析工具.html", keywords: ["asn1", "der", "证书", "x509", "xml", "离线"] },
                 { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
                 { id: "tab27", name: "证件照冲印排版", category: "其他", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] },
-                { id: "tab38", name: "证件照换底色", category: "其他", path: "pages/证件照换底色工具.html?v=20260516o", keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
+                { id: "tab38", name: "证件照换底色", category: "其他", path: "photo-background-change/index.html", keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
                 { id: "tab37", name: "翻译工具", category: "其他", path: "pages/翻译工具.html", keywords: ["翻译", "中英", "日语", "韩语", "词典", "例句", "领域", "自动检测", "translate", "mymemory"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序；头部快捷入口取前 RECENT_TOOLS_MAX 个） */
             const COMMON_TOOL_IDS = ["tab8", "tab18", "tab37", "tab11", "tab13", "tab10", "tab14", "tab5"];
             const DEFAULT_TAB_ID = "tab8";
+            const HANDOFF_PRINT_TAB = "tab27";
+            const HANDOFF_PHOTO_BG_TAB = "tab38";
+            const HANDOFF_PRINT_STORAGE_KEY = "tool-nav:handoff:photo-to-print";
+            const HANDOFF_PRINT_TO_PHOTO_KEY = "tool-nav:handoff:print-to-photo-bg";
+            /** 换底色 ↔ 冲印排版：经父页中转（file:// 下 iframe 无法共享 sessionStorage） */
+            let pendingPhotoPrintHandoff = null;
+            let pendingPrintToPhotoHandoff = null;
             let currentId = "";
             let overviewVisible = false;
             /** 首次根据 hash 打开工具时不写入最近槽位，保证刷新后头部仍为常用前五个 */
@@ -965,6 +972,12 @@
                     } catch (e) {
                         // Never block tool display due to restore failures.
                     }
+                    if (tool.id === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
+                        notifyPrintToolHandoff("photo-to-print", 0);
+                    }
+                    if (tool.id === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
+                        notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
+                    }
                 };
                 frame.src = tool.path;
                 FRAME_CACHE[tool.id] = frame;
@@ -1218,6 +1231,175 @@
                 openTool(getInitialTab(), false);
             });
 
+            function stashPhotoPrintHandoff(payload) {
+                if (!payload || !payload.dataUrl) return;
+                pendingPhotoPrintHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_PRINT_STORAGE_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takePhotoPrintHandoffPayload() {
+                const payload = pendingPhotoPrintHandoff;
+                pendingPhotoPrintHandoff = null;
+                return payload;
+            }
+
+            function bridgePhotoPrintHandoffFromStorage() {
+                if (pendingPhotoPrintHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_PRINT_STORAGE_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_PRINT_STORAGE_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashPhotoPrintHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_PRINT_STORAGE_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_PRINT_STORAGE_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function stashPrintToPhotoHandoff(payload) {
+                if (!payload || !payload.dataUrl) return;
+                pendingPrintToPhotoHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_PRINT_TO_PHOTO_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takePrintToPhotoHandoffPayload() {
+                const payload = pendingPrintToPhotoHandoff;
+                pendingPrintToPhotoHandoff = null;
+                return payload;
+            }
+
+            function bridgePrintToPhotoHandoffFromStorage() {
+                if (pendingPrintToPhotoHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_PRINT_TO_PHOTO_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_PRINT_TO_PHOTO_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashPrintToPhotoHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_PRINT_TO_PHOTO_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_PRINT_TO_PHOTO_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function notifyPrintToolHandoff(kind, attempt) {
+                if (kind !== "photo-to-print") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_PRINT_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyPrintToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takePhotoPrintHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingPhotoPrintHandoff = payload;
+                }
+            }
+
+            function notifyPhotoBgToolHandoff(kind, attempt) {
+                if (kind !== "print-to-photo-bg") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_PHOTO_BG_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyPhotoBgToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takePrintToPhotoHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingPrintToPhotoHandoff = payload;
+                }
+            }
+
+            window.addEventListener("message", function (e) {
+                const d = e.data;
+                if (!d || d.type !== "tool-nav:open-tool") return;
+                if (!TOOLS.some(function (t) {
+                    return t.id === d.toolId;
+                })) {
+                    return;
+                }
+                if (d.handoff === "photo-to-print" && d.payload) {
+                    stashPhotoPrintHandoff(d.payload);
+                }
+                if (d.handoff === "print-to-photo-bg" && d.payload) {
+                    stashPrintToPhotoHandoff(d.payload);
+                }
+                openTool(d.toolId, true);
+                if (d.handoff === "photo-to-print") {
+                    notifyPrintToolHandoff("photo-to-print", 0);
+                }
+                if (d.handoff === "print-to-photo-bg") {
+                    notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
+                }
+            });
+
             document.querySelector(".content").addEventListener("click", function () {
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
@@ -1260,7 +1442,16 @@
                 });
                 resetRecentNavToCommon();
                 renderRecentNav();
-                openTool(getInitialTab(), false);
+                bridgePhotoPrintHandoffFromStorage();
+                bridgePrintToPhotoHandoffFromStorage();
+                const initialTab = getInitialTab();
+                openTool(initialTab, false);
+                if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
+                    notifyPrintToolHandoff("photo-to-print", 0);
+                }
+                if (initialTab === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
+                    notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
+                }
                 isInitialPageLoad = false;
                 if (!window.location.hash) {
                     window.location.hash = "tab=" + DEFAULT_TAB_ID;
