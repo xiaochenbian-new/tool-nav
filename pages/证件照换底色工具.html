@@ -39,51 +39,42 @@
                 min-height: 0;
                 overflow: hidden;
             }
-            .page:fullscreen {
-                background: #fff;
-            }
-            .page:fullscreen .preview-wrap {
-                background: #fafafa;
-            }
-            .hd {
-                flex: 0 0 auto;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-                background: var(--card);
-                border: 1px solid var(--border);
-                border-radius: 8px;
-                box-shadow: var(--shadow);
-                padding: 5px 8px;
-            }
-            .hd-title {
-                font-size: 15px;
+            .side-title {
+                margin: 0 0 4px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--border);
+                font-size: 16px;
                 font-weight: 700;
                 color: #2b3e63;
                 display: flex;
                 align-items: center;
                 gap: 6px;
-                min-width: 0;
+                line-height: 1.3;
             }
-            .hd-actions {
+            .main {
+                flex: 1 1 0%;
+                min-height: 0;
                 display: flex;
+                flex-direction: row;
                 gap: 6px;
-                flex-shrink: 0;
+                align-items: stretch;
             }
             .toolbar {
-                flex: 0 1 auto;
-                max-height: min(38vh, 320px);
+                flex: 0 0 min(340px, 36vw);
+                width: min(340px, 36vw);
+                min-width: 260px;
+                max-width: 380px;
+                height: 100%;
                 overflow: auto;
                 -webkit-overflow-scrolling: touch;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 8px;
                 box-shadow: var(--shadow);
-                padding: 8px 10px;
+                padding: 10px 12px;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 10px;
             }
             .row {
                 display: flex;
@@ -219,7 +210,6 @@
             }
             .slider-row {
                 width: 100%;
-                max-width: 420px;
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
@@ -236,6 +226,7 @@
             .preview-wrap {
                 flex: 1 1 0%;
                 min-height: 0;
+                position: relative;
                 background: var(--card);
                 border: 1px solid var(--border);
                 border-radius: 8px;
@@ -246,6 +237,93 @@
                 overflow: auto;
                 padding: 12px;
             }
+            .preview-wrap.is-loading #stage {
+                opacity: 0.5;
+                pointer-events: none;
+            }
+            .ai-loading {
+                display: none;
+                position: absolute;
+                inset: 0;
+                z-index: 10;
+                align-items: center;
+                justify-content: center;
+                background: rgba(243, 247, 255, 0.78);
+                backdrop-filter: blur(3px);
+            }
+            .ai-loading.on {
+                display: flex;
+            }
+            .ai-loading-card {
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 22px 28px;
+                box-shadow: var(--shadow);
+                text-align: center;
+                min-width: 240px;
+                animation: ai-card-in 0.35s ease-out;
+            }
+            @keyframes ai-card-in {
+                from {
+                    opacity: 0;
+                    transform: scale(0.94) translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                }
+            }
+            .ai-spinner {
+                width: 46px;
+                height: 46px;
+                margin: 0 auto 14px;
+                border: 3px solid #e4edff;
+                border-top-color: var(--primary);
+                border-right-color: var(--primary-2);
+                border-radius: 50%;
+                animation: ai-spin 0.75s linear infinite;
+            }
+            @keyframes ai-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .ai-loading-title {
+                margin: 0 0 6px;
+                font-size: 15px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .ai-loading-sub {
+                margin: 0;
+                font-size: 13px;
+                color: var(--muted);
+                min-height: 1.4em;
+            }
+            .ai-loading-bar {
+                margin-top: 12px;
+                height: 4px;
+                border-radius: 2px;
+                background: #e8f0ff;
+                overflow: hidden;
+            }
+            .ai-loading-bar span {
+                display: block;
+                height: 100%;
+                width: 36%;
+                border-radius: 2px;
+                background: linear-gradient(90deg, var(--primary), var(--primary-2));
+                animation: ai-bar-slide 1.2s ease-in-out infinite;
+            }
+            @keyframes ai-bar-slide {
+                0% {
+                    transform: translateX(-120%);
+                }
+                100% {
+                    transform: translateX(320%);
+                }
+            }
             #stage {
                 position: relative;
                 display: inline-block;
@@ -255,7 +333,7 @@
             #viewCanvas {
                 display: block;
                 max-width: 100%;
-                max-height: calc(100vh - 280px);
+                max-height: 100%;
                 height: auto;
                 box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
             }
@@ -271,72 +349,42 @@
                 font-size: 12px;
                 color: var(--muted);
                 min-height: 1.2em;
+                line-height: 1.4;
+                word-break: break-word;
             }
-            .modal-back {
-                display: none;
-                position: fixed;
-                inset: 0;
-                z-index: 50;
-                background: rgba(30, 40, 60, 0.45);
-                align-items: center;
-                justify-content: center;
-                padding: 16px;
+            .status.is-busy {
+                color: var(--primary);
+                font-weight: 600;
             }
-            .modal-back.on {
-                display: flex;
-            }
-            .modal {
-                background: #fff;
-                border-radius: 10px;
-                border: 1px solid var(--border);
-                max-width: 520px;
-                width: 100%;
-                padding: 14px 16px;
-                box-shadow: var(--shadow);
-            }
-            .modal h3 {
-                margin: 0 0 8px;
-                font-size: 15px;
-            }
-            .modal pre {
-                margin: 0;
-                padding: 10px;
-                background: #f5f8ff;
-                border-radius: 6px;
-                font-size: 12px;
-                overflow: auto;
-                max-height: 200px;
-                border: 1px solid #e4edff;
-                white-space: pre-wrap;
-                word-break: break-all;
-            }
-            .modal .modal-actions {
-                margin-top: 10px;
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
+            @media (max-width: 720px) {
+                .main {
+                    flex-direction: column;
+                }
+                .toolbar {
+                    flex: 0 1 auto;
+                    width: 100%;
+                    max-width: none;
+                    min-width: 0;
+                    max-height: min(42vh, 360px);
+                }
+                #viewCanvas {
+                    max-height: min(52vh, 480px);
+                }
             }
         </style>
     </head>
     <body>
         <div class="page" id="rootPage">
-            <header class="hd">
-                <div class="hd-title">
-                    <span aria-hidden="true">📷</span>
-                    <span>在线证件照换底色</span>
-                </div>
-                <div class="hd-actions">
-                    <button type="button" class="btn" id="btnCode" title="嵌入说明">代码</button>
-                    <button type="button" class="btn" id="btnFs" title="全屏">全屏</button>
-                </div>
-            </header>
-            <div class="toolbar">
+            <div class="main">
+                <aside class="toolbar">
+                <h1 class="side-title"><span aria-hidden="true">📷</span> 在线证件照换底色</h1>
                 <div class="row">
                     <button type="button" class="btn" id="btnPick">⬆ 上传</button>
                     <button type="button" class="btn btn-primary" id="btnDl" disabled>⬇ 下载</button>
+                    <button type="button" class="btn" id="btnShowOrig" style="display: none" title="还原为上传的原图预览">↩ 原图</button>
                     <input type="file" id="fileIn" accept="image/*" />
-                    <span class="status" id="status"></span>
                 </div>
+                <span class="status" id="status"></span>
                 <div class="row" style="align-items: center; gap: 10px; flex-wrap: wrap">
                     <span style="font-size: 12px; color: #5a6f94">AI 模型</span>
                     <select
@@ -374,8 +422,16 @@
                     <input type="range" id="smooth" min="0" max="100" value="35" data-persist-key="photo_bg_smooth" />
                     <span style="font-size: 12px; color: var(--muted)">建议 32～40。AI 抠图 + 原图 RGB 换底；人物区保持原像素</span>
                 </div>
-            </div>
+            </aside>
             <div class="preview-wrap" id="previewWrap">
+                <div id="aiLoading" class="ai-loading" aria-live="polite" aria-busy="false">
+                    <div class="ai-loading-card">
+                        <div class="ai-spinner" aria-hidden="true"></div>
+                        <p class="ai-loading-title">AI 引擎处理中</p>
+                        <p class="ai-loading-sub" id="aiLoadingMsg">正在加载模型</p>
+                        <div class="ai-loading-bar" aria-hidden="true"><span></span></div>
+                    </div>
+                </div>
                 <div id="placeholder" class="placeholder">
                     请上传<strong>纯色底</strong>证件照原图。使用 <strong>AI 人像抠图（isnet）</strong> 换底。首次使用在 tool-nav 执行 <code>npm run copy:imgly</code>（或已有数据时执行 <code>npm run generate:imgly-file-assets</code>），之后可双击本地打开。
                 </div>
@@ -383,15 +439,6 @@
                     <canvas id="viewCanvas"></canvas>
                 </div>
             </div>
-        </div>
-        <div class="modal-back" id="modalBack" aria-hidden="true">
-            <div class="modal" role="dialog">
-                <h3>嵌入本工具</h3>
-                <p style="margin: 0 0 8px; font-size: 13px; color: var(--muted)">在自有页面中通过 iframe 打开本工具（路径相对于站点根目录）：</p>
-                <pre id="embedCode"></pre>
-                <div class="modal-actions">
-                    <button type="button" class="btn" id="modalClose">知道了</button>
-                </div>
             </div>
         </div>
         <script>
@@ -544,8 +591,52 @@
                 let mlBusy = false;
                 let mlLastError = null;
                 let imglyImportPromise = null;
+                let showComposite = false;
 
                 const IMGLY_PUBLIC = new URL("libs/imgly-data/", window.location.href).href;
+
+                let aiLoadingTick = null;
+                let aiLoadingBaseMsg = "";
+
+                function setAiLoading(on, msg) {
+                    if (!el.aiLoading) return;
+                    if (on) {
+                        if (msg) {
+                            aiLoadingBaseMsg = msg;
+                            if (el.aiLoadingMsg) {
+                                el.aiLoadingMsg.dataset.base = msg;
+                                el.aiLoadingMsg.textContent = msg;
+                            }
+                        }
+                        el.aiLoading.classList.add("on");
+                        el.aiLoading.setAttribute("aria-busy", "true");
+                        el.previewWrap.classList.add("is-loading");
+                        el.status.classList.add("is-busy");
+                        el.status.textContent = aiLoadingBaseMsg || "AI 处理中…";
+                        el.btnPick.disabled = true;
+                        if (!aiLoadingTick && el.aiLoadingMsg) {
+                            let dots = 0;
+                            aiLoadingTick = setInterval(function () {
+                                dots = (dots + 1) % 4;
+                                const base =
+                                    el.aiLoadingMsg.dataset.base ||
+                                    aiLoadingBaseMsg ||
+                                    "AI 处理中";
+                                el.aiLoadingMsg.textContent = base + ".".repeat(dots);
+                            }, 450);
+                        }
+                    } else {
+                        el.aiLoading.classList.remove("on");
+                        el.aiLoading.setAttribute("aria-busy", "false");
+                        el.previewWrap.classList.remove("is-loading");
+                        el.status.classList.remove("is-busy");
+                        el.btnPick.disabled = false;
+                        if (aiLoadingTick) {
+                            clearInterval(aiLoadingTick);
+                            aiLoadingTick = null;
+                        }
+                    }
+                }
 
                 function imglyEngineConfig(modelName) {
                     return {
@@ -553,7 +644,21 @@
                         model: modelName,
                         proxyToWorker: false,
                         device: "cpu",
-                        fetchArgs: { credentials: "omit" }
+                        fetchArgs: { credentials: "omit" },
+                        progress: function (key) {
+                            if (!mlBusy) return;
+                            let msg = "正在加载 AI 引擎";
+                            if (key && String(key).indexOf("fetch:") === 0) {
+                                msg = "正在加载模型文件";
+                            } else if (key === "compute:inference") {
+                                msg = "正在人像抠图";
+                            } else if (key === "compute:decode") {
+                                msg = "正在解析图像";
+                            } else if (key === "compute:encode") {
+                                msg = "正在生成结果";
+                            }
+                            setAiLoading(true, msg);
+                        }
                     };
                 }
 
@@ -567,6 +672,23 @@
                             "未加载 imgly.bundle.iife.js。请在 tool-nav 目录执行 npm run copy:imgly。"
                         )
                     );
+                }
+
+                function updateShowOrigBtn() {
+                    if (!el.btnShowOrig) return;
+                    el.btnShowOrig.style.display = showComposite && rawImageData ? "" : "none";
+                }
+
+                function enableCompositeRender() {
+                    if (!rawImageData || !sourceCanvas) return;
+                    const needSegment = !mlAlpha && !mlBusy;
+                    showComposite = true;
+                    updateShowOrigBtn();
+                    if (needSegment) {
+                        startImglySegmentation();
+                    } else {
+                        scheduleDraw();
+                    }
                 }
 
                 function canvasToPngBlob(canvas) {
@@ -589,6 +711,7 @@
                     fileIn: document.getElementById("fileIn"),
                     btnPick: document.getElementById("btnPick"),
                     btnDl: document.getElementById("btnDl"),
+                    btnShowOrig: document.getElementById("btnShowOrig"),
                     smooth: document.getElementById("smooth"),
                     smoothVal: document.getElementById("smoothVal"),
                     viewCanvas: document.getElementById("viewCanvas"),
@@ -600,12 +723,9 @@
                     pctSel: document.getElementById("pctSel"),
                     colors: document.getElementById("colors"),
                     customColor: document.getElementById("customColor"),
-                    btnCode: document.getElementById("btnCode"),
-                    btnFs: document.getElementById("btnFs"),
-                    rootPage: document.getElementById("rootPage"),
-                    modalBack: document.getElementById("modalBack"),
-                    embedCode: document.getElementById("embedCode"),
-                    modalClose: document.getElementById("modalClose"),
+                    previewWrap: document.getElementById("previewWrap"),
+                    aiLoading: document.getElementById("aiLoading"),
+                    aiLoadingMsg: document.getElementById("aiLoadingMsg"),
                     imglyModelSel: document.getElementById("imglyModelSel")
                 };
 
@@ -1603,10 +1723,12 @@
                     mlBusy = true;
                     mlAlpha = null;
                     mlLastError = null;
+                    setAiLoading(true, "正在加载 AI 引擎");
                     scheduleDraw();
                     const modelName = el.imglyModelSel ? el.imglyModelSel.value : "medium";
                     ensureImgly()
                         .then(function (mod) {
+                            setAiLoading(true, "正在人像抠图");
                             const rb = mod.removeBackground;
                             if (typeof rb !== "function") {
                                 throw new Error("removeBackground 未导出");
@@ -1622,12 +1744,14 @@
                         .then(function (alpha) {
                             mlAlpha = alpha;
                             mlBusy = false;
+                            setAiLoading(false);
                             scheduleDraw();
                         })
                         .catch(function (e) {
                             mlLastError = e && e.message ? e.message : String(e);
                             mlBusy = false;
                             mlAlpha = null;
+                            setAiLoading(false);
                             scheduleDraw();
                         });
                 }
@@ -1690,7 +1814,8 @@
                         xctx.drawImage(big, dims.ox, dims.oy, dims.tw, dims.th, 0, 0, dims.tw, dims.th);
                     }
                     const maxPreview = Math.min(900, Math.floor(window.innerWidth - 40));
-                    const scalePrev = Math.min(1, maxPreview / outW, (window.innerHeight - 260) / outH);
+                    const previewH = el.previewWrap ? el.previewWrap.clientHeight - 24 : window.innerHeight - 48;
+                    const scalePrev = Math.min(1, maxPreview / outW, previewH / outH);
                     const pw = Math.max(1, Math.round(outW * scalePrev));
                     const ph = Math.max(1, Math.round(outH * scalePrev));
                     el.viewCanvas.width = outW;
@@ -1719,21 +1844,20 @@
                     const w0 = rawImageData.width;
                     const h0 = rawImageData.height;
 
+                    if (!showComposite) {
+                        renderOutputToView(sourceCanvas, w0, h0, "· 原图预览，请点击底色开始换底");
+                        updateShowOrigBtn();
+                        return;
+                    }
+
                     if (mlBusy) {
-                        const alpha1 = new Float32Array(w0 * h0);
-                        for (let i = 0; i < alpha1.length; i++) {
-                            alpha1[i] = 1;
-                        }
-                        const fullBusy = document.createElement("canvas");
-                        fullBusy.width = w0;
-                        fullBusy.height = h0;
-                        compositeFull(rawImageData, alpha1, bgRgb, fullBusy.getContext("2d"));
-                        renderOutputToView(fullBusy, w0, h0, "· AI 模型加载/推理中…");
+                        renderOutputToView(sourceCanvas, w0, h0, "");
                         return;
                     }
 
                     if (mlAlpha && mlAlpha.length === w0 * h0) {
                         renderMlComposite(w0, h0, smooth01);
+                        updateShowOrigBtn();
                         return;
                     }
 
@@ -1747,10 +1871,12 @@
                         fullE.height = h0;
                         compositeFull(rawImageData, alpha1, bgRgb, fullE.getContext("2d"));
                         renderOutputToView(fullE, w0, h0, "· AI 抠图失败：" + mlLastError);
+                        updateShowOrigBtn();
                         return;
                     }
 
-                    renderOutputToView(sourceCanvas, w0, h0, "· 等待 AI 抠图…");
+                    renderOutputToView(sourceCanvas, w0, h0, "· 正在准备抠图…");
+                    updateShowOrigBtn();
                 }
 
                 function scheduleDraw() {
@@ -1806,7 +1932,7 @@
                             selectedSwatchId = s.id;
                             bgRgb = hexToRgb(s.hex);
                             syncColorActiveUi();
-                            scheduleDraw();
+                            enableCompositeRender();
                         });
                         el.colors.appendChild(wrap);
                     });
@@ -1826,7 +1952,7 @@
                     selectedSwatchId = "other";
                     bgRgb = hexToRgb(customHex);
                     syncColorActiveUi();
-                    scheduleDraw();
+                    enableCompositeRender();
                 });
 
                 function loadImageFile(file) {
@@ -1864,8 +1990,12 @@
                         mlAlpha = null;
                         mlLastError = null;
                         mlBusy = false;
-                        el.status.textContent = "原图 " + img.naturalWidth + "×" + img.naturalHeight + (scale < 1 ? "（已缩小处理）" : "");
-                        startImglySegmentation();
+                        showComposite = false;
+                        setAiLoading(false);
+                        updateShowOrigBtn();
+                        el.status.textContent =
+                            "原图 " + img.naturalWidth + "×" + img.naturalHeight + (scale < 1 ? "（已缩小处理）" : "") + " · 请选择底色换底";
+                        scheduleDraw();
                     };
                     img.onerror = function () {
                         URL.revokeObjectURL(url);
@@ -1891,9 +2021,17 @@
                         imglyImportPromise = null;
                         mlAlpha = null;
                         mlLastError = null;
-                        if (rawImageData) {
+                        if (rawImageData && showComposite) {
                             startImglySegmentation();
                         }
+                    });
+                }
+
+                if (el.btnShowOrig) {
+                    el.btnShowOrig.addEventListener("click", function () {
+                        showComposite = false;
+                        updateShowOrigBtn();
+                        scheduleDraw();
                     });
                 }
 
@@ -1908,32 +2046,6 @@
                         a.click();
                         URL.revokeObjectURL(a.href);
                     }, "image/png");
-                });
-
-                el.btnFs.addEventListener("click", function () {
-                    const p = el.rootPage;
-                    if (!document.fullscreenElement) {
-                        p.requestFullscreen().catch(function () {});
-                    } else {
-                        document.exitFullscreen();
-                    }
-                });
-
-                el.btnCode.addEventListener("click", function () {
-                    const src = "pages/证件照换底色工具.html";
-                    el.embedCode.textContent =
-                        '<iframe src="' + src + '" style="width:100%;min-height:640px;border:1px solid #dbe6ff;border-radius:8px"></iframe>';
-                    el.modalBack.classList.add("on");
-                    el.modalBack.setAttribute("aria-hidden", "false");
-                });
-                el.modalClose.addEventListener("click", function () {
-                    el.modalBack.classList.remove("on");
-                    el.modalBack.setAttribute("aria-hidden", "true");
-                });
-                el.modalBack.addEventListener("click", function (e) {
-                    if (e.target === el.modalBack) {
-                        el.modalBack.classList.remove("on");
-                    }
                 });
 
                 buildSizeChips();
