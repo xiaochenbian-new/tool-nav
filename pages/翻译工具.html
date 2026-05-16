@@ -300,15 +300,6 @@
                 padding: 4px 10px;
                 font-size: 12px;
             }
-            .btn.thumb.active {
-                border-color: transparent;
-                color: #fff;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            }
-            .btn.thumb.active:hover {
-                color: #fff;
-                filter: brightness(1.05);
-            }
             .detail-body {
                 display: flex;
                 flex-direction: column;
@@ -416,6 +407,26 @@
                 display: none;
                 flex-shrink: 0;
             }
+            #copy-toast {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%) translateY(10px);
+                padding: 8px 16px;
+                background: rgba(31, 42, 68, 0.92);
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+                box-shadow: 0 4px 16px rgba(36, 90, 190, 0.2);
+            }
+            #copy-toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
         </style>
     </head>
     <body>
@@ -512,8 +523,6 @@
                                         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
                                     </svg>
                                 </button>
-                                <button type="button" class="btn btn-sm thumb" data-vote="up" title="赞" aria-label="赞">赞</button>
-                                <button type="button" class="btn btn-sm thumb" data-vote="down" title="踩" aria-label="踩">踩</button>
                             </div>
                             <div class="icon-group">
                                 <button type="button" class="btn btn-sm" id="copy-main">
@@ -523,7 +532,6 @@
                                     </svg>
                                     复制
                                 </button>
-                                <button type="button" class="btn btn-sm" id="feedback-btn">反馈</button>
                             </div>
                         </div>
                     </section>
@@ -567,12 +575,9 @@
                                         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
                                     </svg>
                                 </button>
-                                <button type="button" class="btn btn-sm thumb" data-vote="up" title="赞">赞</button>
-                                <button type="button" class="btn btn-sm thumb" data-vote="down" title="踩">踩</button>
                             </div>
                             <div class="icon-group">
                                 <button type="button" class="btn btn-sm" id="copy-ai">复制</button>
-                                <button type="button" class="btn btn-sm" id="feedback-ai">反馈</button>
                             </div>
                         </div>
                     </section>
@@ -582,6 +587,7 @@
                 <p id="global-err" class="global-err"></p>
             </div>
         </div>
+        <div id="copy-toast" role="status" aria-live="polite"></div>
 
         <script>
             (function () {
@@ -848,12 +854,125 @@
                     translateNow();
                 });
 
+                function speechLang(code) {
+                    var map = {
+                        en: "en-US",
+                        "zh-CN": "zh-CN",
+                        ja: "ja-JP",
+                        ko: "ko-KR",
+                        fr: "fr-FR",
+                        de: "de-DE",
+                    };
+                    return map[code] || code || "zh-CN";
+                }
+
+                /** 译文朗读用语言：优先目标语种，中文/英文时再按正文推断，避免与下拉不一致 */
+                function speechLangForOutput(text) {
+                    var pair = getEffectivePair();
+                    var tgt = pair.tgt;
+                    if (tgt !== "zh-CN" && tgt !== "en") {
+                        return speechLang(tgt);
+                    }
+                    var inferred = detectSourceCode(text);
+                    if (tgt === "zh-CN" && inferred === "zh-CN") return speechLang("zh-CN");
+                    if (tgt === "en" && inferred === "en") return speechLang("en");
+                    return speechLang(tgt);
+                }
+
                 function speak(text, langGuess) {
-                    if (!text || !window.speechSynthesis) return;
-                    window.speechSynthesis.cancel();
-                    var u = new SpeechSynthesisUtterance(text);
-                    u.lang = langGuess || "zh-CN";
-                    window.speechSynthesis.speak(u);
+                    var content = String(text || "").trim();
+                    if (!content) {
+                        showErr("没有可朗读的内容，请先输入或完成翻译。");
+                        return;
+                    }
+                    if (!window.speechSynthesis) {
+                        showErr("当前浏览器不支持语音朗读。");
+                        return;
+                    }
+                    showErr("");
+                    var lang = speechLang(langGuess);
+
+                    function doSpeak() {
+                        var syn = window.speechSynthesis;
+                        if (syn.paused) {
+                            try {
+                                syn.resume();
+                            } catch (e) {}
+                        }
+                        var u = new SpeechSynthesisUtterance(content);
+                        u.lang = lang;
+                        u.onerror = function (ev) {
+                            var err = ev && ev.error;
+                            if (err === "interrupted" || err === "canceled") return;
+                            showErr("朗读失败，请检查系统语音设置或稍后重试。");
+                        };
+                        syn.speak(u);
+                    }
+
+                    var syn = window.speechSynthesis;
+                    if (syn.speaking || syn.pending) {
+                        syn.cancel();
+                        setTimeout(doSpeak, 100);
+                    } else {
+                        doSpeak();
+                    }
+                }
+
+                function speakTranslated(text) {
+                    var content = String(text || "").trim();
+                    if (!content) {
+                        showErr("没有可朗读的内容，请先完成翻译。");
+                        return;
+                    }
+                    speak(content, speechLangForOutput(content));
+                }
+
+                function legacyCopy(text) {
+                    var ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.setAttribute("readonly", "");
+                    ta.style.position = "fixed";
+                    ta.style.left = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand("copy");
+                    } catch (e) {}
+                    document.body.removeChild(ta);
+                }
+
+                var copyToastTimer = null;
+                function showCopyTip(msg) {
+                    var el = document.getElementById("copy-toast");
+                    if (!el) return;
+                    el.textContent = msg || "已复制到剪贴板";
+                    el.classList.add("show");
+                    if (copyToastTimer) clearTimeout(copyToastTimer);
+                    copyToastTimer = setTimeout(function () {
+                        el.classList.remove("show");
+                        copyToastTimer = null;
+                    }, 2000);
+                }
+
+                function copyText(text) {
+                    var t = String(text || "").trim();
+                    if (!t) {
+                        showErr("没有可复制的内容。");
+                        return;
+                    }
+                    function onCopied() {
+                        showErr("");
+                        showCopyTip("已复制到剪贴板");
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(t).then(onCopied).catch(function () {
+                            legacyCopy(t);
+                            onCopied();
+                        });
+                    } else {
+                        legacyCopy(t);
+                        onCopied();
+                    }
                 }
 
                 document.getElementById("speak-src").addEventListener("click", function () {
@@ -862,10 +981,10 @@
                     speak(srcText.value, guess);
                 });
                 document.getElementById("speak-out").addEventListener("click", function () {
-                    speak(lastTrans, tgtLang.value);
+                    speakTranslated(lastTrans || mainOut.textContent);
                 });
                 document.getElementById("speak-ai").addEventListener("click", function () {
-                    speak(aiOut.textContent, tgtLang.value);
+                    speakTranslated(aiOut.textContent || lastTrans);
                 });
 
                 document.getElementById("retry-translate").addEventListener("click", translateNow);
@@ -873,31 +992,10 @@
                 document.getElementById("retry-ai").addEventListener("click", translateNow);
 
                 document.getElementById("copy-main").addEventListener("click", function () {
-                    if (!lastTrans) return;
-                    navigator.clipboard.writeText(lastTrans).catch(function () {});
+                    copyText(mainOut.textContent || lastTrans);
                 });
                 document.getElementById("copy-ai").addEventListener("click", function () {
-                    var t = aiOut.textContent;
-                    if (!t) return;
-                    navigator.clipboard.writeText(t).catch(function () {});
-                });
-
-                document.getElementById("feedback-btn").addEventListener("click", function () {
-                    alert("感谢反馈（演示）：实际产品可接入工单或埋点。");
-                });
-                document.getElementById("feedback-ai").addEventListener("click", function () {
-                    alert("感谢反馈（演示）。");
-                });
-
-                document.querySelectorAll(".thumb").forEach(function (b) {
-                    b.addEventListener("click", function () {
-                        var row = b.closest(".pane-foot");
-                        if (!row) return;
-                        row.querySelectorAll(".thumb").forEach(function (x) {
-                            x.classList.remove("active");
-                        });
-                        b.classList.add("active");
-                    });
+                    copyText(aiOut.textContent);
                 });
 
                 var starred = false;
