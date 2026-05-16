@@ -943,6 +943,13 @@
                     return cfg;
                 }
 
+                function saveTestedApiConfig() {
+                    var cfg = getTestApiConfig();
+                    cfg.enabled = apiEnabledEl.checked;
+                    if (!isConfigComplete(cfg)) cfg.enabled = false;
+                    saveApiConfig(cfg);
+                }
+
                 function testApiConfig() {
                     var cfg = getTestApiConfig();
                     var testBtn = document.getElementById("test-api");
@@ -1007,7 +1014,9 @@
                             if (!choice && !(data && data.id)) {
                                 throw new Error("接口已连通，但返回格式非常规，请确认是否为 OpenAI 兼容接口。");
                             }
-                            toast("测试通过，配置可用");
+                            saveTestedApiConfig();
+                            toast("测试通过，配置已保存");
+                            showErr("");
                         })
                         .catch(function (e) {
                             var msg = e && e.message ? e.message : String(e);
