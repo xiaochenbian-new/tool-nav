@@ -6,7 +6,11 @@
  */
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
+const https = require("https");
+const { URL } = require("url");
 const esbuild = require("esbuild");
+const { generateFileProtocolAssets } = require("./generate-imgly-file-assets.cjs");
 
 const IMGLY_VER = "1.5.5";
 const ONNX_VER = "1.18.0";
@@ -28,10 +32,54 @@ function mustDir(p) {
     fs.mkdirSync(p, { recursive: true });
 }
 
-async function fetchOk(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("HTTP " + res.status + " " + url);
-    return res;
+/** Node 16 及以下无全局 fetch，用 https/http 下载 */
+function requestBuffer(url, redirectsLeft) {
+    return new Promise(function (resolve, reject) {
+        let parsed;
+        try {
+            parsed = new URL(url);
+        } catch (e) {
+            reject(e);
+            return;
+        }
+        const lib = parsed.protocol === "https:" ? https : http;
+        const req = lib.get(
+            parsed,
+            { headers: { "User-Agent": "tool-nav-copy-imgly/1.0" } },
+            function (res) {
+                if (
+                    res.statusCode >= 300 &&
+                    res.statusCode < 400 &&
+                    res.headers.location &&
+                    redirectsLeft > 0
+                ) {
+                    res.resume();
+                    requestBuffer(new URL(res.headers.location, parsed).href, redirectsLeft - 1).then(
+                        resolve,
+                        reject
+                    );
+                    return;
+                }
+                if (res.statusCode !== 200) {
+                    res.resume();
+                    reject(new Error("HTTP " + res.statusCode + " " + url));
+                    return;
+                }
+                const chunks = [];
+                res.on("data", function (chunk) {
+                    chunks.push(chunk);
+                });
+                res.on("end", function () {
+                    resolve(Buffer.concat(chunks));
+                });
+                res.on("error", reject);
+            }
+        );
+        req.on("error", reject);
+        req.setTimeout(120000, function () {
+            req.destroy(new Error("请求超时: " + url));
+        });
+    });
 }
 
 async function downloadTo(url, dest) {
@@ -40,8 +88,7 @@ async function downloadTo(url, dest) {
         if (st.size > 0) return "skip";
     }
     mustDir(path.dirname(dest));
-    const res = await fetchOk(url);
-    const buf = Buffer.from(await res.arrayBuffer());
+    const buf = await requestBuffer(url, 5);
     fs.writeFileSync(dest, buf);
     return "ok";
 }
@@ -59,8 +106,8 @@ async function pool(items, worker) {
 }
 
 async function downloadText(url) {
-    const res = await fetchOk(url);
-    return res.text();
+    const buf = await requestBuffer(url, 5);
+    return buf.toString("utf8");
 }
 
 async function downloadDataChunks(resources) {
@@ -128,30 +175,46 @@ async function downloadRuntimeDeps() {
     }
 }
 
+function imglyEsbuildAlias() {
+    return {
+        "onnxruntime-web": path.join(tmpDeps, "onnxruntime-web.js"),
+        "onnxruntime-web/webgpu": path.join(tmpDeps, "onnxruntime-web-webgpu.js"),
+        ndarray: path.join(tmpDeps, "ndarray.js"),
+        "iota-array": path.join(tmpDeps, "iota-array.js"),
+        "is-buffer": path.join(tmpDeps, "is-buffer.js"),
+        zod: path.join(tmpDeps, "zod.mjs")
+    };
+}
+
 async function buildImglyBundle() {
     mustDir(libsImgly);
     const entry = path.join(tmpDeps, "imgly-index.mjs");
-    const out = path.join(libsImgly, "imgly.bundle.mjs");
-    console.log("[copy-imgly] esbuild 打包 → " + path.relative(root, out));
-    await esbuild.build({
+    const alias = imglyEsbuildAlias();
+    const common = {
         entryPoints: [entry],
         bundle: true,
-        format: "esm",
         platform: "browser",
         target: ["es2020"],
-        outfile: out,
         logLevel: "warning",
-        alias: {
-            "onnxruntime-web": path.join(tmpDeps, "onnxruntime-web.js"),
-            "onnxruntime-web/webgpu": path.join(tmpDeps, "onnxruntime-web-webgpu.js"),
-            ndarray: path.join(tmpDeps, "ndarray.js"),
-            "iota-array": path.join(tmpDeps, "iota-array.js"),
-            "is-buffer": path.join(tmpDeps, "is-buffer.js"),
-            zod: path.join(tmpDeps, "zod.mjs")
-        }
+        alias
+    };
+
+    const outMjs = path.join(libsImgly, "imgly.bundle.mjs");
+    console.log("[copy-imgly] esbuild ESM → " + path.relative(root, outMjs));
+    await esbuild.build({ ...common, format: "esm", outfile: outMjs });
+
+    const outIife = path.join(libsImgly, "imgly.bundle.iife.js");
+    console.log("[copy-imgly] esbuild IIFE（file:// 本地打开）→ " + path.relative(root, outIife));
+    await esbuild.build({
+        ...common,
+        format: "iife",
+        globalName: "ImglyBackgroundRemoval",
+        outfile: outIife
     });
-    const mb = (fs.statSync(out).size / 1024 / 1024).toFixed(2);
-    console.log("[copy-imgly] bundle 完成 (" + mb + " MB)");
+
+    const mbMjs = (fs.statSync(outMjs).size / 1024 / 1024).toFixed(2);
+    const mbIife = (fs.statSync(outIife).size / 1024 / 1024).toFixed(2);
+    console.log("[copy-imgly] bundle 完成 (mjs " + mbMjs + " MB, iife " + mbIife + " MB)");
 }
 
 async function main() {
@@ -168,12 +231,15 @@ async function main() {
     await downloadRuntimeDeps();
     await buildImglyBundle();
     await downloadDataChunks(resources);
+    generateFileProtocolAssets();
 
     try {
         fs.rmSync(tmpDeps, { recursive: true, force: true });
     } catch (_) {}
 
-    console.log("[copy-imgly] 全部完成。证件照换底色工具将使用 pages/libs/imgly-data/ 与 imgly.bundle.mjs");
+    console.log(
+        "[copy-imgly] 全部完成。本地 file:// 打开需 resources.embed.js、chunks-js/ 与 imgly.bundle.iife.js"
+    );
 }
 
 main().catch(function (e) {

@@ -43,6 +43,8 @@
         "build:asn1-lib": "node -e \"require('esbuild').build({entryPoints:['scripts/asn1-bundle-entry.mjs'],bundle:true,format:'iife',outfile:'pages/libs/asn1-der-tool.bundle.js',platform:'browser'}).then(()=>console.log('asn1 bundle ok')).catch(e=>{console.error(e);process.exit(1)})\"",
         "copy:vendor": "node scripts/copy-vendor-all.cjs",
         "copy:imgly": "node scripts/copy-imgly-data.cjs",
+        "build:imgly-iife": "node scripts/build-imgly-iife.cjs",
+        "generate:imgly-file-assets": "node scripts/generate-imgly-file-assets.cjs",
     "copy:monaco": "node scripts/copy-vendor-all.cjs",
     "postinstall": "node scripts/copy-vendor-all.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"

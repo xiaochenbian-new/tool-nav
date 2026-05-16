@@ -377,7 +377,7 @@
             </div>
             <div class="preview-wrap" id="previewWrap">
                 <div id="placeholder" class="placeholder">
-                    请上传<strong>纯色底</strong>证件照原图。使用 <strong>AI 人像抠图（isnet）</strong> 换底。首次使用前在 tool-nav 目录执行 <code>npm run copy:imgly</code>，并通过 <strong>http</strong> 打开本站。
+                    请上传<strong>纯色底</strong>证件照原图。使用 <strong>AI 人像抠图（isnet）</strong> 换底。首次使用在 tool-nav 执行 <code>npm run copy:imgly</code>（或已有数据时执行 <code>npm run generate:imgly-file-assets</code>），之后可双击本地打开。
                 </div>
                 <div id="stage" style="display: none">
                     <canvas id="viewCanvas"></canvas>
@@ -394,6 +394,112 @@
                 </div>
             </div>
         </div>
+        <script>
+            (function installFileProtocolImglyLoader() {
+                if (location.protocol !== "file:" || window.__fileImglyFetchPatched) return;
+                window.__fileImglyFetchPatched = true;
+                const origFetch = window.fetch.bind(window);
+                const chunkScriptBase = "libs/imgly-data/chunks-js/";
+                const chunkScriptLoading = {};
+
+                function resolveFetchUrl(input) {
+                    if (typeof input === "string") return input;
+                    if (typeof URL !== "undefined" && input instanceof URL) return input.href;
+                    if (input && typeof input === "object" && typeof input.url === "string") return input.url;
+                    return "";
+                }
+
+                function toFileHref(url) {
+                    if (!url) return "";
+                    if (url.indexOf("file:") === 0) return url;
+                    try {
+                        return new URL(url, location.href).href;
+                    } catch (e) {
+                        return url;
+                    }
+                }
+
+                function extractChunkHash(href) {
+                    const m = href.match(/\/imgly-data\/(?:chunks-js\/)?([a-f0-9]{64})(?:\.js)?(?:\?|$)/i);
+                    return m ? m[1] : null;
+                }
+
+                function b64ToArrayBuffer(b64) {
+                    const bin = atob(b64);
+                    const out = new Uint8Array(bin.length);
+                    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+                    return out.buffer;
+                }
+
+                function loadChunkScript(hash) {
+                    if (window.__IMGLY_CHUNK_B64 && window.__IMGLY_CHUNK_B64[hash]) {
+                        return Promise.resolve(window.__IMGLY_CHUNK_B64[hash]);
+                    }
+                    if (chunkScriptLoading[hash]) return chunkScriptLoading[hash];
+                    chunkScriptLoading[hash] = new Promise(function (resolve, reject) {
+                        const s = document.createElement("script");
+                        s.src = chunkScriptBase + hash + ".js";
+                        s.onload = function () {
+                            delete chunkScriptLoading[hash];
+                            if (window.__IMGLY_CHUNK_B64 && window.__IMGLY_CHUNK_B64[hash]) {
+                                resolve(window.__IMGLY_CHUNK_B64[hash]);
+                            } else {
+                                reject(new Error("分片脚本未注册: " + hash));
+                            }
+                        };
+                        s.onerror = function () {
+                            delete chunkScriptLoading[hash];
+                            reject(
+                                new Error(
+                                    "无法加载 " +
+                                        chunkScriptBase +
+                                        hash +
+                                        ".js，请执行 npm run generate:imgly-file-assets"
+                                )
+                            );
+                        };
+                        document.head.appendChild(s);
+                    });
+                    return chunkScriptLoading[hash];
+                }
+
+                function fileProtocolFetch(input, init) {
+                    const href = toFileHref(resolveFetchUrl(input));
+                    if (/resources\.json(\?|$)/i.test(href)) {
+                        if (!window.__IMGLY_RESOURCE_MAP) {
+                            return Promise.reject(
+                                new Error(
+                                    "缺少 resources.embed.js，请在 tool-nav 执行 npm run generate:imgly-file-assets"
+                                )
+                            );
+                        }
+                        return Promise.resolve(
+                            new Response(JSON.stringify(window.__IMGLY_RESOURCE_MAP), {
+                                status: 200,
+                                headers: { "Content-Type": "application/json" }
+                            })
+                        );
+                    }
+                    const hash = extractChunkHash(href);
+                    if (hash) {
+                        return loadChunkScript(hash).then(function (b64) {
+                            return new Response(b64ToArrayBuffer(b64), { status: 200 });
+                        });
+                    }
+                    return Promise.reject(new TypeError("Failed to fetch " + href));
+                }
+
+                window.fetch = function (input, init) {
+                    const url = resolveFetchUrl(input);
+                    if (url && toFileHref(url).indexOf("file:") === 0) {
+                        return fileProtocolFetch(input, init);
+                    }
+                    return origFetch(input, init);
+                };
+            })();
+        </script>
+        <script src="libs/imgly-data/resources.embed.js"></script>
+        <script src="libs/imgly/imgly.bundle.iife.js"></script>
         <script>
             (function () {
                 const DPI = 300;
@@ -439,7 +545,6 @@
                 let mlLastError = null;
                 let imglyImportPromise = null;
 
-                const IMGLY_MODULE = new URL("libs/imgly/imgly.bundle.mjs", window.location.href).href;
                 const IMGLY_PUBLIC = new URL("libs/imgly-data/", window.location.href).href;
 
                 function imglyEngineConfig(modelName) {
@@ -450,6 +555,18 @@
                         device: "cpu",
                         fetchArgs: { credentials: "omit" }
                     };
+                }
+
+                function loadImglyBundle() {
+                    const g = window.ImglyBackgroundRemoval;
+                    if (g && typeof g.removeBackground === "function") {
+                        return Promise.resolve(g);
+                    }
+                    return Promise.reject(
+                        new Error(
+                            "未加载 imgly.bundle.iife.js。请在 tool-nav 目录执行 npm run copy:imgly。"
+                        )
+                    );
                 }
 
                 function canvasToPngBlob(canvas) {
@@ -882,17 +999,67 @@
                     return alpha;
                 }
 
+                /** 白底证件照：压低轮廓近白像素的 alpha，避免换深色底后留一圈白晕 */
+                function trimWhiteStudioFringeAlpha(alpha, imageData, estBg) {
+                    if (!isWhiteStudioBg(estBg)) return alpha;
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const d = imageData.data;
+                    const br = estBg.r,
+                        bgc = estBg.g,
+                        bb = estBg.b;
+                    const lumBgO = relLum(br, bgc, bb);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const i = idx * 4;
+                            const r = d[i],
+                                g = d[i + 1],
+                                b = d[i + 2];
+                            const lum = relLum(r, g, b);
+                            const sat = rgbSat(r, g, b);
+                            const dist = colorDist(r, g, b, br, bgc, bb);
+                            if (dist > 58 || lum < 148 || sat > 0.4) continue;
+                            if (isProtectedHairCore(r, g, b, br, bgc, bb, lumBgO) && dist > 14) continue;
+                            const contour = isAlphaContourAt(alpha, w, h, x, y, 0.06);
+                            if (!contour && dist > 28 && alpha[idx] > 0.55) continue;
+                            const cap = 0.14 + (dist / 58) * 0.62;
+                            alpha[idx] = Math.min(alpha[idx], cap);
+                        }
+                    }
+                    return alpha;
+                }
+
                 function buildMatteFromProAlpha(proAlpha, imageData, estBg, smooth01) {
                     const w = imageData.width;
                     const h = imageData.height;
+                    const d = imageData.data;
                     let a = new Float32Array(proAlpha);
                     const gfR = Math.max(1, Math.min(4, Math.round(1 + smooth01 * 2)));
                     a = guidedFilterAlpha(imageData, a, w, h, gfR, 0.006);
+                    a = trimWhiteStudioFringeAlpha(a, imageData, estBg);
                     a = protectDarkHairAlpha(a, imageData, estBg);
                     a = boostAlphaSkinAndGlasses(a, imageData, estBg);
                     a = blurAlphaFloat(a, w, h, 0.06 + smooth01 * 0.42);
+                    a = trimWhiteStudioFringeAlpha(a, imageData, estBg);
                     for (let i = 0; i < a.length; i++) {
-                        if (a[i] > 0.72) a[i] = Math.min(1, 0.93 + a[i] * 0.07);
+                        if (a[i] > 0.72) {
+                            if (isWhiteStudioBg(estBg)) {
+                                const r = d[i * 4],
+                                    g = d[i * 4 + 1],
+                                    b = d[i * 4 + 2];
+                                const dist = colorDist(r, g, b, estBg.r, estBg.g, estBg.b);
+                                if (
+                                    relLum(r, g, b) > 165 &&
+                                    rgbSat(r, g, b) < 0.36 &&
+                                    dist < 44
+                                ) {
+                                    a[i] = Math.min(a[i], 0.18 + (dist / 44) * 0.48);
+                                    continue;
+                                }
+                            }
+                            a[i] = Math.min(1, 0.93 + a[i] * 0.07);
+                        }
                     }
                     const fgBin = new Uint8Array(w * h);
                     for (let i = 0; i < fgBin.length; i++) {
@@ -1057,12 +1224,23 @@
                                 const redExc0 = r0 - Math.max(g0, b0);
                                 let studioFringe = false;
                                 if (isWhiteStudioBg(origBg)) {
+                                    const contourW = isAlphaContourAt(alphaFloat, w, h, x, y, 0.05);
                                     studioFringe =
                                         !isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) &&
-                                        d0 < 52 &&
-                                        lum0 > 152 &&
-                                        sat0 < 0.38;
-                                    if (!studioFringe && d0 < 26 && lum0 > 158 && sat0 < 0.36) {
+                                        d0 < 58 &&
+                                        lum0 > 145 &&
+                                        sat0 < 0.42;
+                                    if (!studioFringe && d0 < 32 && lum0 > 152 && sat0 < 0.38) {
+                                        studioFringe = true;
+                                    }
+                                    if (
+                                        !studioFringe &&
+                                        af > 0.88 &&
+                                        d0 < 48 &&
+                                        lum0 > 155 &&
+                                        sat0 < 0.36 &&
+                                        contourW
+                                    ) {
                                         studioFringe = true;
                                     }
                                 } else if (isRedStudioBg(origBg)) {
@@ -1199,26 +1377,29 @@
                             const r0 = src[si],
                                 g0 = src[si + 1],
                                 b0 = src[si + 2];
-                            if (
-                                isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) ||
-                                isHairishPixel(r0, g0, b0, or0, og0, ob0, lumBgO)
-                            ) {
-                                continue;
-                            }
                             const lum0 = relLum(r0, g0, b0);
                             const sat0 = rgbSat(r0, g0, b0);
                             const dOrig = colorDist(r0, g0, b0, or0, og0, ob0);
                             const af = alphaFloat[idx];
+                            const contour = isAlphaContourAt(alphaFloat, w, h, x, y, 0.05);
+                            if (
+                                (isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) ||
+                                    isHairishPixel(r0, g0, b0, or0, og0, ob0, lumBgO)) &&
+                                !contour &&
+                                dOrig > 14
+                            ) {
+                                continue;
+                            }
                             const redExc0 = r0 - Math.max(g0, b0);
                             let fringe = false;
                             let cap = 48;
                             if (white) {
-                                cap = 54;
+                                cap = 62;
                                 fringe =
                                     dOrig < cap &&
-                                    lum0 > 172 &&
-                                    sat0 < 0.3 &&
-                                    (af < 0.97 || dOrig < 28);
+                                    lum0 > 158 &&
+                                    sat0 < 0.36 &&
+                                    (af < 0.985 || dOrig < 36 || contour);
                             } else if (red) {
                                 cap = 56;
                                 fringe =
@@ -1230,8 +1411,7 @@
                                     (af < 0.97 || dOrig < 32);
                             }
                             if (!fringe) continue;
-                            const contour = isAlphaContourAt(alphaFloat, w, h, x, y, 0.055);
-                            if (!contour && dOrig > 22 && af > 0.55) continue;
+                            if (!contour && dOrig > 26 && af > 0.62) continue;
                             const oi = si;
                             let or = od[oi],
                                 og = od[oi + 1],
@@ -1245,6 +1425,51 @@
                             if (red && or > Math.max(og, ob) + 6) {
                                 pull = Math.min(0.98, pull * 1.08);
                             }
+                            od[oi] = Math.round(or * (1 - pull) + br * pull);
+                            od[oi + 1] = Math.round(og * (1 - pull) + bgc * pull);
+                            od[oi + 2] = Math.round(ob * (1 - pull) + bb * pull);
+                        }
+                    }
+                    outCtx.putImageData(img, 0, 0);
+                }
+
+                /** 白底→深色新底：合成后仍偏亮的轮廓像素（常见发际白圈）往新底色拉 */
+                function postCompositeWhiteBrightFringe(outCtx, srcImageData, alphaFloat, estBg, bgRgb) {
+                    if (!isWhiteStudioBg(estBg) || !isSaturatedTargetBg(bgRgb)) return;
+                    const w = srcImageData.width;
+                    const h = srcImageData.height;
+                    const src = srcImageData.data;
+                    const or0 = estBg.r,
+                        og0 = estBg.g,
+                        ob0 = estBg.b;
+                    const br = bgRgb.r,
+                        bgc = bgRgb.g,
+                        bb = bgRgb.b;
+                    const lumTgt = relLum(br, bgc, bb);
+                    const img = outCtx.getImageData(0, 0, w, h);
+                    const od = img.data;
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const si = idx * 4;
+                            const r0 = src[si],
+                                g0 = src[si + 1],
+                                b0 = src[si + 2];
+                            const dOrig = colorDist(r0, g0, b0, or0, og0, ob0);
+                            const lum0 = relLum(r0, g0, b0);
+                            const sat0 = rgbSat(r0, g0, b0);
+                            if (dOrig > 52 || lum0 < 150 || sat0 > 0.42) continue;
+                            const oi = si;
+                            const or = od[oi],
+                                og = od[oi + 1],
+                                ob = od[oi + 2];
+                            const lumOut = relLum(or, og, ob);
+                            if (lumOut < lumTgt + 28) continue;
+                            const contour = isAlphaContourAt(alphaFloat, w, h, x, y, 0.048);
+                            if (!contour && dOrig > 24) continue;
+                            if (isLikelySkinTone(r0, g0, b0) && dOrig > 22 && !contour) continue;
+                            const k = Math.pow(1 - dOrig / 52, 1.35);
+                            const pull = Math.min(0.92, 0.55 + k * 0.42);
                             od[oi] = Math.round(or * (1 - pull) + br * pull);
                             od[oi + 1] = Math.round(og * (1 - pull) + bgc * pull);
                             od[oi + 2] = Math.round(ob * (1 - pull) + bb * pull);
@@ -1329,7 +1554,7 @@
                 function ensureImgly() {
                     if (imglyImportPromise) return imglyImportPromise;
                     const modelName = el.imglyModelSel ? el.imglyModelSel.value : "medium";
-                    imglyImportPromise = import(IMGLY_MODULE)
+                    imglyImportPromise = loadImglyBundle()
                         .then(function (mod) {
                             const cfg = imglyEngineConfig(modelName);
                             if (typeof mod.preload === "function") {
@@ -1342,9 +1567,11 @@
                         .catch(function (e) {
                             imglyImportPromise = null;
                             var msg = e && e.message ? e.message : String(e);
-                            if (/failed to fetch|wasm|backend|create session|module specifier/i.test(msg)) {
+                            if (/failed to fetch|wasm|backend|create session|module specifier|resource metadata|resource .* not found/i.test(msg)) {
                                 throw new Error(
-                                    "AI 模型加载失败。请在 tool-nav 目录执行 npm run copy:imgly，并通过 http 打开本站。"
+                                    "AI 模型加载失败（" +
+                                        msg +
+                                        "）。请执行 npm run copy:imgly 或 npm run generate:imgly-file-assets，并确认存在 resources.embed.js 与 chunks-js/。"
                                 );
                             }
                             throw e;
@@ -1418,6 +1645,9 @@
                     compositeFullMp(rawImageData, matte.alpha, bgRgb, estBg, fullCtx);
                     if (studioBg) {
                         postCompositeStudioDefringe(fullCtx, rawImageData, matte.alpha, estBg, bgRgb);
+                    }
+                    if (isWhiteStudioBg(estBg) && isSaturatedTargetBg(bgRgb)) {
+                        postCompositeWhiteBrightFringe(fullCtx, rawImageData, matte.alpha, estBg, bgRgb);
                     }
                     if (isSaturatedTargetBg(bgRgb)) {
                         postCompositeBlueHaloCleanup(fullCtx, rawImageData, matte.alpha, estBg, bgRgb);
