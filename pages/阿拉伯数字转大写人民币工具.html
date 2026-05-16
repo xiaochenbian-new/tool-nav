@@ -1,0 +1,530 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>阿拉伯数字转大写人民币</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --toolbar-bg: #f8fbff;
+                --toolbar-line: #e4edff;
+                --input-border: #cfdcf7;
+                --chip-bg: #edf3ff;
+                --chip-text: #3c4f78;
+                --chip-border: #d8e5ff;
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .editor-wrap {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+            }
+            .panel-title {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                border-bottom: 1px solid var(--toolbar-line);
+                background: var(--toolbar-bg);
+            }
+            .editor-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .editor-head-main {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                min-width: 0;
+                flex: 1;
+            }
+            .editor-head h3 {
+                font-size: 14px;
+                font-weight: 600;
+                color: #324a76;
+            }
+            .editor-head .hint {
+                font-size: 12px;
+                color: var(--muted);
+                line-height: 1.55;
+                max-width: 720px;
+            }
+            .editor-head .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .title-btn {
+                border: 1px solid var(--chip-border);
+                border-radius: 6px;
+                background: var(--chip-bg);
+                color: var(--chip-text);
+                padding: 4px 10px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: inherit;
+                white-space: nowrap;
+            }
+            .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .title-btn.primary:hover {
+                filter: brightness(1.05);
+                color: #fff;
+            }
+            .editor-zone {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                gap: 10px;
+                overflow: hidden;
+            }
+            .io-grid {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                align-items: stretch;
+            }
+            @media (max-width: 820px) {
+                .io-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .io-col {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+                min-width: 0;
+            }
+            .io-col > label {
+                font-size: 12px;
+                font-weight: 600;
+                color: #324a76;
+            }
+            #amount-in {
+                width: 100%;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 15px;
+                line-height: 1.5;
+                font-family: Consolas, "Courier New", "PingFang SC", monospace;
+                color: var(--text);
+                background: #fff;
+                outline: none;
+            }
+            #amount-in:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            #amount-in::placeholder {
+                color: #9aa8c4;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 13px;
+            }
+            .samples-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+            }
+            .opt-label {
+                font-size: 12px;
+                color: var(--muted);
+                white-space: nowrap;
+            }
+            .samples {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .sample {
+                border: 1px solid var(--chip-border);
+                border-radius: 6px;
+                background: var(--chip-bg);
+                padding: 4px 10px;
+                font-size: 12px;
+                color: var(--chip-text);
+                cursor: pointer;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .sample:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: rgba(47, 107, 255, 0.06);
+            }
+            #amount-out {
+                flex: 1;
+                min-height: 88px;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                background: #fafcff;
+                padding: 12px 14px;
+                font-size: 17px;
+                line-height: 1.7;
+                letter-spacing: 0.06em;
+                color: #1a3260;
+                word-break: break-all;
+                overflow-y: auto;
+            }
+            #amount-out.empty {
+                font-size: 13px;
+                color: var(--muted);
+                letter-spacing: normal;
+                font-family: inherit;
+            }
+            #status {
+                font-size: 12px;
+                min-height: 16px;
+                color: var(--muted);
+            }
+            #status.err {
+                color: #c0392b;
+            }
+            #copy-toast {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%) translateY(10px);
+                padding: 8px 16px;
+                background: rgba(31, 42, 68, 0.92);
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+                box-shadow: 0 4px 16px rgba(36, 90, 190, 0.2);
+            }
+            #copy-toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="editor-wrap">
+                <div class="panel-title editor-head">
+                    <div class="editor-head-main">
+                        <h3>阿拉伯数字转大写人民币</h3>
+                        <p class="hint">
+                            按常用规范将阿拉伯数字转为大写金额（壹贰叁…元角分整）。支持负号、千分位逗号；整数最多 15 位、小数最多 2 位，结果随输入实时更新。
+                        </p>
+                    </div>
+                    <div class="actions">
+                        <button type="button" class="title-btn primary" id="copy-btn">复制大写</button>
+                        <button type="button" class="title-btn danger" id="clear-btn">清空</button>
+                    </div>
+                </div>
+                <div class="editor-zone">
+                    <div class="io-grid">
+                        <div class="io-col">
+                            <label for="amount-in">金额（阿拉伯数字）</label>
+                            <input
+                                id="amount-in"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                spellcheck="false"
+                                placeholder="例如 1234.56 或 -0.05"
+                            />
+                            <div class="samples-row">
+                                <span class="opt-label">示例</span>
+                                <div class="samples" id="samples"></div>
+                            </div>
+                        </div>
+                        <div class="io-col">
+                            <label for="amount-out">大写人民币</label>
+                            <div id="amount-out" class="empty" aria-live="polite">请输入金额</div>
+                            <p id="status"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="copy-toast" role="status" aria-live="polite"></div>
+
+        <script>
+            (function () {
+                var CN_NUM = ["\u96f6", "\u58f9", "\u8d30", "\u53c1", "\u8086", "\u4f0d", "\u9646", "\u67d2", "\u634c", "\u7396"];
+                var CN_UNIT = ["", "\u62fe", "\u4f70", "\u4edf"];
+                var CN_SEC = ["", "\u4e07", "\u4ebf", "\u5146"];
+                var SAMPLES = ["0", "10.01", "1000", "1234.56", "100000000", "2003004005.06", "-88.8"];
+
+                function normalizeInput(raw) {
+                    return String(raw || "")
+                        .trim()
+                        .replace(/,/g, "")
+                        .replace(/\uFF0C/g, "")
+                        .replace(/\s+/g, "");
+                }
+
+                function convertSection(section) {
+                    var str = "";
+                    var zero = true;
+                    var unitPos = 0;
+                    while (section > 0) {
+                        var v = section % 10;
+                        if (v === 0) {
+                            if (!zero && unitPos > 0) {
+                                str = CN_NUM[0] + str;
+                            }
+                            zero = true;
+                        } else {
+                            str = CN_NUM[v] + CN_UNIT[unitPos] + str;
+                            zero = false;
+                        }
+                        unitPos += 1;
+                        section = Math.floor(section / 10);
+                    }
+                    return str;
+                }
+
+                function convertInteger(n) {
+                    if (n === 0) return "";
+                    var str = "";
+                    var secIndex = 0;
+                    var needZero = false;
+                    while (n > 0) {
+                        var section = n % 10000;
+                        if (needZero && section > 0 && section < 1000) {
+                            str = CN_NUM[0] + str;
+                        }
+                        var sectionStr = convertSection(section);
+                        if (section > 0) {
+                            str = sectionStr + CN_SEC[secIndex] + str;
+                            needZero = section < 1000;
+                        } else if (str) {
+                            needZero = true;
+                        }
+                        n = Math.floor(n / 10000);
+                        secIndex += 1;
+                    }
+                    return str;
+                }
+
+                function polish(s) {
+                    return s
+                        .replace(/\u96f6+/g, CN_NUM[0])
+                        .replace(/\u96f6([\u4e07\u4ebf\u5146])/g, "$1")
+                        .replace(/([\u58f9\u8d30\u53c1\u8086\u4f0d\u9646\u67d2\u634c\u7396\u62fe\u4f70\u4edf\u4e07\u4ebf\u5146]+)\u96f6\u5143/g, "$1\u5143")
+                        .replace(/\u96f6\u89d2/g, "")
+                        .replace(/\u96f6\u5206$/, "")
+                        .replace(/\u4ebf\u4e07/g, "\u4ebf");
+                }
+
+                function toRmbUppercase(raw) {
+                    var s = normalizeInput(raw);
+                    if (!s) {
+                        return { ok: false, msg: "\u8bf7\u8f93\u5165\u91d1\u989d" };
+                    }
+                    var negative = false;
+                    if (s.charAt(0) === "-") {
+                        negative = true;
+                        s = s.slice(1);
+                    } else if (s.charAt(0) === "+") {
+                        s = s.slice(1);
+                    }
+                    if (!s || !/^\d+(\.\d+)?$/.test(s)) {
+                        return { ok: false, msg: "\u683c\u5f0f\u65e0\u6548\uff0c\u4ec5\u652f\u6301\u6570\u5b57\u3001\u53ef\u9009\u8d1f\u53f7\u4e0e\u6700\u591a\u4e24\u4f4d\u5c0f\u6570" };
+                    }
+                    if (s.indexOf(".") >= 0) {
+                        var frac = s.split(".")[1];
+                        if (frac.length > 2) {
+                            return { ok: false, msg: "\u5c0f\u6570\u4f4d\u6700\u591a 2 \u4f4d" };
+                        }
+                    }
+                    var intPart = s.split(".")[0];
+                    if (intPart.length > 15) {
+                        return { ok: false, msg: "\u6574\u6570\u90e8\u5206\u4e0d\u80fd\u8d85\u8fc7 15 \u4f4d" };
+                    }
+
+                    var num = Number(s);
+                    if (!isFinite(num)) {
+                        return { ok: false, msg: "\u8bf7\u8f93\u5165\u6709\u6548\u6570\u5b57" };
+                    }
+                    num = Math.round(num * 100) / 100;
+                    if (num === 0) {
+                        return { ok: true, value: CN_NUM[0] + "\u5143\u6574" };
+                    }
+
+                    var abs = Math.abs(num);
+                    var parts = abs.toFixed(2).split(".");
+                    var intVal = parseInt(parts[0], 10);
+                    var jiao = parseInt(parts[1].charAt(0), 10);
+                    var fen = parseInt(parts[1].charAt(1), 10);
+
+                    var result = "";
+                    if (intVal > 0) {
+                        result = convertInteger(intVal) + "\u5143";
+                    } else {
+                        result = CN_NUM[0] + "\u5143";
+                    }
+
+                    if (jiao === 0 && fen === 0) {
+                        result += "\u6574";
+                    } else {
+                        if (jiao > 0) {
+                            result += CN_NUM[jiao] + "\u89d2";
+                        }
+                        if (fen > 0) {
+                            if (jiao === 0 && intVal > 0) {
+                                result += CN_NUM[0];
+                            }
+                            result += CN_NUM[fen] + "\u5206";
+                        }
+                    }
+
+                    result = polish(result);
+                    if (negative) {
+                        result = "\u8d1f" + result;
+                    }
+                    return { ok: true, value: result };
+                }
+
+                var amountIn = document.getElementById("amount-in");
+                var amountOut = document.getElementById("amount-out");
+                var statusEl = document.getElementById("status");
+                var copyToastTimer = null;
+
+                function showCopyTip(msg) {
+                    var el = document.getElementById("copy-toast");
+                    el.textContent = msg || "\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f";
+                    el.classList.add("show");
+                    if (copyToastTimer) clearTimeout(copyToastTimer);
+                    copyToastTimer = setTimeout(function () {
+                        el.classList.remove("show");
+                        copyToastTimer = null;
+                    }, 2000);
+                }
+
+                function legacyCopy(text) {
+                    var ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.setAttribute("readonly", "");
+                    ta.style.position = "fixed";
+                    ta.style.left = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand("copy");
+                    } catch (e) {}
+                    document.body.removeChild(ta);
+                }
+
+                function copyText(text) {
+                    if (!text) return;
+                    function done() {
+                        showCopyTip("\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(done).catch(function () {
+                            legacyCopy(text);
+                            done();
+                        });
+                    } else {
+                        legacyCopy(text);
+                        done();
+                    }
+                }
+
+                function render() {
+                    var res = toRmbUppercase(amountIn.value);
+                    if (!res.ok) {
+                        amountOut.textContent = "\u2014";
+                        amountOut.classList.add("empty");
+                        statusEl.textContent = res.msg;
+                        statusEl.className = "err";
+                        return;
+                    }
+                    amountOut.textContent = res.value;
+                    amountOut.classList.remove("empty");
+                    statusEl.textContent = "";
+                    statusEl.className = "";
+                }
+
+                SAMPLES.forEach(function (val) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "sample";
+                    btn.textContent = val;
+                    btn.addEventListener("click", function () {
+                        amountIn.value = val;
+                        render();
+                    });
+                    document.getElementById("samples").appendChild(btn);
+                });
+
+                amountIn.addEventListener("input", render);
+                document.getElementById("copy-btn").addEventListener("click", function () {
+                    var res = toRmbUppercase(amountIn.value);
+                    if (!res.ok) {
+                        statusEl.textContent = res.msg || "\u8bf7\u5148\u8f93\u5165\u6709\u6548\u91d1\u989d";
+                        statusEl.className = "err";
+                        return;
+                    }
+                    copyText(res.value);
+                });
+                document.getElementById("clear-btn").addEventListener("click", function () {
+                    amountIn.value = "";
+                    render();
+                    amountIn.focus();
+                });
+
+                amountIn.value = "1234.56";
+                render();
+            })();
+        </script>
+    </body>
+</html>
