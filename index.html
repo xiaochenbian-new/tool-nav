@@ -1002,11 +1002,18 @@
                 });
             }
 
-            function getInitialTab() {
+            function getTabFromHash() {
                 const hash = window.location.hash.replace(/^#/, "");
                 if (!hash) return DEFAULT_TAB_ID;
                 const tab = new URLSearchParams(hash).get("tab");
                 return TOOLS.some((t) => t.id === tab) ? tab : DEFAULT_TAB_ID;
+            }
+
+            /** 浏览器刷新后的默认页：Json 工具；证件照交接场景除外 */
+            function resolveStartupTab() {
+                if (pendingPhotoPrintHandoff) return HANDOFF_PRINT_TAB;
+                if (pendingPrintToPhotoHandoff) return HANDOFF_PHOTO_BG_TAB;
+                return DEFAULT_TAB_ID;
             }
 
             function renderOverviewPanel() {
@@ -1126,6 +1133,16 @@
 
                 const STATION_EXTERNAL_LINKS = [
                     {
+                        name: "语雀导航",
+                        url: "https://www.yuque.com/xiaochenbian",
+                        title: "语雀导航（小城边，新标签页打开）",
+                    },
+                    {
+                        name: "MoleAPI",
+                        url: "https://home.moleapi.com/console",
+                        title: "MoleAPI 控制台（新标签页打开）",
+                    },
+                    {
                         name: "码工具",
                         url: "https://www.matools.com/",
                         title: "码工具（matools.com，新标签页打开）",
@@ -1230,7 +1247,8 @@
             });
 
             window.addEventListener("hashchange", function () {
-                openTool(getInitialTab(), false);
+                if (isInitialPageLoad) return;
+                openTool(getTabFromHash(), false);
             });
 
             function stashPhotoPrintHandoff(payload) {
@@ -1446,7 +1464,7 @@
                 renderRecentNav();
                 bridgePhotoPrintHandoffFromStorage();
                 bridgePrintToPhotoHandoffFromStorage();
-                const initialTab = getInitialTab();
+                const initialTab = resolveStartupTab();
                 openTool(initialTab, false);
                 if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
                     notifyPrintToolHandoff("photo-to-print", 0);
@@ -1455,9 +1473,12 @@
                     notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
                 }
                 isInitialPageLoad = false;
-                if (!window.location.hash) {
-                    window.location.hash = "tab=" + DEFAULT_TAB_ID;
-                }
+                window.location.replace(
+                    window.location.pathname +
+                        window.location.search +
+                        "#tab=" +
+                        encodeURIComponent(initialTab)
+                );
             });
         </script>
     </body>
