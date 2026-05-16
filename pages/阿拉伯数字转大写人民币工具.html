@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>阿拉伯数字转大写人民币</title>
+        <title>阿拉伯数字 ↔ 大写人民币</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * {
@@ -205,6 +205,8 @@
             #amount-out {
                 flex: 1;
                 min-height: 88px;
+                width: 100%;
+                resize: vertical;
                 border: 1px solid var(--input-border);
                 border-radius: 8px;
                 background: #fafcff;
@@ -215,12 +217,17 @@
                 color: #1a3260;
                 word-break: break-all;
                 overflow-y: auto;
+                outline: none;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", serif;
             }
-            #amount-out.empty {
+            #amount-out:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            #amount-out::placeholder {
+                color: #9aa8c4;
                 font-size: 13px;
-                color: var(--muted);
                 letter-spacing: normal;
-                font-family: inherit;
             }
             #status {
                 font-size: 12px;
@@ -257,12 +264,13 @@
             <div class="editor-wrap">
                 <div class="panel-title editor-head">
                     <div class="editor-head-main">
-                        <h3>阿拉伯数字转大写人民币</h3>
+                        <h3>阿拉伯数字 ↔ 大写人民币</h3>
                         <p class="hint">
-                            按常用规范将阿拉伯数字转为大写金额（壹贰叁…元角分整）。支持负号、千分位逗号；整数最多 15 位、小数最多 2 位，结果随输入实时更新。
+                            双向转换：左侧阿拉伯数字与右侧大写金额（壹贰叁…元角分整）实时联动。支持负号、千分位逗号；整数最多 15 位、小数最多 2 位。反向识别本工具生成的大写格式，亦兼容圆/负/常用异体字。
                         </p>
                     </div>
                     <div class="actions">
+                        <button type="button" class="title-btn" id="copy-num-btn">复制数字</button>
                         <button type="button" class="title-btn primary" id="copy-btn">复制大写</button>
                         <button type="button" class="title-btn danger" id="clear-btn">清空</button>
                     </div>
@@ -286,7 +294,18 @@
                         </div>
                         <div class="io-col">
                             <label for="amount-out">大写人民币</label>
-                            <div id="amount-out" class="empty" aria-live="polite">请输入金额</div>
+                            <textarea
+                                id="amount-out"
+                                rows="4"
+                                spellcheck="false"
+                                autocomplete="off"
+                                placeholder="例如 壹仟贰佰叁拾肆元伍角陆分"
+                                aria-live="polite"
+                            ></textarea>
+                            <div class="samples-row">
+                                <span class="opt-label">示例</span>
+                                <div class="samples" id="samples-upper"></div>
+                            </div>
                             <p id="status"></p>
                         </div>
                     </div>
@@ -433,10 +452,198 @@
                     return { ok: true, value: result };
                 }
 
+                var CN_DIGIT_MAP = {
+                    "\u96f6": 0,
+                    "\u3007": 0,
+                    "\u58f9": 1,
+                    "\u4e00": 1,
+                    "\u8d30": 2,
+                    "\u4e8c": 2,
+                    "\u4e24": 2,
+                    "\u53c1": 3,
+                    "\u4e09": 3,
+                    "\u8086": 4,
+                    "\u56db": 4,
+                    "\u4f0d": 5,
+                    "\u4e94": 5,
+                    "\u9646": 6,
+                    "\u516d": 6,
+                    "\u67d2": 7,
+                    "\u4e03": 7,
+                    "\u634c": 8,
+                    "\u516b": 8,
+                    "\u7396": 9,
+                    "\u4e5d": 9,
+                };
+                var CN_UNIT_MAP = {
+                    "\u62fe": 10,
+                    "\u5341": 10,
+                    "\u4f70": 100,
+                    "\u767e": 100,
+                    "\u4edf": 1000,
+                    "\u5343": 1000,
+                    "\u4e07": 10000,
+                    "\u842c": 10000,
+                    "\u4ebf": 100000000,
+                    "\u5104": 100000000,
+                    "\u5146": 1000000000000000,
+                };
+                var CN_SECTION_UNITS = [10000, 100000000, 1000000000000000];
+                var UPPER_SAMPLES = [
+                    "\u96f6\u5143\u6574",
+                    "\u58f9\u62fe\u5143\u6574",
+                    "\u58f9\u4edf\u5143\u6574",
+                    "\u58f9\u4edf\u8d30\u4f70\u53c1\u62fe\u8086\u5143\u4f0d\u89d2\u9646\u5206",
+                    "\u8d1f\u634c\u62fe\u634c\u5143\u634c\u89d2",
+                ];
+
+                function normalizeUpperInput(raw) {
+                    return String(raw || "")
+                        .trim()
+                        .replace(/\s+/g, "")
+                        .replace(/,/g, "")
+                        .replace(/\uFF0C/g, "")
+                        .replace(/[\uFF08\uFF09()]/g, "")
+                        .replace(/^\u4eba\u6c11\u5e01/, "");
+                }
+
+                function parseChineseInteger(str) {
+                    if (!str || str === "\u96f6" || str === "\u3007") return 0;
+                    var total = 0;
+                    var section = 0;
+                    var number = 0;
+                    for (var i = 0; i < str.length; i++) {
+                        var ch = str.charAt(i);
+                        if (ch === "\u96f6" || ch === "\u3007") continue;
+                        if (Object.prototype.hasOwnProperty.call(CN_DIGIT_MAP, ch)) {
+                            number = CN_DIGIT_MAP[ch];
+                        } else if (Object.prototype.hasOwnProperty.call(CN_UNIT_MAP, ch)) {
+                            var unit = CN_UNIT_MAP[ch];
+                            if (CN_SECTION_UNITS.indexOf(unit) >= 0) {
+                                section = (section + number) * unit;
+                                total += section;
+                                section = 0;
+                                number = 0;
+                            } else {
+                                if (number === 0) number = 1;
+                                section += number * unit;
+                                number = 0;
+                            }
+                        } else {
+                            return NaN;
+                        }
+                    }
+                    var n = total + section + number;
+                    return isFinite(n) ? n : NaN;
+                }
+
+                function parseSubAmountPart(part) {
+                    if (!part || part === "\u96f6" || part === "\u3007") return 0;
+                    var n = parseChineseInteger(part);
+                    if (!isFinite(n) || n < 0 || n > 9) return NaN;
+                    return n;
+                }
+
+                function formatArabicAmount(num) {
+                    var negative = num < 0;
+                    var abs = Math.abs(num);
+                    var cents = Math.round(abs * 100);
+                    var intPart = Math.floor(cents / 100);
+                    var jiao = Math.floor((cents % 100) / 10);
+                    var fen = cents % 10;
+                    var out = String(intPart);
+                    if (jiao > 0 || fen > 0) {
+                        out += ".";
+                        if (fen > 0) out += String(jiao) + String(fen);
+                        else out += String(jiao);
+                    }
+                    return (negative ? "-" : "") + out;
+                }
+
+                function fromRmbUppercase(raw) {
+                    var s = normalizeUpperInput(raw);
+                    if (!s) {
+                        return { ok: false, msg: "\u8bf7\u8f93\u5165\u5927\u5199\u91d1\u989d" };
+                    }
+                    var negative = false;
+                    if (s.charAt(0) === "\u8d1f" || s.charAt(0) === "\u8ca0") {
+                        negative = true;
+                        s = s.slice(1);
+                    }
+                    if (!s) {
+                        return { ok: false, msg: "\u5927\u5199\u91d1\u989d\u683c\u5f0f\u65e0\u6548" };
+                    }
+                    if (s.charAt(s.length - 1) === "\u6574") {
+                        s = s.slice(0, -1);
+                    }
+                    var yuanIdx = -1;
+                    for (var i = 0; i < s.length; i++) {
+                        var c = s.charAt(i);
+                        if (c === "\u5143" || c === "\u5706") {
+                            yuanIdx = i;
+                            break;
+                        }
+                    }
+                    var intStr = "";
+                    var fracStr = "";
+                    if (yuanIdx >= 0) {
+                        intStr = s.slice(0, yuanIdx);
+                        fracStr = s.slice(yuanIdx + 1);
+                    } else if (/\u89d2|\u5206/.test(s)) {
+                        fracStr = s;
+                    } else {
+                        intStr = s;
+                    }
+                    var intVal = 0;
+                    if (intStr && intStr !== "\u96f6" && intStr !== "\u3007") {
+                        intVal = parseChineseInteger(intStr);
+                        if (!isFinite(intVal)) {
+                            return { ok: false, msg: "\u5927\u5199\u91d1\u989d\u683c\u5f0f\u65e0\u6548" };
+                        }
+                    }
+                    var jiao = 0;
+                    var fen = 0;
+                    if (fracStr) {
+                        var jiaoIdx = fracStr.indexOf("\u89d2");
+                        var fenIdx = fracStr.indexOf("\u5206");
+                        if (jiaoIdx >= 0) {
+                            var jPart = fracStr.slice(0, jiaoIdx);
+                            jiao = parseSubAmountPart(jPart);
+                            if (!isFinite(jiao)) {
+                                return { ok: false, msg: "\u89d2\u4f4d\u683c\u5f0f\u65e0\u6548" };
+                            }
+                        }
+                        if (fenIdx >= 0) {
+                            var fStart = jiaoIdx >= 0 ? jiaoIdx + 1 : 0;
+                            var fPart = fracStr.slice(fStart, fenIdx);
+                            fen = parseSubAmountPart(fPart);
+                            if (!isFinite(fen)) {
+                                return { ok: false, msg: "\u5206\u4f4d\u683c\u5f0f\u65e0\u6548" };
+                            }
+                        }
+                        var tail = fracStr.slice(fenIdx >= 0 ? fenIdx + 1 : jiaoIdx >= 0 ? jiaoIdx + 1 : 0);
+                        if (tail && tail !== "\u96f6" && tail !== "\u3007") {
+                            return { ok: false, msg: "\u5927\u5199\u91d1\u989d\u683c\u5f0f\u65e0\u6548" };
+                        }
+                    }
+                    var num = intVal + jiao * 0.1 + fen * 0.01;
+                    if (negative) num = -num;
+                    num = Math.round(num * 100) / 100;
+                    if (!isFinite(num)) {
+                        return { ok: false, msg: "\u5927\u5199\u91d1\u989d\u683c\u5f0f\u65e0\u6548" };
+                    }
+                    var intDigits = String(Math.floor(Math.abs(num))).length;
+                    if (intDigits > 15) {
+                        return { ok: false, msg: "\u6574\u6570\u90e8\u5206\u4e0d\u80fd\u8d85\u8fc7 15 \u4f4d" };
+                    }
+                    return { ok: true, value: formatArabicAmount(num) };
+                }
+
                 var amountIn = document.getElementById("amount-in");
                 var amountOut = document.getElementById("amount-out");
                 var statusEl = document.getElementById("status");
                 var copyToastTimer = null;
+                var syncing = false;
 
                 function showCopyTip(msg) {
                     var el = document.getElementById("copy-toast");
@@ -463,10 +670,10 @@
                     document.body.removeChild(ta);
                 }
 
-                function copyText(text) {
+                function copyText(text, tipMsg) {
                     if (!text) return;
                     function done() {
-                        showCopyTip("\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
+                        showCopyTip(tipMsg || "\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
                     }
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(text).then(done).catch(function () {
@@ -479,51 +686,130 @@
                     }
                 }
 
-                function render() {
-                    var res = toRmbUppercase(amountIn.value);
-                    if (!res.ok) {
-                        amountOut.textContent = "\u2014";
-                        amountOut.classList.add("empty");
-                        statusEl.textContent = res.msg;
-                        statusEl.className = "err";
-                        return;
-                    }
-                    amountOut.textContent = res.value;
-                    amountOut.classList.remove("empty");
-                    statusEl.textContent = "";
-                    statusEl.className = "";
+                function setStatus(msg, isErr) {
+                    statusEl.textContent = msg || "";
+                    statusEl.className = isErr ? "err" : "";
                 }
 
-                SAMPLES.forEach(function (val) {
-                    var btn = document.createElement("button");
-                    btn.type = "button";
-                    btn.className = "sample";
-                    btn.textContent = val;
-                    btn.addEventListener("click", function () {
-                        amountIn.value = val;
-                        render();
-                    });
-                    document.getElementById("samples").appendChild(btn);
-                });
-
-                amountIn.addEventListener("input", render);
-                document.getElementById("copy-btn").addEventListener("click", function () {
+                function renderFromNumber() {
                     var res = toRmbUppercase(amountIn.value);
                     if (!res.ok) {
-                        statusEl.textContent = res.msg || "\u8bf7\u5148\u8f93\u5165\u6709\u6548\u91d1\u989d";
-                        statusEl.className = "err";
+                        setStatus(res.msg, true);
+                        return false;
+                    }
+                    syncing = true;
+                    amountOut.value = res.value;
+                    syncing = false;
+                    setStatus("", false);
+                    return true;
+                }
+
+                function renderFromUpper() {
+                    var res = fromRmbUppercase(amountOut.value);
+                    if (!res.ok) {
+                        setStatus(res.msg, true);
+                        return false;
+                    }
+                    syncing = true;
+                    amountIn.value = res.value;
+                    syncing = false;
+                    var fwd = toRmbUppercase(res.value);
+                    if (fwd.ok) {
+                        syncing = true;
+                        amountOut.value = fwd.value;
+                        syncing = false;
+                    }
+                    setStatus("", false);
+                    return true;
+                }
+
+                function onNumberInput() {
+                    if (syncing) return;
+                    if (!normalizeInput(amountIn.value)) {
+                        syncing = true;
+                        amountOut.value = "";
+                        syncing = false;
+                        setStatus("", false);
                         return;
                     }
-                    copyText(res.value);
+                    renderFromNumber();
+                }
+
+                function onUpperInput() {
+                    if (syncing) return;
+                    if (!normalizeUpperInput(amountOut.value)) {
+                        syncing = true;
+                        amountIn.value = "";
+                        syncing = false;
+                        setStatus("", false);
+                        return;
+                    }
+                    renderFromUpper();
+                }
+
+                function addSampleButtons(containerId, values, onPick) {
+                    var box = document.getElementById(containerId);
+                    values.forEach(function (val) {
+                        var btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.className = "sample";
+                        btn.textContent = val;
+                        btn.title = val;
+                        btn.addEventListener("click", function () {
+                            onPick(val);
+                        });
+                        box.appendChild(btn);
+                    });
+                }
+
+                addSampleButtons("samples", SAMPLES, function (val) {
+                    amountIn.value = val;
+                    onNumberInput();
+                    amountIn.focus();
+                });
+                addSampleButtons("samples-upper", UPPER_SAMPLES, function (val) {
+                    amountOut.value = val;
+                    onUpperInput();
+                    amountOut.focus();
+                });
+
+                amountIn.addEventListener("input", onNumberInput);
+                amountOut.addEventListener("input", onUpperInput);
+                document.getElementById("copy-btn").addEventListener("click", function () {
+                    var text = amountOut.value.trim();
+                    if (!text) {
+                        var res = toRmbUppercase(amountIn.value);
+                        if (!res.ok) {
+                            setStatus(res.msg || "\u8bf7\u5148\u8f93\u5165\u6709\u6548\u91d1\u989d", true);
+                            return;
+                        }
+                        text = res.value;
+                    }
+                    copyText(text);
+                });
+                document.getElementById("copy-num-btn").addEventListener("click", function () {
+                    var text = amountIn.value.trim();
+                    if (!text) {
+                        var res = fromRmbUppercase(amountOut.value);
+                        if (!res.ok) {
+                            setStatus(res.msg || "\u8bf7\u5148\u8f93\u5165\u6709\u6548\u5927\u5199\u91d1\u989d", true);
+                            return;
+                        }
+                        text = res.value;
+                    }
+                    copyText(text, "\u5df2\u590d\u5236\u6570\u5b57\u5230\u526a\u8d34\u677f");
                 });
                 document.getElementById("clear-btn").addEventListener("click", function () {
+                    syncing = true;
                     amountIn.value = "";
-                    render();
+                    amountOut.value = "";
+                    syncing = false;
+                    setStatus("", false);
                     amountIn.focus();
                 });
 
                 amountIn.value = "1234.56";
-                render();
+                onNumberInput();
             })();
         </script>
     </body>
