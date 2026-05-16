@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Nginx 配置工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -87,7 +88,6 @@
                 cursor: pointer;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            #clear-btn { background: linear-gradient(135deg, var(--danger), #ff7979); }
             .status {
                 margin-top: 8px;
                 padding: 6px 8px;
@@ -228,7 +228,7 @@ X-Content-Type-Options nosniff</textarea>
                 <div class="button-row">
                     <button id="gen-btn" type="button">生成配置</button>
                     <button id="copy-btn" type="button">复制配置</button>
-                    <button id="clear-btn" type="button">清空</button>
+                    <button id="clear-btn" class="tool-btn-danger" type="button">清空</button>
                 </div>
                 <div class="hint">支持：反向代理/静态站点、upstream 多节点、HTTPS、Gzip、CORS、限流、WebSocket、自定义 Header。</div>
             </div>

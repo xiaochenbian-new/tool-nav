@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>退税计算工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -64,7 +65,6 @@
                 cursor: pointer;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
             .result {
                 flex: 1;
                 min-height: 0;
@@ -112,7 +112,7 @@
                 <div class="row">
                     <button type="button" id="calcBtn">计算</button>
                     <button type="button" id="copyBtn">复制结果</button>
-                    <button type="button" class="danger" id="clearBtn">重置</button>
+                    <button type="button" class="danger tool-btn-danger" id="clearBtn">重置</button>
                 </div>
                 <div class="hint">
                     说明：按常见出口退税口径计算，结果仅供业务测算参考，具体以税务部门政策和申报口径为准。

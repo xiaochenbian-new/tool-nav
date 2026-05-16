@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>对称加解密</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <script src="libs/crypto-js.js"></script>
         <style>
             * {
@@ -274,7 +275,7 @@
                 <button type="button" class="btn btn-primary" id="btnEnc">加密</button>
                 <button type="button" class="btn btn-primary" id="btnDec">解密</button>
                 <button type="button" class="btn" id="btnSwap">左右互换</button>
-                <button type="button" class="btn" id="btnClear">清空</button>
+                <button type="button" class="btn tool-btn-danger" id="btnClear">清空</button>
                 <span class="hint">离线使用 CryptoJS；DES/3DES 块大小 8 字节，AES 为 16 字节。Rabbit 建议 16 字节密钥、8 字节 IV。</span>
             </div>
         </div>

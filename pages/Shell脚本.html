@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Shell脚本生成器</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * {
                 box-sizing: border-box;
@@ -105,9 +106,6 @@
                 transform: translateY(-1px);
                 box-shadow: 0 8px 16px rgba(36, 90, 190, 0.25);
             }
-            .danger-btn {
-                background: linear-gradient(135deg, var(--danger), #ff7979);
-            }
             #result {
                 flex: 1;
                 padding: 8px;
@@ -190,7 +188,7 @@
                         <div class="model-container">
                             <div class="model-header">
                                 <span>模型 1</span>
-                                <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                                <button class="danger-btn tool-btn-danger" onclick="removeModel(this)">删除模型</button>
                             </div>
                             <div class="form-group">
                                 <label for="model1-configFiles"
@@ -213,7 +211,7 @@
                                         placeholder="值（例如：Y）"
                                         class="configValue"
                                     />
-                                    <button class="danger-btn" onclick="removeConfigItem(this)">
+                                    <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">
                                         删除配置项
                                     </button>
                                 </div>
@@ -247,7 +245,7 @@ function addModel() {
                 newModel.innerHTML = `
                     <div class="model-header">
                         <span>模型 ${modelCount}</span>
-                            <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                            <button class="danger-btn tool-btn-danger" onclick="removeModel(this)">删除模型</button>
                     </div>
                     <div class="form-group">
                         <label for="model${modelCount}-configFiles">配置文件（多个文件用逗号分隔）:</label>
@@ -259,7 +257,7 @@ function addModel() {
                             <label>配置项 1:</label>
                             <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                             <input type="text" placeholder="值（例如：Y）" class="configValue">
-                            <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                            <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                         </div>
                     </div>
                     <button onclick="addConfigItem(this)">添加配置项</button>
@@ -285,7 +283,7 @@ function addModel() {
                     <label>配置项 ${configItemCount}:</label>
                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                     <input type="text" placeholder="值（例如：Y）" class="configValue">
-                    <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                    <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                 `;
                 configItemsDiv.appendChild(newItem);
                 persistShellForm();
@@ -464,7 +462,7 @@ function restoreShellForm() {
                                     <label>配置项 ${itemIndex + 1}:</label>
                                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" value="${(item.key || '').replace(/"/g, '&quot;')}" onblur="checkDuplicateKey(this)">
                                     <input type="text" placeholder="值（例如：Y）" class="configValue" value="${(item.value || '').replace(/"/g, '&quot;')}">
-                                    <button class="danger-btn" onclick="removeConfigItem(this)">删除配置项</button>
+                                    <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                                 </div>
                             `)
                             .join('');
@@ -473,7 +471,7 @@ function restoreShellForm() {
                             <div class="model-container">
                                 <div class="model-header">
                                     <span>模型 ${modelCount}</span>
-                                    <button class="danger-btn" onclick="removeModel(this)">删除模型</button>
+                                    <button class="danger-btn tool-btn-danger" onclick="removeModel(this)">删除模型</button>
                                 </div>
                                 <div class="form-group">
                                     <label for="${modelId}-configFiles">配置文件（多个文件用逗号分隔）:</label>

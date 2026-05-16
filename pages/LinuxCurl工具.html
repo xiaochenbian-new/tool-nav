@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Linux curl 请求生成</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -93,7 +94,6 @@
                 cursor: pointer;
                 font-weight: 600;
             }
-            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
             #output {
                 flex: 1;
                 min-height: 0;
@@ -152,7 +152,7 @@
                 <div class="actions">
                     <button id="generate-btn" type="button">生成 curl</button>
                     <button id="copy-btn" type="button">复制命令</button>
-                    <button id="clear-btn" class="danger" type="button">清空</button>
+                    <button id="clear-btn" class="danger tool-btn-danger" type="button">清空</button>
                 </div>
                 <div id="status" class="status">输入 URL 后可一键生成 Linux curl 命令。</div>
             </div>

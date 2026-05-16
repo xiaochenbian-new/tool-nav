@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>身份证号码生成器</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -59,7 +60,6 @@
                 cursor: pointer;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
             .result {
                 margin-top: 8px;
                 background: #f8fbff;
@@ -109,7 +109,7 @@
                     <input id="count" type="number" min="1" max="100" value="10" />
                     <button type="button" id="genBtn">生成</button>
                     <button type="button" id="copyBtn">复制结果</button>
-                    <button type="button" class="danger" id="clearBtn">清空</button>
+                    <button type="button" class="danger tool-btn-danger" id="clearBtn">清空</button>
                 </div>
                 <textarea id="result" readonly></textarea>
             </div>

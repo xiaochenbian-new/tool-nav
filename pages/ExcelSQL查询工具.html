@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Excel SQL 查询工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -234,7 +235,6 @@
                 font-weight: 600;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
             .table-list {
                 margin-top: 6px;
                 border: 1px solid #dbe7ff;
@@ -844,7 +844,7 @@
                 <div class="btn-row">
                     <button id="run-sql-btn" type="button">执行 SQL</button>
                     <button id="quick-query-btn" type="button">快速查询当前表</button>
-                    <button id="clear-all-btn" class="danger" type="button">清空</button>
+                    <button id="clear-all-btn" class="danger tool-btn-danger" type="button">清空</button>
                 </div>
                 <div class="table-list" id="table-list">
                     <div class="table-item">尚未加载表。</div>

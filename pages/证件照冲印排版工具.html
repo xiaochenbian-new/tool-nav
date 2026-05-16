@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <title>证件照冲印排版</title>
         <style>
             * {
@@ -148,23 +149,6 @@
             .btn:disabled {
                 opacity: 0.45;
                 cursor: not-allowed;
-            }
-            .btn-clear {
-                border: 1px solid transparent;
-                border-radius: 6px;
-                background: linear-gradient(135deg, #e04040, #ff7979);
-                color: #fff;
-                font-weight: 600;
-            }
-            .btn-clear:hover:not(:disabled) {
-                filter: brightness(1.05);
-                color: #fff;
-                border-color: transparent;
-            }
-            .btn-clear:disabled {
-                opacity: 0.45;
-                cursor: not-allowed;
-                filter: none;
             }
             .btn-primary {
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
@@ -566,7 +550,7 @@
                                 <input type="file" id="fileIn" accept="image/*" />
                                 <button type="button" class="drop" id="btnPick" title="支持 JPG / PNG 等">点击上传证件照</button>
                                 <button type="button" class="btn-link-tool" id="btnToPhotoBg" disabled title="跳转到证件照换底色（带入原图）">🎨 去换底色 →</button>
-                                <button type="button" class="btn btn-clear" id="btnClear" disabled title="清除当前照片">🗑 清除</button>
+                                <button type="button" class="btn tool-btn-danger" id="btnClear" disabled title="清除当前照片">🗑 清除</button>
                             </div>
                             <p class="hint">
                                 本地处理；单张可拖拽/滚轮/右上旋转；排版实时（需上传照片）。

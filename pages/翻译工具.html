@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>翻译工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * {
                 box-sizing: border-box;
@@ -229,23 +230,6 @@
                 position: absolute;
                 top: 14px;
                 right: 14px;
-                width: 26px;
-                height: 26px;
-                border: 1px solid #d8e5ff;
-                border-radius: 6px;
-                background: #edf3ff;
-                color: #3c4f78;
-                cursor: pointer;
-                font-size: 16px;
-                line-height: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            }
-            .clear-x:hover {
-                border-color: var(--primary);
-                color: var(--primary);
             }
             .pane-foot {
                 flex-shrink: 0;
@@ -471,7 +455,7 @@
                         </div>
                         <div class="pane-body">
                             <div class="ta-wrap">
-                                <button type="button" class="clear-x" id="clear-src" title="清空">×</button>
+                                <button type="button" class="clear-x tool-btn-danger" id="clear-src" title="清空">×</button>
                                 <textarea
                                     id="src-text"
                                     class="main-ta"

@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>统一社会信用代码生成工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -68,7 +69,6 @@
                 cursor: pointer;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .danger { background: linear-gradient(135deg, var(--danger), #ff7979); }
             textarea {
                 width: 100%;
                 flex: 1;
@@ -113,7 +113,7 @@
                     <input id="count" type="number" min="1" max="100" value="10" />
                     <button type="button" id="genBtn">生成</button>
                     <button type="button" id="copyBtn">复制</button>
-                    <button type="button" class="danger" id="clearBtn">清空</button>
+                    <button type="button" class="danger tool-btn-danger" id="clearBtn">清空</button>
                 </div>
                 <textarea id="result" readonly></textarea>
             </div>
