@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>工作语言工具</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+                --foot-bg: #f8fbff;
+                --toolbar-line: #e4edff;
+                --input-border: #cfdcf7;
+            }
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 13px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+                overflow: hidden;
+            }
+            .page {
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 10px;
+                min-height: 0;
+                overflow: hidden;
+            }
+            h3 {
+                margin: 0;
+                font-size: 14px;
+            }
+            .hint {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin: 0;
+                flex-shrink: 0;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .toolbar label {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            select.ctrl {
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                background: #fff;
+                color: var(--text);
+                outline: none;
+                font-family: inherit;
+            }
+            select.ctrl:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .mode-seg {
+                display: inline-flex;
+                flex-wrap: wrap;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
+            }
+            .mode-seg button {
+                border: none;
+                background: transparent;
+                padding: 6px 10px;
+                font-size: 12px;
+                cursor: pointer;
+                color: #3c4f78;
+                font-family: inherit;
+            }
+            .mode-seg button.active {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .btn-primary {
+                border: none;
+                border-radius: 6px;
+                padding: 7px 14px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: inherit;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .btn-primary:disabled {
+                opacity: 0.55;
+                cursor: not-allowed;
+            }
+            .row-2 {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            @media (max-width: 880px) {
+                .row-2 {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .pane {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .pane-hd {
+                flex-shrink: 0;
+                padding: 8px 10px;
+                font-size: 13px;
+                font-weight: 600;
+                color: #324a76;
+                background: var(--foot-bg);
+                border-bottom: 1px solid var(--toolbar-line);
+                border-radius: 10px 10px 0 0;
+            }
+            .pane-body {
+                flex: 1;
+                padding: 10px;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .ta-wrap {
+                flex: 1;
+                position: relative;
+                min-height: 0;
+                display: flex;
+            }
+            textarea.main-ta,
+            .out-text {
+                flex: 1;
+                width: 100%;
+                min-height: 0;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                font-size: 14px;
+                line-height: 1.55;
+                padding: 10px 32px 10px 10px;
+                font-family: inherit;
+                color: var(--text);
+            }
+            textarea.main-ta {
+                resize: none;
+                outline: none;
+                background: #fff;
+            }
+            textarea.main-ta:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            .out-text {
+                background: #fafcff;
+                white-space: pre-wrap;
+                word-break: break-word;
+                overflow-y: auto;
+            }
+            .clear-x {
+                position: absolute;
+                top: 14px;
+                right: 14px;
+            }
+            .pane-foot {
+                flex-shrink: 0;
+                border-top: 1px solid var(--toolbar-line);
+                background: var(--foot-bg);
+                padding: 8px 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-radius: 0 0 10px 10px;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
+                font-size: 12px;
+                cursor: pointer;
+                font-family: inherit;
+            }
+            .btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .char-count {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .global-err {
+                color: #c0392b;
+                font-size: 12px;
+                display: none;
+                flex-shrink: 0;
+            }
+            .api-panel {
+                flex-shrink: 0;
+                border: 1px dashed var(--border);
+                border-radius: 8px;
+                padding: 6px 10px 8px;
+                background: #f8fbff;
+            }
+            .api-panel summary {
+                cursor: pointer;
+                font-size: 12px;
+                color: #324a76;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                list-style: none;
+                user-select: none;
+            }
+            .api-panel summary::-webkit-details-marker {
+                display: none;
+            }
+            .api-panel summary::before {
+                content: "▸";
+                display: inline-block;
+                width: 14px;
+                margin-right: 4px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .api-panel[open] summary::before {
+                transform: rotate(90deg);
+            }
+            .api-summary-title {
+                flex: 1;
+                min-width: 0;
+                display: inline-flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .api-summary-model {
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--primary);
+                padding: 1px 8px;
+                background: #eef3ff;
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .api-summary-model.empty {
+                color: var(--muted);
+                background: #f5f7fb;
+                border-color: #e8edf5;
+            }
+            .api-summary-ctrl {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--muted);
+            }
+            .api-body {
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid var(--toolbar-line);
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .api-field {
+                display: grid;
+                grid-template-columns: 64px 1fr;
+                gap: 6px 8px;
+                align-items: center;
+            }
+            .api-field label {
+                font-size: 12px;
+                color: var(--muted);
+                margin: 0;
+                text-align: right;
+                line-height: 1.3;
+            }
+            .api-field input,
+            .api-field select {
+                width: 100%;
+                min-width: 0;
+                height: 32px;
+                border: 1px solid var(--input-border);
+                border-radius: 6px;
+                padding: 0 10px;
+                font-size: 13px;
+                font-family: inherit;
+                background: #fff;
+                color: var(--text);
+            }
+            .api-field input:focus,
+            .api-field select:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.1);
+                outline: none;
+            }
+            .api-field.model-field {
+                align-items: start;
+            }
+            .api-field.model-field label {
+                padding-top: 7px;
+            }
+            .model-row {
+                display: grid;
+                grid-template-columns: minmax(108px, 34%) 1fr;
+                gap: 6px;
+                min-width: 0;
+            }
+            @media (max-width: 520px) {
+                .api-field {
+                    grid-template-columns: 1fr;
+                }
+                .api-field label {
+                    text-align: left;
+                }
+                .api-field.model-field label {
+                    padding-top: 0;
+                }
+                .model-row {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .switch {
+                position: relative;
+                width: 36px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+                position: absolute;
+            }
+            .switch .slider {
+                position: absolute;
+                inset: 0;
+                cursor: pointer;
+                background: #c5d4f5;
+                border-radius: 24px;
+                transition: background 0.2s;
+            }
+            .switch .slider::before {
+                content: "";
+                position: absolute;
+                width: 14px;
+                height: 14px;
+                left: 3px;
+                top: 3px;
+                background: #fff;
+                border-radius: 50%;
+                transition: transform 0.2s;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+            }
+            .switch input:checked + .slider {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .switch input:checked + .slider::before {
+                transform: translateX(16px);
+            }
+            .switch input:disabled + .slider {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .badge.off-configured {
+                color: #8a6b1a;
+                background: #fff8e6;
+                border-color: #f0dfa0;
+            }
+            .api-actions {
+                margin-top: 2px;
+                padding-left: 76px;
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            @media (max-width: 520px) {
+                .api-actions {
+                    padding-left: 0;
+                }
+            }
+            .api-actions .btn {
+                padding: 5px 12px;
+                font-size: 12px;
+            }
+            .badge {
+                font-size: 11px;
+                padding: 2px 8px;
+                border-radius: 4px;
+                background: #eef3ff;
+                border: 1px solid var(--border);
+                color: var(--muted);
+            }
+            .badge.on {
+                color: #1a6b3a;
+                background: #e8f8ee;
+                border-color: #b8e6c8;
+            }
+            #copy-toast {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%) translateY(10px);
+                padding: 8px 16px;
+                background: rgba(31, 42, 68, 0.92);
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+            }
+            #copy-toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel">
+                <h3>工作语言工具</h3>
+                <p class="hint">
+                    将口语、聊天记录、语音转写等整理为岗位适配的书面工作用语；支持简洁/正式/汇报体、待办清单与会议纪要等输出形态。未启用大模型时使用本地规则；保存 API 后可通过开关决定是否调用大模型（密钥仅存于本机浏览器）。
+                </p>
+
+                <div class="toolbar">
+                    <label for="role-select">岗位角色</label>
+                    <select id="role-select" class="ctrl" title="岗位角色">
+                        <option value="general">通用职场</option>
+                        <option value="pm">产品经理</option>
+                        <option value="dev">研发工程师</option>
+                        <option value="qa">测试 / QA</option>
+                        <option value="ops">运营</option>
+                        <option value="sales">销售 / 商务</option>
+                        <option value="hr">人力资源</option>
+                        <option value="finance">财务</option>
+                        <option value="legal">法务</option>
+                        <option value="cs">客服</option>
+                        <option value="exec">高管汇报</option>
+                    </select>
+                    <span class="mode-seg" role="tablist" id="tone-tabs">
+                        <button type="button" class="active" data-tone="concise">简洁</button>
+                        <button type="button" data-tone="formal">正式</button>
+                        <button type="button" data-tone="report">汇报体</button>
+                        <button type="button" data-tone="todo">待办</button>
+                        <button type="button" data-tone="minutes">会议纪要</button>
+                    </span>
+                    <button type="button" class="btn-primary" id="btn-polish">整理为工作语言</button>
+                    <span id="mode-badge" class="badge">本地规则</span>
+                </div>
+
+                <details class="api-panel" id="api-details">
+                    <summary>
+                        <span class="api-summary-title">
+                            大模型 API（可选，OpenAI 兼容）
+                            <span class="api-summary-model empty" id="api-summary-model">未配置模型</span>
+                        </span>
+                        <span class="api-summary-ctrl" id="api-switch-wrap">
+                            <span>启用</span>
+                            <label class="switch" title="启用大模型（关闭时使用本地规则）">
+                                <input type="checkbox" id="api-enabled" />
+                                <span class="slider"></span>
+                            </label>
+                        </span>
+                    </summary>
+                    <div class="api-body">
+                        <div class="api-field">
+                            <label for="api-base">接口</label>
+                            <input id="api-base" type="url" placeholder="https://api.openai.com/v1" autocomplete="off" />
+                        </div>
+                        <div class="api-field model-field">
+                            <label>模型</label>
+                            <div class="model-row">
+                                <select id="api-model-preset" title="常用模型">
+                                    <option value="">常用模型…</option>
+                                    <optgroup label="OpenAI / GPT">
+                                        <option value="gpt-4.1">gpt-4.1</option>
+                                        <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                        <option value="gpt-4.1-nano">gpt-4.1-nano</option>
+                                        <option value="gpt-4o">gpt-4o</option>
+                                        <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                        <option value="gpt-4o-2024-11-20">gpt-4o-2024-11-20</option>
+                                        <option value="gpt-4-turbo">gpt-4-turbo</option>
+                                        <option value="gpt-4-turbo-preview">gpt-4-turbo-preview</option>
+                                        <option value="gpt-4">gpt-4</option>
+                                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                                        <option value="chatgpt-4o-latest">chatgpt-4o-latest</option>
+                                        <option value="o1">o1</option>
+                                        <option value="o1-mini">o1-mini</option>
+                                        <option value="o1-preview">o1-preview</option>
+                                        <option value="o3">o3</option>
+                                        <option value="o3-mini">o3-mini</option>
+                                        <option value="o4-mini">o4-mini</option>
+                                    </optgroup>
+                                    <optgroup label="DeepSeek">
+                                        <option value="deepseek-chat">deepseek-chat</option>
+                                        <option value="deepseek-reasoner">deepseek-reasoner</option>
+                                    </optgroup>
+                                    <optgroup label="通义千问">
+                                        <option value="qwen-max">qwen-max</option>
+                                        <option value="qwen-plus">qwen-plus</option>
+                                        <option value="qwen-turbo">qwen-turbo</option>
+                                    </optgroup>
+                                    <optgroup label="智谱 GLM">
+                                        <option value="glm-4-plus">glm-4-plus</option>
+                                        <option value="glm-4-flash">glm-4-flash</option>
+                                        <option value="glm-4-air">glm-4-air</option>
+                                    </optgroup>
+                                    <optgroup label="月之暗面">
+                                        <option value="moonshot-v1-8k">moonshot-v1-8k</option>
+                                        <option value="moonshot-v1-32k">moonshot-v1-32k</option>
+                                        <option value="moonshot-v1-128k">moonshot-v1-128k</option>
+                                    </optgroup>
+                                    <optgroup label="腾讯混元">
+                                        <option value="hunyuan-pro">hunyuan-pro</option>
+                                        <option value="hunyuan-standard">hunyuan-standard</option>
+                                        <option value="hunyuan-lite">hunyuan-lite</option>
+                                    </optgroup>
+                                    <optgroup label="其他">
+                                        <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet</option>
+                                        <option value="ernie-4.0-8k">ernie-4.0-8k</option>
+                                        <option value="spark-max">spark-max</option>
+                                    </optgroup>
+                                    <option value="__custom__">自定义输入…</option>
+                                </select>
+                                <input id="api-model" type="text" placeholder="模型 ID" autocomplete="off" />
+                            </div>
+                        </div>
+                        <div class="api-field">
+                            <label for="api-key">Key</label>
+                            <input id="api-key" type="password" placeholder="sk-..." autocomplete="off" />
+                        </div>
+                        <div class="api-actions">
+                            <button type="button" class="btn" id="save-api">保存配置</button>
+                            <button type="button" class="btn" id="clear-api">清除密钥</button>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="row-2">
+                    <section class="pane">
+                        <div class="pane-hd">口头 / 原始输入</div>
+                        <div class="pane-body">
+                            <div class="ta-wrap">
+                                <button type="button" class="clear-x tool-btn-danger" id="clear-src" title="清空">×</button>
+                                <textarea
+                                    id="src-text"
+                                    class="main-ta"
+                                    maxlength="8000"
+                                    placeholder="粘贴会议口述、微信语音转写、即兴说明等……&#10;例：那个反正我们这边吧，下周得把登录那块搞一下，不然用户老投诉，你看能不能优先排一下？"
+                                    spellcheck="false"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="pane-foot">
+                            <span class="char-count"><span id="char-num">0</span>/8000</span>
+                        </div>
+                    </section>
+
+                    <section class="pane">
+                        <div class="pane-hd">工作语言输出</div>
+                        <div class="pane-body">
+                            <div id="out-text" class="out-text" aria-live="polite"></div>
+                        </div>
+                        <div class="pane-foot">
+                            <button type="button" class="btn" id="copy-out">复制</button>
+                            <button type="button" class="btn" id="retry-out">重新整理</button>
+                        </div>
+                    </section>
+                </div>
+
+                <p id="global-err" class="global-err"></p>
+            </div>
+        </div>
+        <div id="copy-toast" role="status"></div>
+
+        <script>
+            (function () {
+                var MAX = 8000;
+                var STORAGE_KEY = "tool-nav:work-language-api";
+                var srcText = document.getElementById("src-text");
+                var outText = document.getElementById("out-text");
+                var charNum = document.getElementById("char-num");
+                var globalErr = document.getElementById("global-err");
+                var roleSelect = document.getElementById("role-select");
+                var modeBadge = document.getElementById("mode-badge");
+                var tone = "concise";
+                var loading = false;
+
+                var ROLE_PROMPTS = {
+                    general:
+                        "你是职场写作助手。将用户提供的口语、聊天记录或语音转写整理为简洁、专业、无口水话的工作用语。保留事实与数字，不编造。输出使用中文。",
+                    pm: "你是资深产品经理。将口语整理为产品/需求语境：背景、目标用户、问题、方案要点、验收标准、优先级与风险。条理清晰，适合写进 PRD 或需求评审纪要。不编造需求。",
+                    dev: "你是研发工程师。将口语整理为技术沟通用语：问题现象、根因假设、改动范围、接口/数据影响、待办与排期、风险与回滚。术语准确，避免空话。",
+                    qa: "你是测试负责人。将口语整理为测试语境：测试范围、用例要点、缺陷现象与复现、阻塞项、回归建议、上线检查清单。",
+                    ops: "你是运营同学。将口语整理为运营方案用语：活动目标、受众、渠道、节奏、核心指标、资源需求与复盘要点。",
+                    sales: "你是销售/商务。将口语整理为客户沟通或商机跟进用语：客户诉求、方案价值、报价/商务条件、异议与下一步行动。语气专业得体。",
+                    hr: "你是 HR。将口语整理为人事沟通用语：事实陈述中立客观，涉及人员与流程表述规范，避免歧义与情绪化表达。",
+                    finance: "你是财务。将口语整理为财务语境：金额、科目、期间、依据、审批节点表述准确，数字与单位清晰。",
+                    legal: "你是法务。将口语整理为合规、合同或风险提示用语：权利义务、期限、责任边界表述严谨，不确定处标注「待确认」。",
+                    cs: "你是客服主管。将口语整理为对客/工单用语：问题分类、处理进展、客户安抚话术、升级条件与回访要点。语气礼貌。",
+                    exec: "你是高管助理。将口语整理为高层汇报用语：结论前置、3～5 条要点、数据与影响、决策项与建议，极简有力。"
+                };
+
+                var TONE_HINT = {
+                    concise: "语气简洁，删繁就简，能列表则列表。",
+                    formal: "语气正式、书面，适合邮件与对外函件。",
+                    report: "采用汇报体：可先给一句话结论，再分条展开。",
+                    todo: "输出为待办清单：每条包含任务描述；能推断则写负责人、截止时间，无法推断则标「待定」。使用 - [ ] 复选框格式，按优先级或时间排序。不编造任务。",
+                    minutes:
+                        "输出为标准会议纪要结构，须包含：会议主题、时间（无法推断写「待补充」）、参会人员（待补充）、议程与讨论要点、决议事项、待办事项（负责人/截止时间能推断则写）。条理清晰，不编造未提及内容。"
+                };
+
+                function showErr(msg) {
+                    if (!msg) {
+                        globalErr.style.display = "none";
+                        globalErr.textContent = "";
+                        return;
+                    }
+                    globalErr.textContent = msg;
+                    globalErr.style.display = "block";
+                }
+
+                function toast(msg) {
+                    var el = document.getElementById("copy-toast");
+                    el.textContent = msg;
+                    el.classList.add("show");
+                    setTimeout(function () {
+                        el.classList.remove("show");
+                    }, 1600);
+                }
+
+                function loadApiConfig() {
+                    try {
+                        var raw = localStorage.getItem(STORAGE_KEY);
+                        if (!raw) return null;
+                        return JSON.parse(raw);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                var apiEnabledEl = document.getElementById("api-enabled");
+                var apiModelPreset = document.getElementById("api-model-preset");
+                var apiModelInput = document.getElementById("api-model");
+                var apiSummaryModel = document.getElementById("api-summary-model");
+
+                function isConfigComplete(cfg) {
+                    return !!(cfg && cfg.base && cfg.key && cfg.model);
+                }
+
+                function isLlmActive() {
+                    var cfg = loadApiConfig();
+                    return !!(cfg && cfg.enabled && isConfigComplete(cfg));
+                }
+
+                function updateSummaryModel() {
+                    if (!apiSummaryModel) return;
+                    var cfg = loadApiConfig();
+                    var model = (apiModelInput.value || "").trim() || (cfg && cfg.model) || "";
+                    if (model) {
+                        apiSummaryModel.textContent = model;
+                        apiSummaryModel.classList.remove("empty");
+                        apiSummaryModel.title = "当前模型：" + model;
+                    } else {
+                        apiSummaryModel.textContent = "未配置模型";
+                        apiSummaryModel.classList.add("empty");
+                        apiSummaryModel.title = "";
+                    }
+                }
+
+                function saveApiConfig(cfg) {
+                    if (!isConfigComplete(cfg)) cfg.enabled = false;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+                    updateEnableSwitchState();
+                    updateModeBadge();
+                    updateSummaryModel();
+                }
+
+                function updateModeBadge() {
+                    var cfg = loadApiConfig();
+                    modeBadge.classList.remove("on", "off-configured");
+                    if (!isConfigComplete(cfg)) {
+                        modeBadge.textContent = "本地规则";
+                        return;
+                    }
+                    if (cfg.enabled) {
+                        modeBadge.textContent = "大模型";
+                        modeBadge.classList.add("on");
+                    } else {
+                        modeBadge.textContent = "大模型未启用";
+                        modeBadge.classList.add("off-configured");
+                    }
+                }
+
+                function updateEnableSwitchState() {
+                    var cfg = loadApiConfig();
+                    var formCfg = getApiConfigFromForm();
+                    var complete = isConfigComplete(cfg) || isConfigComplete(formCfg);
+                    apiEnabledEl.disabled = !complete;
+                    if (!complete) apiEnabledEl.checked = false;
+                }
+
+                function findPresetValue(modelId) {
+                    var opts = apiModelPreset.options;
+                    for (var i = 0; i < opts.length; i++) {
+                        if (opts[i].value && opts[i].value === modelId) return opts[i].value;
+                    }
+                    return null;
+                }
+
+                function syncPresetFromModel() {
+                    var model = apiModelInput.value.trim();
+                    var hit = model ? findPresetValue(model) : null;
+                    apiModelPreset.value = hit || (model ? "__custom__" : "");
+                }
+
+                function applyPresetToModel() {
+                    var v = apiModelPreset.value;
+                    if (v && v !== "__custom__") {
+                        apiModelInput.value = v;
+                    } else if (v === "__custom__") {
+                        apiModelInput.focus();
+                    }
+                    updateSummaryModel();
+                }
+
+                function initApiForm() {
+                    var cfg = loadApiConfig() || {};
+                    document.getElementById("api-base").value = cfg.base || "";
+                    apiModelInput.value = cfg.model || "";
+                    document.getElementById("api-key").value = cfg.key || "";
+                    apiEnabledEl.checked = !!(cfg.enabled && isConfigComplete(cfg));
+                    syncPresetFromModel();
+                    updateEnableSwitchState();
+                    updateModeBadge();
+                    updateSummaryModel();
+                }
+
+                function getApiConfigFromForm() {
+                    return {
+                        base: (document.getElementById("api-base").value || "").trim().replace(/\/$/, ""),
+                        model: (apiModelInput.value || "").trim(),
+                        key: (document.getElementById("api-key").value || "").trim(),
+                        enabled: apiEnabledEl.checked
+                    };
+                }
+
+                function mergeAndSaveFromForm() {
+                    var prev = loadApiConfig() || {};
+                    var cfg = getApiConfigFromForm();
+                    if (!cfg.key && prev.key) cfg.key = prev.key;
+                    if (!cfg.enabled || !isConfigComplete(cfg)) cfg.enabled = false;
+                    saveApiConfig(cfg);
+                    return cfg;
+                }
+
+                function removeFillers(text) {
+                    return String(text)
+                        .replace(/[ \t]+/g, " ")
+                        .replace(/(嗯+|啊+|呃+|那个+|就是说+|反正+|其实呢?|怎么说呢|你知道吧|对吧|是吧|然后呢?)/g, "")
+                        .replace(/[，,]{2,}/g, "，")
+                        .replace(/\s+/g, " ")
+                        .trim();
+                }
+
+                function splitClauses(text) {
+                    var parts = text.split(/[。！？；\n]+|[,，](?=\s*[^，,])/);
+                    return parts.map(function (p) {
+                        return p.replace(/^[，,\s]+|[，,\s]+$/g, "").trim();
+                    }).filter(Boolean);
+                }
+
+                function inferOwner(line) {
+                    var m = line.match(/(?:由|让|叫|给|@)([\u4e00-\u9fa5A-Za-z]{1,8})(?:来|去|做|负责|跟|处理)/);
+                    return m ? m[1] : "待定";
+                }
+
+                function inferDeadline(line) {
+                    if (/今天|今晚|当日/.test(line)) return "今天";
+                    if (/明天|次日/.test(line)) return "明天";
+                    if (/本周|这周/.test(line)) return "本周";
+                    if (/下周|下星期/.test(line)) return "下周";
+                    if (/月底/.test(line)) return "本月末";
+                    var m = line.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+                    if (m) return m[1] + "月" + m[2] + "日";
+                    return "待定";
+                }
+
+                function isActionLine(line) {
+                    return /要|得|需要|安排|跟进|处理|完成|修复|上线|提交|确认|排查|优化|开发|测试|同步|对接|优先/.test(line);
+                }
+
+                function formatTodo(clauses) {
+                    var items = clauses.filter(isActionLine);
+                    if (!items.length) items = clauses.slice();
+                    var lines = items.map(function (line, i) {
+                        return (
+                            "- [ ] " +
+                            line +
+                            "（负责人：" +
+                            inferOwner(line) +
+                            " | 截止：" +
+                            inferDeadline(line) +
+                            "）"
+                        );
+                    });
+                    return "【待办清单】\n" + (lines.length ? lines.join("\n") : "- [ ] （请补充具体待办）");
+                }
+
+                function formatMinutes(clauses) {
+                    var topic = clauses[0] || "（待补充）";
+                    var discuss = clauses.slice(1);
+                    var actions = clauses.filter(isActionLine);
+                    if (!actions.length && clauses.length > 1) actions = clauses.slice(1);
+
+                    function section(title, items, emptyHint) {
+                        if (!items.length) return title + "\n" + emptyHint;
+                        return title + "\n" + items.map(function (x, i) { return (i + 1) + ". " + x; }).join("\n");
+                    }
+
+                    var now = new Date();
+                    var mo = now.getMonth() + 1;
+                    var da = now.getDate();
+                    var dateStr =
+                        now.getFullYear() +
+                        "-" +
+                        (mo < 10 ? "0" : "") +
+                        mo +
+                        "-" +
+                        (da < 10 ? "0" : "") +
+                        da;
+
+                    return (
+                        "【会议主题】\n" +
+                        topic +
+                        "\n\n【会议时间】\n" +
+                        dateStr +
+                        "（若与实际不符请修改）\n\n【参会人员】\n待补充\n\n" +
+                        section("【议程与讨论要点】", discuss.length ? discuss : clauses, "（待补充）") +
+                        "\n\n【决议事项】\n" +
+                        (discuss.length ? discuss.map(function (x, i) { return (i + 1) + ". " + x; }).join("\n") : "（待补充）") +
+                        "\n\n【待办事项】\n" +
+                        (actions.length
+                            ? actions
+                                  .map(function (line) {
+                                      return (
+                                          "- [ ] " +
+                                          line +
+                                          " | 负责人：" +
+                                          inferOwner(line) +
+                                          " | 截止：" +
+                                          inferDeadline(line)
+                                      );
+                                  })
+                                  .join("\n")
+                            : "- [ ] （待补充）")
+                    );
+                }
+
+                function roleStructure(role, clauses, toneKey) {
+                    var lines = clauses.slice();
+                    if (!lines.length) return "";
+
+                    function bullets(title, items) {
+                        var body = items.map(function (x, i) {
+                            return (i + 1) + ". " + x;
+                        }).join("\n");
+                        return title ? title + "\n" + body : body;
+                    }
+
+                    if (role === "pm") {
+                        return (
+                            "【背景】\n" +
+                            (lines[0] || "—") +
+                            "\n\n【需求要点】\n" +
+                            bullets("", lines.slice(1).length ? lines.slice(1) : lines) +
+                            "\n\n【建议下一步】\n请补充验收标准与优先级后纳入迭代。"
+                        );
+                    }
+                    if (role === "dev") {
+                        return (
+                            "【问题/需求】\n" +
+                            lines[0] +
+                            "\n\n【处理方向】\n" +
+                            bullets("", lines.slice(1).length ? lines.slice(1) : ["待技术方案评审"]) +
+                            "\n\n【风险与待办】\n待评估影响范围与上线窗口。"
+                        );
+                    }
+                    if (role === "exec") {
+                        var conclusion = lines[0];
+                        return (
+                            "【结论】\n" +
+                            conclusion +
+                            "\n\n【要点】\n" +
+                            bullets("", lines.slice(1).length ? lines.slice(1) : [conclusion])
+                        );
+                    }
+                    if (role === "cs") {
+                        return (
+                            "【客户问题】\n" +
+                            lines[0] +
+                            "\n\n【处理说明】\n" +
+                            bullets("", lines.slice(1).length ? lines.slice(1) : ["已记录并跟进处理"]) +
+                            "\n\n【对客话术建议】\n感谢您的反馈，我们已受理并在处理中，有进展将第一时间与您联系。"
+                        );
+                    }
+                    return bullets("", lines);
+                }
+
+                function polishLocal(text, role, toneKey) {
+                    var cleaned = removeFillers(text);
+                    if (!cleaned) return "";
+                    var clauses = splitClauses(cleaned);
+                    if (toneKey === "todo") return formatTodo(clauses);
+                    if (toneKey === "minutes") return formatMinutes(clauses);
+
+                    var body = roleStructure(role, clauses, toneKey);
+                    if (toneKey === "formal") {
+                        body = body.replace(/待/g, "尚需");
+                    }
+                    if (toneKey === "report" && body.indexOf("【结论】") < 0) {
+                        body = "【概述】\n" + clauses[0] + "\n\n" + body;
+                    }
+                    return body;
+                }
+
+                function callLlm(text, role, toneKey) {
+                    var cfg = loadApiConfig();
+                    if (!isLlmActive()) {
+                        return Promise.resolve(polishLocal(text, role, toneKey));
+                    }
+                    var system =
+                        (ROLE_PROMPTS[role] || ROLE_PROMPTS.general) +
+                        "\n" +
+                        (TONE_HINT[toneKey] || TONE_HINT.concise) +
+                        "\n只输出整理后的正文，不要解释过程。";
+                    var userLead = {
+                        todo: "请整理为待办清单（含负责人、截止时间，无法推断则标待定）：\n\n",
+                        minutes: "请整理为会议纪要（含主题、时间、参会、讨论、决议、待办）：\n\n"
+                    };
+                    var url = cfg.base + "/chat/completions";
+                    return fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: "Bearer " + cfg.key
+                        },
+                        body: JSON.stringify({
+                            model: cfg.model,
+                            temperature: 0.3,
+                            messages: [
+                                { role: "system", content: system },
+                                {
+                                    role: "user",
+                                    content:
+                                        (userLead[toneKey] || "请整理以下内容为工作语言：\n\n") +
+                                        text.slice(0, 6000)
+                                }
+                            ]
+                        })
+                    })
+                        .then(function (r) {
+                            if (!r.ok) {
+                                return r.text().then(function (t) {
+                                    throw new Error("HTTP " + r.status + (t ? ": " + t.slice(0, 120) : ""));
+                                });
+                            }
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            var choice =
+                                data &&
+                                data.choices &&
+                                data.choices[0] &&
+                                data.choices[0].message &&
+                                data.choices[0].message.content;
+                            if (!choice) throw new Error("模型未返回有效内容");
+                            return String(choice).trim();
+                        });
+                }
+
+                function polishNow() {
+                    if (loading) return;
+                    showErr("");
+                    var q = srcText.value.trim();
+                    if (!q) {
+                        outText.textContent = "";
+                        return;
+                    }
+                    var role = roleSelect.value;
+                    loading = true;
+                    document.getElementById("btn-polish").disabled = true;
+                    outText.textContent = "整理中…";
+
+                    callLlm(q, role, tone)
+                        .catch(function (e) {
+                            if (isLlmActive()) {
+                                showErr(
+                                    (e && e.message ? e.message : String(e)) +
+                                        "。已回退为本地规则结果。"
+                                );
+                                return polishLocal(q, role, tone);
+                            }
+                            showErr(e && e.message ? e.message : String(e));
+                            return polishLocal(q, role, tone);
+                        })
+                        .then(function (result) {
+                            outText.textContent = result || "";
+                        })
+                        .finally(function () {
+                            loading = false;
+                            document.getElementById("btn-polish").disabled = false;
+                        });
+                }
+
+                srcText.addEventListener("input", function () {
+                    if (srcText.value.length > MAX) srcText.value = srcText.value.slice(0, MAX);
+                    charNum.textContent = String(srcText.value.length);
+                });
+
+                document.querySelectorAll("#tone-tabs button").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll("#tone-tabs button").forEach(function (b) {
+                            b.classList.toggle("active", b === btn);
+                        });
+                        tone = btn.getAttribute("data-tone") || "concise";
+                    });
+                });
+
+                document.getElementById("btn-polish").addEventListener("click", polishNow);
+                document.getElementById("retry-out").addEventListener("click", polishNow);
+                document.getElementById("clear-src").addEventListener("click", function () {
+                    srcText.value = "";
+                    charNum.textContent = "0";
+                    outText.textContent = "";
+                    showErr("");
+                });
+                document.getElementById("copy-out").addEventListener("click", function () {
+                    var t = outText.textContent.trim();
+                    if (!t) {
+                        showErr("没有可复制的内容。");
+                        return;
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(t).then(
+                            function () {
+                                toast("已复制");
+                                showErr("");
+                            },
+                            function () {
+                                showErr("复制失败，请手动选择复制。");
+                            }
+                        );
+                    } else {
+                        showErr("当前环境不支持剪贴板 API。");
+                    }
+                });
+
+                document.getElementById("api-switch-wrap").addEventListener("click", function (e) {
+                    e.stopPropagation();
+                });
+
+                apiModelPreset.addEventListener("change", applyPresetToModel);
+                apiModelInput.addEventListener("input", function () {
+                    syncPresetFromModel();
+                    updateEnableSwitchState();
+                    updateSummaryModel();
+                });
+                document.getElementById("api-base").addEventListener("input", updateEnableSwitchState);
+                document.getElementById("api-key").addEventListener("input", updateEnableSwitchState);
+
+                apiEnabledEl.addEventListener("change", function () {
+                    var cfg = mergeAndSaveFromForm();
+                    if (apiEnabledEl.checked && !isConfigComplete(cfg)) {
+                        apiEnabledEl.checked = false;
+                        showErr("请先填写并保存接口、模型与 API Key。");
+                        return;
+                    }
+                    toast(apiEnabledEl.checked ? "已启用大模型" : "已关闭大模型，使用本地规则");
+                    showErr("");
+                });
+
+                document.getElementById("save-api").addEventListener("click", function () {
+                    var cfg = getApiConfigFromForm();
+                    if (cfg.base && !cfg.model) {
+                        showErr("请选择或填写模型名称。");
+                        return;
+                    }
+                    if (cfg.base && !cfg.key) {
+                        var prev = loadApiConfig();
+                        if (!prev || !prev.key) {
+                            showErr("请填写 API Key。");
+                            return;
+                        }
+                        cfg.key = prev.key;
+                    }
+                    if (!isConfigComplete(cfg)) cfg.enabled = false;
+                    saveApiConfig(cfg);
+                    toast("API 配置已保存");
+                    showErr("");
+                });
+                document.getElementById("clear-api").addEventListener("click", function () {
+                    var prev = loadApiConfig() || {};
+                    prev.key = "";
+                    prev.enabled = false;
+                    saveApiConfig(prev);
+                    document.getElementById("api-key").value = "";
+                    apiEnabledEl.checked = false;
+                    toast("已清除密钥");
+                });
+
+                initApiForm();
+                charNum.textContent = "0";
+            })();
+        </script>
+    </body>
+</html>
