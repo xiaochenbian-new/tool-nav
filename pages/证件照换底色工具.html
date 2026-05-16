@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <title>证件照换底色</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                font-size: 15px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+            }
+            .page {
+                height: 100%;
+                max-height: 100%;
+                padding: 6px 8px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                min-height: 0;
+                overflow: hidden;
+            }
+            .page:fullscreen {
+                background: #fff;
+            }
+            .page:fullscreen .preview-wrap {
+                background: #fafafa;
+            }
+            .hd {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 5px 8px;
+            }
+            .hd-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: #2b3e63;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                min-width: 0;
+            }
+            .hd-actions {
+                display: flex;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .toolbar {
+                flex: 0 1 auto;
+                max-height: min(38vh, 320px);
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+            }
+            .row-label {
+                font-size: 13px;
+                color: #5a6f94;
+                font-weight: 600;
+                width: 100%;
+                margin-bottom: -4px;
+            }
+            .btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 6px 12px;
+                font-size: 14px;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .btn-primary {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border-color: transparent;
+            }
+            .btn-primary:hover {
+                color: #fff;
+                opacity: 0.95;
+            }
+            .btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            input[type="file"] {
+                display: none;
+            }
+            .size-group {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+            }
+            .size-chip {
+                border: 1px solid #cfdcf7;
+                border-radius: 6px;
+                background: #fbfcff;
+                padding: 5px 10px;
+                font-size: 13px;
+                cursor: pointer;
+                color: #324a76;
+                line-height: 1.25;
+                text-align: center;
+            }
+            .size-chip small {
+                display: block;
+                font-size: 11px;
+                color: var(--muted);
+                font-weight: 400;
+            }
+            .size-chip:hover {
+                border-color: var(--primary);
+            }
+            .size-chip.active {
+                border-color: var(--primary);
+                background: #e8f0ff;
+                color: #1e4a9e;
+                font-weight: 600;
+            }
+            .pct-wrap {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 13px;
+                color: #324a76;
+            }
+            .pct-wrap select {
+                border: 1px solid #cfdcf7;
+                border-radius: 4px;
+                padding: 4px 6px;
+                font-size: 13px;
+            }
+            .colors {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 14px;
+                align-items: flex-end;
+            }
+            .color-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 3px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .color-item .sw {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                border: 2px solid #cfdcf7;
+                box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+            }
+            .color-item .lab {
+                font-size: 12px;
+                color: #5a6f94;
+            }
+            .color-item:hover .sw {
+                border-color: var(--primary);
+            }
+            .color-item.active .sw {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.28);
+            }
+            .color-item.other .sw {
+                background: linear-gradient(135deg, #fff 50%, #dbe6ff 50%);
+            }
+            #customColor {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+            }
+            .slider-row {
+                width: 100%;
+                max-width: 420px;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .slider-row label {
+                font-size: 13px;
+                color: #324a76;
+                font-weight: 600;
+            }
+            .slider-row input[type="range"] {
+                width: 100%;
+                accent-color: #e53935;
+            }
+            .preview-wrap {
+                flex: 1 1 0%;
+                min-height: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: auto;
+                padding: 12px;
+            }
+            #stage {
+                position: relative;
+                display: inline-block;
+                max-width: 100%;
+                max-height: 100%;
+            }
+            #viewCanvas {
+                display: block;
+                max-width: 100%;
+                max-height: calc(100vh - 280px);
+                height: auto;
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            }
+            .placeholder {
+                color: var(--muted);
+                font-size: 14px;
+                text-align: center;
+                padding: 40px 20px;
+                max-width: 360px;
+                line-height: 1.5;
+            }
+            .status {
+                font-size: 12px;
+                color: var(--muted);
+                min-height: 1.2em;
+            }
+            .modal-back {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 50;
+                background: rgba(30, 40, 60, 0.45);
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+            }
+            .modal-back.on {
+                display: flex;
+            }
+            .modal {
+                background: #fff;
+                border-radius: 10px;
+                border: 1px solid var(--border);
+                max-width: 520px;
+                width: 100%;
+                padding: 14px 16px;
+                box-shadow: var(--shadow);
+            }
+            .modal h3 {
+                margin: 0 0 8px;
+                font-size: 15px;
+            }
+            .modal pre {
+                margin: 0;
+                padding: 10px;
+                background: #f5f8ff;
+                border-radius: 6px;
+                font-size: 12px;
+                overflow: auto;
+                max-height: 200px;
+                border: 1px solid #e4edff;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            .modal .modal-actions {
+                margin-top: 10px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page" id="rootPage">
+            <header class="hd">
+                <div class="hd-title">
+                    <span aria-hidden="true">📷</span>
+                    <span>在线证件照换底色</span>
+                </div>
+                <div class="hd-actions">
+                    <button type="button" class="btn" id="btnCode" title="嵌入说明">代码</button>
+                    <button type="button" class="btn" id="btnFs" title="全屏">全屏</button>
+                </div>
+            </header>
+            <div class="toolbar">
+                <div class="row">
+                    <button type="button" class="btn" id="btnPick">⬆ 上传</button>
+                    <button type="button" class="btn btn-primary" id="btnDl" disabled>⬇ 下载</button>
+                    <input type="file" id="fileIn" accept="image/*" />
+                    <span class="status" id="status"></span>
+                </div>
+                <div class="row" style="align-items: center; gap: 10px; flex-wrap: wrap">
+                    <span style="font-size: 12px; color: #5a6f94">AI 模型</span>
+                    <select
+                        id="imglyModelSel"
+                        data-persist-key="photo_imgly_model"
+                        style="border: 1px solid #cfdcf7; border-radius: 6px; padding: 4px 8px; font-size: 13px"
+                    >
+                        <option value="medium" selected>medium 均衡</option>
+                        <option value="large">large 更精细</option>
+                        <option value="small">small 更快</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="row-label">尺寸</div>
+                    <div class="size-group" id="sizeGroup"></div>
+                    <div class="pct-wrap" id="pctWrap" style="margin-top: 4px; display: none">
+                        <span>原尺寸比例</span>
+                        <select id="pctSel" data-persist-key="photo_bg_pct">
+                            <option value="100">100%</option>
+                            <option value="90">90%</option>
+                            <option value="80">80%</option>
+                            <option value="70">70%</option>
+                            <option value="60">60%</option>
+                            <option value="50">50%</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <div class="row-label">底色</div>
+                    <div class="colors" id="colors"></div>
+                    <input type="color" id="customColor" value="#1f8a7a" />
+                </div>
+                <div class="slider-row">
+                    <label for="smooth">边缘平滑度 <span id="smoothVal" style="font-weight: 500; color: var(--muted)">38</span></label>
+                    <input type="range" id="smooth" min="0" max="100" value="35" data-persist-key="photo_bg_smooth" />
+                    <span style="font-size: 12px; color: var(--muted)">建议 32～40。AI 抠图 + 原图 RGB 换底；人物区保持原像素</span>
+                </div>
+            </div>
+            <div class="preview-wrap" id="previewWrap">
+                <div id="placeholder" class="placeholder">
+                    请上传<strong>纯色底</strong>证件照原图。使用 <strong>AI 人像抠图（isnet）</strong> 换底。首次使用前在 tool-nav 目录执行 <code>npm run copy:imgly</code>，并通过 <strong>http</strong> 打开本站。
+                </div>
+                <div id="stage" style="display: none">
+                    <canvas id="viewCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="modal-back" id="modalBack" aria-hidden="true">
+            <div class="modal" role="dialog">
+                <h3>嵌入本工具</h3>
+                <p style="margin: 0 0 8px; font-size: 13px; color: var(--muted)">在自有页面中通过 iframe 打开本工具（路径相对于站点根目录）：</p>
+                <pre id="embedCode"></pre>
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="modalClose">知道了</button>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                const DPI = 300;
+                const MM_PER_IN = 25.4;
+                function mmToPx(mm) {
+                    return Math.round((mm / MM_PER_IN) * DPI);
+                }
+
+                const PRESETS = [
+                    { id: "orig", label: "原尺寸", sub: "按上传图", mw: null, mh: null },
+                    { id: "xs1", label: "小一寸", sub: "22×32mm", mw: 22, mh: 32 },
+                    { id: "s1", label: "一寸", sub: "25×35mm", mw: 25, mh: 35 },
+                    { id: "l1", label: "大一寸", sub: "33×48mm", mw: 33, mh: 48 },
+                    { id: "xs2", label: "小二寸", sub: "35×45mm", mw: 35, mh: 45 },
+                    { id: "s2", label: "二寸", sub: "35×49mm", mw: 35, mh: 49 },
+                    { id: "l2", label: "大二寸", sub: "35×53mm", mw: 35, mh: 53 }
+                ];
+
+                const SWATCHES = [
+                    { id: "w", label: "白", hex: "#ffffff" },
+                    { id: "lg", label: "浅灰", hex: "#e8eaed" },
+                    { id: "dr", label: "深红", hex: "#7a0c0c" },
+                    { id: "r", label: "红", hex: "#e60012" },
+                    { id: "tb", label: "钛蓝", hex: "#0d1b4d" },
+                    { id: "sq", label: "松青", hex: "#1f8a7a" },
+                    { id: "b", label: "蓝", hex: "#005bac" },
+                    { id: "sb", label: "天蓝", hex: "#7ec8e3" },
+                    { id: "cb", label: "青蓝", hex: "#00a0e9" }
+                ];
+
+                let sourceCanvas = null;
+                let sourceW = 0;
+                let sourceH = 0;
+                let rawImageData = null;
+                let cachedEstBg = null;
+                let bgRgb = { r: 255, g: 255, b: 255 };
+                let selectedPresetId = "orig";
+                let selectedSwatchId = "sq";
+                let customHex = "#1f8a7a";
+                let rafPending = false;
+                let mlAlpha = null;
+                let mlBusy = false;
+                let mlLastError = null;
+                let imglyImportPromise = null;
+
+                const IMGLY_MODULE = new URL("libs/imgly/imgly.bundle.mjs", window.location.href).href;
+                const IMGLY_PUBLIC = new URL("libs/imgly-data/", window.location.href).href;
+
+                function imglyEngineConfig(modelName) {
+                    return {
+                        publicPath: IMGLY_PUBLIC,
+                        model: modelName,
+                        proxyToWorker: false,
+                        device: "cpu",
+                        fetchArgs: { credentials: "omit" }
+                    };
+                }
+
+                function canvasToPngBlob(canvas) {
+                    return new Promise(function (resolve, reject) {
+                        if (!canvas || typeof canvas.toBlob !== "function") {
+                            reject(new Error("canvas.toBlob 不可用"));
+                            return;
+                        }
+                        canvas.toBlob(
+                            function (blob) {
+                                if (blob) resolve(blob);
+                                else reject(new Error("canvas.toBlob 返回空"));
+                            },
+                            "image/png"
+                        );
+                    });
+                }
+
+                const el = {
+                    fileIn: document.getElementById("fileIn"),
+                    btnPick: document.getElementById("btnPick"),
+                    btnDl: document.getElementById("btnDl"),
+                    smooth: document.getElementById("smooth"),
+                    smoothVal: document.getElementById("smoothVal"),
+                    viewCanvas: document.getElementById("viewCanvas"),
+                    placeholder: document.getElementById("placeholder"),
+                    stage: document.getElementById("stage"),
+                    status: document.getElementById("status"),
+                    sizeGroup: document.getElementById("sizeGroup"),
+                    pctWrap: document.getElementById("pctWrap"),
+                    pctSel: document.getElementById("pctSel"),
+                    colors: document.getElementById("colors"),
+                    customColor: document.getElementById("customColor"),
+                    btnCode: document.getElementById("btnCode"),
+                    btnFs: document.getElementById("btnFs"),
+                    rootPage: document.getElementById("rootPage"),
+                    modalBack: document.getElementById("modalBack"),
+                    embedCode: document.getElementById("embedCode"),
+                    modalClose: document.getElementById("modalClose"),
+                    imglyModelSel: document.getElementById("imglyModelSel")
+                };
+
+                function hexToRgb(hex) {
+                    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+                    if (!m) return { r: 255, g: 255, b: 255 };
+                    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
+                }
+
+                function colorDist(r, g, b, br, bg, bb) {
+                    const dr = r - br;
+                    const dg = g - bg;
+                    const db = b - bb;
+                    return Math.sqrt(0.3 * dr * dr + 0.35 * dg * dg + 0.3 * db * db);
+                }
+
+                function relLum(r, g, b) {
+                    return 0.299 * r + 0.587 * g + 0.114 * b;
+                }
+
+                function rgbSat(r, g, b) {
+                    const mx = Math.max(r, g, b);
+                    if (mx < 1e-6) return 0;
+                    const mn = Math.min(r, g, b);
+                    return (mx - mn) / mx;
+                }
+
+                function isRedStudioBg(estBg) {
+                    return estBg.r > estBg.g + 16 && estBg.r > estBg.b + 12;
+                }
+
+                function isWhiteStudioBg(estBg) {
+                    const lum = relLum(estBg.r, estBg.g, estBg.b);
+                    const sat = rgbSat(estBg.r, estBg.g, estBg.b);
+                    const mn = Math.min(estBg.r, estBg.g, estBg.b);
+                    if (lum > 175 && sat < 0.2 && mn > 162) return true;
+                    return estBg.r > 198 && estBg.g > 198 && estBg.b > 198 && sat < 0.16;
+                }
+
+                function studioBgStatusNote(estBg) {
+                    if (isWhiteStudioBg(estBg)) return "· 白底收边";
+                    if (isRedStudioBg(estBg)) return "· 红底收边";
+                    return "";
+                }
+
+                function isBlueishTargetBg(bg) {
+                    return bg.b >= bg.r + 10 && bg.b >= bg.g + 4;
+                }
+
+                function isGreenishTargetBg(bg) {
+                    return bg.g >= bg.r + 8 && bg.g >= bg.b + 6;
+                }
+
+                function isCyanTealTargetBg(bg) {
+                    return bg.g >= bg.r + 6 && bg.b >= bg.r + 6;
+                }
+
+                function isSaturatedTargetBg(bg) {
+                    return (
+                        isBlueishTargetBg(bg) ||
+                        isGreenishTargetBg(bg) ||
+                        isCyanTealTargetBg(bg)
+                    );
+                }
+
+                function pixelHasTargetBgSpill(r, g, b, bgRgb) {
+                    const lum = relLum(r, g, b);
+                    if (lum > 228) return false;
+                    if (colorDist(r, g, b, bgRgb.r, bgRgb.g, bgRgb.b) < 32) return true;
+                    if (isCyanTealTargetBg(bgRgb)) {
+                        const gExc = g - Math.max(r, b);
+                        const bExc = b - Math.max(r, g);
+                        if (gExc > 2 || bExc > 2) return true;
+                        if (lum < 115 && (g > r + 6 || b > r + 6)) return true;
+                    }
+                    if (isBlueishTargetBg(bgRgb) && b - Math.max(r, g) > 2) return true;
+                    if (isGreenishTargetBg(bgRgb) && g - Math.max(r, b) > 2) return true;
+                    return false;
+                }
+
+                function isLikelySkinTone(r, g, b) {
+                    const lum = relLum(r, g, b);
+                    if (lum < 58 || lum > 238) return false;
+                    const sat = rgbSat(r, g, b);
+                    if (sat > 0.52) return false;
+                    if (r < 58 || g < 42 || b < 32) return false;
+                    if (r < b - 6) return false;
+                    if (r < g - 28) return false;
+                    if (lum > 198 && sat < 0.14) return false;
+                    if (lum < 88 && sat < 0.18) return false;
+                    return r >= 92 && g >= 58 && b >= 42;
+                }
+
+                function despillNewBgFromFg(r, g, b, newBg, af, strength) {
+                    const s = strength * (0.55 + 0.45 * (1 - Math.min(1, af)));
+                    if (isBlueishTargetBg(newBg)) {
+                        const blueExc = b - Math.max(r, g);
+                        if (blueExc > 3) {
+                            const lum = relLum(r, g, b);
+                            b = Math.max(0, b - blueExc * s * 0.92);
+                            r = Math.max(0, Math.min(255, lum + (r - lum) * (1 + s * 0.08)));
+                            g = Math.max(0, Math.min(255, lum + (g - lum) * (1 + s * 0.05)));
+                        }
+                    } else if (isGreenishTargetBg(newBg)) {
+                        const greenExc = g - Math.max(r, b);
+                        if (greenExc > 3) {
+                            const lum = relLum(r, g, b);
+                            g = Math.max(0, g - greenExc * s * 0.9);
+                            r = Math.max(0, Math.min(255, lum + (r - lum) * (1 + s * 0.06)));
+                        }
+                    } else if (isCyanTealTargetBg(newBg)) {
+                        const gExc = g - Math.max(r, b);
+                        const bExc = b - Math.max(r, g);
+                        const lum = relLum(r, g, b);
+                        if (gExc > 3) g = Math.max(0, g - gExc * s * 0.88);
+                        if (bExc > 3) b = Math.max(0, b - bExc * s * 0.88);
+                        r = Math.max(0, Math.min(255, lum + (r - lum) * (1 + s * 0.05)));
+                    }
+                    return { r: r, g: g, b: b };
+                }
+
+                function despillOrigRedRgb(r, g, b, strength) {
+                    const redExc = r - Math.max(g, b);
+                    if (redExc <= 1.5 || strength <= 0) return { r: r, g: g, b: b };
+                    const lum = relLum(r, g, b);
+                    const cut = redExc * Math.min(1, strength);
+                    let nr = r - cut;
+                    const nl = relLum(nr, g, b);
+                    if (nl > 1e-3) {
+                        const sc = lum / nl;
+                        nr = Math.max(0, Math.min(255, nr * sc));
+                        g = Math.max(0, Math.min(255, g * sc));
+                        b = Math.max(0, Math.min(255, b * sc));
+                    }
+                    return { r: nr, g: g, b: b };
+                }
+
+                function likelyHairOrDarkFg(r, g, b, br, bgc, bb, lumBgEst) {
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    const dBg = colorDist(r, g, b, br, bgc, bb);
+                    if (lum >= 138) return false;
+                    if (sat >= 0.32) return false;
+                    if (dBg <= 7) return false;
+                    if (lum < lumBgEst * 0.76 && sat < 0.26 && dBg > 9) return true;
+                    if (sat < 0.16 && dBg > 12) return true;
+                    return false;
+                }
+
+                function isProtectedHairCore(r, g, b, br, bgc, bb, lumBgEst) {
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    const dBg = colorDist(r, g, b, br, bgc, bb);
+                    if (lum < 118 && sat < 0.42 && dBg > 2.5) return true;
+                    if (!likelyHairOrDarkFg(r, g, b, br, bgc, bb, lumBgEst)) return false;
+                    return dBg > 8;
+                }
+
+                function isLikelySkinToneRedStudio(r, g, b, estBg) {
+                    if (!isRedStudioBg(estBg)) return false;
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    if (lum < 48 || lum > 225 || sat > 0.5) return false;
+                    if (r < 62 || g < 38 || b < 28) return false;
+                    const redExc = r - Math.max(g, b);
+                    return redExc > 1.5 && r >= g - 14 && g >= b - 10;
+                }
+
+                function isFaceSkinOrHairProtected(r, g, b, estBg, af, preFg) {
+                    const lumBg = relLum(estBg.r, estBg.g, estBg.b);
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    const d = colorDist(r, g, b, estBg.r, estBg.g, estBg.b);
+                    if (isLikelySkinTone(r, g, b)) return true;
+                    if (isLikelySkinToneRedStudio(r, g, b, estBg)) return true;
+                    if (isProtectedHairCore(r, g, b, estBg.r, estBg.g, estBg.b, lumBg)) return true;
+                    if (isHairishPixel(r, g, b, estBg.r, estBg.g, estBg.b, lumBg)) return true;
+                    if (lum < 168 && sat < 0.5 && d > 3) return true;
+                    if (preFg) {
+                        if (lum < 162 && sat < 0.48) return true;
+                        if (af > 0.22 && lum < 228 && sat < 0.5) return true;
+                    }
+                    return false;
+                }
+
+                function isPersonHairOrSkinPixel(r, g, b, estBg, preFg) {
+                    const lumBg = relLum(estBg.r, estBg.g, estBg.b);
+                    if (isFaceSkinOrHairProtected(r, g, b, estBg, preFg ? 0.9 : 0.2, preFg)) {
+                        return true;
+                    }
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    if (isHairishPixel(r, g, b, estBg.r, estBg.g, estBg.b, lumBg)) return true;
+                    if (lum < 152 && sat < 0.52 && colorDist(r, g, b, estBg.r, estBg.g, estBg.b) > 3) {
+                        return true;
+                    }
+                    return false;
+                }
+
+
+
+
+
+                function isRedFringePixel(r, g, b, estBg, dOrig, af) {
+                    if (!isRedStudioBg(estBg)) return false;
+                    const redExc = r - Math.max(g, b);
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    if (dOrig < 16 && redExc > 2) return true;
+                    if (dOrig < 48 && redExc > 4 && lum > 48 && lum < 228 && sat < 0.55) return true;
+                    if (dOrig < 36 && lum > 118 && lum < 238 && sat < 0.38 && redExc > 2 && af < 0.96) {
+                        return true;
+                    }
+                    return false;
+                }
+
+
+                function isHairishPixel(r, g, b, br, bgc, bb, lumBgEst) {
+                    const lum = relLum(r, g, b);
+                    const sat = rgbSat(r, g, b);
+                    const dBg = colorDist(r, g, b, br, bgc, bb);
+                    const redBg = br > bgc + 14 && br > bb + 10;
+                    return (
+                        likelyHairOrDarkFg(r, g, b, br, bgc, bb, lumBgEst) ||
+                        (lum < 112 && sat < 0.45 && dBg > 2) ||
+                        (redBg && lum < 162 && sat < 0.48 && dBg > 5)
+                    );
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
+                function medianChannel(samples, channel) {
+                    const arr = [];
+                    for (let k = 0; k < samples.length; k++) {
+                        arr.push(samples[k][channel]);
+                    }
+                    arr.sort(function (a, b) {
+                        return a - b;
+                    });
+                    return arr[Math.floor(arr.length / 2)] || 255;
+                }
+
+                function estimateCornerBgMedian(imageData) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const d = imageData.data;
+                    const samples = [];
+                    const margin = Math.max(2, Math.min(12, Math.round(Math.min(w, h) * 0.02)));
+                    for (let y = 0; y < margin; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const i = (y * w + x) * 4;
+                            samples.push([d[i], d[i + 1], d[i + 2]]);
+                            const j = ((h - 1 - y) * w + x) * 4;
+                            samples.push([d[j], d[j + 1], d[j + 2]]);
+                        }
+                    }
+                    for (let y = margin; y < h - margin; y++) {
+                        for (let x = 0; x < margin; x++) {
+                            const i = (y * w + x) * 4;
+                            samples.push([d[i], d[i + 1], d[i + 2]]);
+                            const j = (y * w + (w - 1 - x)) * 4;
+                            samples.push([d[j], d[j + 1], d[j + 2]]);
+                        }
+                    }
+                    return {
+                        r: medianChannel(samples, 0),
+                        g: medianChannel(samples, 1),
+                        b: medianChannel(samples, 2)
+                    };
+                }
+
+                function blurAlphaFloat(alpha, w, h, radius) {
+                    if (radius < 1) return alpha;
+                    const tmp = new Float32Array(w * h);
+                    const r = Math.min(64, Math.floor(radius));
+                    let src = alpha;
+                    let dst = tmp;
+                    for (let pass = 0; pass < 2; pass++) {
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                let s = 0,
+                                    c = 0;
+                                for (let k = -r; k <= r; k++) {
+                                    const xx = pass === 0 ? Math.min(w - 1, Math.max(0, x + k)) : x;
+                                    const yy = pass === 0 ? y : Math.min(h - 1, Math.max(0, y + k));
+                                    s += src[yy * w + xx];
+                                    c++;
+                                }
+                                dst[y * w + x] = s / c;
+                            }
+                        }
+                        const t = src;
+                        src = dst;
+                        dst = t;
+                    }
+                    return src;
+                }
+
+                function guidedFilterAlpha(imageData, p, w, h, radius, eps) {
+                    const n = w * h;
+                    const d = imageData.data;
+                    const I = new Float32Array(n);
+                    const Ip = new Float32Array(n);
+                    const II = new Float32Array(n);
+                    for (let i = 0; i < n; i++) {
+                        const lum = relLum(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) / 255;
+                        I[i] = lum;
+                        Ip[i] = lum * p[i];
+                        II[i] = lum * lum;
+                    }
+                    const meanI = blurAlphaFloat(I, w, h, radius);
+                    const meanP = blurAlphaFloat(p, w, h, radius);
+                    const meanIp = blurAlphaFloat(Ip, w, h, radius);
+                    const meanIi = blurAlphaFloat(II, w, h, radius);
+                    const aCoef = new Float32Array(n);
+                    const bCoef = new Float32Array(n);
+                    for (let i = 0; i < n; i++) {
+                        const varI = Math.max(0, meanIi[i] - meanI[i] * meanI[i]);
+                        aCoef[i] = (meanIp[i] - meanI[i] * meanP[i]) / (varI + eps);
+                        bCoef[i] = meanP[i] - aCoef[i] * meanI[i];
+                    }
+                    const meanA = blurAlphaFloat(aCoef, w, h, radius);
+                    const meanB = blurAlphaFloat(bCoef, w, h, radius);
+                    const q = new Float32Array(n);
+                    for (let i = 0; i < n; i++) {
+                        q[i] = Math.max(0, Math.min(1, meanA[i] * I[i] + meanB[i]));
+                    }
+                    return q;
+                }
+
+                function protectDarkHairAlpha(alpha, imageData, estBg) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const data = imageData.data;
+                    const br = estBg.r,
+                        bgc = estBg.g,
+                        bb = estBg.b;
+                    const lumBg = relLum(br, bgc, bb);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const i = idx * 4;
+                            const r = data[i],
+                                g = data[i + 1],
+                                b = data[i + 2];
+                            if (isHairishPixel(r, g, b, br, bgc, bb, lumBg)) {
+                                alpha[idx] = Math.max(alpha[idx], 0.98);
+                            } else if (relLum(r, g, b) < 145 && rgbSat(r, g, b) < 0.52 && colorDist(r, g, b, br, bgc, bb) > 2.5) {
+                                alpha[idx] = Math.max(alpha[idx], 0.96);
+                            }
+                        }
+                    }
+                    return alpha;
+                }
+
+                function boostAlphaSkinAndGlasses(alpha, imageData, estBg) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const d = imageData.data;
+                    const br = estBg.r,
+                        bgc = estBg.g,
+                        bb = estBg.b;
+                    const lumBg = relLum(br, bgc, bb);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const i = idx * 4;
+                            const r = d[i],
+                                g = d[i + 1],
+                                b = d[i + 2];
+                            const a = alpha[idx];
+                            if (a >= 0.995 || a < 0.35) continue;
+                            const dBg = colorDist(r, g, b, br, bgc, bb);
+                            if (isLikelySkinTone(r, g, b) && dBg > 18) {
+                                alpha[idx] = Math.max(a, 0.988);
+                            } else if (relLum(r, g, b) < 82 && rgbSat(r, g, b) < 0.28 && dBg > 11 && relLum(r, g, b) < lumBg * 0.72) {
+                                alpha[idx] = Math.max(a, 0.992);
+                            }
+                        }
+                    }
+                    return alpha;
+                }
+
+                function buildMatteFromProAlpha(proAlpha, imageData, estBg, smooth01) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    let a = new Float32Array(proAlpha);
+                    const gfR = Math.max(1, Math.min(4, Math.round(1 + smooth01 * 2)));
+                    a = guidedFilterAlpha(imageData, a, w, h, gfR, 0.006);
+                    a = protectDarkHairAlpha(a, imageData, estBg);
+                    a = boostAlphaSkinAndGlasses(a, imageData, estBg);
+                    a = blurAlphaFloat(a, w, h, 0.06 + smooth01 * 0.42);
+                    for (let i = 0; i < a.length; i++) {
+                        if (a[i] > 0.72) a[i] = Math.min(1, 0.93 + a[i] * 0.07);
+                    }
+                    const fgBin = new Uint8Array(w * h);
+                    for (let i = 0; i < fgBin.length; i++) {
+                        fgBin[i] = a[i] >= 0.5 ? 1 : 0;
+                    }
+                    return { alpha: a, fgBin: fgBin };
+                }
+
+                function compositeFull(imageData, alphaFloat, bgColor, outCtx) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const src = imageData.data;
+                    const br = bgColor.r,
+                        bgc = bgColor.g,
+                        bb = bgColor.b;
+                    const img = outCtx.createImageData(w, h);
+                    const od = img.data;
+                    for (let i = 0; i < w * h; i++) {
+                        const si = i * 4;
+                        const af = alphaFloat[i];
+                        if (af >= 0.99) {
+                            od[si] = src[si];
+                            od[si + 1] = src[si + 1];
+                            od[si + 2] = src[si + 2];
+                        } else if (af <= 0.01) {
+                            od[si] = br;
+                            od[si + 1] = bgc;
+                            od[si + 2] = bb;
+                        } else {
+                            const inv = 1 - af;
+                            od[si] = Math.round(src[si] * af + br * inv);
+                            od[si + 1] = Math.round(src[si + 1] * af + bgc * inv);
+                            od[si + 2] = Math.round(src[si + 2] * af + bb * inv);
+                        }
+                        od[si + 3] = 255;
+                    }
+                    outCtx.putImageData(img, 0, 0);
+                }
+
+                function isAlphaContourAt(alpha, w, h, x, y, gap) {
+                    const ai = alpha[y * w + x];
+                    if (ai < 0.05) return false;
+                    const dx = [1, -1, 0, 0];
+                    const dy = [0, 0, 1, -1];
+                    for (let k = 0; k < 4; k++) {
+                        const nx = x + dx[k];
+                        const ny = y + dy[k];
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        const na = alpha[ny * w + nx];
+                        if (na < ai - gap || na < 0.38) return true;
+                    }
+                    return false;
+                }
+
+                /** 发缝/发际/额缘：输出被青绿蓝底污染 → 优先还原原图，否则从邻近干净发丝取样。 */
+                function repairHairTargetBgSpill(outCtx, srcImageData, estBg, bgRgb, preFgBin) {
+                    if (!isSaturatedTargetBg(bgRgb)) return;
+                    const w = srcImageData.width;
+                    const h = srcImageData.height;
+                    const src = srcImageData.data;
+                    const lumBg = relLum(estBg.r, estBg.g, estBg.b);
+                    const rad = 6;
+                    for (let pass = 0; pass < 2; pass++) {
+                        const img = outCtx.getImageData(0, 0, w, h);
+                        const od = img.data;
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                const idx = y * w + x;
+                                const si = idx * 4;
+                                const or = od[si],
+                                    og = od[si + 1],
+                                    ob = od[si + 2];
+                                if (!pixelHasTargetBgSpill(or, og, ob, bgRgb)) continue;
+                                const r0 = src[si],
+                                    g0 = src[si + 1],
+                                    b0 = src[si + 2];
+                                const preFg = !!preFgBin[idx];
+                                if (!isPersonHairOrSkinPixel(r0, g0, b0, estBg, preFg)) continue;
+                                const dOut = colorDist(or, og, ob, bgRgb.r, bgRgb.g, bgRgb.b);
+                                const dSrc = colorDist(r0, g0, b0, bgRgb.r, bgRgb.g, bgRgb.b);
+                                const lum0 = relLum(r0, g0, b0);
+                                if (
+                                    dSrc + 3 < dOut ||
+                                    lum0 < 148 ||
+                                    !pixelHasTargetBgSpill(r0, g0, b0, bgRgb)
+                                ) {
+                                    od[si] = r0;
+                                    od[si + 1] = g0;
+                                    od[si + 2] = b0;
+                                    continue;
+                                }
+                                let bestJ = -1;
+                                let bestScore = 1e9;
+                                for (let dy = -rad; dy <= rad; dy++) {
+                                    const yy = y + dy;
+                                    if (yy < 0 || yy >= h) continue;
+                                    for (let dx = -rad; dx <= rad; dx++) {
+                                        if (dx === 0 && dy === 0) continue;
+                                        const xx = x + dx;
+                                        if (xx < 0 || xx >= w) continue;
+                                        const j = yy * w + xx;
+                                        const jr = src[j * 4],
+                                            jg = src[j * 4 + 1],
+                                            jb = src[j * 4 + 2];
+                                        const jo = j * 4;
+                                        if (pixelHasTargetBgSpill(od[jo], od[jo + 1], od[jo + 2], bgRgb)) {
+                                            continue;
+                                        }
+                                        if (!isHairishPixel(jr, jg, jb, estBg.r, estBg.g, estBg.b, lumBg)) {
+                                            continue;
+                                        }
+                                        const score = dx * dx + dy * dy;
+                                        if (score < bestScore) {
+                                            bestScore = score;
+                                            bestJ = j;
+                                        }
+                                    }
+                                }
+                                if (bestJ >= 0) {
+                                    const bi = bestJ * 4;
+                                    od[si] = src[bi];
+                                    od[si + 1] = src[bi + 1];
+                                    od[si + 2] = src[bi + 2];
+                                } else if (lum0 < 152) {
+                                    od[si] = r0;
+                                    od[si + 1] = g0;
+                                    od[si + 2] = b0;
+                                }
+                            }
+                        }
+                        outCtx.putImageData(img, 0, 0);
+                    }
+                }
+
+                /** AI 抠图换底：用估计原底做 unpremultiply 去底 + 半透明边缘去色边（红/白底残留）。 */
+                function compositeFullMp(imageData, alphaFloat, bgColor, origBg, outCtx) {
+                    const w = imageData.width;
+                    const h = imageData.height;
+                    const src = imageData.data;
+                    const br = bgColor.r,
+                        bgc = bgColor.g,
+                        bb = bgColor.b;
+                    const or0 = origBg.r,
+                        og0 = origBg.g,
+                        ob0 = origBg.b;
+                    const img = outCtx.createImageData(w, h);
+                    const od = img.data;
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const si = (y * w + x) * 4;
+                            let af = alphaFloat[y * w + x];
+                            const oi = si;
+                            let opaqueCopy = af >= 0.995;
+                            if (opaqueCopy && (isWhiteStudioBg(origBg) || isRedStudioBg(origBg))) {
+                                const r0 = src[si],
+                                    g0 = src[si + 1],
+                                    b0 = src[si + 2];
+                                const lum0 = relLum(r0, g0, b0);
+                                const sat0 = rgbSat(r0, g0, b0);
+                                const d0 = colorDist(r0, g0, b0, or0, og0, ob0);
+                                const lumBgO = relLum(or0, og0, ob0);
+                                const redExc0 = r0 - Math.max(g0, b0);
+                                let studioFringe = false;
+                                if (isWhiteStudioBg(origBg)) {
+                                    studioFringe =
+                                        !isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) &&
+                                        d0 < 52 &&
+                                        lum0 > 152 &&
+                                        sat0 < 0.38;
+                                    if (!studioFringe && d0 < 26 && lum0 > 158 && sat0 < 0.36) {
+                                        studioFringe = true;
+                                    }
+                                } else if (isRedStudioBg(origBg)) {
+                                    studioFringe =
+                                        !isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) &&
+                                        d0 < 52 &&
+                                        lum0 > 48 &&
+                                        lum0 < 218 &&
+                                        sat0 < 0.52 &&
+                                        (redExc0 > 5 || d0 < 38);
+                                }
+                                if (
+                                    studioFringe &&
+                                    (isAlphaContourAt(alphaFloat, w, h, x, y, 0.06) || d0 < 24)
+                                ) {
+                                    opaqueCopy = false;
+                                    const cap = isRedStudioBg(origBg) ? 56 : 52;
+                                    af = Math.min(af, 0.12 + (d0 / cap) * 0.78);
+                                }
+                            }
+                            if (opaqueCopy) {
+                                od[oi] = src[si];
+                                od[oi + 1] = src[si + 1];
+                                od[oi + 2] = src[si + 2];
+                            } else if (af <= 0.008) {
+                                od[oi] = br;
+                                od[oi + 1] = bgc;
+                                od[oi + 2] = bb;
+                            } else {
+                                let r = src[si],
+                                    g = src[si + 1],
+                                    b = src[si + 2];
+                                const lumP = relLum(r, g, b);
+                                const satP = rgbSat(r, g, b);
+                                const dOrig = colorDist(r, g, b, or0, og0, ob0);
+                                const redExc = r - Math.max(g, b);
+                                if (
+                                    isRedStudioBg(origBg) &&
+                                    redExc > 5 &&
+                                    lumP > 44 &&
+                                    lumP < 218 &&
+                                    satP < 0.52 &&
+                                    dOrig < 54
+                                ) {
+                                    const afR = Math.max(af, 0.1);
+                                    const damp =
+                                        Math.min(0.88, redExc / 88) *
+                                        ((1 - afR) / 0.9 + 0.1) *
+                                        (satP < 0.44 ? 1 : 0.58);
+                                    r = Math.max(0, r - redExc * damp * 0.82);
+                                }
+                                if (isWhiteStudioBg(origBg) && lumP > 168 && satP < 0.34 && dOrig < 50) {
+                                    const lumBgO = relLum(or0, og0, ob0);
+                                    const spill = lumP - lumBgO;
+                                    if (spill > 4) {
+                                        const afW = Math.max(af, 0.12);
+                                        const dampW =
+                                            Math.min(0.9, spill / 65) *
+                                            ((1 - afW) / 0.88 + 0.12) *
+                                            (1 - satP / 0.34);
+                                        const lum = relLum(r, g, b);
+                                        const shrink = 1 - dampW * 0.72;
+                                        r = Math.max(0, Math.min(255, lum + (r - lum) * shrink));
+                                        g = Math.max(0, Math.min(255, lum + (g - lum) * shrink));
+                                        b = Math.max(0, Math.min(255, lum + (b - lum) * shrink));
+                                    }
+                                }
+                                const aa = Math.max(0.055, Math.min(0.992, af));
+                                const skipUnpremul =
+                                    lumP < 100 ||
+                                    isHairishPixel(r, g, b, or0, og0, ob0, relLum(or0, og0, ob0)) ||
+                                    (lumP < 62 && satP < 0.26 && dOrig > 17 && !isWhiteStudioBg(origBg));
+                                const unpremulDist = isWhiteStudioBg(origBg) ? 58 : isRedStudioBg(origBg) ? 62 : 52;
+                                if (af < 0.965 && dOrig < unpremulDist && !skipUnpremul) {
+                                    const fr = (r - (1 - aa) * or0) / aa;
+                                    const fg = (g - (1 - aa) * og0) / aa;
+                                    const fb = (b - (1 - aa) * ob0) / aa;
+                                    r = Math.max(0, Math.min(255, fr));
+                                    g = Math.max(0, Math.min(255, fg));
+                                    b = Math.max(0, Math.min(255, fb));
+                                }
+                                const sat = rgbSat(r, g, b);
+                                if (sat < 0.42 && af < 0.93) {
+                                    const lum = relLum(r, g, b);
+                                    const fringe = ((0.93 - af) / 0.93) * 0.36 * (1 - sat / 0.42);
+                                    r = r + (lum - r) * fringe;
+                                    g = g + (lum - g) * fringe;
+                                    b = b + (lum - b) * fringe;
+                                }
+                                if (isSaturatedTargetBg({ r: br, g: bgc, b: bb }) && af < 0.985) {
+                                    const spillStr =
+                                        isLikelySkinTone(r, g, b) || isProtectedHairCore(r, g, b, or0, og0, ob0, relLum(or0, og0, ob0))
+                                            ? 0.35
+                                            : 0.82;
+                                    const ds = despillNewBgFromFg(r, g, b, { r: br, g: bgc, b: bb }, af, spillStr);
+                                    r = ds.r;
+                                    g = ds.g;
+                                    b = ds.b;
+                                }
+                                const inv = 1 - af;
+                                od[oi] = Math.round(r * af + br * inv);
+                                od[oi + 1] = Math.round(g * af + bgc * inv);
+                                od[oi + 2] = Math.round(b * af + bb * inv);
+                            }
+                            od[oi + 3] = 255;
+                        }
+                    }
+                    outCtx.putImageData(img, 0, 0);
+                }
+
+                /**
+                 * 合成后再扫一遍轮廓：把仍像原白/红底的像素往新底色拉（解决「调平滑度也没变化」的可见白晕/红晕）。
+                 */
+                function postCompositeStudioDefringe(outCtx, srcImageData, alphaFloat, estBg, bgRgb) {
+                    if (!isWhiteStudioBg(estBg) && !isRedStudioBg(estBg)) return;
+                    const w = srcImageData.width;
+                    const h = srcImageData.height;
+                    const src = srcImageData.data;
+                    const or0 = estBg.r,
+                        og0 = estBg.g,
+                        ob0 = estBg.b;
+                    const br = bgRgb.r,
+                        bgc = bgRgb.g,
+                        bb = bgRgb.b;
+                    const lumBgO = relLum(or0, og0, ob0);
+                    const img = outCtx.getImageData(0, 0, w, h);
+                    const od = img.data;
+                    const white = isWhiteStudioBg(estBg);
+                    const red = isRedStudioBg(estBg);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const si = idx * 4;
+                            const r0 = src[si],
+                                g0 = src[si + 1],
+                                b0 = src[si + 2];
+                            if (
+                                isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO) ||
+                                isHairishPixel(r0, g0, b0, or0, og0, ob0, lumBgO)
+                            ) {
+                                continue;
+                            }
+                            const lum0 = relLum(r0, g0, b0);
+                            const sat0 = rgbSat(r0, g0, b0);
+                            const dOrig = colorDist(r0, g0, b0, or0, og0, ob0);
+                            const af = alphaFloat[idx];
+                            const redExc0 = r0 - Math.max(g0, b0);
+                            let fringe = false;
+                            let cap = 48;
+                            if (white) {
+                                cap = 54;
+                                fringe =
+                                    dOrig < cap &&
+                                    lum0 > 172 &&
+                                    sat0 < 0.3 &&
+                                    (af < 0.97 || dOrig < 28);
+                            } else if (red) {
+                                cap = 56;
+                                fringe =
+                                    dOrig < cap &&
+                                    lum0 > 44 &&
+                                    lum0 < 222 &&
+                                    sat0 < 0.55 &&
+                                    (redExc0 > 4 || dOrig < 34) &&
+                                    (af < 0.97 || dOrig < 32);
+                            }
+                            if (!fringe) continue;
+                            const contour = isAlphaContourAt(alphaFloat, w, h, x, y, 0.055);
+                            if (!contour && dOrig > 22 && af > 0.55) continue;
+                            const oi = si;
+                            let or = od[oi],
+                                og = od[oi + 1],
+                                ob = od[oi + 2];
+                            const lumOut = relLum(or, og, ob);
+                            const k = Math.pow(1 - dOrig / cap, white ? 1.55 : 1.45);
+                            let pull = k * (white ? 0.7 : 0.82);
+                            if (white && lumOut > relLum(br, bgc, bb) + 8) {
+                                pull = Math.min(0.88, pull * 1.06);
+                            }
+                            if (red && or > Math.max(og, ob) + 6) {
+                                pull = Math.min(0.98, pull * 1.08);
+                            }
+                            od[oi] = Math.round(or * (1 - pull) + br * pull);
+                            od[oi + 1] = Math.round(og * (1 - pull) + bgc * pull);
+                            od[oi + 2] = Math.round(ob * (1 - pull) + bb * pull);
+                        }
+                    }
+                    outCtx.putImageData(img, 0, 0);
+                }
+
+                /**
+                 * 换蓝/绿底后：轮廓上若输出偏蓝/青（浅蓝光晕），用去底前景色重合成。
+                 */
+                function postCompositeBlueHaloCleanup(outCtx, srcImageData, alphaFloat, estBg, bgRgb) {
+                    if (!isSaturatedTargetBg(bgRgb)) return;
+                    const w = srcImageData.width;
+                    const h = srcImageData.height;
+                    const src = srcImageData.data;
+                    const or0 = estBg.r,
+                        og0 = estBg.g,
+                        ob0 = estBg.b;
+                    const br = bgRgb.r,
+                        bgc = bgRgb.g,
+                        bb = bgRgb.b;
+                    const lumBgO = relLum(or0, og0, ob0);
+                    const img = outCtx.getImageData(0, 0, w, h);
+                    const od = img.data;
+                    const blueTgt = isBlueishTargetBg(bgRgb);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            const si = idx * 4;
+                            const r0 = src[si],
+                                g0 = src[si + 1],
+                                b0 = src[si + 2];
+                            let af = alphaFloat[idx];
+                            if (af <= 0.015 || af >= 0.999) continue;
+                            if (isProtectedHairCore(r0, g0, b0, or0, og0, ob0, lumBgO)) continue;
+                            const oi = si;
+                            const or = od[oi],
+                                og = od[oi + 1],
+                                ob = od[oi + 2];
+                            const blueExcOut = ob - Math.max(or, og);
+                            const greenExcOut = og - Math.max(or, ob);
+                            const badSpill = blueTgt ? blueExcOut > 4 : greenExcOut > 4;
+                            if (!badSpill) continue;
+                            const lum0 = relLum(r0, g0, b0);
+                            const sat0 = rgbSat(r0, g0, b0);
+                            const dOrig = colorDist(r0, g0, b0, or0, og0, ob0);
+                            const contour = isAlphaContourAt(alphaFloat, w, h, x, y, 0.048);
+                            const whiteFringe =
+                                isWhiteStudioBg(estBg) && lum0 > 155 && sat0 < 0.36 && dOrig < 48;
+                            const hairish =
+                                likelyHairOrDarkFg(r0, g0, b0, or0, og0, ob0, lumBgO) ||
+                                (lum0 < 120 && sat0 < 0.45 && dOrig > 8);
+                            if (!contour && !whiteFringe && blueExcOut < 14) continue;
+                            if (isLikelySkinTone(r0, g0, b0) && dOrig > 24 && blueExcOut < 10) continue;
+                            const aa = Math.max(0.06, Math.min(0.99, af));
+                            let fr = (r0 - (1 - aa) * or0) / aa;
+                            let fg = (g0 - (1 - aa) * og0) / aa;
+                            let fb = (b0 - (1 - aa) * ob0) / aa;
+                            fr = Math.max(0, Math.min(255, fr));
+                            fg = Math.max(0, Math.min(255, fg));
+                            fb = Math.max(0, Math.min(255, fb));
+                            const ds = despillNewBgFromFg(fr, fg, fb, bgRgb, aa, hairish ? 0.75 : 0.95);
+                            fr = ds.r;
+                            fg = ds.g;
+                            fb = ds.b;
+                            let effAf = aa;
+                            if (whiteFringe && !hairish && !isLikelySkinTone(r0, g0, b0)) {
+                                effAf = Math.min(aa, 0.55 + (dOrig / 48) * 0.38);
+                            }
+                            const inv = 1 - effAf;
+                            od[oi] = Math.round(fr * effAf + br * inv);
+                            od[oi + 1] = Math.round(fg * effAf + bgc * inv);
+                            od[oi + 2] = Math.round(fb * effAf + bb * inv);
+                        }
+                    }
+                    outCtx.putImageData(img, 0, 0);
+                }
+
+
+
+                function ensureImgly() {
+                    if (imglyImportPromise) return imglyImportPromise;
+                    const modelName = el.imglyModelSel ? el.imglyModelSel.value : "medium";
+                    imglyImportPromise = import(IMGLY_MODULE)
+                        .then(function (mod) {
+                            const cfg = imglyEngineConfig(modelName);
+                            if (typeof mod.preload === "function") {
+                                return mod.preload(cfg).then(function () {
+                                    return mod;
+                                });
+                            }
+                            return mod;
+                        })
+                        .catch(function (e) {
+                            imglyImportPromise = null;
+                            var msg = e && e.message ? e.message : String(e);
+                            if (/failed to fetch|wasm|backend|create session|module specifier/i.test(msg)) {
+                                throw new Error(
+                                    "AI 模型加载失败。请在 tool-nav 目录执行 npm run copy:imgly，并通过 http 打开本站。"
+                                );
+                            }
+                            throw e;
+                        });
+                    return imglyImportPromise;
+                }
+
+                function alphaFromImglyBlob(blob, w, h) {
+                    return createImageBitmap(blob).then(function (bmp) {
+                        const c = document.createElement("canvas");
+                        c.width = w;
+                        c.height = h;
+                        const ctx = c.getContext("2d", { willReadFrequently: true });
+                        ctx.drawImage(bmp, 0, 0, w, h);
+                        const d = ctx.getImageData(0, 0, w, h).data;
+                        const alpha = new Float32Array(w * h);
+                        for (let i = 0; i < alpha.length; i++) {
+                            let v = d[i * 4 + 3] / 255;
+                            if (v < 0) v = 0;
+                            else if (v > 1) v = 1;
+                            alpha[i] = v;
+                        }
+                        return alpha;
+                    });
+                }
+
+                function startImglySegmentation() {
+                    if (!sourceCanvas || mlBusy) return;
+                    mlBusy = true;
+                    mlAlpha = null;
+                    mlLastError = null;
+                    scheduleDraw();
+                    const modelName = el.imglyModelSel ? el.imglyModelSel.value : "medium";
+                    ensureImgly()
+                        .then(function (mod) {
+                            const rb = mod.removeBackground;
+                            if (typeof rb !== "function") {
+                                throw new Error("removeBackground 未导出");
+                            }
+                            const cfg = imglyEngineConfig(modelName);
+                            return canvasToPngBlob(sourceCanvas).then(function (blob) {
+                                return rb(blob, cfg);
+                            });
+                        })
+                        .then(function (blob) {
+                            return alphaFromImglyBlob(blob, sourceW, sourceH);
+                        })
+                        .then(function (alpha) {
+                            mlAlpha = alpha;
+                            mlBusy = false;
+                            scheduleDraw();
+                        })
+                        .catch(function (e) {
+                            mlLastError = e && e.message ? e.message : String(e);
+                            mlBusy = false;
+                            mlAlpha = null;
+                            scheduleDraw();
+                        });
+                }
+
+
+
+                function renderMlComposite(w0, h0, smooth01) {
+                    const estBg = cachedEstBg || estimateCornerBgMedian(rawImageData);
+                    const studioBg = isWhiteStudioBg(estBg) || isRedStudioBg(estBg);
+                    const matte = buildMatteFromProAlpha(mlAlpha, rawImageData, estBg, smooth01);
+                    const fullW = document.createElement("canvas");
+                    fullW.width = w0;
+                    fullW.height = h0;
+                    const fullCtx = fullW.getContext("2d");
+                    compositeFullMp(rawImageData, matte.alpha, bgRgb, estBg, fullCtx);
+                    if (studioBg) {
+                        postCompositeStudioDefringe(fullCtx, rawImageData, matte.alpha, estBg, bgRgb);
+                    }
+                    if (isSaturatedTargetBg(bgRgb)) {
+                        postCompositeBlueHaloCleanup(fullCtx, rawImageData, matte.alpha, estBg, bgRgb);
+                    }
+                    repairHairTargetBgSpill(fullCtx, rawImageData, estBg, bgRgb, matte.fgBin);
+                    const modelTag = "· AI isnet " + (el.imglyModelSel ? el.imglyModelSel.value : "medium");
+                    renderOutputToView(fullW, w0, h0, modelTag);
+                }
+
+                function renderOutputToView(full, w0, h0, statusNote) {
+                    const preset = PRESETS.find(function (p) {
+                        return p.id === selectedPresetId;
+                    });
+                    let outW, outH;
+                    if (!preset || preset.id === "orig") {
+                        const pct = parseInt(el.pctSel.value, 10) / 100;
+                        outW = Math.max(1, Math.round(sourceW * pct));
+                        outH = Math.max(1, Math.round(sourceH * pct));
+                    } else {
+                        outW = mmToPx(preset.mw);
+                        outH = mmToPx(preset.mh);
+                    }
+                    const c = document.createElement("canvas");
+                    c.width = outW;
+                    c.height = outH;
+                    const xctx = c.getContext("2d");
+                    xctx.imageSmoothingEnabled = true;
+                    xctx.imageSmoothingQuality = "high";
+                    if (!preset || preset.id === "orig") {
+                        xctx.drawImage(full, 0, 0, w0, h0, 0, 0, outW, outH);
+                    } else {
+                        const dims = coverCropDims(w0, h0, outW, outH);
+                        const big = document.createElement("canvas");
+                        big.width = dims.rw;
+                        big.height = dims.rh;
+                        const bx = big.getContext("2d");
+                        bx.imageSmoothingEnabled = true;
+                        bx.imageSmoothingQuality = "high";
+                        bx.drawImage(full, 0, 0, w0, h0, 0, 0, dims.rw, dims.rh);
+                        xctx.drawImage(big, dims.ox, dims.oy, dims.tw, dims.th, 0, 0, dims.tw, dims.th);
+                    }
+                    const maxPreview = Math.min(900, Math.floor(window.innerWidth - 40));
+                    const scalePrev = Math.min(1, maxPreview / outW, (window.innerHeight - 260) / outH);
+                    const pw = Math.max(1, Math.round(outW * scalePrev));
+                    const ph = Math.max(1, Math.round(outH * scalePrev));
+                    el.viewCanvas.width = outW;
+                    el.viewCanvas.height = outH;
+                    el.viewCanvas.getContext("2d").drawImage(c, 0, 0);
+                    el.viewCanvas.style.width = pw + "px";
+                    el.viewCanvas.style.height = ph + "px";
+                    el.viewCanvas._exportCanvas = c;
+                    const base = outW + "×" + outH + " px（导出按此尺寸）";
+                    el.status.textContent = statusNote ? base + " " + statusNote : base;
+                }
+
+                function coverCropDims(sw, sh, tw, th) {
+                    const scale = Math.max(tw / sw, th / sh);
+                    const rw = Math.round(sw * scale);
+                    const rh = Math.round(sh * scale);
+                    const ox = Math.floor((rw - tw) / 2);
+                    const oy = Math.floor((rh - th) / 2);
+                    return { scale, rw, rh, ox, oy, tw, th };
+                }
+
+                function drawFinal() {
+                    if (!rawImageData || !sourceCanvas) return;
+                    const smooth01 = parseInt(el.smooth.value, 10) / 100;
+                    el.smoothVal.textContent = el.smooth.value;
+                    const w0 = rawImageData.width;
+                    const h0 = rawImageData.height;
+
+                    if (mlBusy) {
+                        const alpha1 = new Float32Array(w0 * h0);
+                        for (let i = 0; i < alpha1.length; i++) {
+                            alpha1[i] = 1;
+                        }
+                        const fullBusy = document.createElement("canvas");
+                        fullBusy.width = w0;
+                        fullBusy.height = h0;
+                        compositeFull(rawImageData, alpha1, bgRgb, fullBusy.getContext("2d"));
+                        renderOutputToView(fullBusy, w0, h0, "· AI 模型加载/推理中…");
+                        return;
+                    }
+
+                    if (mlAlpha && mlAlpha.length === w0 * h0) {
+                        renderMlComposite(w0, h0, smooth01);
+                        return;
+                    }
+
+                    if (mlLastError) {
+                        const alpha1 = new Float32Array(w0 * h0);
+                        for (let i = 0; i < alpha1.length; i++) {
+                            alpha1[i] = 1;
+                        }
+                        const fullE = document.createElement("canvas");
+                        fullE.width = w0;
+                        fullE.height = h0;
+                        compositeFull(rawImageData, alpha1, bgRgb, fullE.getContext("2d"));
+                        renderOutputToView(fullE, w0, h0, "· AI 抠图失败：" + mlLastError);
+                        return;
+                    }
+
+                    renderOutputToView(sourceCanvas, w0, h0, "· 等待 AI 抠图…");
+                }
+
+                function scheduleDraw() {
+                    if (rafPending) return;
+                    rafPending = true;
+                    requestAnimationFrame(function () {
+                        rafPending = false;
+                        try {
+                            drawFinal();
+                        } catch (e) {
+                            el.status.textContent = "处理出错：" + (e && e.message ? e.message : String(e));
+                        }
+                    });
+                }
+
+                function buildSizeChips() {
+                    el.sizeGroup.innerHTML = "";
+                    PRESETS.forEach(function (p) {
+                        const b = document.createElement("button");
+                        b.type = "button";
+                        b.className = "size-chip" + (p.id === selectedPresetId ? " active" : "");
+                        b.innerHTML = p.label + (p.sub ? "<small>" + p.sub + "</small>" : "");
+                        b.dataset.id = p.id;
+                        b.addEventListener("click", function () {
+                            selectedPresetId = p.id;
+                            el.sizeGroup.querySelectorAll(".size-chip").forEach(function (x) {
+                                x.classList.toggle("active", x.dataset.id === selectedPresetId);
+                            });
+                            el.pctWrap.style.display = p.id === "orig" ? "inline-flex" : "none";
+                            scheduleDraw();
+                        });
+                        el.sizeGroup.appendChild(b);
+                    });
+                    el.pctWrap.style.display = selectedPresetId === "orig" ? "inline-flex" : "none";
+                }
+
+                function syncColorActiveUi() {
+                    el.colors.querySelectorAll(".color-item[data-sid]").forEach(function (node) {
+                        node.classList.toggle("active", node.dataset.sid === selectedSwatchId);
+                    });
+                    const otherNode = el.colors.querySelector(".color-item.other");
+                    if (otherNode) otherNode.classList.toggle("active", selectedSwatchId === "other");
+                }
+
+                function buildColors() {
+                    el.colors.innerHTML = "";
+                    SWATCHES.forEach(function (s) {
+                        const wrap = document.createElement("div");
+                        wrap.className = "color-item" + (s.id === selectedSwatchId ? " active" : "");
+                        wrap.dataset.sid = s.id;
+                        wrap.innerHTML = '<div class="sw" style="background:' + s.hex + '"></div><span class="lab">' + s.label + "</span>";
+                        wrap.addEventListener("click", function () {
+                            selectedSwatchId = s.id;
+                            bgRgb = hexToRgb(s.hex);
+                            syncColorActiveUi();
+                            scheduleDraw();
+                        });
+                        el.colors.appendChild(wrap);
+                    });
+                    const otherEl = document.createElement("div");
+                    otherEl.className = "color-item other" + (selectedSwatchId === "other" ? " active" : "");
+                    otherEl.innerHTML = '<div class="sw"></div><span class="lab">其他</span>';
+                    otherEl.addEventListener("click", function () {
+                        el.customColor.click();
+                    });
+                    el.colors.appendChild(otherEl);
+                }
+
+                buildColors();
+
+                el.customColor.addEventListener("input", function () {
+                    customHex = el.customColor.value;
+                    selectedSwatchId = "other";
+                    bgRgb = hexToRgb(customHex);
+                    syncColorActiveUi();
+                    scheduleDraw();
+                });
+
+                function loadImageFile(file) {
+                    if (!file || !file.type.match(/^image\//)) {
+                        el.status.textContent = "请选择图片文件";
+                        return;
+                    }
+                    el.status.textContent = "读取中…";
+                    const url = URL.createObjectURL(file);
+                    const img = new Image();
+                    img.onload = function () {
+                        URL.revokeObjectURL(url);
+                        let nw = img.naturalWidth;
+                        let nh = img.naturalHeight;
+                        const maxSide = 2800;
+                        let scale = 1;
+                        if (Math.max(nw, nh) > maxSide) {
+                            scale = maxSide / Math.max(nw, nh);
+                            nw = Math.round(nw * scale);
+                            nh = Math.round(nh * scale);
+                        }
+                        sourceW = nw;
+                        sourceH = nh;
+                        const c = document.createElement("canvas");
+                        c.width = nw;
+                        c.height = nh;
+                        const ctx = c.getContext("2d", { willReadFrequently: true });
+                        ctx.drawImage(img, 0, 0, nw, nh);
+                        rawImageData = ctx.getImageData(0, 0, nw, nh);
+                        cachedEstBg = estimateCornerBgMedian(rawImageData);
+                        sourceCanvas = c;
+                        el.placeholder.style.display = "none";
+                        el.stage.style.display = "block";
+                        el.btnDl.disabled = false;
+                        mlAlpha = null;
+                        mlLastError = null;
+                        mlBusy = false;
+                        el.status.textContent = "原图 " + img.naturalWidth + "×" + img.naturalHeight + (scale < 1 ? "（已缩小处理）" : "");
+                        startImglySegmentation();
+                    };
+                    img.onerror = function () {
+                        URL.revokeObjectURL(url);
+                        el.status.textContent = "无法加载该图片";
+                    };
+                    img.src = url;
+                }
+
+                el.btnPick.addEventListener("click", function () {
+                    el.fileIn.click();
+                });
+                el.fileIn.addEventListener("change", function () {
+                    const f = el.fileIn.files && el.fileIn.files[0];
+                    if (f) loadImageFile(f);
+                    el.fileIn.value = "";
+                });
+
+                el.smooth.addEventListener("input", scheduleDraw);
+                el.pctSel.addEventListener("change", scheduleDraw);
+
+                if (el.imglyModelSel) {
+                    el.imglyModelSel.addEventListener("change", function () {
+                        imglyImportPromise = null;
+                        mlAlpha = null;
+                        mlLastError = null;
+                        if (rawImageData) {
+                            startImglySegmentation();
+                        }
+                    });
+                }
+
+                el.btnDl.addEventListener("click", function () {
+                    const c = el.viewCanvas._exportCanvas;
+                    if (!c) return;
+                    c.toBlob(function (blob) {
+                        if (!blob) return;
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = "证件照_" + (selectedPresetId === "orig" ? "原尺寸" : PRESETS.find(function (p) { return p.id === selectedPresetId; }).label) + ".png";
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    }, "image/png");
+                });
+
+                el.btnFs.addEventListener("click", function () {
+                    const p = el.rootPage;
+                    if (!document.fullscreenElement) {
+                        p.requestFullscreen().catch(function () {});
+                    } else {
+                        document.exitFullscreen();
+                    }
+                });
+
+                el.btnCode.addEventListener("click", function () {
+                    const src = "pages/证件照换底色工具.html";
+                    el.embedCode.textContent =
+                        '<iframe src="' + src + '" style="width:100%;min-height:640px;border:1px solid #dbe6ff;border-radius:8px"></iframe>';
+                    el.modalBack.classList.add("on");
+                    el.modalBack.setAttribute("aria-hidden", "false");
+                });
+                el.modalClose.addEventListener("click", function () {
+                    el.modalBack.classList.remove("on");
+                    el.modalBack.setAttribute("aria-hidden", "true");
+                });
+                el.modalBack.addEventListener("click", function (e) {
+                    if (e.target === el.modalBack) {
+                        el.modalBack.classList.remove("on");
+                    }
+                });
+
+                buildSizeChips();
+                bgRgb = hexToRgb(SWATCHES.find(function (s) { return s.id === selectedSwatchId; }).hex);
+
+                const preset = PRESETS.find(function (p) {
+                    return p.id === selectedPresetId;
+                });
+                if (preset && preset.id !== "orig") el.pctWrap.style.display = "none";
+
+                window.addEventListener("resize", function () {
+                    if (rawImageData) scheduleDraw();
+                });
+            })();
+        </script>
+    </body>
+</html>

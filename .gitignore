@@ -12,6 +12,10 @@ bin-release/
 # 离线 vendor（npm install / npm run copy:vendor 生成，体积大勿提交）
 # vendor/
 
+# AI 抠图模型（npm run copy:imgly 生成，约 170MB）
+#pages/libs/imgly-data/
+#pages/libs/imgly/
+
 # Executables
 *.swf
 *.air
