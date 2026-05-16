@@ -422,6 +422,29 @@
                 border-top: 1px solid #e4edff;
                 text-align: center;
             }
+            .btn-link-tool {
+                padding: 8px 18px;
+                font-size: 15px;
+                font-weight: 700;
+                border-radius: 8px;
+                border: 2px solid #2f6bff;
+                background: linear-gradient(135deg, #3d7dff, #5b8dff);
+                color: #fff;
+                box-shadow: 0 3px 12px rgba(47, 107, 255, 0.35);
+                cursor: pointer;
+                white-space: nowrap;
+                transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s;
+            }
+            .btn-link-tool:hover:not(:disabled) {
+                transform: translateY(-1px);
+                box-shadow: 0 5px 16px rgba(47, 107, 255, 0.45);
+            }
+            .btn-link-tool:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
             .toolbar-actions-inline {
                 display: flex;
                 flex-wrap: wrap;
@@ -472,6 +495,7 @@
                             <div>
                                 <input type="file" id="fileIn" accept="image/*" />
                                 <button type="button" class="drop" id="btnPick" title="支持 JPG / PNG 等">点击上传证件照</button>
+                                <button type="button" class="btn-link-tool" id="btnToPhotoBg" disabled title="跳转到证件照换底色（带入原图）">🎨 去换底色 →</button>
                             </div>
                             <p class="hint">
                                 本地处理；单张可拖拽/滚轮/右上旋转；排版实时（需上传照片）。
@@ -505,7 +529,6 @@
                                 裁切线
                             </label>
                             <div class="toolbar-actions-inline">
-                                <button type="button" class="btn" id="btnToPhotoBg" disabled title="将当前证件照带入换底色工具">🎨 换底色</button>
                                 <button type="button" class="btn btn-primary" id="btnDl" disabled>下载 PNG</button>
                                 <button type="button" class="btn btn-primary" id="btnPrint" disabled>打印排版</button>
                             </div>
@@ -1192,8 +1215,8 @@
                     tip.style.display = ok ? "block" : "none";
                     handle.style.visibility = ok ? "visible" : "hidden";
                     handle.disabled = !ok;
-                    var bgBtn = document.getElementById("btnToPhotoBg");
-                    if (bgBtn) bgBtn.disabled = !ok;
+                    var linkBtn = document.getElementById("btnToPhotoBg");
+                    if (linkBtn) linkBtn.disabled = !ok;
                     if (ok) stage.classList.add("can-interact");
                     else stage.classList.remove("can-interact");
                 }
