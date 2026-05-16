@@ -247,10 +247,18 @@
             .custom-size-row input[type="number"] {
                 width: 88px;
             }
-            #customMmHint {
+            .custom-size-sep {
+                align-self: flex-end;
+                padding: 0 2px 6px;
                 font-size: 13px;
+                color: #a8b8d8;
+                user-select: none;
+            }
+            .custom-size-note {
+                font-size: 12px;
                 color: var(--muted);
                 align-self: center;
+                white-space: nowrap;
             }
             .main {
                 flex: 1 1 0%;
@@ -626,7 +634,16 @@
                                         高 px
                                         <input type="number" id="customH" min="1" max="4000" value="413" step="1" />
                                     </label>
-                                    <span id="customMmHint"></span>
+                                    <span class="custom-size-sep" aria-hidden="true">|</span>
+                                    <label>
+                                        宽 mm
+                                        <input type="number" id="customWMm" min="0.1" max="500" value="25" step="0.1" />
+                                    </label>
+                                    <label>
+                                        高 mm
+                                        <input type="number" id="customHMm" min="0.1" max="500" value="35" step="0.1" />
+                                    </label>
+                                    <span class="custom-size-note">与冲印 DPI 联动</span>
                                 </div>
                             </div>
                             <div class="single-mid">
@@ -759,6 +776,10 @@
                     return (px / dpi) * 25.4;
                 }
 
+                function pxToMmRounded(px, dpi) {
+                    return Math.round(pxToMm(px, dpi) * 10) / 10;
+                }
+
                 function formatMmPair(wPx, hPx, dpi) {
                     var a = Math.round(pxToMm(wPx, dpi) * 10) / 10;
                     var b = Math.round(pxToMm(hPx, dpi) * 10) / 10;
@@ -806,13 +827,27 @@
                     el.textContent = "· " + nm + " " + p.w + "×" + p.h + " px · " + mm + " mm @" + dpi + " DPI";
                 }
 
-                function syncCustomSizeRow() {
-                    var on = document.getElementById("presetSel").value === CUSTOM_PRESET_ID;
-                    document.getElementById("customSizeRow").className = "custom-size-row" + (on ? " is-on" : "");
+                function syncCustomPxToMmFields() {
                     var dpi = getDpi();
                     var cw = clamp(parseInt(document.getElementById("customW").value, 10) || 295, 1, 4000);
                     var ch = clamp(parseInt(document.getElementById("customH").value, 10) || 413, 1, 4000);
-                    document.getElementById("customMmHint").textContent = "≈ " + formatMmPair(cw, ch, dpi) + " mm（宽×高，按当前冲印 DPI）";
+                    document.getElementById("customWMm").value = String(pxToMmRounded(cw, dpi));
+                    document.getElementById("customHMm").value = String(pxToMmRounded(ch, dpi));
+                }
+
+                function applyCustomMmToPx() {
+                    var dpi = getDpi();
+                    var mw = clamp(parseFloat(document.getElementById("customWMm").value) || pxToMmRounded(295, dpi), 0.1, 500);
+                    var mh = clamp(parseFloat(document.getElementById("customHMm").value) || pxToMmRounded(413, dpi), 0.1, 500);
+                    document.getElementById("customW").value = String(clamp(Math.round(mmToPx(mw, dpi)), 1, 4000));
+                    document.getElementById("customH").value = String(clamp(Math.round(mmToPx(mh, dpi)), 1, 4000));
+                    syncCustomPxToMmFields();
+                }
+
+                function syncCustomSizeRow() {
+                    var on = document.getElementById("presetSel").value === CUSTOM_PRESET_ID;
+                    document.getElementById("customSizeRow").className = "custom-size-row" + (on ? " is-on" : "");
+                    syncCustomPxToMmFields();
                 }
 
                 function showErr(msg) {
@@ -1692,6 +1727,7 @@
                         if (!base) base = PRESETS[0];
                         document.getElementById("customW").value = String(base.w);
                         document.getElementById("customH").value = String(base.h);
+                        syncCustomPxToMmFields();
                     } else {
                         lastPresetIdBeforeCustom = v;
                     }
@@ -1786,10 +1822,18 @@
                         scheduleLayoutRefresh(true);
                     }
                 }
+                function onCustomMmSizeInput() {
+                    applyCustomMmToPx();
+                    onCustomSizeInput();
+                }
                 document.getElementById("customW").addEventListener("input", onCustomSizeInput);
                 document.getElementById("customH").addEventListener("input", onCustomSizeInput);
                 document.getElementById("customW").addEventListener("change", onCustomSizeInput);
                 document.getElementById("customH").addEventListener("change", onCustomSizeInput);
+                document.getElementById("customWMm").addEventListener("input", onCustomMmSizeInput);
+                document.getElementById("customHMm").addEventListener("input", onCustomMmSizeInput);
+                document.getElementById("customWMm").addEventListener("change", onCustomMmSizeInput);
+                document.getElementById("customHMm").addEventListener("change", onCustomMmSizeInput);
                 document.getElementById("btnToPhotoBg").addEventListener("click", handoffToPhotoBg);
                 document.getElementById("btnDl").addEventListener("click", function () {
                     if (!layoutCanvas) return;
