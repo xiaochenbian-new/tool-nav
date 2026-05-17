@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>集合比较工具</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <script src="libs/tool-copy.js"></script>
         <style>
             * {
                 margin: 0;
@@ -92,6 +93,19 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .panel-title-main {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                min-width: 0;
+            }
+            .input-stats {
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: normal;
             }
             .title-btn {
                 border: 1px solid #d8e5ff;
@@ -221,14 +235,20 @@
             <div class="input-wrap">
                 <div class="panel">
                     <div class="panel-title">
-                        <span>A 集合输入</span>
+                        <div class="panel-title-main">
+                            <span>A 集合输入</span>
+                            <span id="stats-a" class="input-stats">共 0 项 · 去重后 0 项</span>
+                        </div>
                         <button id="show-dup-a" class="title-btn" type="button">查看重复</button>
                     </div>
                     <textarea id="set-a" placeholder="输入 A 集合，支持空格、换行、逗号混合分隔"></textarea>
                 </div>
                 <div class="panel">
                     <div class="panel-title">
-                        <span>B 集合输入</span>
+                        <div class="panel-title-main">
+                            <span>B 集合输入</span>
+                            <span id="stats-b" class="input-stats">共 0 项 · 去重后 0 项</span>
+                        </div>
                         <button id="show-dup-b" class="title-btn" type="button">查看重复</button>
                     </div>
                     <textarea id="set-b" placeholder="输入 B 集合，支持空格、换行、逗号混合分隔"></textarea>
@@ -264,6 +284,7 @@
                 <div class="dup-head">
                     <span id="dup-title">重复元素</span>
                     <div class="dup-actions">
+                        <button id="dup-copy" class="title-btn" type="button" disabled>复制</button>
                         <button id="dedupe-current" class="title-btn" type="button" disabled>去掉重复（每项保留一次）</button>
                         <button id="dup-close" class="title-btn" type="button">关闭</button>
                     </div>
@@ -330,6 +351,21 @@
 
             var dupModalInputId = null;
             var lastCompareResult = { aOnly: [], both: [], bOnly: [] };
+            var lastDuplicateValues = [];
+
+            function getInputStats(text) {
+                var raw = parseRawItems(text);
+                return { total: raw.length, unique: uniquePreserveOrder(raw).length };
+            }
+
+            function updateInputStats() {
+                var a = getInputStats(document.getElementById("set-a").value);
+                var b = getInputStats(document.getElementById("set-b").value);
+                document.getElementById("stats-a").textContent =
+                    "共 " + a.total + " 项 · 去重后 " + a.unique + " 项";
+                document.getElementById("stats-b").textContent =
+                    "共 " + b.total + " 项 · 去重后 " + b.unique + " 项";
+            }
 
             function getDuplicateItems(text) {
                 var counts = new Map();
@@ -365,6 +401,7 @@
             }
 
             function compareSets() {
+                updateInputStats();
                 var aValues = parseInput(document.getElementById("set-a").value);
                 var bValues = parseInput(document.getElementById("set-b").value);
                 var bSet = new Set(bValues);
@@ -412,57 +449,27 @@
                 document.getElementById("dup-modal").classList.remove("show");
             }
 
-            function copyTextFallback(text) {
-                var ta = document.createElement("textarea");
-                ta.value = text;
-                ta.setAttribute("readonly", "");
-                ta.style.position = "fixed";
-                ta.style.left = "-9999px";
-                ta.style.top = "0";
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand("copy");
-                document.body.removeChild(ta);
-            }
-
             function copyResultColumn(btn, key) {
                 var arr = lastCompareResult[key] || [];
-                var text = arr.join("\n");
-                var label = btn ? btn.textContent : "复制";
-                var done = function () {
-                    if (btn) {
-                        btn.textContent = "已复制";
-                        setTimeout(function () {
-                            btn.textContent = label;
-                        }, 1600);
-                    }
-                };
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(done).catch(function () {
-                        try {
-                            copyTextFallback(text);
-                            done();
-                        } catch (e) {
-                            alert("复制失败，请手动选中结果或检查浏览器权限。");
-                        }
-                    });
-                } else {
-                    try {
-                        copyTextFallback(text);
-                        done();
-                    } catch (e) {
-                        alert("复制失败，请手动选中结果。");
-                    }
-                }
+                ToolCopy.copy(arr.join("\n"), { onLabelEl: btn, labelText: "复制" });
+            }
+
+            function copyDuplicates(btn) {
+                ToolCopy.copy(lastDuplicateValues.join("\n"), { onLabelEl: btn, labelText: "复制" });
             }
 
             function showDuplicates(inputId, title) {
                 dupModalInputId = inputId;
                 var text = document.getElementById(inputId).value;
                 var duplicates = getDuplicateItems(text);
+                lastDuplicateValues = duplicates.map(function (entry) {
+                    return entry[0];
+                });
                 document.getElementById("dup-title").textContent = title + "（共 " + duplicates.length + " 项）";
                 var dedupeBtn = document.getElementById("dedupe-current");
+                var dupCopyBtn = document.getElementById("dup-copy");
                 dedupeBtn.disabled = duplicates.length === 0;
+                dupCopyBtn.disabled = duplicates.length === 0;
                 var list = document.getElementById("dup-list");
                 if (!duplicates.length) {
                     list.innerHTML = '<div class="empty">没有重复元素</div>';
@@ -487,6 +494,9 @@
                 copyResultColumn(this, "bOnly");
             });
             document.getElementById("dedupe-current").addEventListener("click", dedupeCurrentTextarea);
+            document.getElementById("dup-copy").addEventListener("click", function () {
+                copyDuplicates(this);
+            });
             document.getElementById("swap-btn").addEventListener("click", function () {
                 var a = document.getElementById("set-a");
                 var b = document.getElementById("set-b");
@@ -517,8 +527,14 @@
                 }
             });
 
-            document.getElementById("set-a").addEventListener("input", saveFormData);
-            document.getElementById("set-b").addEventListener("input", saveFormData);
+            document.getElementById("set-a").addEventListener("input", function () {
+                saveFormData();
+                updateInputStats();
+            });
+            document.getElementById("set-b").addEventListener("input", function () {
+                saveFormData();
+                updateInputStats();
+            });
 
             restoreFormData();
             compareSets();

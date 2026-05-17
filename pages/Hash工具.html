@@ -7,6 +7,7 @@
         <script src="../vendor/codepage/cpexcel.full.js"></script>
         <script src="../vendor/codepage/cputils.js"></script>
         <script src="libs/sm3-browser.js"></script>
+        <script src="libs/tool-copy.js"></script>
         <style>
             * {
                 box-sizing: border-box;
@@ -914,26 +915,9 @@
                     btn.addEventListener("click", function () {
                         var algo = this.getAttribute("data-algo");
                         var ta = document.getElementById("out-" + algo);
-                        var t = ta.value;
-                        if (!t) return;
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(t).catch(function () {
-                                legacyCopy(t);
-                            });
-                        } else legacyCopy(t);
+                        ToolCopy.copy(ta.value, { onLabelEl: this, labelText: "复制" });
                     });
                 });
-
-                function legacyCopy(t) {
-                    var ta = document.createElement("textarea");
-                    ta.value = t;
-                    document.body.appendChild(ta);
-                    ta.select();
-                    try {
-                        document.execCommand("copy");
-                    } catch (e) {}
-                    document.body.removeChild(ta);
-                }
 
                 syncInputModeUi();
                 computeAll();

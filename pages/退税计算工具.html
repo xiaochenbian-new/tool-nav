@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>退税计算工具</title>
+        <script src="libs/tool-copy.js"></script>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { box-sizing: border-box; }
@@ -172,9 +173,7 @@
 
             document.getElementById("calcBtn").addEventListener("click", calcRefund);
             document.getElementById("copyBtn").addEventListener("click", function () {
-                const text = document.getElementById("result").textContent.trim();
-                if (!text) return;
-                navigator.clipboard.writeText(text);
+                ToolCopy.copy(document.getElementById("result").textContent.trim(), { onLabelEl: this });
             });
             document.getElementById("clearBtn").addEventListener("click", function () {
                 document.getElementById("mode").value = "taxIncluded";

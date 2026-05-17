@@ -7,6 +7,7 @@
         <script src="../vendor/mathjs/math.js"></script>
         <script src="libs/unit-convert-config.js"></script>
         <script src="libs/unit-convert-engine.js"></script>
+        <script src="libs/tool-copy.js"></script>
         <style>
             /* 排版同 Ctool Unit.vue；视觉与 index / UUID 等 tool-nav 页面一致 */
             * {
@@ -426,21 +427,7 @@
                 }
 
                 function copyText(text) {
-                    if (!text) {
-                        return;
-                    }
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text).catch(function () {});
-                    } else {
-                        var ta = document.createElement("textarea");
-                        ta.value = text;
-                        document.body.appendChild(ta);
-                        ta.select();
-                        try {
-                            document.execCommand("copy");
-                        } catch (e) {}
-                        document.body.removeChild(ta);
-                    }
+                    ToolCopy.copy(text);
                 }
 
                 function escapeAttr(s) {

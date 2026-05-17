@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>MyBatis SQL 日志填充</title>
         <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
+        <script src="libs/tool-copy.js"></script>
         <link rel="stylesheet" href="../vendor/codemirror/theme/eclipse.css" />
         <style>
             * {
@@ -482,30 +483,8 @@
                 });
 
                 document.getElementById("btn-copy-out").addEventListener("click", function () {
-                    var t = getSqlText();
-                    if (!t) return;
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(t).catch(function () {
-                            copyViaHidden(t);
-                        });
-                    } else {
-                        copyViaHidden(t);
-                    }
+                    ToolCopy.copy(getSqlText(), { onLabelEl: this, labelText: "复制" });
                 });
-
-                function copyViaHidden(t) {
-                    var ta = document.createElement("textarea");
-                    ta.value = t;
-                    ta.setAttribute("readonly", "readonly");
-                    ta.style.cssText = "position:fixed;left:-9999px;top:0";
-                    document.body.appendChild(ta);
-                    ta.select();
-                    try {
-                        document.execCommand("copy");
-                    } finally {
-                        document.body.removeChild(ta);
-                    }
-                }
 
                 window.addEventListener("resize", function () {
                     sqlEditor.refresh();

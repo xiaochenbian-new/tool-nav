@@ -9,6 +9,7 @@
         <link rel="stylesheet" href="../vendor/codemirror/addon/fold/foldgutter.css" />
         <script src="../vendor/jsonrepair/jsonrepair.min.js"></script>
         <script src="../vendor/js-yaml/js-yaml.min.js"></script>
+        <script src="libs/tool-copy.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -697,10 +698,11 @@
                     resizeMainCm();
                 });
 
-                mainCm.on("change", function () {
+                mainCm.on("change", function (_cm, change) {
                     syncMainInputFromCm();
                     if (currentTab === "convert") doConvert(true);
                     refreshFindHighlights();
+                    if (change && change.origin === "paste") scheduleAutoBeautifyAfterPaste();
                 });
                 mainCm.on("focus", function () {
                     lastFindTargetIsOutput = false;
@@ -1177,16 +1179,34 @@
                     return out;
                 }
 
-                function beautifyToInput(tab) {
+                function beautifyToInput(tab, opts) {
+                    opts = opts || {};
                     var code = getTrimInput();
-                    if (!code) return;
+                    if (!code) return false;
                     var obj = parseJsonLenient(code);
                     var next =
                         tab === 0 || tab === "0"
                             ? JSON.stringify(obj)
                             : JSON.stringify(obj, null, tab === "tab" ? "\t" : Number(tab));
+                    if (next === code) return false;
                     setMainInputContent(next);
-                    toast("已格式化");
+                    if (opts.auto) toast("已自动格式化");
+                    else if (!opts.silent) toast("已格式化");
+                    return true;
+                }
+
+                var autoBeautifyPasteTimer = null;
+                function scheduleAutoBeautifyAfterPaste() {
+                    clearTimeout(autoBeautifyPasteTimer);
+                    autoBeautifyPasteTimer = setTimeout(function () {
+                        autoBeautifyPasteTimer = null;
+                        try {
+                            var indent = selIndent.value === "tab" ? "tab" : selIndent.value;
+                            beautifyToInput(indent, { auto: true });
+                        } catch (e) {
+                            /* 非合法 JSON 时静默跳过，可手动点「修复」或「格式化」 */
+                        }
+                    }, 0);
                 }
 
                 function applyTabMode(tab) {
@@ -1625,17 +1645,11 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    var t = mainCm.getValue();
-                    if (!t.trim()) return;
-                    navigator.clipboard.writeText(t);
-                    toast("已复制输入");
+                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制输入", onLabelEl: this, labelText: "复制" });
                 });
 
                 document.getElementById("btn-copy-out").addEventListener("click", function () {
-                    var t = outputConvert.value;
-                    if (!t.trim()) return;
-                    navigator.clipboard.writeText(t);
-                    toast("已复制输出");
+                    ToolCopy.copy(outputConvert.value, { successMsg: "已复制输出", onLabelEl: this, labelText: "复制" });
                 });
 
                 /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
