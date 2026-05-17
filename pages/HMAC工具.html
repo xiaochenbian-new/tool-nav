@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>HMAC</title>
         <script src="libs/crypto-js.js"></script>
+        <script src="libs/tool-copy.js"></script>
         <style>
             * {
                 box-sizing: border-box;
@@ -225,19 +226,7 @@
                     document.getElementById(id).addEventListener("change", schedule);
                 });
                 document.getElementById("btnCopy").addEventListener("click", function () {
-                    var v = document.getElementById("outTa").value;
-                    if (!v) return;
-                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v);
-                    else {
-                        var ta = document.createElement("textarea");
-                        ta.value = v;
-                        document.body.appendChild(ta);
-                        ta.select();
-                        try {
-                            document.execCommand("copy");
-                        } catch (e) {}
-                        document.body.removeChild(ta);
-                    }
+                    ToolCopy.copy(document.getElementById("outTa").value, { onLabelEl: this });
                 });
                 run();
             })();

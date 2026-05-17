@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>时间日期</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <script src="libs/tool-copy.js"></script>
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -633,32 +634,12 @@
                 }
 
                 function copyText(text, el) {
-                    text = String(text || "");
-                    function ok() {
-                        if (el) {
-                            el.textContent = "已复制";
-                            setTimeout(function () {
-                                el.textContent = "复制";
-                            }, 1200);
-                        }
-                    }
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text).then(ok).catch(function () {
-                            fallback();
-                        });
-                    } else fallback();
+                    ToolCopy.copy(text, { onLabelEl: el, labelText: el ? el.textContent : "复制" });
+                }
 
-                    function fallback() {
-                        var ta = document.createElement("textarea");
-                        ta.value = text;
-                        document.body.appendChild(ta);
-                        ta.select();
-                        try {
-                            document.execCommand("copy");
-                            ok();
-                        } catch (e) {}
-                        document.body.removeChild(ta);
-                    }
+                function tsApplyFill(val) {
+                    tsInput.value = val;
+                    tsRefresh();
                 }
 
                 /* ----- 标签切换 ----- */
@@ -704,7 +685,7 @@
                     tsOutNs.className = "mono" + (r.ok ? "" : " err");
                 }
 
-                function tsFillExamples() {
+                function tsBuildExampleRows() {
                     var ms = tickMs;
                     var tz = tsTz.value;
                     var p = partsInZone(ms, tz, true);
@@ -726,28 +707,35 @@
                         ":" +
                         pad(p.s, 2);
                     var normMs = normS + "." + pad(p.ms, 3);
-                    var unixS = String(Math.floor(ms / 1000));
-                    var unixMs = String(ms);
-                    var rows = [
+                    return [
                         { label: "标准日期时间（秒）", val: normS },
-                        { label: "Unix（秒）", val: unixS },
+                        { label: "Unix（秒）", val: String(Math.floor(ms / 1000)) },
                         { label: "标准日期时间（毫秒）", val: normMs },
-                        { label: "Unix（毫秒）", val: unixMs }
+                        { label: "Unix（毫秒）", val: String(ms) }
                     ];
-                    tsExampleBody.innerHTML = "";
-                    for (var i = 0; i < rows.length; i++) {
-                        var tr = document.createElement("tr");
-                        tr.innerHTML =
-                            "<td>" +
-                            rows[i].label +
-                            '</td><td class="val"><a href="#" data-load="' +
-                            encodeURIComponent(rows[i].val) +
-                            '">' +
-                            rows[i].val.replace(/</g, "&lt;") +
-                            "</a></td><td><button type=\"button\" class=\"btn btn-sm ts-load\" data-v=\"" +
-                            encodeURIComponent(rows[i].val) +
-                            "\">填入</button></td>";
-                        tsExampleBody.appendChild(tr);
+                }
+
+                function tsFillExamples() {
+                    var rows = tsBuildExampleRows();
+                    var trs = tsExampleBody.querySelectorAll("tr");
+                    if (trs.length !== rows.length) {
+                        tsExampleBody.innerHTML = "";
+                        for (var i = 0; i < rows.length; i++) {
+                            var tr = document.createElement("tr");
+                            tr.innerHTML =
+                                "<td class=\"ts-ex-label\"></td><td class=\"val\"><a href=\"#\" class=\"ts-ex-link\"></a></td><td><button type=\"button\" class=\"btn btn-sm ts-load\">填入</button></td>";
+                            tsExampleBody.appendChild(tr);
+                        }
+                        trs = tsExampleBody.querySelectorAll("tr");
+                    }
+                    for (var j = 0; j < rows.length; j++) {
+                        var row = rows[j];
+                        var trEl = trs[j];
+                        trEl.querySelector(".ts-ex-label").textContent = row.label;
+                        var link = trEl.querySelector(".ts-ex-link");
+                        link.textContent = row.val;
+                        link.setAttribute("data-load", row.val);
+                        trEl.querySelector(".ts-load").setAttribute("data-v", row.val);
                     }
                 }
 
@@ -763,15 +751,16 @@
                     tsRefresh();
                 });
                 tsExampleBody.addEventListener("click", function (e) {
-                    var t = e.target;
-                    if (t.classList.contains("ts-load")) {
+                    var btn = e.target.closest ? e.target.closest(".ts-load") : null;
+                    if (btn) {
                         e.preventDefault();
-                        tsInput.value = decodeURIComponent(t.getAttribute("data-v"));
-                        tsRefresh();
-                    } else if (t.tagName === "A" && t.getAttribute("data-load")) {
+                        tsApplyFill(btn.getAttribute("data-v") || "");
+                        return;
+                    }
+                    var link = e.target.closest ? e.target.closest(".ts-ex-link") : null;
+                    if (link) {
                         e.preventDefault();
-                        tsInput.value = decodeURIComponent(t.getAttribute("data-load"));
-                        tsRefresh();
+                        tsApplyFill(link.getAttribute("data-load") || "");
                     }
                 });
                 document.querySelectorAll(".copy-tag").forEach(function (tag) {
@@ -783,10 +772,16 @@
                     });
                 });
 
+                var tsExampleLastSec = -1;
                 setInterval(function () {
                     tickMs = Date.now();
-                    if (document.getElementById("pane-ts").classList.contains("active")) tsFillExamples();
-                }, 200);
+                    if (!document.getElementById("pane-ts").classList.contains("active")) return;
+                    var sec = Math.floor(tickMs / 1000);
+                    if (sec !== tsExampleLastSec) {
+                        tsExampleLastSec = sec;
+                        tsFillExamples();
+                    }
+                }, 500);
 
                 tsRefresh();
                 tsFillExamples();
@@ -882,7 +877,7 @@
                                 tzUpdateUi();
                             });
                             copyBtn.addEventListener("click", function () {
-                                copyText(inputEl.value, null);
+                                copyText(inputEl.value, copyBtn);
                             });
                         })(r, inp, sel, btn);
                     }

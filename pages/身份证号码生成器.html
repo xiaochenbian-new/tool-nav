@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>身份证号码生成器</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <script src="libs/tool-copy.js"></script>
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -272,8 +273,7 @@
             });
 
             document.getElementById("copyBtn").addEventListener("click", function () {
-                if (!result.value.trim()) return;
-                navigator.clipboard.writeText(result.value);
+                ToolCopy.copy(result.value, { onLabelEl: this });
             });
 
             document.getElementById("clearBtn").addEventListener("click", function () {

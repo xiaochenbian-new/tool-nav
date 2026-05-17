@@ -9,6 +9,7 @@
         <link rel="stylesheet" href="../vendor/codemirror/addon/fold/foldgutter.css" />
         <script src="../vendor/jsonrepair/jsonrepair.min.js"></script>
         <script src="../vendor/js-yaml/js-yaml.min.js"></script>
+        <script src="libs/tool-copy.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -1625,17 +1626,11 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    var t = mainCm.getValue();
-                    if (!t.trim()) return;
-                    navigator.clipboard.writeText(t);
-                    toast("已复制输入");
+                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制输入", onLabelEl: this, labelText: "复制" });
                 });
 
                 document.getElementById("btn-copy-out").addEventListener("click", function () {
-                    var t = outputConvert.value;
-                    if (!t.trim()) return;
-                    navigator.clipboard.writeText(t);
-                    toast("已复制输出");
+                    ToolCopy.copy(outputConvert.value, { successMsg: "已复制输出", onLabelEl: this, labelText: "复制" });
                 });
 
                 /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
