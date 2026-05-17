@@ -64,11 +64,26 @@
             }
             .editor-head-main {
                 display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+                min-width: 0;
+                flex: 1;
+            }
+            .editor-head-title-row {
+                display: flex;
                 align-items: center;
                 gap: 8px;
-                min-width: 0;
                 flex-wrap: wrap;
-                flex: 1;
+            }
+            .line-stats-hint {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .stat-line-summary {
+                font-size: 13px;
+                color: var(--muted);
+                margin-bottom: 8px;
             }
             .editor-head .actions {
                 display: flex;
@@ -406,8 +421,11 @@
             <div class="editor-wrap">
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
-                        <span>文本内容</span>
-                        <span class="hint" title="与 Ctool 文本工具中 Monaco 查找类似：底部查找条">Ctrl+F 查找 · Ctrl+H 替换</span>
+                        <div class="editor-head-title-row">
+                            <span>文本内容</span>
+                            <span class="hint" title="与 Ctool 文本工具中 Monaco 查找类似：底部查找条">Ctrl+F 查找 · Ctrl+H 替换</span>
+                        </div>
+                        <span id="editor-line-stats" class="line-stats-hint">共 0 行 · 重复 0 行</span>
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
@@ -1151,6 +1169,24 @@
                     return out;
                 }
 
+                /** 行统计：与 lineRemoveRepeat / lineUniq 一致，按整行内容判重 */
+                function getLineStats(text) {
+                    if (!text || !text.length) {
+                        return { total: 0, duplicate: 0, unique: 0 };
+                    }
+                    var lines = text.split(/\r?\n/);
+                    var total = lines.length;
+                    var unique = lineUniq(lines).length;
+                    return { total: total, unique: unique, duplicate: total - unique };
+                }
+
+                function refreshEditorLineStats() {
+                    var el = document.getElementById("editor-line-stats");
+                    if (!el) return;
+                    var st = getLineStats(getInputValue());
+                    el.textContent = "共 " + st.total + " 行 · 重复 " + st.duplicate + " 行";
+                }
+
                 function orderByLinesAsc(parts) {
                     return parts.slice().sort(function (a, b) {
                         if (a < b) return -1;
@@ -1312,6 +1348,7 @@
                             var int_word = (content.match(/\b\d+\b/g) || []).length;
                             var en_word = (content.match(/\b\w+\b/g) || []).length - int_word;
                             var en_punctuation = (content.match(/[~`!@#$%^&*()\-_+=|\\[\]{};:"',<.>/?]/g) || []).length;
+                            var lineSt = getLineStats(text);
                             return {
                                 byte_utf8_length: utf8ByteLength(text),
                                 byte_gbk_length: getGbkStrLength(text),
@@ -1324,7 +1361,9 @@
                                 en_punctuation: en_punctuation,
                                 int_string: int_string,
                                 int_word: int_word,
-                                line_length: text ? text.split("\n").length : 0
+                                line_length: lineSt.total,
+                                line_duplicate: lineSt.duplicate,
+                                line_unique: lineSt.unique
                             };
                         }
                     };
@@ -1371,6 +1410,7 @@
                 }
 
                 function refreshStatPreviewBtn() {
+                    refreshEditorLineStats();
                     var t = getInputValue();
                     var btn = document.getElementById("btn-stat-preview");
                     if (!t.length) {
@@ -1385,10 +1425,18 @@
                 function renderStatTable() {
                     var t = getInputValue();
                     var s = createTextApi(t || "").stat();
-                    var h = "<table class=\"stat-table\"><tbody>";
+                    var h =
+                        "<p class=\"stat-line-summary\">共 " +
+                        s.line_length +
+                        " 行 · 重复 " +
+                        (s.line_duplicate != null ? s.line_duplicate : 0) +
+                        " 行 · 去重后 " +
+                        (s.line_unique != null ? s.line_unique : 0) +
+                        " 行</p>";
+                    h += "<table class=\"stat-table\"><tbody>";
                     h += "<tr><th>项目</th><th>值</th><th>项目</th><th>值</th></tr>";
                     h += "<tr><td>字符数（不含换行）</td><td>" + s.string_length + "</td><td>字节 UTF-8 / GBK估</td><td>" + s.byte_utf8_length + " / " + s.byte_gbk_length + "</td></tr>";
-                    h += "<tr><td>字数</td><td>" + s.word_length + "</td><td>行数</td><td>" + s.line_length + "</td></tr>";
+                    h += "<tr><td>字数</td><td>" + s.word_length + "</td><td>行数 / 重复 / 去重后</td><td>" + s.line_length + " / " + s.line_duplicate + " / " + s.line_unique + "</td></tr>";
                     h += "<tr><td>中文汉字 / 中文标点</td><td>" + s.zh_word + " / " + s.zh_punctuation + "</td><td>英文（字母/词/标点）</td><td>" + s.en_string + " / " + s.en_word + " / " + s.en_punctuation + "</td></tr>";
                     h += "<tr><td>数字字符 / 数字词</td><td>" + s.int_string + " / " + s.int_word + "</td><td>—</td><td>—</td></tr>";
                     h += "</tbody></table>";

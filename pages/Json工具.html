@@ -698,10 +698,11 @@
                     resizeMainCm();
                 });
 
-                mainCm.on("change", function () {
+                mainCm.on("change", function (_cm, change) {
                     syncMainInputFromCm();
                     if (currentTab === "convert") doConvert(true);
                     refreshFindHighlights();
+                    if (change && change.origin === "paste") scheduleAutoBeautifyAfterPaste();
                 });
                 mainCm.on("focus", function () {
                     lastFindTargetIsOutput = false;
@@ -1178,16 +1179,34 @@
                     return out;
                 }
 
-                function beautifyToInput(tab) {
+                function beautifyToInput(tab, opts) {
+                    opts = opts || {};
                     var code = getTrimInput();
-                    if (!code) return;
+                    if (!code) return false;
                     var obj = parseJsonLenient(code);
                     var next =
                         tab === 0 || tab === "0"
                             ? JSON.stringify(obj)
                             : JSON.stringify(obj, null, tab === "tab" ? "\t" : Number(tab));
+                    if (next === code) return false;
                     setMainInputContent(next);
-                    toast("已格式化");
+                    if (opts.auto) toast("已自动格式化");
+                    else if (!opts.silent) toast("已格式化");
+                    return true;
+                }
+
+                var autoBeautifyPasteTimer = null;
+                function scheduleAutoBeautifyAfterPaste() {
+                    clearTimeout(autoBeautifyPasteTimer);
+                    autoBeautifyPasteTimer = setTimeout(function () {
+                        autoBeautifyPasteTimer = null;
+                        try {
+                            var indent = selIndent.value === "tab" ? "tab" : selIndent.value;
+                            beautifyToInput(indent, { auto: true });
+                        } catch (e) {
+                            /* 非合法 JSON 时静默跳过，可手动点「修复」或「格式化」 */
+                        }
+                    }, 0);
                 }
 
                 function applyTabMode(tab) {
