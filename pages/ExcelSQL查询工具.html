@@ -215,6 +215,180 @@
                 min-height: 110px;
                 resize: vertical;
             }
+            .upload-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .upload-row input[type="file"] {
+                flex: 1;
+                min-width: 0;
+                width: auto;
+            }
+            #csv-text-btn {
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: 8px 14px;
+            }
+            #csv-text-btn.has-content {
+                border-color: #9eb8f5;
+                background: #e8f0ff;
+            }
+            .csv-modal-mask {
+                position: fixed;
+                inset: 0;
+                z-index: 5200;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                background: rgba(16, 30, 60, 0.38);
+            }
+            .csv-modal-mask.show {
+                display: flex;
+            }
+            .csv-modal {
+                width: min(640px, 100%);
+                max-height: min(88vh, 720px);
+                display: flex;
+                flex-direction: column;
+                border: 1px solid #dbe7ff;
+                border-radius: 12px;
+                background: #fff;
+                box-shadow: 0 14px 36px rgba(36, 90, 190, 0.2);
+                overflow: hidden;
+            }
+            .csv-modal-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px 14px;
+                border-bottom: 1px solid #e8f0ff;
+                background: #f8fbff;
+            }
+            .csv-modal-head h4 {
+                margin: 0;
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--text);
+            }
+            .csv-modal-close {
+                width: 28px;
+                height: 28px;
+                border: 0;
+                border-radius: 50%;
+                background: #edf3ff;
+                color: #4a5978;
+                font-size: 18px;
+                line-height: 1;
+                padding: 0;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+            .csv-modal-close:hover {
+                background: #dbe7ff;
+                color: #2f3d5d;
+            }
+            .csv-modal-body {
+                padding: 12px 14px 14px;
+                overflow: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+            }
+            .csv-modal-hint {
+                margin: 0;
+                font-size: 12px;
+                color: var(--muted);
+                line-height: 1.45;
+            }
+            .csv-tab-bar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 4px;
+                padding: 4px;
+                border: 1px solid #e4eaf4;
+                border-radius: 10px;
+                background: #f3f5f9;
+            }
+            .csv-tab {
+                border: 0;
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #4a5978;
+                background: transparent;
+                cursor: pointer;
+                white-space: nowrap;
+                line-height: 1.3;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .csv-tab:hover:not(.active) {
+                background: #e8eef6;
+                color: #324a76;
+            }
+            .csv-tab.active {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(47, 107, 255, 0.28);
+            }
+            .csv-tab .csv-tab-remove {
+                color: var(--danger);
+                font-size: 16px;
+                font-weight: 700;
+                line-height: 1;
+                padding: 0 2px;
+                cursor: pointer;
+            }
+            .csv-tab.active .csv-tab-remove {
+                color: #ff8a8a;
+            }
+            .csv-tab .csv-tab-remove:hover {
+                color: #d62828;
+            }
+            button.csv-tab-add {
+                flex-shrink: 0;
+                min-width: 28px;
+                height: 28px;
+                border: 0;
+                border-radius: 8px;
+                background: transparent;
+                color: var(--primary);
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1;
+                padding: 0 6px;
+                box-shadow: none;
+                cursor: pointer;
+            }
+            button.csv-tab-add:hover {
+                background: #e8f0ff;
+                color: var(--primary-2);
+            }
+            #csv-paste-input {
+                min-height: 200px;
+                flex: 1;
+                font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.45;
+                resize: vertical;
+            }
+            .csv-modal-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+                padding-top: 4px;
+            }
+            .csv-modal-actions button {
+                min-width: 88px;
+            }
             .compact-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -803,11 +977,15 @@
                 </div>
                 <div class="muted">
                     上传多个 Excel 后，每个 Excel 视为一个数据库，Sheet 视为表。<br />
+                    也可通过「CSV 文本」粘贴表数据，无需保存文件。<br />
                     执行 SQL 时默认在当前选中的 Excel 库中查询。
                 </div>
                 <div class="field">
                     <label for="excel-files">上传 Excel 文件（支持多选）</label>
-                    <input id="excel-files" type="file" accept=".xlsx,.xls,.csv" multiple />
+                    <div class="upload-row">
+                        <input id="excel-files" type="file" accept=".xlsx,.xls,.csv" multiple />
+                        <button id="csv-text-btn" class="secondary" type="button" title="粘贴 CSV 或 Excel 复制内容">CSV 文本</button>
+                    </div>
                 </div>
                 <div class="compact-grid">
                     <div class="field">
@@ -849,7 +1027,7 @@
                 <div class="table-list" id="table-list">
                     <div class="table-item">尚未加载表。</div>
                 </div>
-                <div class="status" id="status">请先上传 Excel 文件。</div>
+                <div class="status" id="status">请上传 Excel 文件，或点击「CSV 文本」粘贴表数据。</div>
             </div>
             <div class="panel">
                 <div class="result-head">
@@ -892,6 +1070,25 @@
         <div id="sql-help-mask" class="text-popup-mask">
             <div id="sql-help-popup" class="text-popup sql-help-content"></div>
         </div>
+        <div id="csv-modal-mask" class="csv-modal-mask" aria-hidden="true">
+            <div class="csv-modal" role="dialog" aria-labelledby="csv-modal-title" aria-modal="true">
+                <div class="csv-modal-head">
+                    <h4 id="csv-modal-title">CSV 文本</h4>
+                    <button id="csv-modal-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
+                </div>
+                <div class="csv-modal-body">
+                    <p class="csv-modal-hint">在 Excel 中选中区域后 Ctrl+C 粘贴；支持逗号或制表符。点 CSV1 旁 + 新增，多份时可在末尾 − 删除，载入时一并导入。</p>
+                    <div class="csv-tab-bar" id="csv-tab-bar" role="tablist" aria-label="CSV 文本列表"></div>
+                    <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
+                    <label for="csv-paste-name">当前 CSV 数据源名称（可选）</label>
+                    <input id="csv-paste-name" type="text" placeholder="粘贴数据" maxlength="80" />
+                    <div class="csv-modal-actions">
+                        <button id="csv-modal-cancel" class="secondary" type="button">取消</button>
+                        <button id="csv-paste-load-btn" type="button">载入数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="copy-menu" class="copy-menu"></div>
         <div id="busy-overlay" class="busy-overlay" aria-hidden="true" role="status">
             <div class="busy-overlay-card">
@@ -927,6 +1124,11 @@
             let lastSqlHistoryList = [];
             const SQL_HISTORY_KEY = "excelSqlQueryHistoryV1";
             const SQL_HISTORY_MAX = 10;
+            const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+            let handoffConsumeStarted = false;
+            let csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "" }];
+            let activeCsvPasteId = 1;
+            let nextCsvPasteId = 2;
             /** 大批量导入时每 N 行让出一次主线程，便于 1s 后显示等待层 */
             const IMPORT_YIELD_ROWS = 8000;
 
@@ -979,6 +1181,47 @@
                     .replace(/[^\w\u4e00-\u9fa5]+/g, "_")
                     .replace(/^_+|_+$/g, "")
                     .slice(0, 60) || "table";
+            }
+
+            function uniqueDbName(base) {
+                var name = sanitizeName(base || "粘贴数据");
+                if (!dbStore[name]) return name;
+                var i = 2;
+                while (dbStore[name + "_" + i]) i++;
+                return name + "_" + i;
+            }
+
+            function detectFieldSeparator(text) {
+                var sample = String(text || "").split(/\r?\n/).slice(0, 8).filter(function (line) {
+                    return line.trim().length > 0;
+                });
+                if (!sample.length) return ",";
+                var tabs = 0;
+                var commas = 0;
+                sample.forEach(function (line) {
+                    tabs += (line.match(/\t/g) || []).length;
+                    commas += (line.match(/,/g) || []).length;
+                });
+                return tabs > commas ? "\t" : ",";
+            }
+
+            async function parseDelimitedTextToDbTables(text, fs) {
+                const wbCsv = XLSX.read(text, { type: "string", cellDates: true, FS: fs });
+                const date1904Csv = workbookUsesDate1904(wbCsv);
+                const dbTables = [];
+                const firstSheetName = wbCsv.SheetNames[0];
+                if (!firstSheetName) return dbTables;
+                const firstSheet = wbCsv.Sheets[firstSheetName];
+                const rowsCsvRaw = XLSX.utils.sheet_to_json(firstSheet, {
+                    defval: "",
+                    raw: false,
+                    dateNF: "yyyy-mm-dd HH:mm:ss"
+                });
+                if (!rowsCsvRaw.length) return dbTables;
+                await yieldToBrowser();
+                const rowsCsv = await normalizeImportedRowsAsync(rowsCsvRaw, { date1904: date1904Csv });
+                dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
+                return dbTables;
             }
 
             function escapeHtml(value) {
@@ -2590,23 +2833,11 @@
                             setStatus("读取 CSV：" + file.name + " …", false);
                             const text = await file.text();
                             await yieldToBrowser();
-                            const wbCsv = XLSX.read(text, { type: "string", cellDates: true });
-                            const date1904Csv = workbookUsesDate1904(wbCsv);
-                            const firstSheetName = wbCsv.SheetNames[0];
-                            if (firstSheetName) {
-                                const firstSheet = wbCsv.Sheets[firstSheetName];
-                                const rowsCsvRaw = XLSX.utils.sheet_to_json(firstSheet, {
-                                    defval: "",
-                                    raw: false,
-                                    dateNF: "yyyy-mm-dd HH:mm:ss"
-                                });
-                                if (rowsCsvRaw.length) {
-                                    await yieldToBrowser();
-                                    const rowsCsv = await normalizeImportedRowsAsync(rowsCsvRaw, { date1904: date1904Csv });
-                                    dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
-                                    tableCount++;
-                                }
-                            }
+                            const parsedCsv = await parseDelimitedTextToDbTables(text, detectFieldSeparator(text));
+                            parsedCsv.forEach(function (t) {
+                                dbTables.push(t);
+                                tableCount++;
+                            });
                         } else {
                             setStatus("读取 Excel：" + file.name + " …", false);
                             const buf = await file.arrayBuffer();
@@ -2646,6 +2877,256 @@
                         document.getElementById("sql-input").value =
                             "SELECT * FROM [" + db.tables[0].tableName + "];";
                     }
+                } finally {
+                    stopBusy();
+                }
+            }
+
+            function getActiveCsvPasteEntry() {
+                return csvPasteEntries.find(function (e) {
+                    return e.id === activeCsvPasteId;
+                }) || null;
+            }
+
+            function saveActiveCsvPasteEntry() {
+                var entry = getActiveCsvPasteEntry();
+                if (!entry) return;
+                entry.text = document.getElementById("csv-paste-input").value;
+                entry.name = document.getElementById("csv-paste-name").value;
+            }
+
+            function loadActiveCsvPasteEntryToUi() {
+                var entry = getActiveCsvPasteEntry();
+                if (!entry) return;
+                document.getElementById("csv-paste-input").value = entry.text || "";
+                document.getElementById("csv-paste-name").value = entry.name || "";
+            }
+
+            function renderCsvTabButton(entry, showMinus) {
+                var active = entry.id === activeCsvPasteId;
+                var inner = escapeHtml(entry.label);
+                if (showMinus) {
+                    inner += "<span class=\"csv-tab-remove\" data-action=\"remove\" title=\"删除此 CSV\" aria-hidden=\"true\">-</span>";
+                }
+                return "<button type=\"button\" class=\"csv-tab" + (active ? " active" : "")
+                    + "\" role=\"tab\" aria-selected=\"" + (active ? "true" : "false")
+                    + "\" data-id=\"" + entry.id + "\">" + inner + "</button>";
+            }
+
+            function renderCsvTabBar() {
+                var bar = document.getElementById("csv-tab-bar");
+                if (!bar || !csvPasteEntries.length) return;
+                var html = "";
+                var lastIdx = csvPasteEntries.length - 1;
+                for (var i = 0; i < csvPasteEntries.length; i++) {
+                    var showMinus = csvPasteEntries.length > 1 && i === lastIdx;
+                    html += renderCsvTabButton(csvPasteEntries[i], showMinus);
+                }
+                html += "<button type=\"button\" class=\"csv-tab-add\" data-action=\"add\" title=\"新增 CSV 文本\" aria-label=\"新增 CSV 文本\">+</button>";
+                bar.innerHTML = html;
+            }
+
+            function resetCsvPasteEntries() {
+                csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "" }];
+                activeCsvPasteId = 1;
+                nextCsvPasteId = 2;
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                updateCsvTextBtnState();
+            }
+
+            function switchCsvPasteTab(id) {
+                if (id === activeCsvPasteId) return;
+                saveActiveCsvPasteEntry();
+                activeCsvPasteId = id;
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                var ta = document.getElementById("csv-paste-input");
+                window.setTimeout(function () {
+                    ta.focus();
+                }, 0);
+            }
+
+            function addCsvPasteEntry() {
+                saveActiveCsvPasteEntry();
+                var id = nextCsvPasteId++;
+                var label = "CSV " + (csvPasteEntries.length + 1);
+                csvPasteEntries.push({ id: id, label: label, name: "", text: "" });
+                activeCsvPasteId = id;
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                updateCsvTextBtnState();
+                var ta = document.getElementById("csv-paste-input");
+                window.setTimeout(function () {
+                    ta.focus();
+                }, 0);
+            }
+
+            function removeLastCsvPasteEntry() {
+                if (csvPasteEntries.length <= 1) return;
+                saveActiveCsvPasteEntry();
+                var removed = csvPasteEntries.pop();
+                if (activeCsvPasteId === removed.id) {
+                    activeCsvPasteId = csvPasteEntries[csvPasteEntries.length - 1].id;
+                }
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                updateCsvTextBtnState();
+            }
+
+            function setCsvPasteFromHandoff(text) {
+                resetCsvPasteEntries();
+                csvPasteEntries[0].text = String(text || "");
+                loadActiveCsvPasteEntryToUi();
+                updateCsvTextBtnState();
+            }
+
+            function consumeTextToExcelSqlHandoff(payload) {
+                if (!payload || !payload.csvText) return;
+                if (handoffConsumeStarted) return;
+                handoffConsumeStarted = true;
+                setCsvPasteFromHandoff(payload.csvText);
+                if (payload.autoLoad) {
+                    void loadPastedCsv();
+                } else {
+                    openCsvModal();
+                }
+            }
+
+            function tryConsumeHandoffFromStorage() {
+                if (handoffConsumeStarted) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    var parsed = JSON.parse(raw);
+                    consumeTextToExcelSqlHandoff(parsed);
+                    try {
+                        sessionStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function updateCsvTextBtnState() {
+                var btn = document.getElementById("csv-text-btn");
+                if (!btn) return;
+                saveActiveCsvPasteEntry();
+                var filled = csvPasteEntries.filter(function (e) {
+                    return !!(e.text || "").trim();
+                }).length;
+                var has = filled > 0;
+                btn.classList.toggle("has-content", has);
+                if (has) {
+                    btn.title = "已设置 " + filled + " 个 CSV 文本，点击编辑";
+                } else {
+                    btn.title = "粘贴 CSV 或 Excel 复制内容";
+                }
+            }
+
+            function openCsvModal() {
+                closeSqlHistoryPop();
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                var mask = document.getElementById("csv-modal-mask");
+                mask.classList.add("show");
+                mask.setAttribute("aria-hidden", "false");
+                var ta = document.getElementById("csv-paste-input");
+                window.setTimeout(function () {
+                    ta.focus();
+                    if (ta.value) ta.setSelectionRange(ta.value.length, ta.value.length);
+                }, 0);
+            }
+
+            function closeCsvModal() {
+                var mask = document.getElementById("csv-modal-mask");
+                mask.classList.remove("show");
+                mask.setAttribute("aria-hidden", "true");
+            }
+
+            async function loadPastedCsv() {
+                saveActiveCsvPasteEntry();
+                const todo = csvPasteEntries.filter(function (e) {
+                    return !!(e.text || "").trim();
+                });
+                if (!todo.length) {
+                    setStatus("请先在弹窗中粘贴至少一份 CSV 或 Excel 复制的内容。", true);
+                    openCsvModal();
+                    return;
+                }
+                if (!window.XLSX || !window.alasql) {
+                    setStatus("依赖加载失败，请检查网络后重试。", true);
+                    return;
+                }
+                var stopBusy = startDelayedBusy("正在载入粘贴数据…");
+                try {
+                    var loaded = 0;
+                    var totalRows = 0;
+                    var firstDb = "";
+                    var failLabels = [];
+                    for (let i = 0; i < todo.length; i++) {
+                        const entry = todo[i];
+                        const raw = (entry.text || "").trim();
+                        setStatus("正在载入 " + entry.label + " …", false);
+                        await yieldToBrowser();
+                        const fs = detectFieldSeparator(raw);
+                        const dbTables = await parseDelimitedTextToDbTables(raw, fs);
+                        if (!dbTables.length) {
+                            failLabels.push(entry.label);
+                            continue;
+                        }
+                        const nameInput = (entry.name || "").trim();
+                        const dbName = uniqueDbName(nameInput || entry.label || "粘贴数据");
+                        dbStore[dbName] = { dbName: dbName, tables: dbTables };
+                        if (!firstDb) firstDb = dbName;
+                        loaded++;
+                        totalRows += dbTables[0].rows.length;
+                        await yieldToBrowser();
+                    }
+                    if (!loaded) {
+                        setStatus("未能解析出有效数据行，请检查各 CSV 是否包含表头与至少一行数据。", true);
+                        return;
+                    }
+                    currentDb = firstDb;
+                    alasqlEngineDbKey = "";
+                    await yieldToBrowser();
+                    refreshDbSelect();
+                    refreshTableSelect();
+                    rebuildEngineWithCurrentDb();
+                    refreshTableList();
+                    var statusMsg = "已载入 " + loaded + " 个 CSV 数据源，共 " + totalRows + " 行。当前库：" + currentDb;
+                    if (failLabels.length) {
+                        statusMsg += "（" + failLabels.join("、") + " 解析失败已跳过）";
+                    }
+                    setStatus(statusMsg, false);
+                    const db = dbStore[currentDb];
+                    if (db && db.tables.length) {
+                        document.getElementById("sql-input").value =
+                            "SELECT * FROM [" + db.tables[0].tableName + "];";
+                    }
+                    updateCsvTextBtnState();
+                    closeCsvModal();
+                } catch (error) {
+                    setStatus("粘贴数据载入失败：" + (error && error.message ? error.message : "未知错误"), true);
                 } finally {
                     stopBusy();
                 }
@@ -2704,6 +3185,8 @@
 
             function clearAll() {
                 document.getElementById("excel-files").value = "";
+                resetCsvPasteEntries();
+                closeCsvModal();
                 document.getElementById("sql-input").value = "";
                 document.getElementById("db-select").innerHTML = '<option value="">请先上传 Excel</option>';
                 document.getElementById("table-select").innerHTML = '<option value="">请先选择库</option>';
@@ -2739,6 +3222,71 @@
                 if (!files.length) return;
                 loadExcelFiles(files);
             });
+            document.getElementById("csv-text-btn").addEventListener("click", function (e) {
+                e.preventDefault();
+                openCsvModal();
+            });
+            document.getElementById("csv-modal-close").addEventListener("click", closeCsvModal);
+            document.getElementById("csv-modal-cancel").addEventListener("click", closeCsvModal);
+            document.getElementById("csv-modal-mask").addEventListener("click", function (e) {
+                if (e.target.id === "csv-modal-mask") closeCsvModal();
+            });
+            document.getElementById("csv-tab-bar").addEventListener("click", function (e) {
+                if (e.target.closest("[data-action=\"remove\"]")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeLastCsvPasteEntry();
+                    return;
+                }
+                var addBtn = e.target.closest("[data-action=\"add\"]");
+                if (addBtn) {
+                    e.preventDefault();
+                    addCsvPasteEntry();
+                    return;
+                }
+                var tab = e.target.closest(".csv-tab");
+                if (!tab) return;
+                var id = Number(tab.getAttribute("data-id"));
+                if (!Number.isFinite(id)) return;
+                switchCsvPasteTab(id);
+            });
+            document.getElementById("csv-paste-load-btn").addEventListener("click", function () {
+                void loadPastedCsv();
+            });
+            document.getElementById("csv-paste-input").addEventListener("input", function () {
+                var entry = getActiveCsvPasteEntry();
+                if (entry) entry.text = this.value;
+                updateCsvTextBtnState();
+            });
+            document.getElementById("csv-paste-name").addEventListener("input", function () {
+                var entry = getActiveCsvPasteEntry();
+                if (entry) entry.name = this.value;
+            });
+            document.getElementById("csv-paste-input").addEventListener("keydown", function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    void loadPastedCsv();
+                }
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    closeCsvModal();
+                }
+            });
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && document.getElementById("csv-modal-mask").classList.contains("show")) {
+                    closeCsvModal();
+                }
+            });
+            renderCsvTabBar();
+            updateCsvTextBtnState();
+            window.addEventListener("message", function (e) {
+                var d = e.data;
+                if (!d || d.type !== "tool-nav:consume-handoff") return;
+                if (d.handoff === "text-to-excel-sql") {
+                    consumeTextToExcelSqlHandoff(d.payload);
+                }
+            });
+            tryConsumeHandoffFromStorage();
             document.getElementById("db-select").addEventListener("change", function (e) {
                 currentDb = e.target.value;
                 refreshTableSelect();

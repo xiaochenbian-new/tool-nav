@@ -429,6 +429,7 @@
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
+                        <button type="button" class="title-btn" id="btn-excel-sql" title="识别 CSV/表格文本并转到 Excel SQL 查询">Excel SQL</button>
                         <button type="button" class="title-btn" id="btn-copy">复制</button>
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
@@ -1632,6 +1633,117 @@
                         document.getElementById("stat-panel-b").classList.toggle("active", tab === "b");
                     });
                 });
+
+                var HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+                var HANDOFF_EXCEL_SQL_TAB = "tab14";
+
+                function detectFieldSeparatorForCsv(text) {
+                    var sample = String(text || "").split(/\r?\n/).slice(0, 8).filter(function (line) {
+                        return line.trim().length > 0;
+                    });
+                    if (!sample.length) return ",";
+                    var tabs = 0;
+                    var commas = 0;
+                    sample.forEach(function (line) {
+                        tabs += (line.match(/\t/g) || []).length;
+                        commas += (line.match(/,/g) || []).length;
+                    });
+                    return tabs > commas ? "\t" : ",";
+                }
+
+                function splitDelimitedLine(line, sep) {
+                    if (sep === "\t") return line.split("\t");
+                    var out = [];
+                    var cur = "";
+                    var inQ = false;
+                    for (var i = 0; i < line.length; i++) {
+                        var c = line.charAt(i);
+                        if (c === '"') {
+                            if (inQ && line.charAt(i + 1) === '"') {
+                                cur += '"';
+                                i++;
+                            } else {
+                                inQ = !inQ;
+                            }
+                        } else if (!inQ && c === ",") {
+                            out.push(cur);
+                            cur = "";
+                        } else {
+                            cur += c;
+                        }
+                    }
+                    out.push(cur);
+                    return out.map(function (s) {
+                        return s.replace(/^\s+|\s+$/g, "").replace(/^"|"$/g, "");
+                    });
+                }
+
+                function isCsvFormat(text) {
+                    var raw = String(text || "").trim();
+                    if (!raw) return false;
+                    var lines = raw.split(/\r?\n/).filter(function (line) {
+                        return line.trim().length > 0;
+                    });
+                    if (lines.length < 2) return false;
+                    var sep = detectFieldSeparatorForCsv(raw);
+                    var colCount = splitDelimitedLine(lines[0], sep).length;
+                    if (colCount < 2) return false;
+                    var checkRows = Math.min(lines.length, 8);
+                    for (var i = 1; i < checkRows; i++) {
+                        if (splitDelimitedLine(lines[i], sep).length !== colCount) return false;
+                    }
+                    return true;
+                }
+
+                function handoffToExcelSql() {
+                    var text = getInputValue().trim();
+                    if (!text) {
+                        showToast("请先输入或粘贴文本内容");
+                        return;
+                    }
+                    if (!isCsvFormat(text)) {
+                        showToast("当前内容不是 CSV/表格格式（需至少 2 行且各行列数一致）");
+                        return;
+                    }
+                    var payload = { csvText: text, autoLoad: true };
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: HANDOFF_EXCEL_SQL_TAB,
+                                    handoff: "text-to-excel-sql",
+                                    payload: payload
+                                },
+                                "*"
+                            );
+                            return;
+                        } catch (e1) {
+                            // fall through to storage navigation
+                        }
+                    }
+                    try {
+                        sessionStorage.setItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY, JSON.stringify(payload));
+                    } catch (e2) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.setItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY, JSON.stringify(payload));
+                    } catch (e3) {
+                        // ignore
+                    }
+                    var base = "../index.html";
+                    try {
+                        if (/pages\//i.test(window.location.pathname)) {
+                            base = "../index.html";
+                        }
+                    } catch (e4) {
+                        // ignore
+                    }
+                    window.location.href = base + "#tab=" + HANDOFF_EXCEL_SQL_TAB;
+                }
+
+                document.getElementById("btn-excel-sql").addEventListener("click", handoffToExcelSql);
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
                     var v = getInputValue();
