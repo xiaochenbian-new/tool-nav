@@ -95,6 +95,23 @@
                 border-color: var(--primary);
                 color: var(--primary);
             }
+            .title-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .title-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.qr-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
             .editor-zone {
                 flex: 1;
                 min-height: 0;
@@ -296,6 +313,15 @@
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
                 </div>
@@ -355,6 +381,9 @@
         <script src="../vendor/codemirror/mode/sql/sql.js"></script>
         <script src="../vendor/codemirror/addon/display/placeholder.js"></script>
         <script src="../vendor/sql-formatter/sql-formatter.min.js"></script>
+        <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
         <script>
             (function () {
                 var ta = document.getElementById("main-input");
@@ -736,6 +765,18 @@
                 document.getElementById("btn-format").addEventListener("click", doFormat);
                 document.getElementById("btn-minify").addEventListener("click", doMinify);
                 document.getElementById("btn-copy").addEventListener("click", copyText);
+                document.getElementById("btn-qr").addEventListener("click", function () {
+                    var text = cm.getValue();
+                    if (!text.trim()) {
+                        if (typeof ToolCopy !== "undefined") {
+                            ToolCopy.toast("没有可生成二维码的内容");
+                        } else {
+                            toast("没有可生成二维码的内容");
+                        }
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
+                });
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     cm.setValue("");
                     updateStat();

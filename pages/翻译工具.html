@@ -225,6 +225,59 @@
                 padding: 10px;
                 background: #fafcff;
                 overflow-y: auto;
+                transition: opacity 0.2s ease;
+            }
+            .out-text.is-loading {
+                opacity: 0.45;
+            }
+            .out-wrap {
+                flex: 1;
+                position: relative;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .translate-loading {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(248, 251, 255, 0.88);
+                border-radius: 8px;
+                z-index: 2;
+            }
+            .translate-loading[hidden] {
+                display: none !important;
+            }
+            .translate-loading-inner {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 14px;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                border-radius: 10px;
+                box-shadow: 0 8px 20px rgba(36, 90, 190, 0.12);
+            }
+            .translate-loading-spinner {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                border: 2px solid #e0e9ff;
+                border-top-color: var(--primary);
+                animation: translate-spin 0.75s linear infinite;
+                flex-shrink: 0;
+            }
+            @keyframes translate-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .translate-loading-text {
+                font-size: 13px;
+                color: #3c4f78;
+                font-weight: 600;
             }
             .clear-x {
                 position: absolute;
@@ -308,6 +361,7 @@
                 min-height: 0;
                 overflow: hidden;
             }
+            .ai-body {
                 font-size: 17px;
                 font-weight: 600;
                 line-height: 1.45;
@@ -506,7 +560,15 @@
                             </div>
                         </div>
                         <div class="pane-body">
-                            <div id="main-out" class="out-text" aria-live="polite"></div>
+                            <div class="out-wrap">
+                                <div id="main-out" class="out-text" aria-live="polite"></div>
+                                <div id="translate-loading" class="translate-loading" hidden aria-hidden="true" role="status">
+                                    <div class="translate-loading-inner">
+                                        <div class="translate-loading-spinner" aria-hidden="true"></div>
+                                        <span id="translate-loading-text" class="translate-loading-text">正在翻译…</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="pane-foot">
                             <div class="icon-group">
@@ -606,6 +668,25 @@
                 var lastTrans = "";
                 var debounceTimer = null;
                 var loading = false;
+                var translateReqId = 0;
+                var translateLoadingEl = document.getElementById("translate-loading");
+                var translateLoadingText = document.getElementById("translate-loading-text");
+
+                function setTranslateLoading(on, msg) {
+                    if (!translateLoadingEl) return;
+                    if (on && srcText.value.trim()) {
+                        translateLoadingEl.hidden = false;
+                        translateLoadingEl.setAttribute("aria-hidden", "false");
+                        mainOut.classList.add("is-loading");
+                        if (translateLoadingText && msg) {
+                            translateLoadingText.textContent = msg;
+                        }
+                    } else {
+                        translateLoadingEl.hidden = true;
+                        translateLoadingEl.setAttribute("aria-hidden", "true");
+                        mainOut.classList.remove("is-loading");
+                    }
+                }
 
                 function showErr(msg) {
                     if (!msg) {
@@ -753,13 +834,16 @@
                     showErr("");
                     var q = srcText.value.trim();
                     if (!q) {
+                        setTranslateLoading(false);
                         applyResult("");
                         return;
                     }
+                    var reqId = ++translateReqId;
                     var pair = getEffectivePair();
                     var prefix = domainPrefix();
                     var apiQ = prefix ? prefix + "\n" + q : q;
                     loading = true;
+                    setTranslateLoading(true, "正在翻译…");
                     var url =
                         "https://api.mymemory.translated.net/get?q=" +
                         encodeURIComponent(apiQ.slice(0, 4500)) +
@@ -771,6 +855,7 @@
                             return r.json();
                         })
                         .then(function (data) {
+                            if (reqId !== translateReqId) return;
                             var txt =
                                 data &&
                                 data.responseData &&
@@ -787,6 +872,7 @@
                             }
                         })
                         .catch(function (e) {
+                            if (reqId !== translateReqId) return;
                             showErr(
                                 (e && e.message ? e.message : String(e)) +
                                     "（若从 file:// 打开，可能受跨域限制，请通过本地 HTTP 访问。）"
@@ -794,12 +880,23 @@
                             applyResult("");
                         })
                         .finally(function () {
+                            if (reqId !== translateReqId) return;
                             loading = false;
+                            setTranslateLoading(false);
                         });
                 }
 
                 function scheduleTranslate() {
                     if (debounceTimer) clearTimeout(debounceTimer);
+                    var q = srcText.value.trim();
+                    if (!q) {
+                        translateReqId++;
+                        setTranslateLoading(false);
+                        applyResult("");
+                        showErr("");
+                        return;
+                    }
+                    setTranslateLoading(true, "正在解析…");
                     debounceTimer = setTimeout(function () {
                         debounceTimer = null;
                         translateNow();
@@ -813,11 +910,23 @@
                     scheduleTranslate();
                 });
 
+                srcText.addEventListener("paste", function () {
+                    setTimeout(function () {
+                        if (srcText.value.trim()) {
+                            setTranslateLoading(true, "正在解析…");
+                        }
+                    }, 0);
+                });
+
                 srcLang.addEventListener("change", function () {
                     updateSrcLangLabel();
+                    if (srcText.value.trim()) setTranslateLoading(true, "正在翻译…");
                     translateNow();
                 });
-                tgtLang.addEventListener("change", translateNow);
+                tgtLang.addEventListener("change", function () {
+                    if (srcText.value.trim()) setTranslateLoading(true, "正在翻译…");
+                    translateNow();
+                });
 
                 document.querySelectorAll(".domain-tabs button").forEach(function (btn) {
                     btn.addEventListener("click", function () {
@@ -825,14 +934,21 @@
                             b.classList.toggle("active", b === btn);
                         });
                         domain = btn.getAttribute("data-domain") || "general";
+                        if (srcText.value.trim()) setTranslateLoading(true, "正在翻译…");
                         translateNow();
                     });
                 });
 
                 document.getElementById("clear-src").addEventListener("click", function () {
+                    translateReqId++;
+                    if (debounceTimer) {
+                        clearTimeout(debounceTimer);
+                        debounceTimer = null;
+                    }
                     srcText.value = "";
                     updateCharCount();
                     updateSrcLangLabel();
+                    setTranslateLoading(false);
                     applyResult("");
                     showErr("");
                 });
@@ -851,6 +967,7 @@
                     srcText.value = oldOut || "";
                     updateCharCount();
                     updateSrcLangLabel();
+                    if (srcText.value.trim()) setTranslateLoading(true, "正在翻译…");
                     translateNow();
                 });
 

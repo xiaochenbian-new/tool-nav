@@ -10,6 +10,8 @@
         <script src="../vendor/jsonrepair/jsonrepair.min.js"></script>
         <script src="../vendor/js-yaml/js-yaml.min.js"></script>
         <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -100,6 +102,23 @@
             .title-btn:disabled {
                 opacity: 0.45;
                 cursor: not-allowed;
+            }
+            .title-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .title-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.qr-btn svg {
+                display: block;
+                flex-shrink: 0;
             }
             .editor-zone {
                 flex: 1;
@@ -468,7 +487,25 @@
                         <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
                         <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
                         <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
-                        <button type="button" class="title-btn" id="btn-copy">复制输入</button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr-out" style="display:none" title="生成输出二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成输入二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
                 </div>
@@ -606,6 +643,7 @@
                 var editorZone = document.getElementById("editor-zone");
                 var headTitle = document.getElementById("head-title");
                 var btnCopyOut = document.getElementById("btn-copy-out");
+                var btnQrOut = document.getElementById("btn-qr-out");
                 var labelIn = document.getElementById("label-in");
                 var wrapOut = document.getElementById("wrap-out");
                 var tabCommon = document.getElementById("tab-common");
@@ -1219,6 +1257,7 @@
                     editorZone.classList.toggle("convert-mode", isConvert);
                     headTitle.textContent = isConvert ? "JSON · 双栏" : "JSON 输入";
                     btnCopyOut.style.display = isConvert ? "inline-flex" : "none";
+                    btnQrOut.style.display = isConvert ? "inline-flex" : "none";
                     labelIn.style.display = isConvert ? "block" : "none";
                     wrapOut.style.display = isConvert ? "flex" : "none";
                     if (isConvert) doConvert(true);
@@ -1645,11 +1684,29 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制输入", onLabelEl: this, labelText: "复制" });
+                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制", onLabelEl: this, labelText: "复制" });
                 });
 
                 document.getElementById("btn-copy-out").addEventListener("click", function () {
                     ToolCopy.copy(outputConvert.value, { successMsg: "已复制输出", onLabelEl: this, labelText: "复制" });
+                });
+
+                document.getElementById("btn-qr").addEventListener("click", function () {
+                    var text = mainCm.getValue();
+                    if (!text.trim()) {
+                        ToolCopy.toast("没有可生成二维码的内容");
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
+                });
+
+                document.getElementById("btn-qr-out").addEventListener("click", function () {
+                    var text = outputConvert.value;
+                    if (!text.trim()) {
+                        ToolCopy.toast("没有可生成二维码的内容");
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
                 });
 
                 /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
