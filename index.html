@@ -81,6 +81,135 @@
                 font-size: 15px;
                 font-weight: 700;
                 white-space: nowrap;
+                cursor: default;
+                user-select: none;
+            }
+            .test-data-modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 65;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 16px 28px;
+                box-sizing: border-box;
+            }
+            .test-data-modal.visible {
+                display: flex;
+            }
+            .test-data-modal-backdrop {
+                position: absolute;
+                inset: 0;
+                background: rgba(31, 42, 68, 0.45);
+            }
+            .test-data-modal-dialog {
+                position: relative;
+                z-index: 1;
+                max-width: min(96vw, 920px);
+                width: 100%;
+                max-height: min(88vh, 760px);
+                background: #fff;
+                border-radius: 12px;
+                border: 1px solid #dbe6ff;
+                box-shadow: 0 16px 48px rgba(36, 90, 190, 0.22);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                min-height: 0;
+            }
+            .test-data-modal-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+                padding: 12px 16px;
+                background: #f8fbff;
+                border-bottom: 1px solid #e4edff;
+                font-size: 16px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .test-data-modal-close {
+                width: 28px;
+                height: 28px;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #fff;
+                color: #3c4f78;
+                font-size: 18px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .test-data-modal-close:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .test-data-modal-body {
+                flex: 1;
+                min-height: 0;
+                padding: 12px 16px 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .test-data-tabs {
+                display: flex;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .test-data-tab {
+                padding: 6px 14px;
+                font-size: 13px;
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                background: #edf3ff;
+                color: #3c4f78;
+                cursor: pointer;
+            }
+            .test-data-tab.active {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .test-data-preview {
+                flex: 1;
+                min-height: 200px;
+                width: 100%;
+                box-sizing: border-box;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.45;
+                resize: none;
+                background: #f8fbff;
+                color: #1f2a44;
+            }
+            .test-data-actions {
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+                flex-shrink: 0;
+            }
+            .test-data-actions button {
+                padding: 7px 14px;
+                font-size: 13px;
+                border-radius: 8px;
+                cursor: pointer;
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+            }
+            .test-data-actions button.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .test-data-hint {
+                font-size: 12px;
+                color: #5a6d8f;
+                line-height: 1.4;
             }
             .recent-nav {
                 display: inline-flex;
@@ -482,7 +611,7 @@
                 <div class="left-zone">
                     <div class="brand-mark">
                         <div id="clover-toggle" class="clover-icon" title="全部分类工具">✤</div>
-                        <div class="brand-title">工具导航</div>
+                        <div id="brand-title" class="brand-title">工具导航</div>
                     </div>
                     <div id="recent-nav" class="recent-nav" title="最近打开的工具"></div>
                 </div>
@@ -599,6 +728,27 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="test-data-modal" class="test-data-modal" aria-hidden="true">
+                <div class="test-data-modal-backdrop" id="test-data-modal-backdrop"></div>
+                <div class="test-data-modal-dialog" role="dialog" aria-labelledby="test-data-modal-title">
+                    <div class="test-data-modal-head">
+                        <span id="test-data-modal-title">测试数据</span>
+                        <button type="button" class="test-data-modal-close" id="test-data-modal-close" title="关闭">×</button>
+                    </div>
+                    <div class="test-data-modal-body">
+                        <p class="test-data-hint">含字符串、数值、布尔、空值、数组、对象、日期、大整数等类型，可复制或载入 Excel SQL 查询工具。</p>
+                        <div class="test-data-tabs" role="tablist">
+                            <button type="button" class="test-data-tab active" data-tab="json" role="tab" aria-selected="true">JSON</button>
+                            <button type="button" class="test-data-tab" data-tab="csv" role="tab" aria-selected="false">CSV</button>
+                        </div>
+                        <textarea id="test-data-preview" class="test-data-preview" readonly spellcheck="false"></textarea>
+                        <div class="test-data-actions">
+                            <button type="button" id="test-data-copy-btn">复制</button>
+                            <button type="button" class="primary" id="test-data-load-btn">载入 Excel SQL</button>
                         </div>
                     </div>
                 </div>
@@ -920,6 +1070,12 @@
                         renderRecentNav();
                     }
                     updateActiveStates();
+                    if (tool.id === HANDOFF_EXCEL_SQL_TAB) {
+                        bridgeTextToExcelSqlHandoffFromStorage();
+                        if (pendingTextToExcelSqlHandoff) {
+                            notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                        }
+                    }
                     return;
                 }
 
@@ -1405,7 +1561,7 @@
             }
 
             function stashTextToExcelSqlHandoff(payload) {
-                if (!payload || !payload.csvText) return;
+                if (!payload || (!payload.csvText && !payload.jsonText)) return;
                 pendingTextToExcelSqlHandoff = payload;
                 try {
                     sessionStorage.setItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY, JSON.stringify(payload));
@@ -1513,6 +1669,7 @@
 
             document.addEventListener("click", function (e) {
                 if (e.target.closest("#crypto-algo-modal")) return;
+                if (e.target.closest("#test-data-modal")) return;
                 if (e.target.closest(".search-wrap")) return;
                 if (e.target.closest("#clover-toggle")) return;
                 if (e.target.closest("#overview-panel")) return;
@@ -1536,6 +1693,172 @@
                 }
             });
 
+            const TEST_DATA_JSON_OBJ = [
+                {
+                    id: 1,
+                    name: "张三",
+                    age: 28,
+                    score: 95.5,
+                    ratio: 0.875,
+                    active: true,
+                    verified: false,
+                    nullable: null,
+                    tags: ["开发", "测试"],
+                    meta: { city: "北京", level: 3 },
+                    created_at: "2024-06-15T08:30:00",
+                    birth_date: "1996-03-21",
+                    updated: "2024/06/15 18:00",
+                    bigint_val: 9007199254740993,
+                    zero: 0,
+                    negative: -42,
+                    empty_str: "",
+                    unicode: "emoji🎉",
+                    notes: "第一行\n第二行",
+                    optional_field: "有值"
+                },
+                {
+                    id: 2,
+                    name: "李四",
+                    age: 35,
+                    score: 88.25,
+                    ratio: 0.5,
+                    active: false,
+                    verified: true,
+                    nullable: "非空文本",
+                    tags: ["产品"],
+                    meta: { city: "上海", level: 1 },
+                    created_at: "2023-12-01",
+                    birth_date: "1989-07-08",
+                    updated: "2023-12-01 09:15",
+                    bigint_val: 42,
+                    zero: 1,
+                    negative: 100,
+                    empty_str: " ",
+                    unicode: "中文English",
+                    notes: "单行备注",
+                    optional_field: null
+                },
+                {
+                    id: 3,
+                    name: "Bob",
+                    age: 22,
+                    score: 76,
+                    ratio: 1,
+                    active: false,
+                    verified: false,
+                    nullable: null,
+                    tags: [],
+                    meta: {},
+                    created_at: "2025-01-20T12:00:00.000Z",
+                    birth_date: "2003-11-30",
+                    updated: "",
+                    bigint_val: 0.001,
+                    zero: 0,
+                    negative: -0.5,
+                    empty_str: "N/A",
+                    unicode: "test🚀",
+                    notes: "tab\t分隔测试",
+                    optional_field: undefined
+                }
+            ];
+            const TEST_DATA_JSON = JSON.stringify(TEST_DATA_JSON_OBJ, null, 2);
+            const TEST_DATA_CSV =
+                "id,name,age,score,ratio,active,verified,nullable,tags,meta,created_at,birth_date,updated,bigint_val,zero,negative,empty_str,unicode,notes,optional_field\n"
+                + "1,张三,28,95.5,0.875,true,false,,\"[\"\"开发\"\",\"\"测试\"\"]\",\"{\"\"city\"\":\"\"北京\"\",\"\"level\"\":3}\",2024-06-15T08:30:00,1996-03-21,2024/06/15 18:00,9007199254740993,0,-42,,emoji🎉,\"第一行\n第二行\",有值\n"
+                + "2,李四,35,88.25,0.5,false,true,非空文本,单标签,\"{\"\"city\"\":\"\"上海\"\",\"\"level\"\":1}\",2023-12-01,1989-07-08,2023-12-01 09:15,42,1,100, ,中文English,单行备注,\n"
+                + "3,Bob,22,76,1,false,false,,[],{},2025-01-20T12:00:00.000Z,2003-11-30,,0.001,0,-0.5,N/A,test🚀,tab\t分隔测试,";
+
+            let testDataActiveTab = "json";
+            let brandTitleClickCount = 0;
+            let brandTitleClickTimer = null;
+
+            function getTestDataText(tab) {
+                return tab === "csv" ? TEST_DATA_CSV : TEST_DATA_JSON;
+            }
+
+            function syncTestDataPreview() {
+                const ta = document.getElementById("test-data-preview");
+                if (!ta) return;
+                ta.value = getTestDataText(testDataActiveTab);
+            }
+
+            function setTestDataTab(tab) {
+                testDataActiveTab = tab === "csv" ? "csv" : "json";
+                document.querySelectorAll(".test-data-tab").forEach(function (btn) {
+                    const on = btn.getAttribute("data-tab") === testDataActiveTab;
+                    btn.classList.toggle("active", on);
+                    btn.setAttribute("aria-selected", on ? "true" : "false");
+                });
+                syncTestDataPreview();
+            }
+
+            function showTestDataModal() {
+                const el = document.getElementById("test-data-modal");
+                if (!el) return;
+                hideOverviewPanel();
+                hideCryptoAlgoModal();
+                setTestDataTab(testDataActiveTab);
+                el.classList.add("visible");
+                el.setAttribute("aria-hidden", "false");
+            }
+
+            function hideTestDataModal() {
+                const el = document.getElementById("test-data-modal");
+                if (!el) return;
+                el.classList.remove("visible");
+                el.setAttribute("aria-hidden", "true");
+            }
+
+            function copyTestDataToClipboard() {
+                const text = getTestDataText(testDataActiveTab);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        alert("已复制到剪贴板");
+                    }).catch(function () {
+                        fallbackCopyTestData(text);
+                    });
+                } else {
+                    fallbackCopyTestData(text);
+                }
+            }
+
+            function fallbackCopyTestData(text) {
+                const ta = document.getElementById("test-data-preview");
+                if (!ta) return;
+                ta.removeAttribute("readonly");
+                ta.select();
+                try {
+                    document.execCommand("copy");
+                    alert("已复制到剪贴板");
+                } catch (e) {
+                    alert("复制失败，请手动全选复制");
+                }
+                ta.setAttribute("readonly", "readonly");
+            }
+
+            function loadTestDataToExcelSql() {
+                const payload = testDataActiveTab === "csv"
+                    ? { csvText: TEST_DATA_CSV, autoLoad: true }
+                    : { jsonText: TEST_DATA_JSON, autoLoad: true };
+                stashTextToExcelSqlHandoff(payload);
+                hideTestDataModal();
+                openTool(HANDOFF_EXCEL_SQL_TAB, true);
+                notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+            }
+
+            function onBrandTitleClick() {
+                brandTitleClickCount += 1;
+                if (brandTitleClickTimer) clearTimeout(brandTitleClickTimer);
+                brandTitleClickTimer = setTimeout(function () {
+                    brandTitleClickCount = 0;
+                }, 900);
+                if (brandTitleClickCount >= 3) {
+                    brandTitleClickCount = 0;
+                    if (brandTitleClickTimer) clearTimeout(brandTitleClickTimer);
+                    showTestDataModal();
+                }
+            }
+
             document.addEventListener("DOMContentLoaded", function () {
                 var bd = document.getElementById("crypto-algo-modal-backdrop");
                 var closeBtn = document.getElementById("crypto-algo-modal-close");
@@ -1543,9 +1866,26 @@
                 if (closeBtn) closeBtn.addEventListener("click", hideCryptoAlgoModal);
                 document.addEventListener("keydown", function (e) {
                     if (e.key !== "Escape") return;
-                    var modal = document.getElementById("crypto-algo-modal");
-                    if (modal && modal.classList.contains("visible")) hideCryptoAlgoModal();
+                    var cryptoModal = document.getElementById("crypto-algo-modal");
+                    if (cryptoModal && cryptoModal.classList.contains("visible")) hideCryptoAlgoModal();
+                    var testModal = document.getElementById("test-data-modal");
+                    if (testModal && testModal.classList.contains("visible")) hideTestDataModal();
                 });
+                var testBd = document.getElementById("test-data-modal-backdrop");
+                var testClose = document.getElementById("test-data-modal-close");
+                if (testBd) testBd.addEventListener("click", hideTestDataModal);
+                if (testClose) testClose.addEventListener("click", hideTestDataModal);
+                document.querySelectorAll(".test-data-tab").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        setTestDataTab(btn.getAttribute("data-tab"));
+                    });
+                });
+                var copyBtn = document.getElementById("test-data-copy-btn");
+                var loadBtn = document.getElementById("test-data-load-btn");
+                if (copyBtn) copyBtn.addEventListener("click", copyTestDataToClipboard);
+                if (loadBtn) loadBtn.addEventListener("click", loadTestDataToExcelSql);
+                var brandTitle = document.getElementById("brand-title");
+                if (brandTitle) brandTitle.addEventListener("click", onBrandTitleClick);
                 resetRecentNavToCommon();
                 renderRecentNav();
                 bridgePhotoPrintHandoffFromStorage();

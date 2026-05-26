@@ -248,8 +248,8 @@
                 display: flex;
             }
             .csv-modal {
-                width: min(640px, 100%);
-                max-height: min(88vh, 720px);
+                width: min(920px, 96vw);
+                max-height: min(92vh, 860px);
                 display: flex;
                 flex-direction: column;
                 border: 1px solid #dbe7ff;
@@ -329,6 +329,47 @@
                 align-items: center;
                 gap: 4px;
             }
+            .csv-tab-wrap {
+                position: relative;
+                display: inline-flex;
+                vertical-align: middle;
+            }
+            .csv-tab-wrap .csv-tab.active {
+                padding-right: 22px;
+            }
+            .csv-tab-close {
+                position: absolute;
+                top: -2px;
+                right: 2px;
+                z-index: 2;
+                width: 16px;
+                height: 16px;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                color: #fff;
+                font-size: 15px;
+                font-weight: 700;
+                line-height: 1;
+                padding: 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.15s ease;
+            }
+            .csv-tab-wrap:hover .csv-tab-close {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .csv-tab-close:hover {
+                background: transparent;
+                color: #fff;
+                opacity: 0.85;
+            }
             .csv-tab:hover:not(.active) {
                 background: #e8eef6;
                 color: #324a76;
@@ -338,20 +379,6 @@
                 color: #fff;
                 font-weight: 600;
                 box-shadow: 0 2px 8px rgba(47, 107, 255, 0.28);
-            }
-            .csv-tab .csv-tab-remove {
-                color: var(--danger);
-                font-size: 16px;
-                font-weight: 700;
-                line-height: 1;
-                padding: 0 2px;
-                cursor: pointer;
-            }
-            .csv-tab.active .csv-tab-remove {
-                color: #ff8a8a;
-            }
-            .csv-tab .csv-tab-remove:hover {
-                color: #d62828;
             }
             button.csv-tab-add {
                 flex-shrink: 0;
@@ -373,7 +400,7 @@
                 color: var(--primary-2);
             }
             #csv-paste-input {
-                min-height: 200px;
+                min-height: 360px;
                 flex: 1;
                 font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
                 font-size: 12px;
@@ -528,58 +555,90 @@
                 width: 72px;
                 text-align: center;
             }
+            .rowno-head {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                line-height: 1.2;
+                white-space: nowrap;
+            }
+            .head-expand-btn {
+                border: none;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+                cursor: pointer;
+                color: #6f7d96;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 0;
+            }
+            .head-expand-btn:hover,
+            .head-expand-btn.is-expanded {
+                color: var(--primary);
+            }
             tbody td.rowno-col {
                 cursor: pointer;
                 user-select: none;
             }
-            .sortable-head {
+            .th-cell {
                 display: flex;
                 align-items: center;
                 gap: 4px;
                 width: 100%;
                 min-width: 0;
             }
-            .sort-btn {
-                flex: 0 0 auto;
-                border: 1px solid #d8e5ff;
-                border-radius: 999px;
-                background: #edf3ff;
-                color: #3c4f78;
-                padding: 2px 8px;
-                font-size: 12px;
-                font-weight: 600;
-                line-height: 1.1;
-                cursor: pointer;
+            .result-wrap.head-expanded .th-cell {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
             }
-            .sort-btn.active {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            .th-actions {
+                display: inline-flex;
+                align-items: center;
+                gap: 2px;
+                flex-shrink: 0;
             }
+            .sort-btn,
             .filter-btn {
                 flex: 0 0 auto;
-                border: 1px solid #d8e5ff;
-                border-radius: 999px;
-                background: #edf3ff;
-                color: #3c4f78;
-                padding: 2px 6px;
-                font-size: 12px;
+                border: none;
+                background: transparent;
+                color: #6f7d96;
+                padding: 0 2px;
+                font-size: 13px;
                 font-weight: 600;
-                line-height: 1.1;
+                line-height: 1;
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 28px;
-                height: 24px;
+                width: auto;
+                height: auto;
+                min-width: 18px;
+                min-height: 18px;
             }
+            .sort-btn:hover,
+            .filter-btn:hover {
+                color: var(--primary);
+                background: transparent;
+            }
+            .sort-btn.active,
             .filter-btn.active {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: var(--primary);
+                background: transparent;
+            }
+            .filter-btn svg {
+                display: block;
             }
             th {
                 position: relative;
+            }
+            .result-wrap.head-expanded thead th:not(.rowno-col) {
+                vertical-align: top;
             }
             .th-name {
                 flex: 1 1 auto;
@@ -588,6 +647,14 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 cursor: pointer;
+            }
+            .result-wrap.head-expanded .th-name {
+                flex: none;
+                width: 100%;
+                overflow: visible;
+                text-overflow: unset;
+                white-space: normal;
+                word-break: break-word;
             }
             .resize-handle {
                 position: absolute;
@@ -976,9 +1043,9 @@
                     <h3 class="title">Excel 当数据库查询</h3>
                 </div>
                 <div class="muted">
-                    上传多个 Excel 后，每个 Excel 视为一个数据库，Sheet 视为表。<br />
-                    也可通过「CSV 文本」粘贴表数据，无需保存文件。<br />
-                    执行 SQL 时默认在当前选中的 Excel 库中查询。
+                    上传多个 Excel 后，每个文件视为一个数据库，Sheet 视为表。<br />
+                    也可通过「CSV 文本」粘贴表数据；两种方式的数据会并列出现在「当前 Excel 库」中，可随时切换查询。<br />
+                    执行 SQL 时在当前选中的库中查询。
                 </div>
                 <div class="field">
                     <label for="excel-files">上传 Excel 文件（支持多选）</label>
@@ -1027,7 +1094,7 @@
                 <div class="table-list" id="table-list">
                     <div class="table-item">尚未加载表。</div>
                 </div>
-                <div class="status" id="status">请上传 Excel 文件，或点击「CSV 文本」粘贴表数据。</div>
+                <div class="status" id="status">请上传 Excel 文件，或点击「CSV 文本」载入粘贴数据；可在「当前 Excel 库」中切换数据源。</div>
             </div>
             <div class="panel">
                 <div class="result-head">
@@ -1077,7 +1144,7 @@
                     <button id="csv-modal-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
                 </div>
                 <div class="csv-modal-body">
-                    <p class="csv-modal-hint">在 Excel 中选中区域后 Ctrl+C 粘贴；支持逗号或制表符。点 CSV1 旁 + 新增，多份时可在末尾 − 删除，载入时一并导入。</p>
+                    <p class="csv-modal-hint">在 Excel 中选中区域后 Ctrl+C 粘贴；支持逗号或制表符。点 + 新增 CSV；当前标签右上角 × 可删除该 CSV，载入时一并导入。</p>
                     <div class="csv-tab-bar" id="csv-tab-bar" role="tablist" aria-label="CSV 文本列表"></div>
                     <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
                     <label for="csv-paste-name">当前 CSV 数据源名称（可选）</label>
@@ -1111,6 +1178,7 @@
             let currentSort = { col: "", dir: "" };
             let lastExecutedSql = "";
             let currentColWidths = {};
+            let resultHeadExpanded = false;
             let currentPage = 1;
             let currentPageSize = 1000;
             const FILTER_VALUE_PAGE_SIZE = 20;
@@ -1125,7 +1193,6 @@
             const SQL_HISTORY_KEY = "excelSqlQueryHistoryV1";
             const SQL_HISTORY_MAX = 10;
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
-            let handoffConsumeStarted = false;
             let csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "" }];
             let activeCsvPasteId = 1;
             let nextCsvPasteId = 2;
@@ -1191,6 +1258,47 @@
                 return name + "_" + i;
             }
 
+            /** Excel 上传：同名文件覆盖原 Excel 库；与 CSV 库重名时自动加后缀 */
+            function resolveExcelDbName(fileName) {
+                var name = sanitizeName(fileName);
+                if (!dbStore[name]) return name;
+                if (dbStore[name].source === "excel") return name;
+                return uniqueDbName(name);
+            }
+
+            function upsertDbStore(dbName, tables, source) {
+                dbStore[dbName] = {
+                    dbName: dbName,
+                    tables: tables,
+                    source: source === "paste" ? "paste" : "excel"
+                };
+            }
+
+            function formatDbSelectLabel(dbName) {
+                var db = dbStore[dbName];
+                if (!db) return dbName;
+                return (db.source === "paste" ? "[CSV] " : "[Excel] ") + dbName;
+            }
+
+            function switchCurrentDb(dbName, options) {
+                options = options || {};
+                if (!dbName || !dbStore[dbName]) return false;
+                currentDb = dbName;
+                refreshDbSelect();
+                refreshTableSelect();
+                alasqlEngineDbKey = "";
+                rebuildEngineWithCurrentDb();
+                refreshTableList();
+                if (options.updateSql !== false) {
+                    const db = dbStore[currentDb];
+                    if (db && db.tables.length) {
+                        document.getElementById("sql-input").value =
+                            "SELECT * FROM [" + db.tables[0].tableName + "];";
+                    }
+                }
+                return true;
+            }
+
             function detectFieldSeparator(text) {
                 var sample = String(text || "").split(/\r?\n/).slice(0, 8).filter(function (line) {
                     return line.trim().length > 0;
@@ -1222,6 +1330,89 @@
                 const rowsCsv = await normalizeImportedRowsAsync(rowsCsvRaw, { date1904: date1904Csv });
                 dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
                 return dbTables;
+            }
+
+            function flattenJsonRowForImport(row) {
+                var o = {};
+                Object.keys(row).forEach(function (k) {
+                    var v = row[k];
+                    if (v === undefined) {
+                        o[k] = "";
+                    } else if (v !== null && typeof v === "object") {
+                        o[k] = JSON.stringify(v);
+                    } else {
+                        o[k] = v;
+                    }
+                });
+                return o;
+            }
+
+            function extractJsonRowsFromParsed(parsed) {
+                if (Array.isArray(parsed)) return parsed;
+                if (parsed && typeof parsed === "object") {
+                    if (Array.isArray(parsed.data)) return parsed.data;
+                    if (Array.isArray(parsed.rows)) return parsed.rows;
+                    if (Array.isArray(parsed.records)) return parsed.records;
+                }
+                return null;
+            }
+
+            async function parseJsonTextToDbTables(text) {
+                const parsed = JSON.parse(String(text || "").trim());
+                const arr = extractJsonRowsFromParsed(parsed);
+                if (!arr || !arr.length) {
+                    throw new Error("JSON 需为非空数组，或含 data/rows/records 数组字段的对象。");
+                }
+                const rowsRaw = arr
+                    .filter(function (r) {
+                        return r && typeof r === "object" && !Array.isArray(r);
+                    })
+                    .map(flattenJsonRowForImport);
+                if (!rowsRaw.length) {
+                    throw new Error("JSON 数组中需至少包含一个对象行。");
+                }
+                await yieldToBrowser();
+                const rows = await normalizeImportedRowsAsync(rowsRaw, { date1904: false });
+                return [{ tableName: "sheet", columns: Object.keys(rows[0]), rows: rows }];
+            }
+
+            async function loadJsonPasteText(jsonText) {
+                const raw = String(jsonText || "").trim();
+                if (!raw) {
+                    setStatus("JSON 内容为空。", true);
+                    return;
+                }
+                if (!window.alasql) {
+                    setStatus("依赖加载失败，请检查网络后重试。", true);
+                    return;
+                }
+                var stopBusy = startDelayedBusy("正在载入 JSON 测试数据…");
+                try {
+                    const dbTables = await parseJsonTextToDbTables(raw);
+                    if (!dbTables.length) {
+                        setStatus("未能从 JSON 解析出有效数据行。", true);
+                        return;
+                    }
+                    const dbName = uniqueDbName("JSON测试数据");
+                    upsertDbStore(dbName, dbTables, "paste");
+                    await yieldToBrowser();
+                    switchCurrentDb(dbName, { updateSql: true });
+                    setStatus(
+                        "已载入 JSON 数据，共 " +
+                            dbTables[0].rows.length +
+                            " 行。当前库：" +
+                            formatDbSelectLabel(currentDb),
+                        false
+                    );
+                    updateCsvTextBtnState();
+                } catch (error) {
+                    setStatus(
+                        "JSON 载入失败：" + (error && error.message ? error.message : "未知错误"),
+                        true
+                    );
+                } finally {
+                    stopBusy();
+                }
             }
 
             function escapeHtml(value) {
@@ -1807,9 +1998,14 @@
 
             function refreshDbSelect() {
                 const select = document.getElementById("db-select");
-                const keys = Object.keys(dbStore);
+                const keys = Object.keys(dbStore).sort(function (a, b) {
+                    var sa = dbStore[a].source === "paste" ? 0 : 1;
+                    var sb = dbStore[b].source === "paste" ? 0 : 1;
+                    if (sa !== sb) return sa - sb;
+                    return a.localeCompare(b, "zh-CN");
+                });
                 if (!keys.length) {
-                    select.innerHTML = '<option value="">请先上传 Excel</option>';
+                    select.innerHTML = '<option value="">请先上传 Excel 或载入 CSV</option>';
                     currentDb = "";
                     return;
                 }
@@ -1817,7 +2013,7 @@
                 keys.forEach(function (dbName) {
                     const op = document.createElement("option");
                     op.value = dbName;
-                    op.textContent = dbName;
+                    op.textContent = formatDbSelectLabel(dbName);
                     select.appendChild(op);
                 });
                 if (!currentDb || !dbStore[currentDb]) currentDb = keys[0];
@@ -2125,7 +2321,26 @@
                     html += "<col style=\"width:" + width + "px\" />";
                 });
                 html += "</colgroup><thead><tr>";
-                html += "<th class=\"rowno-col\">行号</th>";
+                const expandTitle = resultHeadExpanded ? "收起表头" : "展开表头";
+                const expandClass = resultHeadExpanded ? " is-expanded" : "";
+                const arrowSvgBase = " viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"";
+                const expandIcon = resultHeadExpanded
+                    ? "<svg" + arrowSvgBase + ">"
+                    + "<path d=\"M8 8L12 12M6.5 6.5L8 8L8.5 6.5\"/>"
+                    + "<path d=\"M16 8L12 12M17.5 6.5L16 8L15.5 6.5\"/>"
+                    + "<path d=\"M8 16L12 12M6.5 17.5L8 16L8.5 17.5\"/>"
+                    + "<path d=\"M16 16L12 12M17.5 17.5L16 16L15.5 17.5\"/>"
+                    + "</svg>"
+                    : "<svg" + arrowSvgBase + ">"
+                    + "<path d=\"M12 12L8 8M6 9L8 8L9 6\"/>"
+                    + "<path d=\"M12 12L16 8M15 6L16 8L18 9\"/>"
+                    + "<path d=\"M12 12L8 16M6 15L8 16L9 18\"/>"
+                    + "<path d=\"M12 12L16 16M18 15L16 16L15 18\"/>"
+                    + "</svg>";
+                html += "<th class=\"rowno-col\"><div class=\"rowno-head\">"
+                    + "<span>行号</span>"
+                    + "<button class=\"head-expand-btn" + expandClass + "\" type=\"button\" title=\"" + expandTitle + "\">" + expandIcon + "</button>"
+                    + "</div></th>";
                 cols.forEach(function (c) {
                     const active = currentSort.col === c ? " active" : "";
                     const symbol = currentSort.col === c ? (currentSort.dir === "asc" ? "↑" : "↓") : "↕";
@@ -2135,13 +2350,14 @@
                         || !!String(filterRule.dateFrom || "").trim()
                         || !!String(filterRule.dateTo || "").trim();
                     const filterActive = hasFilter ? " active" : "";
-                    html += "<th><span class=\"sortable-head\">"
-                        + "<span class=\"th-name\" title=\"" + escapeHtml(c) + "\">" + escapeHtml(c) + "</span>"
-                        + "<button class=\"sort-btn" + active + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\">" + symbol + "</button>"
+                    const thTitle = resultHeadExpanded ? "" : (" title=\"" + escapeHtml(c) + "\"");
+                    html += "<th><div class=\"th-cell\">"
+                        + "<span class=\"th-name\"" + thTitle + ">" + escapeHtml(c) + "</span>"
+                        + "<span class=\"th-actions\">"
+                        + "<button class=\"sort-btn" + active + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"排序\">" + symbol + "</button>"
                         + "<button class=\"filter-btn" + filterActive + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"筛选\">"
                         + "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3 5h18l-7 8v5l-4 2v-7L3 5z\" fill=\"currentColor\"></path></svg>"
-                        + "</button>"
-                        + "</span><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\"></span></th>";
+                        + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\"></span></th>";
                 });
                 html += "</tr></thead><tbody>";
                 pageRows.forEach(function (r, idx) {
@@ -2158,6 +2374,7 @@
                 });
                 html += "</tbody></table>";
                 wrap.innerHTML = html;
+                wrap.classList.toggle("head-expanded", resultHeadExpanded);
                 bindResultTableEvents();
                 refreshSelectionHighlight();
             }
@@ -2714,6 +2931,11 @@
                 return lines.join("\n");
             }
 
+            function buildCopyTextHeadersOnly() {
+                if (!currentCols.length) return "";
+                return currentCols.join("\t");
+            }
+
             function refreshSelectionHighlight() {
                 var wrap = document.getElementById("result-wrap");
                 if (!wrap) return;
@@ -2744,12 +2966,23 @@
                 copyMenuState = { type: "selection", col: "" };
             }
 
-            function showCopyMenu(x, y, includeHeaderAction) {
+            function showCopyMenu(x, y, options) {
+                var opts = options;
+                if (typeof opts === "boolean") {
+                    opts = { includeHeaderAction: opts };
+                }
+                opts = opts || {};
                 var menu = document.getElementById("copy-menu");
                 if (!menu) return;
-                var html = "<button type=\"button\" data-act=\"copy\">复制</button>";
-                if (includeHeaderAction) {
-                    html += "<button type=\"button\" data-act=\"copy-header\">复制（含表头）</button>";
+                var html = "";
+                if (opts.headerOnlyMenu) {
+                    html = "<button type=\"button\" data-act=\"copy-headers-only\">复制（仅表头）</button>";
+                } else {
+                    html = "<button type=\"button\" data-act=\"copy\">复制</button>";
+                    if (opts.includeHeaderAction) {
+                        html += "<button type=\"button\" data-act=\"copy-header\">复制（含表头）</button>";
+                        html += "<button type=\"button\" data-act=\"copy-headers-only\">复制（仅表头）</button>";
+                    }
                 }
                 menu.innerHTML = html;
                 menu.classList.add("show");
@@ -2820,13 +3053,12 @@
                         return;
                     }
                     await yieldToBrowser();
-                    Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
-                    alasqlEngineDbKey = "";
 
                     let tableCount = 0;
+                    let lastDb = "";
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
-                        const dbName = sanitizeName(file.name);
+                        const dbName = resolveExcelDbName(file.name);
                         const dbTables = [];
 
                         if (/\.csv$/i.test(file.name)) {
@@ -2861,22 +3093,24 @@
                             }
                         }
                         if (dbTables.length) {
-                            dbStore[dbName] = { dbName: dbName, tables: dbTables };
+                            upsertDbStore(dbName, dbTables, "excel");
+                            lastDb = dbName;
                         }
                     }
 
-                    await yieldToBrowser();
-                    refreshDbSelect();
-                    refreshTableSelect();
-                    rebuildEngineWithCurrentDb();
-                    refreshTableList();
-                    setStatus("加载完成：共 " + tableCount + " 张表。当前库：" + currentDb, false);
-
-                    const db = dbStore[currentDb];
-                    if (db && db.tables.length) {
-                        document.getElementById("sql-input").value =
-                            "SELECT * FROM [" + db.tables[0].tableName + "];";
+                    if (!lastDb) {
+                        setStatus("未能从所选文件中解析出有效表数据。", true);
+                        return;
                     }
+
+                    await yieldToBrowser();
+                    switchCurrentDb(lastDb, { updateSql: true });
+                    var otherCount = Object.keys(dbStore).length - 1;
+                    var extra =
+                        otherCount > 0
+                            ? "（库列表中共 " + Object.keys(dbStore).length + " 个，可在「当前 Excel 库」切换 CSV/文件数据）"
+                            : "";
+                    setStatus("Excel 加载完成：共 " + tableCount + " 张表。当前库：" + formatDbSelectLabel(currentDb) + extra, false);
                 } finally {
                     stopBusy();
                 }
@@ -2902,25 +3136,46 @@
                 document.getElementById("csv-paste-name").value = entry.name || "";
             }
 
-            function renderCsvTabButton(entry, showMinus) {
+            function renderCsvTabButton(entry) {
                 var active = entry.id === activeCsvPasteId;
-                var inner = escapeHtml(entry.label);
-                if (showMinus) {
-                    inner += "<span class=\"csv-tab-remove\" data-action=\"remove\" title=\"删除此 CSV\" aria-hidden=\"true\">-</span>";
+                var label = escapeHtml(entry.label);
+                if (active && csvPasteEntries.length > 1) {
+                    return (
+                        "<span class=\"csv-tab-wrap\">" +
+                        "<button type=\"button\" class=\"csv-tab active\" role=\"tab\" aria-selected=\"true\" data-id=\"" +
+                        entry.id +
+                        "\">" +
+                        label +
+                        "</button>" +
+                        "<button type=\"button\" class=\"csv-tab-close\" data-action=\"remove-tab\" title=\"删除当前 CSV\" aria-label=\"删除当前 CSV\">×</button>" +
+                        "</span>"
+                    );
                 }
-                return "<button type=\"button\" class=\"csv-tab" + (active ? " active" : "")
-                    + "\" role=\"tab\" aria-selected=\"" + (active ? "true" : "false")
-                    + "\" data-id=\"" + entry.id + "\">" + inner + "</button>";
+                return (
+                    "<button type=\"button\" class=\"csv-tab" +
+                    (active ? " active" : "") +
+                    "\" role=\"tab\" aria-selected=\"" +
+                    (active ? "true" : "false") +
+                    "\" data-id=\"" +
+                    entry.id +
+                    "\">" +
+                    label +
+                    "</button>"
+                );
+            }
+
+            function renumberCsvPasteLabels() {
+                csvPasteEntries.forEach(function (e, i) {
+                    e.label = "CSV " + (i + 1);
+                });
             }
 
             function renderCsvTabBar() {
                 var bar = document.getElementById("csv-tab-bar");
                 if (!bar || !csvPasteEntries.length) return;
                 var html = "";
-                var lastIdx = csvPasteEntries.length - 1;
                 for (var i = 0; i < csvPasteEntries.length; i++) {
-                    var showMinus = csvPasteEntries.length > 1 && i === lastIdx;
-                    html += renderCsvTabButton(csvPasteEntries[i], showMinus);
+                    html += renderCsvTabButton(csvPasteEntries[i]);
                 }
                 html += "<button type=\"button\" class=\"csv-tab-add\" data-action=\"add\" title=\"新增 CSV 文本\" aria-label=\"新增 CSV 文本\">+</button>";
                 bar.innerHTML = html;
@@ -2962,39 +3217,109 @@
                 }, 0);
             }
 
-            function removeLastCsvPasteEntry() {
-                if (csvPasteEntries.length <= 1) return;
+            function removeCurrentCsvPasteEntry() {
+                if (csvPasteEntries.length <= 1) {
+                    setStatus("至少保留一个 CSV 文本页。", true);
+                    return;
+                }
                 saveActiveCsvPasteEntry();
-                var removed = csvPasteEntries.pop();
-                if (activeCsvPasteId === removed.id) {
-                    activeCsvPasteId = csvPasteEntries[csvPasteEntries.length - 1].id;
+                var idx = -1;
+                for (var i = 0; i < csvPasteEntries.length; i++) {
+                    if (csvPasteEntries[i].id === activeCsvPasteId) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if (idx < 0) return;
+                csvPasteEntries.splice(idx, 1);
+                var nextIdx = Math.min(idx, csvPasteEntries.length - 1);
+                activeCsvPasteId = csvPasteEntries[nextIdx].id;
+                renumberCsvPasteLabels();
+                renderCsvTabBar();
+                loadActiveCsvPasteEntryToUi();
+                updateCsvTextBtnState();
+                var ta = document.getElementById("csv-paste-input");
+                window.setTimeout(function () {
+                    ta.focus();
+                }, 0);
+            }
+
+            function normalizeCsvHandoffText(text) {
+                return String(text || "").replace(/\r\n/g, "\n").trim();
+            }
+
+            function findCsvPasteEntryByText(text) {
+                var norm = normalizeCsvHandoffText(text);
+                if (!norm) return null;
+                for (var i = 0; i < csvPasteEntries.length; i++) {
+                    if (normalizeCsvHandoffText(csvPasteEntries[i].text) === norm) {
+                        return csvPasteEntries[i];
+                    }
+                }
+                return null;
+            }
+
+            /**
+             * 文本工具跳转：已存在相同 CSV 文本则切换标签；否则追加（或复用首个空位）。
+             * @returns {{ added: boolean, duplicate: boolean, entry: object|null }}
+             */
+            function appendOrSelectCsvPasteFromHandoff(text, autoLoad) {
+                saveActiveCsvPasteEntry();
+                var norm = String(text || "");
+                var trimmed = normalizeCsvHandoffText(norm);
+                if (!trimmed) {
+                    return { added: false, duplicate: false, entry: null };
+                }
+
+                var existing = findCsvPasteEntryByText(trimmed);
+                if (existing) {
+                    activeCsvPasteId = existing.id;
+                    renderCsvTabBar();
+                    loadActiveCsvPasteEntryToUi();
+                    updateCsvTextBtnState();
+                    setStatus("CSV 列表中已存在相同内容，已切换到「" + existing.label + "」。", false);
+                    return { added: false, duplicate: true, entry: existing };
+                }
+
+                var entry;
+                var soleEmpty =
+                    csvPasteEntries.length === 1 && !normalizeCsvHandoffText(csvPasteEntries[0].text);
+                if (soleEmpty) {
+                    entry = csvPasteEntries[0];
+                    entry.text = norm;
+                    activeCsvPasteId = entry.id;
+                } else {
+                    var id = nextCsvPasteId++;
+                    var label = "CSV " + (csvPasteEntries.length + 1);
+                    entry = { id: id, label: label, name: "", text: norm };
+                    csvPasteEntries.push(entry);
+                    activeCsvPasteId = id;
                 }
                 renderCsvTabBar();
                 loadActiveCsvPasteEntryToUi();
                 updateCsvTextBtnState();
-            }
+                setStatus("已添加「" + entry.label + "」到 CSV 列表。", false);
 
-            function setCsvPasteFromHandoff(text) {
-                resetCsvPasteEntries();
-                csvPasteEntries[0].text = String(text || "");
-                loadActiveCsvPasteEntryToUi();
-                updateCsvTextBtnState();
-            }
-
-            function consumeTextToExcelSqlHandoff(payload) {
-                if (!payload || !payload.csvText) return;
-                if (handoffConsumeStarted) return;
-                handoffConsumeStarted = true;
-                setCsvPasteFromHandoff(payload.csvText);
-                if (payload.autoLoad) {
+                if (autoLoad) {
                     void loadPastedCsv();
                 } else {
                     openCsvModal();
                 }
+                return { added: true, duplicate: false, entry: entry };
+            }
+
+            function consumeTextToExcelSqlHandoff(payload) {
+                if (!payload) return;
+                if (payload.jsonText) {
+                    void loadJsonPasteText(payload.jsonText);
+                    return;
+                }
+                if (payload.csvText) {
+                    appendOrSelectCsvPasteFromHandoff(payload.csvText, !!payload.autoLoad);
+                }
             }
 
             function tryConsumeHandoffFromStorage() {
-                if (handoffConsumeStarted) return;
                 var raw = null;
                 try {
                     raw = sessionStorage.getItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
@@ -3081,7 +3406,7 @@
                 try {
                     var loaded = 0;
                     var totalRows = 0;
-                    var firstDb = "";
+                    var firstNewDb = "";
                     var failLabels = [];
                     for (let i = 0; i < todo.length; i++) {
                         const entry = todo[i];
@@ -3096,8 +3421,8 @@
                         }
                         const nameInput = (entry.name || "").trim();
                         const dbName = uniqueDbName(nameInput || entry.label || "粘贴数据");
-                        dbStore[dbName] = { dbName: dbName, tables: dbTables };
-                        if (!firstDb) firstDb = dbName;
+                        upsertDbStore(dbName, dbTables, "paste");
+                        if (!firstNewDb) firstNewDb = dbName;
                         loaded++;
                         totalRows += dbTables[0].rows.length;
                         await yieldToBrowser();
@@ -3106,23 +3431,24 @@
                         setStatus("未能解析出有效数据行，请检查各 CSV 是否包含表头与至少一行数据。", true);
                         return;
                     }
-                    currentDb = firstDb;
-                    alasqlEngineDbKey = "";
                     await yieldToBrowser();
-                    refreshDbSelect();
-                    refreshTableSelect();
-                    rebuildEngineWithCurrentDb();
-                    refreshTableList();
-                    var statusMsg = "已载入 " + loaded + " 个 CSV 数据源，共 " + totalRows + " 行。当前库：" + currentDb;
+                    var targetDb =
+                        firstNewDb && dbStore[firstNewDb] ? firstNewDb : currentDb;
+                    switchCurrentDb(targetDb, { updateSql: true });
+                    var statusMsg =
+                        "已载入 " +
+                        loaded +
+                        " 个 CSV 数据源，共 " +
+                        totalRows +
+                        " 行。当前库：" +
+                        formatDbSelectLabel(currentDb);
+                    if (Object.keys(dbStore).length > loaded) {
+                        statusMsg += "（可通过「当前 Excel 库」切换已上传文件与其它 CSV）";
+                    }
                     if (failLabels.length) {
                         statusMsg += "（" + failLabels.join("、") + " 解析失败已跳过）";
                     }
                     setStatus(statusMsg, false);
-                    const db = dbStore[currentDb];
-                    if (db && db.tables.length) {
-                        document.getElementById("sql-input").value =
-                            "SELECT * FROM [" + db.tables[0].tableName + "];";
-                    }
                     updateCsvTextBtnState();
                     closeCsvModal();
                 } catch (error) {
@@ -3140,7 +3466,7 @@
                     return;
                 }
                 if (!currentDb || !dbStore[currentDb]) {
-                    setStatus("请先上传并选择 Excel 库。", true);
+                    setStatus("请先上传 Excel 或载入 CSV，并选择要查询的库。", true);
                     return;
                 }
                 var stopBusy = startDelayedBusy("正在执行 SQL…");
@@ -3188,7 +3514,7 @@
                 resetCsvPasteEntries();
                 closeCsvModal();
                 document.getElementById("sql-input").value = "";
-                document.getElementById("db-select").innerHTML = '<option value="">请先上传 Excel</option>';
+                document.getElementById("db-select").innerHTML = '<option value="">请先上传 Excel 或载入 CSV</option>';
                 document.getElementById("table-select").innerHTML = '<option value="">请先选择库</option>';
                 document.getElementById("result-wrap").innerHTML = '<div class="empty">暂无数据</div>';
                 document.getElementById("view-sql").value = "";
@@ -3232,10 +3558,10 @@
                 if (e.target.id === "csv-modal-mask") closeCsvModal();
             });
             document.getElementById("csv-tab-bar").addEventListener("click", function (e) {
-                if (e.target.closest("[data-action=\"remove\"]")) {
+                if (e.target.closest("[data-action=\"remove-tab\"]")) {
                     e.preventDefault();
                     e.stopPropagation();
-                    removeLastCsvPasteEntry();
+                    removeCurrentCsvPasteEntry();
                     return;
                 }
                 var addBtn = e.target.closest("[data-action=\"add\"]");
@@ -3288,14 +3614,7 @@
             });
             tryConsumeHandoffFromStorage();
             document.getElementById("db-select").addEventListener("change", function (e) {
-                currentDb = e.target.value;
-                refreshTableSelect();
-                alasqlEngineDbKey = "";
-                refreshTableList();
-                const db = dbStore[currentDb];
-                if (db && db.tables.length) {
-                    document.getElementById("sql-input").value = "SELECT * FROM [" + db.tables[0].tableName + "];";
-                }
+                switchCurrentDb(e.target.value, { updateSql: true });
             });
             document.getElementById("run-sql-btn").addEventListener("click", function () {
                 void runSql();
@@ -3399,6 +3718,13 @@
                 e.stopPropagation();
             });
             document.getElementById("result-wrap").addEventListener("click", function (e) {
+                const expandBtn = e.target.closest(".head-expand-btn");
+                if (expandBtn) {
+                    e.stopPropagation();
+                    resultHeadExpanded = !resultHeadExpanded;
+                    renderResultTable();
+                    return;
+                }
                 const sortBtn = e.target.closest(".sort-btn");
                 if (sortBtn) {
                     e.stopPropagation();
@@ -3459,26 +3785,35 @@
             });
             document.getElementById("result-wrap").addEventListener("contextmenu", function (e) {
                 const thName = e.target.closest(".th-name");
+                const theadTh = e.target.closest("thead th");
                 const rowNoCell = e.target.closest("td.rowno-col");
                 const dataCell = e.target.closest("td.data-cell");
-                if (!thName && !rowNoCell && !dataCell) return;
+                if (!thName && !theadTh && !rowNoCell && !dataCell) return;
                 e.preventDefault();
-                var includeHeaderAction = false;
                 if (thName) {
                     copyMenuState = { type: "column", col: String(thName.textContent || "").trim() };
-                    includeHeaderAction = true;
-                } else {
-                    copyMenuState = { type: "selection", col: "" };
-                    if (!rangeSelection) return;
-                    includeHeaderAction = rangeSelection.mode === "row";
+                    showCopyMenu(e.clientX, e.clientY, { includeHeaderAction: true });
+                    return;
                 }
-                showCopyMenu(e.clientX, e.clientY, includeHeaderAction);
+                if (theadTh) {
+                    copyMenuState = { type: "headers", col: "" };
+                    showCopyMenu(e.clientX, e.clientY, { headerOnlyMenu: true });
+                    return;
+                }
+                copyMenuState = { type: "selection", col: "" };
+                if (!rangeSelection) return;
+                showCopyMenu(e.clientX, e.clientY, {
+                    includeHeaderAction: rangeSelection.mode === "row"
+                });
             });
             document.getElementById("copy-menu").addEventListener("click", function (e) {
                 var actBtn = e.target.closest("button[data-act]");
                 if (!actBtn) return;
                 var act = actBtn.getAttribute("data-act");
-                if (copyMenuState.type === "column" && copyMenuState.col) {
+                if (act === "copy-headers-only") {
+                    var headerText = buildCopyTextHeadersOnly();
+                    if (headerText) writeClipboardText(headerText, "已复制表头");
+                } else if (copyMenuState.type === "column" && copyMenuState.col) {
                     if (act === "copy") {
                         var colText = buildCopyTextByColumn(copyMenuState.col, false);
                         if (colText) writeClipboardText(colText, "已复制该列全部数据");

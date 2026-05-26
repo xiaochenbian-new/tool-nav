@@ -63,7 +63,7 @@
                 cursor: pointer;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
             }
-            .mini-input { width: 58px; padding: 4px 6px; font-size: 11px; }
+            .mini-input { width: 52px; padding: 4px 6px; font-size: 11px; }
             .field-line {
                 display: flex;
                 flex-wrap: nowrap;
@@ -80,6 +80,14 @@
             .field-line button {
                 flex: 0 0 auto;
                 white-space: nowrap;
+            }
+            .format-tag {
+                font-size: 11px;
+                color: #2f6bff;
+                background: #edf3ff;
+                border: 1px solid #d8e5ff;
+                border-radius: 999px;
+                padding: 2px 8px;
             }
             .desc {
                 margin-top: 4px;
@@ -138,12 +146,16 @@
                 <h3>表达式编辑</h3>
                 <div class="row">
                     <label for="cronExpr">Cron 表达式</label>
-                    <input id="cronExpr" type="text" value="*/5 * * * *" />
+                    <input id="cronExpr" type="text" value="0 */5 * * * *" />
                     <button type="button" id="parseBtn">解析</button>
                 </div>
+                <div class="row">
+                    <span id="formatTag" class="format-tag">6 位：秒 分 时 日 月 周</span>
+                </div>
                 <div class="field-line">
-                    <label>分钟</label><input id="fMin" class="mini-input" type="text" value="*/5" />
-                    <label>小时</label><input id="fHour" class="mini-input" type="text" value="*" />
+                    <label>秒</label><input id="fSec" class="mini-input" type="text" value="0" />
+                    <label>分</label><input id="fMin" class="mini-input" type="text" value="*/5" />
+                    <label>时</label><input id="fHour" class="mini-input" type="text" value="*" />
                     <label>日</label><input id="fDay" class="mini-input" type="text" value="*" />
                     <label>月</label><input id="fMonth" class="mini-input" type="text" value="*" />
                     <label>周</label><input id="fWeek" class="mini-input" type="text" value="*" />
@@ -153,12 +165,23 @@
                     <label>快捷</label>
                     <select id="preset">
                         <option value="">选择常用表达式</option>
-                        <option value="* * * * *">每分钟</option>
-                        <option value="*/5 * * * *">每5分钟</option>
-                        <option value="0 * * * *">每小时整点</option>
-                        <option value="0 0 * * *">每天凌晨</option>
-                        <option value="0 9 * * 1">每周一 09:00</option>
-                        <option value="0 0 1 * *">每月1日</option>
+                        <optgroup label="6 位（含秒）">
+                            <option value="*/5 * * * * *">每 5 秒</option>
+                            <option value="0 * * * * *">每分钟（第 0 秒）</option>
+                            <option value="0 */5 * * * *">每 5 分钟</option>
+                            <option value="0 0 * * * *">每小时整点</option>
+                            <option value="0 0 0 * * *">每天 00:00:00</option>
+                            <option value="0 0 9 * * 1">每周一 09:00:00</option>
+                            <option value="0 0 0 1 * *">每月 1 日 00:00:00</option>
+                        </optgroup>
+                        <optgroup label="5 位（Unix，秒固定为 0）">
+                            <option value="* * * * *">每分钟</option>
+                            <option value="*/5 * * * *">每 5 分钟</option>
+                            <option value="0 * * * *">每小时整点</option>
+                            <option value="0 0 * * *">每天凌晨</option>
+                            <option value="0 9 * * 1">每周一 09:00</option>
+                            <option value="0 0 1 * *">每月 1 日</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div id="desc" class="desc"></div>
@@ -170,20 +193,25 @@
             <div class="panel right-panel">
                 <h3>规则说明</h3>
                 <div class="card">
-                    <h4>格式说明（5 位）</h4>
-                    <p><strong>分钟 小时 日 月 星期</strong><br>例如：<code>*/15 9-18 * * 1-5</code></p>
+                    <h4>6 位格式（推荐）</h4>
+                    <p><strong>秒 分 时 日 月 周</strong><br>例如：<code>0 */15 9-18 * * 1-5</code>（工作日 9–18 点每 15 分钟）</p>
                     <ul>
-                        <li>分钟：0-59</li>
-                        <li>小时：0-23</li>
-                        <li>日期：1-31</li>
-                        <li>月份：1-12</li>
-                        <li>星期：0-6（0=周日）</li>
+                        <li>秒：0–59</li>
+                        <li>分：0–59</li>
+                        <li>时：0–23</li>
+                        <li>日：1–31</li>
+                        <li>月：1–12</li>
+                        <li>周：0–6（0=周日，7 视为周日）</li>
                     </ul>
+                </div>
+                <div class="card">
+                    <h4>5 位格式（Unix / 传统 crontab）</h4>
+                    <p><strong>分 时 日 月 周</strong>（无秒字段，解析时秒视为 <code>0</code>）<br>例如：<code>*/5 * * * *</code></p>
                 </div>
                 <div class="card">
                     <h4>特殊符号</h4>
                     <ul>
-                        <li><code>*</code> 任意值，如 <code>* * * * *</code></li>
+                        <li><code>*</code> 任意值</li>
                         <li><code>,</code> 枚举，如 <code>1,15,30</code></li>
                         <li><code>-</code> 范围，如 <code>9-18</code></li>
                         <li><code>/</code> 步长，如 <code>*/5</code>、<code>1-10/2</code></li>
@@ -192,17 +220,19 @@
                 <div class="card">
                     <h4>常见示例</h4>
                     <ul>
-                        <li><code>* * * * *</code> 每分钟执行</li>
-                        <li><code>*/10 * * * *</code> 每 10 分钟执行</li>
-                        <li><code>0 * * * *</code> 每小时整点执行</li>
-                        <li><code>0 0 * * *</code> 每天 00:00 执行</li>
-                        <li><code>30 8 * * 1-5</code> 工作日 08:30 执行</li>
-                        <li><code>0 0 1 * *</code> 每月 1 日执行</li>
+                        <li><code>*/5 * * * * *</code> 每 5 秒</li>
+                        <li><code>0 */10 * * * *</code> 每 10 分钟</li>
+                        <li><code>0 0 12 * * *</code> 每天 12:00:00</li>
+                        <li><code>30 8 * * 1-5</code> 工作日 08:30（5 位）</li>
+                        <li><code>0 0 1 * *</code> 每月 1 日 00:00（5 位）</li>
                     </ul>
                 </div>
             </div>
         </div>
         <script>
+            const FIELD_LABELS_6 = ["秒", "分", "时", "日", "月", "周"];
+            const FIELD_LABELS_5 = ["分", "时", "日", "月", "周"];
+
             function parseFieldPart(part, min, max) {
                 if (part === "*") return { any: true, set: null };
                 const values = new Set();
@@ -244,7 +274,7 @@
                     }
                     const v = Number(token);
                     if (Number.isNaN(v)) return null;
-                    if (max === 6 && v === 7) {
+                    if (max === 6 && (v === 7 || v === 0)) {
                         values.add(0);
                         continue;
                     }
@@ -259,22 +289,64 @@
                 return spec.set.has(value);
             }
 
-            function parseCron(expr) {
-                const parts = expr.trim().split(/\s+/);
-                if (parts.length !== 5) return null;
+            function buildRulesFromParts(parts, mode) {
+                if (mode === 6) {
+                    const rules = {
+                        sec: parseFieldPart(parts[0], 0, 59),
+                        min: parseFieldPart(parts[1], 0, 59),
+                        hour: parseFieldPart(parts[2], 0, 23),
+                        day: parseFieldPart(parts[3], 1, 31),
+                        month: parseFieldPart(parts[4], 1, 12),
+                        week: parseFieldPart(parts[5], 0, 6)
+                    };
+                    if (!rules.sec || !rules.min || !rules.hour || !rules.day || !rules.month || !rules.week) {
+                        return null;
+                    }
+                    return rules;
+                }
                 const rules = {
+                    sec: parseFieldPart("0", 0, 59),
                     min: parseFieldPart(parts[0], 0, 59),
                     hour: parseFieldPart(parts[1], 0, 23),
                     day: parseFieldPart(parts[2], 1, 31),
                     month: parseFieldPart(parts[3], 1, 12),
                     week: parseFieldPart(parts[4], 0, 6)
                 };
-                if (!rules.min || !rules.hour || !rules.day || !rules.month || !rules.week) return null;
-                return { parts: parts, rules: rules };
+                if (!rules.min || !rules.hour || !rules.day || !rules.month || !rules.week) {
+                    return null;
+                }
+                return rules;
+            }
+
+            function parseCron(expr) {
+                const parts = expr.trim().split(/\s+/).filter(Boolean);
+                if (parts.length === 5) {
+                    const rules = buildRulesFromParts(parts, 5);
+                    if (!rules) return null;
+                    return {
+                        mode: 5,
+                        parts: parts,
+                        rules: rules,
+                        labels: FIELD_LABELS_5
+                    };
+                }
+                if (parts.length === 6) {
+                    const rules = buildRulesFromParts(parts, 6);
+                    if (!rules) return null;
+                    return {
+                        mode: 6,
+                        parts: parts,
+                        rules: rules,
+                        labels: FIELD_LABELS_6
+                    };
+                }
+                return null;
             }
 
             function buildExprFromFields() {
-                const v = [fMin.value, fHour.value, fDay.value, fMonth.value, fWeek.value].map(function (x) { return x.trim() || "*"; });
+                const v = [fSec.value, fMin.value, fHour.value, fDay.value, fMonth.value, fWeek.value].map(function (x) {
+                    return (x || "").trim() || "*";
+                });
                 cronExpr.value = v.join(" ");
                 parseAndRender();
             }
@@ -285,6 +357,7 @@
 
             function isMatch(rules, date) {
                 return (
+                    fieldMatch(rules.sec, date.getSeconds()) &&
                     fieldMatch(rules.min, date.getMinutes()) &&
                     fieldMatch(rules.hour, date.getHours()) &&
                     fieldMatch(rules.day, date.getDate()) &&
@@ -297,62 +370,106 @@
                 const result = [];
                 const now = new Date();
                 let cursor = new Date(now.getTime());
-                cursor.setSeconds(0, 0);
-                cursor.setMinutes(cursor.getMinutes() + 1);
+                cursor.setMilliseconds(0);
+                cursor.setSeconds(cursor.getSeconds() + 1);
+
+                const stepUnit = parsed.mode === 6 ? "second" : "minute";
                 let guard = 0;
-                while (result.length < count && guard < 600000) {
+                const maxGuard = stepUnit === "second" ? 5000000 : 600000;
+
+                while (result.length < count && guard < maxGuard) {
                     if (isMatch(parsed.rules, cursor)) {
                         result.push(new Date(cursor.getTime()));
                     }
-                    cursor.setMinutes(cursor.getMinutes() + 1);
+                    if (stepUnit === "second") {
+                        cursor.setSeconds(cursor.getSeconds() + 1);
+                    } else {
+                        cursor.setSeconds(0);
+                        cursor.setMinutes(cursor.getMinutes() + 1);
+                    }
                     guard++;
                 }
                 return result;
             }
 
-            function formatDate(d) {
+            function formatDate(d, withSeconds) {
                 function p(n) { return String(n).padStart(2, "0"); }
-                return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+                var base = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " "
+                    + p(d.getHours()) + ":" + p(d.getMinutes());
+                return withSeconds ? base + ":" + p(d.getSeconds()) : base;
+            }
+
+            function syncFieldInputs(parsed) {
+                if (parsed.mode === 6) {
+                    fSec.value = parsed.parts[0];
+                    fMin.value = parsed.parts[1];
+                    fHour.value = parsed.parts[2];
+                    fDay.value = parsed.parts[3];
+                    fMonth.value = parsed.parts[4];
+                    fWeek.value = parsed.parts[5];
+                } else {
+                    fSec.value = "0";
+                    fMin.value = parsed.parts[0];
+                    fHour.value = parsed.parts[1];
+                    fDay.value = parsed.parts[2];
+                    fMonth.value = parsed.parts[3];
+                    fWeek.value = parsed.parts[4];
+                }
             }
 
             function parseAndRender() {
                 const expr = cronExpr.value.trim();
                 const parsed = parseCron(expr);
                 if (!parsed) {
-                    desc.textContent = "表达式无效：仅支持 5 位 Cron（分钟 小时 日 月 周），并支持 * / - ,";
+                    desc.textContent = "表达式无效：支持 5 位（分 时 日 月 周）或 6 位（秒 分 时 日 月 周），字段间用空格分隔，支持 * / - ,";
+                    formatTag.textContent = "格式未识别";
                     nextRuns.innerHTML = "";
                     return;
                 }
-                fMin.value = parsed.parts[0];
-                fHour.value = parsed.parts[1];
-                fDay.value = parsed.parts[2];
-                fMonth.value = parsed.parts[3];
-                fWeek.value = parsed.parts[4];
 
-                desc.innerHTML = [
-                    explainPart("分钟", parsed.parts[0]),
-                    explainPart("小时", parsed.parts[1]),
-                    explainPart("日期", parsed.parts[2]),
-                    explainPart("月份", parsed.parts[3]),
-                    explainPart("星期", parsed.parts[4])
-                ].join("<br>");
+                syncFieldInputs(parsed);
 
+                formatTag.textContent = parsed.mode === 6
+                    ? "6 位：秒 分 时 日 月 周"
+                    : "5 位：分 时 日 月 周（秒=0）";
+
+                const lines = [];
+                if (parsed.mode === 6) {
+                    for (let i = 0; i < 6; i++) {
+                        lines.push(explainPart(parsed.labels[i], parsed.parts[i]));
+                    }
+                } else {
+                    lines.push(explainPart("秒", "0（5 位表达式默认）"));
+                    for (let j = 0; j < 5; j++) {
+                        lines.push(explainPart(parsed.labels[j], parsed.parts[j]));
+                    }
+                }
+                desc.innerHTML = lines.join("<br>");
+
+                const withSec = parsed.mode === 6;
                 const list = nextRunTimes(parsed, 5);
-                nextRuns.innerHTML = list.map(function (d) { return "<li>" + formatDate(d) + "</li>"; }).join("");
+                nextRuns.innerHTML = list.length
+                    ? list.map(function (d) { return "<li>" + formatDate(d, withSec) + "</li>"; }).join("")
+                    : "<li>未能在合理时间内计算出下次执行时间</li>";
             }
 
             const cronExpr = document.getElementById("cronExpr");
+            const fSec = document.getElementById("fSec");
             const fMin = document.getElementById("fMin");
             const fHour = document.getElementById("fHour");
             const fDay = document.getElementById("fDay");
             const fMonth = document.getElementById("fMonth");
             const fWeek = document.getElementById("fWeek");
+            const formatTag = document.getElementById("formatTag");
             const desc = document.getElementById("desc");
             const nextRuns = document.getElementById("nextRuns");
             const preset = document.getElementById("preset");
 
             document.getElementById("parseBtn").addEventListener("click", parseAndRender);
             document.getElementById("buildBtn").addEventListener("click", buildExprFromFields);
+            cronExpr.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") parseAndRender();
+            });
             preset.addEventListener("change", function () {
                 if (preset.value) {
                     cronExpr.value = preset.value;
