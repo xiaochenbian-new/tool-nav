@@ -106,9 +106,88 @@
         };
     }
 
+    function getHolidaysForYear(year) {
+        var plan = YEAR_PLANS[year];
+        if (!plan) return [];
+        return plan.holidays.map(function (item) {
+            return {
+                name: item.name,
+                start: item.start,
+                end: item.end,
+                year: year
+            };
+        });
+    }
+
+    function getAllHolidayOptions() {
+        var list = [];
+        Object.keys(YEAR_PLANS)
+            .sort(function (a, b) {
+                return +a - +b;
+            })
+            .forEach(function (year) {
+                getHolidaysForYear(+year).forEach(function (item) {
+                    list.push({
+                        name: item.name,
+                        start: item.start,
+                        end: item.end,
+                        year: +year,
+                        label: year + "年" + item.name
+                    });
+                });
+            });
+        return list;
+    }
+
+    function daysBetweenYmd(fromYmd, toYmd) {
+        var a = parseYmd(fromYmd);
+        var b = parseYmd(toYmd);
+        a.setHours(0, 0, 0, 0);
+        b.setHours(0, 0, 0, 0);
+        return Math.round((b.getTime() - a.getTime()) / 86400000);
+    }
+
+    /** 距离下一法定节假日（或当前假期）的天数 */
+    function getNextHolidayCountdown(fromDate) {
+        var d = fromDate instanceof Date ? fromDate : new Date();
+        var todayYmd = ymdFromDate(d);
+        var all = getAllHolidayOptions();
+        var i;
+        for (i = 0; i < all.length; i++) {
+            var item = all[i];
+            if (item.end < todayYmd) continue;
+            if (todayYmd >= item.start && todayYmd <= item.end) {
+                return {
+                    name: item.name,
+                    year: item.year,
+                    label: item.label,
+                    start: item.start,
+                    daysLeft: 0,
+                    inProgress: true
+                };
+            }
+            var left = daysBetweenYmd(todayYmd, item.start);
+            if (left >= 0) {
+                return {
+                    name: item.name,
+                    year: item.year,
+                    label: item.label,
+                    start: item.start,
+                    daysLeft: left,
+                    inProgress: false
+                };
+            }
+        }
+        return null;
+    }
+
     global.ToolHolidays = {
         get: get,
         getDayMeta: getDayMeta,
-        isWeekend: isWeekend
+        isWeekend: isWeekend,
+        getHolidaysForYear: getHolidaysForYear,
+        getAllHolidayOptions: getAllHolidayOptions,
+        getNextHolidayCountdown: getNextHolidayCountdown,
+        parseYmd: parseYmd
     };
 })(typeof window !== "undefined" ? window : this);

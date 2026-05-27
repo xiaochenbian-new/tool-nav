@@ -286,72 +286,21 @@
             .calendar-panel {
                 display: none;
                 position: fixed;
-                width: 420px;
-                padding: 12px 14px;
+                width: 400px;
+                max-width: calc(100vw - 16px);
+                padding: 8px 10px 10px;
                 border: 1px solid #d8e5ff;
-                border-radius: 12px;
+                border-radius: 10px;
                 background: #fff;
-                box-shadow: 0 10px 32px rgba(36, 90, 190, 0.16);
+                box-shadow: 0 8px 24px rgba(36, 90, 190, 0.14);
                 z-index: 10000;
                 box-sizing: border-box;
             }
             .calendar-panel.visible {
                 display: block;
             }
-            .calendar-panel.visible.has-cal-content {
-                min-height: 400px;
-            }
             #calendar-panel-root {
                 width: 100%;
-            }
-            #calendar-panel .tool-cal {
-                gap: 10px;
-            }
-            #calendar-panel .tool-cal-weekday {
-                font-size: 13px;
-                padding: 4px 0;
-            }
-            #calendar-panel .tool-cal-day {
-                min-height: 50px;
-                border-radius: 8px;
-                padding: 4px 2px;
-            }
-            #calendar-panel .tool-cal-day-num {
-                font-size: 14px;
-            }
-            #calendar-panel .tool-cal-day-sub {
-                font-size: 10px;
-            }
-            #calendar-panel .tool-cal-nav {
-                width: 32px;
-                height: 32px;
-                font-size: 20px;
-            }
-            #calendar-panel .tool-cal-year-select,
-            #calendar-panel .tool-cal-month-select {
-                font-size: 13px;
-                padding: 4px 6px;
-            }
-            #calendar-panel .tool-cal-year-select {
-                width: 84px;
-            }
-            #calendar-panel .tool-cal-month-select {
-                width: 128px;
-            }
-            #calendar-panel .tool-cal-weekday-en {
-                font-size: 10px;
-            }
-            #calendar-panel .tool-cal-today-btn {
-                font-size: 13px;
-                padding: 4px 12px;
-            }
-            #calendar-panel .tool-cal-info {
-                font-size: 13px;
-                padding-top: 10px;
-            }
-            #calendar-panel .tool-cal-info-label {
-                font-size: 12px;
-                min-width: 56px;
             }
             .tool-cal-loading {
                 padding: 12px;
@@ -926,8 +875,44 @@
 
                 window.resetCalendarToToday = function () {
                     if (window.__calInstance && typeof window.__calInstance.goToday === "function") {
-                        window.__calInstance.goToday();
+                        window.__calInstance.goToday(false);
                     }
+                };
+
+                window.__calendarPanelTickId = null;
+
+                window.stopCalendarPanelTick = function () {
+                    if (window.__calendarPanelTickId != null) {
+                        clearInterval(window.__calendarPanelTickId);
+                        window.__calendarPanelTickId = null;
+                    }
+                    var cal = window.__calInstance;
+                    if (cal && typeof cal.pauseLiveTime === "function") {
+                        cal.pauseLiveTime();
+                    } else if (cal && typeof cal.stopInfoTick === "function") {
+                        cal.stopInfoTick();
+                    }
+                };
+
+                window.startCalendarPanelTick = function () {
+                    window.stopCalendarPanelTick();
+                    function tick() {
+                        var panel = document.getElementById("calendar-panel");
+                        if (!panel || !panel.classList.contains("visible")) {
+                            window.stopCalendarPanelTick();
+                            return;
+                        }
+                        var cal = window.__calInstance;
+                        if (cal && typeof cal.syncInfo === "function") {
+                            cal.syncInfo();
+                        }
+                    }
+                    tick();
+                    window.__calendarPanelTickId = setInterval(tick, 1000);
+                };
+
+                window.resumeCalendarLiveTime = function () {
+                    window.startCalendarPanelTick();
                 };
 
                 window.ensureCalendarMounted = function () {
@@ -937,15 +922,15 @@
                     ensureCalendarUiInBody();
                     var calEl = root.querySelector(".tool-cal");
                     var hasGrid = root.querySelector(".tool-cal-grid button");
-                    var isLegacyCompact = calEl && calEl.classList.contains("tool-cal-compact");
-                    if (calEl && hasGrid && !isLegacyCompact) {
+                    var isLegacyLayout = calEl && !calEl.querySelector(".tool-cal-head");
+                    if (calEl && hasGrid && !isLegacyLayout) {
                         if (panel) panel.classList.add("has-cal-content");
-                        if (window.__calInstance && window.__calInstance.refresh) {
-                            window.__calInstance.refresh();
+                        if (window.__calInstance) {
+                            return window.__calInstance;
                         }
-                        return window.__calInstance;
+                        root.innerHTML = "";
                     }
-                    if (isLegacyCompact) {
+                    if (isLegacyLayout) {
                         root.innerHTML = "";
                     }
                     if (typeof ToolCalendar === "undefined") {
@@ -955,7 +940,7 @@
                     }
                     try {
                         root.innerHTML = "";
-                        window.__calInstance = ToolCalendar.mount(root, { compact: false });
+                        window.__calInstance = ToolCalendar.mount(root, { compact: true });
                         if (root.querySelector(".tool-cal-grid button")) {
                             if (panel) panel.classList.add("has-cal-content");
                         } else {
@@ -971,44 +956,14 @@
                     }
                 };
 
-                function setCalendarVisible(show) {
-                    var panel = document.getElementById("calendar-panel");
-                    var toggle = document.getElementById("calendar-toggle");
-                    if (!panel) return;
-                    if (show) {
-                        setCalendarBackdropVisible(true);
-                        panel.classList.add("visible");
-                        panel.setAttribute("aria-hidden", "false");
-                        if (toggle) toggle.classList.add("active");
-                        window.__positionCalendarPanel();
-                        window.ensureCalendarMounted();
-                        window.resetCalendarToToday();
-                    } else {
-                        setCalendarBackdropVisible(false);
-                        panel.classList.remove("visible");
-                        panel.setAttribute("aria-hidden", "true");
-                        if (toggle) toggle.classList.remove("active");
-                        window.resetCalendarToToday();
-                    }
-                }
-
-                window.__toggleCal = function (e) {
-                    if (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                    var panel = document.getElementById("calendar-panel");
-                    if (!panel) return;
-                    setCalendarVisible(!panel.classList.contains("visible"));
-                };
-
                 document.addEventListener("DOMContentLoaded", function () {
                     ensureCalendarUiInBody();
                     var backdrop = document.getElementById("calendar-backdrop");
                     if (backdrop) {
-                        backdrop.addEventListener("pointerdown", function (e) {
-                            e.preventDefault();
-                            setCalendarVisible(false);
+                        backdrop.addEventListener("pointerdown", function () {
+                            if (typeof window.hideCalendarPanel === "function" && window.isCalendarPanelVisible()) {
+                                window.hideCalendarPanel();
+                            }
                         });
                     }
                     window.ensureCalendarMounted();
@@ -1197,17 +1152,25 @@
             }
 
             function bindFrameCalendarDismiss(toolId) {
+                const frame = getToolFrame(toolId);
                 const doc = getFrameDoc(toolId);
+                const dismiss = function () {
+                    if (!isCalendarPanelVisible()) return;
+                    hideCalendarPanel();
+                };
+                if (frame && frame.getAttribute("data-cal-dismiss-frame") !== "1") {
+                    try {
+                        frame.setAttribute("data-cal-dismiss-frame", "1");
+                        frame.addEventListener("pointerdown", dismiss, true);
+                    } catch (e) {
+                        // Ignore bind failures.
+                    }
+                }
                 if (!doc || doc.documentElement.getAttribute("data-calendar-dismiss-bound") === "1") return;
                 try {
                     doc.documentElement.setAttribute("data-calendar-dismiss-bound", "1");
-                    doc.addEventListener(
-                        "pointerdown",
-                        function () {
-                            if (isCalendarPanelVisible()) hideCalendarPanel();
-                        },
-                        true
-                    );
+                    doc.addEventListener("pointerdown", dismiss, true);
+                    doc.addEventListener("mousedown", dismiss, true);
                 } catch (e) {
                     // Ignore cross-origin or bind failures.
                 }
@@ -1258,19 +1221,47 @@
 
             function resetCalendarToToday() {
                 if (window.__calInstance && typeof window.__calInstance.goToday === "function") {
-                    window.__calInstance.goToday();
+                    window.__calInstance.goToday(false);
+                }
+            }
+
+            function resumeCalendarLiveTime() {
+                if (typeof window.resumeCalendarLiveTime === "function") {
+                    window.resumeCalendarLiveTime();
+                }
+            }
+
+            function stopCalendarPanelTick() {
+                if (typeof window.stopCalendarPanelTick === "function") {
+                    window.stopCalendarPanelTick();
+                }
+            }
+
+            function startCalendarPanelTick() {
+                if (typeof window.startCalendarPanelTick === "function") {
+                    window.startCalendarPanelTick();
                 }
             }
 
             function hideCalendarPanel() {
                 const el = document.getElementById("calendar-panel");
                 const toggle = document.getElementById("calendar-toggle");
+                try {
+                    stopCalendarPanelTick();
+                } catch (e) {
+                    // Ignore tick stop failures.
+                }
                 setCalendarBackdropVisible(false);
-                if (!el) return;
-                el.classList.remove("visible");
-                el.setAttribute("aria-hidden", "true");
+                if (el) {
+                    el.classList.remove("visible");
+                    el.setAttribute("aria-hidden", "true");
+                }
                 if (toggle) toggle.classList.remove("active");
-                resetCalendarToToday();
+                try {
+                    resetCalendarToToday();
+                } catch (e) {
+                    console.warn("日历关闭清理失败", e);
+                }
             }
             window.hideCalendarPanel = hideCalendarPanel;
             window.isCalendarPanelVisible = isCalendarPanelVisible;
@@ -1291,6 +1282,7 @@
                 if (typeof window.__positionCalendarPanel === "function") {
                     window.__positionCalendarPanel();
                 }
+                if (currentId) bindFrameCalendarDismiss(currentId);
                 bindAllFramesCalendarDismiss();
                 if (typeof window.ensureCalendarMounted === "function") {
                     const inst = window.ensureCalendarMounted();
@@ -1301,8 +1293,17 @@
                         root.innerHTML = '<div class="tool-cal-loading">日历脚本未就绪，请刷新页面</div>';
                     }
                 }
-                resetCalendarToToday();
+                var cal = window.__calInstance;
+                if (cal && typeof cal.goToday === "function") {
+                    cal.goToday(false);
+                } else if (cal && typeof cal.syncInfo === "function") {
+                    cal.syncInfo();
+                }
+                if (typeof window.startCalendarPanelTick === "function") {
+                    window.startCalendarPanelTick();
+                }
             }
+            window.showCalendarPanel = showCalendarPanel;
 
             function toggleCalendarPanel(e) {
                 if (e) {
@@ -1322,24 +1323,35 @@
                 const backdrop = document.getElementById("calendar-backdrop");
                 if (backdrop && backdrop.getAttribute("data-dismiss-bound") !== "1") {
                     backdrop.setAttribute("data-dismiss-bound", "1");
-                    backdrop.addEventListener("pointerdown", function (e) {
-                        e.preventDefault();
+                    backdrop.addEventListener("pointerdown", function () {
                         hideCalendarPanel();
                     });
                 }
-                document.addEventListener(
-                    "pointerdown",
-                    function (e) {
-                        if (!isCalendarPanelVisible()) return;
-                        if (isInsideCalendarUi(e.target, e)) return;
-                        if (e.target && e.target.id === "calendar-backdrop") return;
-                        const header = document.querySelector(".header");
-                        if (header && header.contains(e.target)) {
+                const contentEl = document.querySelector(".content");
+                if (contentEl && contentEl.getAttribute("data-calendar-dismiss-bound") !== "1") {
+                    contentEl.setAttribute("data-calendar-dismiss-bound", "1");
+                    contentEl.addEventListener(
+                        "pointerdown",
+                        function (e) {
+                            if (!isCalendarPanelVisible()) return;
+                            if (isInsideCalendarUi(e.target, e)) return;
                             hideCalendarPanel();
-                        }
-                    },
-                    true
-                );
+                        },
+                        true
+                    );
+                }
+                if (document.documentElement.getAttribute("data-calendar-dismiss-bound") !== "1") {
+                    document.documentElement.setAttribute("data-calendar-dismiss-bound", "1");
+                    document.addEventListener(
+                        "pointerdown",
+                        function (e) {
+                            if (!isCalendarPanelVisible()) return;
+                            if (isInsideCalendarUi(e.target, e)) return;
+                            hideCalendarPanel();
+                        },
+                        true
+                    );
+                }
                 window.addEventListener("resize", function () {
                     if (isCalendarPanelVisible() && typeof window.__positionCalendarPanel === "function") {
                         window.__positionCalendarPanel();
@@ -2089,6 +2101,7 @@
             document.querySelector(".content").addEventListener("click", function () {
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
+                if (isCalendarPanelVisible()) hideCalendarPanel();
             });
 
             document.addEventListener("click", function (e) {

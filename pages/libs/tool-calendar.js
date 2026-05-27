@@ -48,10 +48,10 @@
     function getDayContext(year, month, day) {
         var meta = global.ToolHolidays ? ToolHolidays.getDayMeta(year, month, day) : null;
         var lunar = global.ToolLunar ? ToolLunar.solarToLunar(year, month, day) : null;
-        var holidayName = meta && meta.holiday ? meta.holiday.name : "";
+        var holidayName = meta && meta.holiday && meta.holiday.type === "holiday" ? meta.holiday.name : "";
         var subText = global.ToolLunar
             ? ToolLunar.getCellSubText(lunar, month, day, holidayName)
-            : "";
+            : holidayName;
         return { meta: meta, lunar: lunar, subText: subText };
     }
 
@@ -59,6 +59,7 @@
         if (!root) return null;
         options = options || {};
         var compact = !!options.compact;
+        var externalTick = !!options.externalTick;
 
         var today = todayParts();
 
@@ -72,28 +73,33 @@
 
         root.innerHTML =
             '<div class="tool-cal' + (compact ? " tool-cal-compact" : "") + '">' +
-            '  <div class="tool-cal-toolbar">' +
+            '  <div class="tool-cal-head">' +
+            '    <select class="tool-cal-holiday-select" aria-label="选择假期">' +
+            '      <option value="">假期</option>' +
+            "    </select>" +
+            '    <select class="tool-cal-year-select" aria-label="选择年份"></select>' +
             '    <button type="button" class="tool-cal-nav" data-action="prev" title="上个月">‹</button>' +
-            '    <div class="tool-cal-title-wrap">' +
-            '      <select class="tool-cal-year-select" aria-label="选择年份"></select>' +
-            '      <select class="tool-cal-month-select" aria-label="选择月份"></select>' +
-            '      <button type="button" class="tool-cal-today-btn" data-action="today">今天</button>' +
-            "    </div>" +
+            '    <select class="tool-cal-month-select" aria-label="选择月份"></select>' +
             '    <button type="button" class="tool-cal-nav" data-action="next" title="下个月">›</button>' +
+            '    <button type="button" class="tool-cal-today-btn" data-action="today">今天</button>' +
             "  </div>" +
             '  <div class="tool-cal-weekdays"></div>' +
             '  <div class="tool-cal-grid"></div>' +
             '  <div class="tool-cal-info"></div>' +
+            '  <div class="tool-cal-footer"></div>' +
             "</div>";
 
+        var holidaySelect = root.querySelector(".tool-cal-holiday-select");
         var yearSelect = root.querySelector(".tool-cal-year-select");
         var monthSelect = root.querySelector(".tool-cal-month-select");
         var weekdaysEl = root.querySelector(".tool-cal-weekdays");
         var gridEl = root.querySelector(".tool-cal-grid");
         var infoEl = root.querySelector(".tool-cal-info");
+        var footerEl = root.querySelector(".tool-cal-footer");
 
         var YEAR_MIN = 1900;
         var YEAR_MAX = 2100;
+
         for (var y = YEAR_MIN; y <= YEAR_MAX; y++) {
             var yearOpt = document.createElement("option");
             yearOpt.value = String(y);
@@ -103,23 +109,9 @@
         for (var m = 0; m < 12; m++) {
             var monthOpt = document.createElement("option");
             monthOpt.value = String(m);
-            monthOpt.textContent = MONTH_LABELS[m] + " · " + MONTH_NAMES_EN[m];
+            monthOpt.textContent = MONTH_LABELS[m] + "·" + MONTH_NAMES_EN_SHORT[m];
             monthSelect.appendChild(monthOpt);
         }
-
-        function syncPicker() {
-            yearSelect.value = String(viewYear);
-            monthSelect.value = String(viewMonth);
-        }
-
-        yearSelect.addEventListener("change", function () {
-            viewYear = +yearSelect.value;
-            paint();
-        });
-        monthSelect.addEventListener("change", function () {
-            viewMonth = +monthSelect.value;
-            paint();
-        });
 
         WEEKDAYS.forEach(function (name, idx) {
             var cell = document.createElement("div");
@@ -130,57 +122,170 @@
             weekdaysEl.appendChild(cell);
         });
 
+        function syncPicker() {
+            yearSelect.value = String(viewYear);
+            monthSelect.value = String(viewMonth);
+        }
+
+        function fillHolidaySelect() {
+            holidaySelect.innerHTML = '<option value="">假期</option>';
+            if (!global.ToolHolidays || !ToolHolidays.getHolidaysForYear) return;
+            var list = ToolHolidays.getHolidaysForYear(viewYear);
+            list.forEach(function (item) {
+                var opt = document.createElement("option");
+                opt.value = item.start;
+                var rangeText = item.start === item.end ? item.start.slice(5) : item.start.slice(5) + "~" + item.end.slice(5);
+                opt.textContent = item.name + "（" + rangeText + "）";
+                opt.dataset.name = item.name;
+                holidaySelect.appendChild(opt);
+            });
+        }
+
+        function syncFooter() {
+            if (!footerEl) return;
+            if (!global.ToolHolidays || !ToolHolidays.getNextHolidayCountdown) {
+                footerEl.innerHTML = "";
+                return;
+            }
+            var info = ToolHolidays.getNextHolidayCountdown(new Date());
+            if (!info) {
+                footerEl.innerHTML = "";
+                return;
+            }
+            if (info.inProgress) {
+                footerEl.innerHTML =
+                    '<span class="tool-cal-footer-icon" aria-hidden="true">⏱</span>' +
+                    '<span class="tool-cal-footer-text">正在 <strong>' +
+                    info.label +
+                    "</strong> 假期中</span>";
+            } else {
+                footerEl.innerHTML =
+                    '<span class="tool-cal-footer-icon" aria-hidden="true">⏱</span>' +
+                    '<span class="tool-cal-footer-text">距离 <strong>' +
+                    info.label +
+                    "</strong> 还有 <em>" +
+                    info.daysLeft +
+                    "</em> 天</span>";
+            }
+        }
+
+        function goToDate(parts, opts) {
+            if (!parts) return;
+            opts = opts || {};
+            viewYear = parts.year;
+            viewMonth = parts.month;
+            if (opts.select !== false) {
+                selected = copyParts(parts);
+            }
+            syncPicker();
+            fillHolidaySelect();
+            paint();
+            if (!opts.skipFooter) syncFooter();
+            if (opts.select !== false && typeof options.onSelect === "function") {
+                options.onSelect(ymdKey(parts.year, parts.month, parts.day), selected);
+            }
+        }
+
+        function goToYmd(ymd, opts) {
+            goToDate(parseYmd(ymd), opts);
+        }
+
+        holidaySelect.addEventListener("change", function () {
+            var ymd = holidaySelect.value;
+            if (!ymd) return;
+            goToYmd(ymd);
+            holidaySelect.value = "";
+        });
+
+        yearSelect.addEventListener("change", function () {
+            viewYear = +yearSelect.value;
+            fillHolidaySelect();
+            paint();
+        });
+
+        monthSelect.addEventListener("change", function () {
+            viewMonth = +monthSelect.value;
+            paint();
+        });
+
+        var tickTimer = null;
+
+        function formatInfoPrimaryLine() {
+            var dt = new Date(selected.year, selected.month, selected.day);
+            var weekName = WEEKDAY_NAMES[dt.getDay()];
+            var now = new Date();
+            return (
+                selected.year +
+                "年" +
+                (selected.month + 1) +
+                "月" +
+                selected.day +
+                "日 " +
+                pad(now.getHours()) +
+                ":" +
+                pad(now.getMinutes()) +
+                ":" +
+                pad(now.getSeconds()) +
+                " " +
+                weekName
+            );
+        }
+
         function syncInfo() {
             if (!selected) {
                 infoEl.innerHTML = "";
                 return;
             }
-            var dt = new Date(selected.year, selected.month, selected.day);
-            var ymd = ymdKey(selected.year, selected.month, selected.day);
-            var weekName = WEEKDAY_NAMES[dt.getDay()];
-            var weekNameEn = WEEKDAY_NAMES_EN[dt.getDay()];
-            var weekNo = getWeekNumber(dt);
-            var monthEn = MONTH_NAMES_EN[selected.month];
-            var monthEnShort = MONTH_NAMES_EN_SHORT[selected.month];
             var ctx = getDayContext(selected.year, selected.month, selected.day);
-            var rows =
-                '<div class="tool-cal-info-row"><span class="tool-cal-info-label">公历</span><strong>' +
-                ymd +
-                "</strong><span class=\"tool-cal-info-en\">" +
-                monthEnShort +
-                " " +
-                selected.day +
-                ", " +
-                selected.year +
-                "</span></div>" +
-                '<div class="tool-cal-info-row"><span class="tool-cal-info-label">星期</span><span>' +
-                weekName +
-                ' <span class="tool-cal-info-en">/ ' +
-                weekNameEn +
-                "</span>（第 " +
-                weekNo +
-                ' 周 <span class="tool-cal-info-en">/ Week ' +
-                weekNo +
-                "</span>）</span></div>" +
-                '<div class="tool-cal-info-row"><span class="tool-cal-info-label">月份</span><span>' +
-                MONTH_LABELS[selected.month] +
-                ' <span class="tool-cal-info-en">/ ' +
-                monthEn +
-                "</span></span></div>";
-            if (ctx.lunar) {
-                rows += '<div class="tool-cal-info-row"><span class="tool-cal-info-label">农历</span><span>' + ctx.lunar.text + "</span></div>";
+            var lunarLine = ctx.lunar && ctx.lunar.text ? "农历" + ctx.lunar.text : "";
+            infoEl.innerHTML =
+                '<div class="tool-cal-info-primary">' +
+                formatInfoPrimaryLine() +
+                "</div>" +
+                (lunarLine ? '<div class="tool-cal-info-lunar">' + lunarLine + "</div>" : "");
+        }
+
+        function tickInfoNow() {
+            if (externalTick) {
+                if (typeof options.shouldTick === "function" && !options.shouldTick()) {
+                    return;
+                }
             }
-            if (ctx.meta && ctx.meta.isHoliday) {
-                rows += '<div class="tool-cal-info-row"><span class="tool-cal-info-label">节假日</span><span class="tool-cal-info-holiday">' + ctx.meta.holiday.name + "（休）</span></div>";
-            } else if (ctx.meta && ctx.meta.isWorkdayOverride) {
-                rows += '<div class="tool-cal-info-row"><span class="tool-cal-info-label">调休</span><span class="tool-cal-info-workday">周末上班</span></div>';
-            } else if (ctx.meta && ctx.meta.isRestDay) {
-                rows += '<div class="tool-cal-info-row"><span class="tool-cal-info-label">周末</span><span class="tool-cal-info-rest">休息</span></div>';
+            syncInfo();
+        }
+
+        function startInfoTick() {
+            stopInfoTick();
+            tickInfoNow();
+            tickTimer = setInterval(tickInfoNow, 1000);
+        }
+
+        function stopInfoTick() {
+            if (tickTimer) {
+                clearInterval(tickTimer);
+                tickTimer = null;
             }
-            infoEl.innerHTML = rows;
+        }
+
+        function setLiveTimeEnabled(enabled) {
+            if (enabled) {
+                startInfoTick();
+            } else {
+                stopInfoTick();
+                syncInfo();
+            }
+        }
+
+        function resumeLiveTime() {
+            startInfoTick();
+        }
+
+        function pauseLiveTime() {
+            stopInfoTick();
         }
 
         function paint() {
+            today = todayParts();
             syncPicker();
             gridEl.innerHTML = "";
 
@@ -222,17 +327,39 @@
                 }
 
                 var ctx = getDayContext(cellYear, cellMonth, dayNum);
+                var isToday =
+                    cellYear === today.year && cellMonth === today.month && dayNum === today.day;
+                var isSelected =
+                    selected &&
+                    cellYear === selected.year &&
+                    cellMonth === selected.month &&
+                    dayNum === selected.day;
+
                 if (muted) cell.classList.add("muted");
                 if (col >= 5) cell.classList.add("weekend-col");
                 if (ctx.meta && ctx.meta.isRestDay) cell.classList.add("rest");
                 if (ctx.meta && ctx.meta.isHoliday) cell.classList.add("holiday");
                 if (ctx.meta && ctx.meta.isWorkdayOverride) cell.classList.add("workday");
+                if (isToday) cell.classList.add("today");
+                if (isSelected) cell.classList.add("selected");
 
-                if (cellYear === today.year && cellMonth === today.month && dayNum === today.day) {
-                    cell.classList.add("today");
-                }
-                if (selected && cellYear === selected.year && cellMonth === selected.month && dayNum === selected.day) {
-                    cell.classList.add("selected");
+                if (isToday) {
+                    var todayBadge = document.createElement("span");
+                    todayBadge.className = "tool-cal-day-badge badge-today";
+                    todayBadge.textContent = "今";
+                    cell.appendChild(todayBadge);
+                } else if (ctx.meta && ctx.meta.isHoliday) {
+                    var holidayBadge = document.createElement("span");
+                    holidayBadge.className = "tool-cal-day-badge badge-holiday";
+                    holidayBadge.textContent = "休";
+                    holidayBadge.title = ctx.meta.holiday.name + "（放假）";
+                    cell.appendChild(holidayBadge);
+                } else if (ctx.meta && ctx.meta.isWorkdayOverride) {
+                    var workBadge = document.createElement("span");
+                    workBadge.className = "tool-cal-day-badge badge-workday";
+                    workBadge.textContent = "班";
+                    workBadge.title = "调休上班";
+                    cell.appendChild(workBadge);
                 }
 
                 var numEl = document.createElement("span");
@@ -249,6 +376,7 @@
                         subEl.classList.add("holiday-tag");
                     }
                     subEl.textContent = ctx.subText;
+                    subEl.title = ctx.subText;
                     cell.appendChild(subEl);
                 }
 
@@ -261,7 +389,7 @@
                             viewMonth = m;
                         }
                         paint();
-                        syncInfo();
+                        syncFooter();
                         if (typeof options.onSelect === "function") {
                             options.onSelect(ymdKey(y, m, d), selected);
                         }
@@ -271,6 +399,7 @@
                 gridEl.appendChild(cell);
             }
             syncInfo();
+            syncFooter();
         }
 
         function shiftMonth(delta) {
@@ -289,6 +418,7 @@
                 viewYear = YEAR_MAX;
                 viewMonth = 11;
             }
+            fillHolidaySelect();
             paint();
         }
 
@@ -320,31 +450,49 @@
             } else if (action === "next") {
                 shiftMonth(1);
             } else if (action === "today") {
-                viewYear = today.year;
-                viewMonth = today.month;
-                selected = copyParts(today);
-                paint();
-                if (typeof options.onSelect === "function") {
-                    options.onSelect(ymdKey(today.year, today.month, today.day), selected);
-                }
+                goToDate(copyParts(todayParts()));
             }
         });
 
+        fillHolidaySelect();
         paint();
+        if (!compact) {
+            startInfoTick();
+        }
 
         return {
-            goToday: function () {
-                var now = todayParts();
-                viewYear = now.year;
-                viewMonth = now.month;
-                selected = copyParts(now);
-                paint();
+            goToday: function (withTick) {
+                goToDate(copyParts(todayParts()));
+                if (withTick !== false) {
+                    startInfoTick();
+                } else {
+                    stopInfoTick();
+                    syncInfo();
+                }
             },
+            tickInfoNow: tickInfoNow,
+            syncInfo: syncInfo,
+            isLiveTimeActive: function () {
+                return true;
+            },
+            goToDate: goToDate,
+            goToYmd: goToYmd,
             shiftMonth: shiftMonth,
             getSelected: function () {
                 return selected ? ymdKey(selected.year, selected.month, selected.day) : "";
             },
-            refresh: paint
+            refresh: function () {
+                fillHolidaySelect();
+                paint();
+            },
+            startInfoTick: startInfoTick,
+            stopInfoTick: stopInfoTick,
+            setLiveTimeEnabled: setLiveTimeEnabled,
+            resumeLiveTime: resumeLiveTime,
+            pauseLiveTime: pauseLiveTime,
+            destroy: function () {
+                stopInfoTick();
+            }
         };
     }
 
