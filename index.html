@@ -286,7 +286,7 @@
             .calendar-panel {
                 display: none;
                 position: fixed;
-                width: 400px;
+                width: 372px;
                 max-width: calc(100vw - 16px);
                 padding: 8px 10px 10px;
                 border: 1px solid #d8e5ff;
@@ -298,6 +298,60 @@
             }
             .calendar-panel.visible {
                 display: block;
+            }
+            .calendar-panel.expanded {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+            }
+            .calendar-panel.expanded #calendar-panel-root {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+                display: flex;
+                justify-content: center;
+            }
+            .calendar-panel.expanded #calendar-panel-root .tool-cal {
+                width: 100%;
+                max-width: 980px;
+            }
+            .calendar-panel-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 6px;
+                padding: 0 2px;
+            }
+            .calendar-panel-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .calendar-panel-actions {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .calendar-panel-action {
+                width: 26px;
+                height: 26px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #f8fbff;
+                color: #4a5978;
+                padding: 0;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none;
+            }
+            .calendar-panel-action:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #edf3ff;
             }
             #calendar-panel-root {
                 width: 100%;
@@ -837,6 +891,19 @@
         </div>
         <div id="calendar-backdrop" class="calendar-backdrop" aria-hidden="true"></div>
         <div id="calendar-panel" class="calendar-panel" aria-hidden="true">
+            <div class="calendar-panel-head">
+                <span class="calendar-panel-title">日历</span>
+                <div class="calendar-panel-actions">
+                    <button type="button" id="calendar-expand-btn" class="calendar-panel-action" title="展开" aria-label="展开日历">
+                        <svg id="calendar-expand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                        </svg>
+                        <svg id="calendar-collapse-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false" hidden>
+                            <path fill="currentColor" d="M9 16h2v-2H9v2zm-4 0h2v-2H5v2zm8 0h2v-2h-2v2zm4 0h2v-2h-2v2zM9 8h2V6H9v2zm-4 0h2V6H5v2zm8 0h2V6h-2v2zm4 0h2V6h-2v2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
             <div id="calendar-panel-root"></div>
         </div>
         <script src="pages/libs/tool-lunar.js"></script>
@@ -867,10 +934,25 @@
                     var btn = document.getElementById("calendar-toggle");
                     if (!panel || !btn) return;
                     ensureCalendarUiInBody();
-                    var r = btn.getBoundingClientRect();
-                    panel.style.top = Math.round(r.bottom + 6) + "px";
-                    panel.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
-                    panel.style.left = "auto";
+                    if (panel.classList.contains("expanded")) {
+                        var header = document.querySelector(".header");
+                        var container = document.querySelector(".container");
+                        if (!header || !container) return;
+                        var headerRect = header.getBoundingClientRect();
+                        var containerRect = container.getBoundingClientRect();
+                        panel.style.top = Math.round(headerRect.bottom + 6) + "px";
+                        panel.style.left = Math.round(containerRect.left + 6) + "px";
+                        panel.style.right = "auto";
+                        panel.style.width = Math.max(280, containerRect.width - 12) + "px";
+                        panel.style.height = Math.max(180, window.innerHeight - headerRect.bottom - 12) + "px";
+                    } else {
+                        var r = btn.getBoundingClientRect();
+                        panel.style.top = Math.round(r.bottom + 6) + "px";
+                        panel.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
+                        panel.style.left = "auto";
+                        panel.style.width = "";
+                        panel.style.height = "";
+                    }
                 };
 
                 window.resetCalendarToToday = function () {
@@ -1002,7 +1084,6 @@
                 { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", keywords: ["curl", "linux", "http", "api"] },
                 { id: "tab7", name: "身份证生成", category: "生成", path: "pages/身份证号码生成器.html", keywords: ["idcard", "身份证"] },
                 { id: "tab22", name: "时间日期", category: "其他", path: "pages/时间日期工具.html", keywords: ["时间", "日期", "时间戳", "时区", "unix", "timestamp", "换算", "离线"] },
-                { id: "tab41", name: "日历", category: "其他", path: "pages/日历工具.html", keywords: ["日历", "日期", "月份", "星期", "今天", "离线"] },
                 { id: "tab18", name: "文本处理", category: "其他", path: "pages/文本处理工具.html", keywords: ["文本", "trim", "排序", "去重", "base64", "url", "行号", "换行", "text"] },
                 { id: "tab11", name: "二维码/条形码生成", category: "生成", path: "pages/码生成工具.html", keywords: ["二维码", "条形码", "qrcode", "barcode"] },
                 { id: "tab20", name: "UUID 工具", category: "生成", path: "pages/UUID工具.html", keywords: ["uuid", "guid", "唯一标识", "生成", "rfc4122"] },
@@ -1181,6 +1262,47 @@
             }
 
             let calendarPanelInstance = null;
+            let calendarPanelExpanded = false;
+
+            function updateCalendarExpandButton() {
+                const expandBtn = document.getElementById("calendar-expand-btn");
+                const expandIcon = document.getElementById("calendar-expand-icon");
+                const collapseIcon = document.getElementById("calendar-collapse-icon");
+                if (!expandBtn) return;
+                if (calendarPanelExpanded) {
+                    expandBtn.title = "收起";
+                    expandBtn.setAttribute("aria-label", "收起日历");
+                    if (expandIcon) expandIcon.hidden = true;
+                    if (collapseIcon) collapseIcon.hidden = false;
+                } else {
+                    expandBtn.title = "展开";
+                    expandBtn.setAttribute("aria-label", "展开日历");
+                    if (expandIcon) expandIcon.hidden = false;
+                    if (collapseIcon) collapseIcon.hidden = true;
+                }
+            }
+
+            function setCalendarPanelExpanded(expanded) {
+                calendarPanelExpanded = !!expanded;
+                const panel = document.getElementById("calendar-panel");
+                if (panel) {
+                    panel.classList.toggle("expanded", calendarPanelExpanded);
+                }
+                const calEl = panel && panel.querySelector(".tool-cal");
+                if (calEl) {
+                    calEl.classList.toggle("tool-cal-compact", !calendarPanelExpanded);
+                    calEl.classList.toggle("tool-cal-fullscreen", calendarPanelExpanded);
+                }
+                updateCalendarExpandButton();
+                if (
+                    panel &&
+                    panel.classList.contains("visible") &&
+                    typeof window.__positionCalendarPanel === "function"
+                ) {
+                    window.__positionCalendarPanel();
+                }
+            }
+            window.setCalendarPanelExpanded = setCalendarPanelExpanded;
 
             function isCalendarPanelVisible() {
                 const panel = document.getElementById("calendar-panel");
@@ -1243,7 +1365,8 @@
                 }
             }
 
-            function hideCalendarPanel() {
+            function hideCalendarPanel(options) {
+                options = options || {};
                 const el = document.getElementById("calendar-panel");
                 const toggle = document.getElementById("calendar-toggle");
                 try {
@@ -1253,14 +1376,22 @@
                 }
                 setCalendarBackdropVisible(false);
                 if (el) {
-                    el.classList.remove("visible");
+                    el.classList.remove("visible", "expanded");
                     el.setAttribute("aria-hidden", "true");
+                    el.style.width = "";
+                    el.style.height = "";
+                    el.style.left = "";
+                    el.style.right = "";
+                    el.style.top = "";
                 }
+                setCalendarPanelExpanded(false);
                 if (toggle) toggle.classList.remove("active");
-                try {
-                    resetCalendarToToday();
-                } catch (e) {
-                    console.warn("日历关闭清理失败", e);
+                if (!options.skipReset) {
+                    try {
+                        resetCalendarToToday();
+                    } catch (e) {
+                        console.warn("日历关闭清理失败", e);
+                    }
                 }
             }
             window.hideCalendarPanel = hideCalendarPanel;
@@ -1270,6 +1401,7 @@
                 const el = document.getElementById("calendar-panel");
                 const toggle = document.getElementById("calendar-toggle");
                 if (!el) return;
+                setCalendarPanelExpanded(false);
                 hideOverviewPanel();
                 hideCryptoAlgoModal();
                 hideTestDataModal();
@@ -1304,6 +1436,15 @@
                 }
             }
             window.showCalendarPanel = showCalendarPanel;
+
+            function toggleCalendarPanelExpand(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (!isCalendarPanelVisible()) return;
+                setCalendarPanelExpanded(!calendarPanelExpanded);
+            }
 
             function toggleCalendarPanel(e) {
                 if (e) {
@@ -1997,7 +2138,14 @@
             }
 
             function stashTextToExcelSqlHandoff(payload) {
-                if (!payload || (!payload.csvText && !payload.jsonText)) return;
+                if (
+                    !payload ||
+                    (!payload.csvText &&
+                        !payload.jsonText &&
+                        !(payload.csvItems && payload.csvItems.length))
+                ) {
+                    return;
+                }
                 pendingTextToExcelSqlHandoff = payload;
                 try {
                     sessionStorage.setItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY, JSON.stringify(payload));
@@ -2057,15 +2205,20 @@
                     }
                     return;
                 }
-                const payload = takeTextToExcelSqlHandoffPayload();
+                const payload = pendingTextToExcelSqlHandoff;
                 if (!payload) return;
                 try {
                     frame.contentWindow.postMessage(
                         { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
                         "*"
                     );
+                    pendingTextToExcelSqlHandoff = null;
                 } catch (e) {
-                    pendingTextToExcelSqlHandoff = payload;
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyExcelSqlToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
                 }
             }
 
@@ -2127,6 +2280,9 @@
             window.addEventListener("resize", function () {
                 if (overviewVisible) {
                     syncOverviewPanelPosition();
+                }
+                if (isCalendarPanelVisible() && typeof window.__positionCalendarPanel === "function") {
+                    window.__positionCalendarPanel();
                 }
             });
 
@@ -2311,6 +2467,11 @@
                     var calendarPanel = document.getElementById("calendar-panel");
                     if (calendarPanel && calendarPanel.classList.contains("visible")) hideCalendarPanel();
                 });
+                var calendarExpandBtn = document.getElementById("calendar-expand-btn");
+                if (calendarExpandBtn && !calendarExpandBtn.getAttribute("data-cal-bound")) {
+                    calendarExpandBtn.setAttribute("data-cal-bound", "1");
+                    calendarExpandBtn.addEventListener("click", toggleCalendarPanelExpand);
+                }
                 var testBd = document.getElementById("test-data-modal-backdrop");
                 var testClose = document.getElementById("test-data-modal-close");
                 if (testBd) testBd.addEventListener("click", hideTestDataModal);

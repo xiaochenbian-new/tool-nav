@@ -229,10 +229,21 @@
                 flex-shrink: 0;
                 white-space: nowrap;
                 padding: 8px 14px;
+                border-radius: 8px;
+                background: transparent;
+                border: 1px dashed #b8c8e8;
+                color: #3c4f78;
+                box-shadow: none;
+            }
+            #csv-text-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: transparent;
             }
             #csv-text-btn.has-content {
-                border-color: #9eb8f5;
-                background: #e8f0ff;
+                border-color: var(--primary);
+                color: var(--primary);
+                background: transparent;
             }
             .csv-modal-mask {
                 position: fixed;
@@ -248,8 +259,9 @@
                 display: flex;
             }
             .csv-modal {
-                width: min(920px, 96vw);
-                max-height: min(92vh, 860px);
+                width: min(1120px, 97vw);
+                height: min(88vh, 820px);
+                max-height: min(94vh, 940px);
                 display: flex;
                 flex-direction: column;
                 border: 1px solid #dbe7ff;
@@ -291,130 +303,163 @@
                 color: #2f3d5d;
             }
             .csv-modal-body {
-                padding: 12px 14px 14px;
-                overflow: auto;
+                flex: 1;
+                padding: 0;
+                overflow: hidden;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
                 min-height: 0;
             }
             .csv-modal-hint {
+                flex: 0 0 auto;
                 margin: 0;
+                padding: 8px 14px 0;
                 font-size: 12px;
                 color: var(--muted);
                 line-height: 1.45;
             }
-            .csv-tab-bar {
+            .csv-editor-wrap {
+                flex: 1;
+                min-height: 0;
                 display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 4px;
-                padding: 4px;
-                border: 1px solid #e4eaf4;
-                border-radius: 10px;
-                background: #f3f5f9;
-            }
-            .csv-tab {
-                border: 0;
-                border-radius: 8px;
-                padding: 6px 12px;
-                font-size: 13px;
-                font-weight: 500;
-                color: #4a5978;
-                background: transparent;
-                cursor: pointer;
-                white-space: nowrap;
-                line-height: 1.3;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-            }
-            .csv-tab-wrap {
-                position: relative;
-                display: inline-flex;
-                vertical-align: middle;
-            }
-            .csv-tab-wrap .csv-tab.active {
-                padding-right: 22px;
-            }
-            .csv-tab-close {
-                position: absolute;
-                top: -2px;
-                right: 2px;
-                z-index: 2;
-                width: 16px;
-                height: 16px;
-                border: 0;
-                border-radius: 0;
-                background: transparent;
-                color: #fff;
-                font-size: 15px;
-                font-weight: 700;
-                line-height: 1;
-                padding: 0;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: none;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.15s ease;
-            }
-            .csv-tab-wrap:hover .csv-tab-close {
-                opacity: 1;
-                pointer-events: auto;
-            }
-            .csv-tab-close:hover {
-                background: transparent;
-                color: #fff;
-                opacity: 0.85;
-            }
-            .csv-tab:hover:not(.active) {
-                background: #e8eef6;
-                color: #324a76;
-            }
-            .csv-tab.active {
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
-                color: #fff;
-                font-weight: 600;
-                box-shadow: 0 2px 8px rgba(47, 107, 255, 0.28);
-            }
-            button.csv-tab-add {
-                flex-shrink: 0;
-                min-width: 28px;
-                height: 28px;
-                border: 0;
-                border-radius: 8px;
-                background: transparent;
-                color: var(--primary);
-                font-size: 22px;
-                font-weight: 600;
-                line-height: 1;
-                padding: 0 6px;
-                box-shadow: none;
-                cursor: pointer;
-            }
-            button.csv-tab-add:hover {
-                background: #e8f0ff;
-                color: var(--primary-2);
+                flex-direction: column;
+                padding: 8px 14px 0;
             }
             #csv-paste-input {
-                min-height: 360px;
                 flex: 1;
+                min-height: 200px;
+                width: 100%;
+                box-sizing: border-box;
                 font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
                 font-size: 12px;
                 line-height: 1.45;
-                resize: vertical;
+                resize: none;
+                border: 1px solid #e4eaf4;
+                border-radius: 8px 8px 0 0;
+                padding: 10px 12px;
             }
-            .csv-modal-actions {
+            #csv-paste-input:focus {
+                outline: none;
+                border-color: #b8cff5;
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            .csv-sheet-bar {
+                flex: 0 0 auto;
                 display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-                padding-top: 4px;
+                align-items: flex-end;
+                min-height: 30px;
+                padding: 0 10px 2px;
+                background: #fff;
+                overflow: hidden;
+                border-top: 1px solid #e8f0ff;
             }
-            .csv-modal-actions button {
-                min-width: 88px;
+            .csv-sheet-strip {
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 2px;
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+            }
+            .csv-sheet-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+            .csv-sheet-tabs {
+                display: contents;
+            }
+            .csv-sheet-tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                max-width: 148px;
+                height: 26px;
+                padding: 0 12px;
+                margin: 0;
+                border: 1px solid transparent;
+                border-radius: 4px 4px 0 0;
+                background: transparent;
+                color: #5a6d8f;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+                z-index: 1;
+                box-shadow: none;
+            }
+            .csv-sheet-tab:hover {
+                background: #f4f8ff;
+                color: #3c4f78;
+                z-index: 2;
+            }
+            .csv-sheet-tab.active {
+                background: #edf3ff;
+                color: var(--primary);
+                font-weight: 600;
+                z-index: 3;
+                border-color: #d8e5ff;
+            }
+            .csv-sheet-tab .sheet-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 120px;
+            }
+            .csv-sheet-tab .sheet-rename-input {
+                width: 96px;
+                max-width: 120px;
+                height: 22px;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid var(--primary);
+                border-radius: 4px;
+                outline: none;
+                background: #fff;
+            }
+            .csv-sheet-tab .sheet-close {
+                flex: 0 0 auto;
+                margin-left: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                border: none;
+                border-radius: 3px;
+                background: transparent;
+                color: #6f7d96;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                opacity: 0;
+                box-shadow: none;
+            }
+            .csv-sheet-tab:hover .sheet-close,
+            .csv-sheet-tab.active .sheet-close {
+                opacity: 1;
+            }
+            .csv-sheet-tab .sheet-close:hover {
+                background: rgba(224, 64, 64, 0.15);
+                color: var(--danger);
+            }
+            .csv-sheet-add {
+                flex: 0 0 26px;
+                width: 26px;
+                height: 26px;
+                margin: 0;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                font-size: 18px;
+                line-height: 1;
+                color: #8a9bb8;
+                cursor: pointer;
+                box-shadow: none;
+            }
+            .csv-sheet-add:hover {
+                background: #f0f5ff;
+                color: var(--primary);
             }
             .compact-grid {
                 display: grid;
@@ -1051,7 +1096,7 @@
                     <label for="excel-files">上传 Excel 文件（支持多选）</label>
                     <div class="upload-row">
                         <input id="excel-files" type="file" accept=".xlsx,.xls,.csv" multiple />
-                        <button id="csv-text-btn" class="secondary" type="button" title="粘贴 CSV 或 Excel 复制内容">CSV 文本</button>
+                        <button id="csv-text-btn" type="button" title="粘贴 CSV 或 Excel 复制内容，自动载入为 CSV库">CSV 文本</button>
                     </div>
                 </div>
                 <div class="compact-grid">
@@ -1144,14 +1189,15 @@
                     <button id="csv-modal-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
                 </div>
                 <div class="csv-modal-body">
-                    <p class="csv-modal-hint">在 Excel 中选中区域后 Ctrl+C 粘贴；支持逗号或制表符。点 + 新增 CSV；当前标签右上角 × 可删除该 CSV，载入时一并导入。</p>
-                    <div class="csv-tab-bar" id="csv-tab-bar" role="tablist" aria-label="CSV 文本列表"></div>
-                    <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
-                    <label for="csv-paste-name">当前 CSV 数据源名称（可选）</label>
-                    <input id="csv-paste-name" type="text" placeholder="粘贴数据" maxlength="80" />
-                    <div class="csv-modal-actions">
-                        <button id="csv-modal-cancel" class="secondary" type="button">取消</button>
-                        <button id="csv-paste-load-btn" type="button">载入数据</button>
+                    <p class="csv-modal-hint">在 Excel 中选中区域后 Ctrl+C 粘贴；支持逗号或制表符。多份文本合并到同一「CSV库」；底部可切换多个工作表，双击标签可重命名。</p>
+                    <div class="csv-editor-wrap">
+                        <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
+                    </div>
+                    <div class="csv-sheet-bar" id="csv-sheet-bar">
+                        <div class="csv-sheet-strip">
+                            <div class="csv-sheet-tabs" id="csv-tab-bar" role="tablist" aria-label="CSV 工作表"></div>
+                            <button type="button" class="csv-sheet-add" id="csv-sheet-add" title="新建工作表">+</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1193,9 +1239,14 @@
             const SQL_HISTORY_KEY = "excelSqlQueryHistoryV1";
             const SQL_HISTORY_MAX = 10;
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+            /** 粘贴 CSV 载入后的 Excel 库统一命名前缀 */
+            const CSV_DB_BASE = "CSV库";
             let csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "" }];
+            let csvAutoLoadTimer = null;
+            let csvPasteLoadedSnapshot = "";
             let activeCsvPasteId = 1;
             let nextCsvPasteId = 2;
+            let csvPasteRenameId = null;
             /** 大批量导入时每 N 行让出一次主线程，便于 1s 后显示等待层 */
             const IMPORT_YIELD_ROWS = 8000;
 
@@ -1266,6 +1317,27 @@
                 return uniqueDbName(name);
             }
 
+            /** 粘贴 CSV 固定使用同一库名；仅在与非 CSV 粘贴库重名时加后缀 */
+            function resolveCsvDbName() {
+                var name = sanitizeName(CSV_DB_BASE);
+                if (!dbStore[name]) return name;
+                if (dbStore[name].source === "paste") return name;
+                return uniqueDbName(CSV_DB_BASE);
+            }
+
+            function allocUniqueTableName(usedMap, base) {
+                var name = sanitizeName(base || "sheet");
+                if (!usedMap[name]) {
+                    usedMap[name] = true;
+                    return name;
+                }
+                var i = 2;
+                while (usedMap[name + "_" + i]) i++;
+                name = name + "_" + i;
+                usedMap[name] = true;
+                return name;
+            }
+
             function upsertDbStore(dbName, tables, source) {
                 dbStore[dbName] = {
                     dbName: dbName,
@@ -1313,7 +1385,7 @@
                 return tabs > commas ? "\t" : ",";
             }
 
-            async function parseDelimitedTextToDbTables(text, fs) {
+            async function parseDelimitedTextToDbTables(text, fs, tableName) {
                 const wbCsv = XLSX.read(text, { type: "string", cellDates: true, FS: fs });
                 const date1904Csv = workbookUsesDate1904(wbCsv);
                 const dbTables = [];
@@ -1328,7 +1400,11 @@
                 if (!rowsCsvRaw.length) return dbTables;
                 await yieldToBrowser();
                 const rowsCsv = await normalizeImportedRowsAsync(rowsCsvRaw, { date1904: date1904Csv });
-                dbTables.push({ tableName: "sheet", columns: Object.keys(rowsCsv[0]), rows: rowsCsv });
+                dbTables.push({
+                    tableName: sanitizeName(tableName || "sheet"),
+                    columns: Object.keys(rowsCsv[0]),
+                    rows: rowsCsv
+                });
                 return dbTables;
             }
 
@@ -3126,42 +3202,150 @@
                 var entry = getActiveCsvPasteEntry();
                 if (!entry) return;
                 entry.text = document.getElementById("csv-paste-input").value;
-                entry.name = document.getElementById("csv-paste-name").value;
             }
 
             function loadActiveCsvPasteEntryToUi() {
                 var entry = getActiveCsvPasteEntry();
                 if (!entry) return;
                 document.getElementById("csv-paste-input").value = entry.text || "";
-                document.getElementById("csv-paste-name").value = entry.name || "";
             }
 
-            function renderCsvTabButton(entry) {
-                var active = entry.id === activeCsvPasteId;
-                var label = escapeHtml(entry.label);
-                if (active && csvPasteEntries.length > 1) {
-                    return (
-                        "<span class=\"csv-tab-wrap\">" +
-                        "<button type=\"button\" class=\"csv-tab active\" role=\"tab\" aria-selected=\"true\" data-id=\"" +
-                        entry.id +
-                        "\">" +
-                        label +
-                        "</button>" +
-                        "<button type=\"button\" class=\"csv-tab-close\" data-action=\"remove-tab\" title=\"删除当前 CSV\" aria-label=\"删除当前 CSV\">×</button>" +
-                        "</span>"
-                    );
+            function getCsvPasteSnapshot() {
+                return csvPasteEntries
+                    .map(function (e) {
+                        return e.id + "\t" + (e.label || "") + "\t" + (e.text || "");
+                    })
+                    .join("\n");
+            }
+
+            function markCsvPasteLoaded() {
+                saveActiveCsvPasteEntry();
+                csvPasteLoadedSnapshot = getCsvPasteSnapshot();
+            }
+
+            function invalidateCsvPasteLoadedSnapshot() {
+                csvPasteLoadedSnapshot = "";
+            }
+
+            function scheduleAutoLoadCsvFromModal() {
+                clearTimeout(csvAutoLoadTimer);
+                csvAutoLoadTimer = setTimeout(function () {
+                    saveActiveCsvPasteEntry();
+                    var hasAny = csvPasteEntries.some(function (e) {
+                        return !!(e.text || "").trim();
+                    });
+                    if (!hasAny) return;
+                    if (getCsvPasteSnapshot() === csvPasteLoadedSnapshot) return;
+                    void loadPastedCsv({ closeModal: false });
+                }, 700);
+            }
+
+            function renameCsvPasteEntry(id, newLabel) {
+                var name = String(newLabel || "").trim();
+                if (!name) {
+                    setStatus("Sheet 名称不能为空。", true);
+                    return false;
                 }
-                return (
-                    "<button type=\"button\" class=\"csv-tab" +
-                    (active ? " active" : "") +
-                    "\" role=\"tab\" aria-selected=\"" +
-                    (active ? "true" : "false") +
-                    "\" data-id=\"" +
-                    entry.id +
-                    "\">" +
-                    label +
-                    "</button>"
-                );
+                for (var i = 0; i < csvPasteEntries.length; i++) {
+                    if (csvPasteEntries[i].id !== id && csvPasteEntries[i].label === name) {
+                        setStatus("Sheet 名称已存在。", true);
+                        return false;
+                    }
+                }
+                for (var j = 0; j < csvPasteEntries.length; j++) {
+                    if (csvPasteEntries[j].id === id) {
+                        csvPasteEntries[j].label = name;
+                        break;
+                    }
+                }
+                return true;
+            }
+
+            function startCsvPasteRename(id) {
+                csvPasteRenameId = id;
+                renderCsvTabBar();
+                var bar = document.getElementById("csv-tab-bar");
+                if (!bar) return;
+                var tab = bar.querySelector('.csv-sheet-tab[data-id="' + id + '"]');
+                var inp = tab && tab.querySelector(".sheet-rename-input");
+                if (inp) {
+                    inp.focus();
+                    inp.select();
+                }
+            }
+
+            function finishCsvPasteRename(id, value, cancel) {
+                csvPasteRenameId = null;
+                if (!cancel && renameCsvPasteEntry(id, value)) {
+                    invalidateCsvPasteLoadedSnapshot();
+                    scheduleAutoLoadCsvFromModal();
+                }
+                renderCsvTabBar();
+            }
+
+            function createCsvSheetTab(entry) {
+                var active = entry.id === activeCsvPasteId;
+                var tab = document.createElement("button");
+                tab.type = "button";
+                tab.className = "csv-sheet-tab" + (active ? " active" : "");
+                tab.setAttribute("data-id", String(entry.id));
+                tab.setAttribute("role", "tab");
+                tab.setAttribute("aria-selected", active ? "true" : "false");
+                tab.title = entry.label + "（双击重命名）";
+
+                if (csvPasteRenameId === entry.id) {
+                    var inp = document.createElement("input");
+                    inp.type = "text";
+                    inp.className = "sheet-rename-input";
+                    inp.value = entry.label;
+                    inp.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                    });
+                    inp.addEventListener("keydown", function (e) {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            finishCsvPasteRename(entry.id, inp.value, false);
+                        } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            finishCsvPasteRename(entry.id, "", true);
+                        }
+                    });
+                    inp.addEventListener("blur", function () {
+                        finishCsvPasteRename(entry.id, inp.value, false);
+                    });
+                    tab.appendChild(inp);
+                } else {
+                    var span = document.createElement("span");
+                    span.className = "sheet-name";
+                    span.textContent = entry.label;
+                    tab.appendChild(span);
+                    tab.addEventListener("dblclick", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startCsvPasteRename(entry.id);
+                    });
+                }
+
+                if (csvPasteEntries.length > 1) {
+                    var closeBtn = document.createElement("button");
+                    closeBtn.type = "button";
+                    closeBtn.className = "sheet-close";
+                    closeBtn.title = "删除工作表";
+                    closeBtn.setAttribute("aria-label", "删除工作表");
+                    closeBtn.textContent = "×";
+                    closeBtn.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        removeCsvPasteEntry(entry.id);
+                    });
+                    tab.appendChild(closeBtn);
+                }
+
+                tab.addEventListener("click", function () {
+                    if (csvPasteRenameId) return;
+                    switchCsvPasteTab(entry.id);
+                });
+
+                return tab;
             }
 
             function renumberCsvPasteLabels() {
@@ -3173,18 +3357,17 @@
             function renderCsvTabBar() {
                 var bar = document.getElementById("csv-tab-bar");
                 if (!bar || !csvPasteEntries.length) return;
-                var html = "";
+                bar.innerHTML = "";
                 for (var i = 0; i < csvPasteEntries.length; i++) {
-                    html += renderCsvTabButton(csvPasteEntries[i]);
+                    bar.appendChild(createCsvSheetTab(csvPasteEntries[i]));
                 }
-                html += "<button type=\"button\" class=\"csv-tab-add\" data-action=\"add\" title=\"新增 CSV 文本\" aria-label=\"新增 CSV 文本\">+</button>";
-                bar.innerHTML = html;
             }
 
             function resetCsvPasteEntries() {
                 csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "" }];
                 activeCsvPasteId = 1;
                 nextCsvPasteId = 2;
+                invalidateCsvPasteLoadedSnapshot();
                 renderCsvTabBar();
                 loadActiveCsvPasteEntryToUi();
                 updateCsvTextBtnState();
@@ -3217,27 +3400,31 @@
                 }, 0);
             }
 
-            function removeCurrentCsvPasteEntry() {
+            function removeCsvPasteEntry(id) {
                 if (csvPasteEntries.length <= 1) {
-                    setStatus("至少保留一个 CSV 文本页。", true);
+                    setStatus("至少保留一个工作表。", true);
                     return;
                 }
                 saveActiveCsvPasteEntry();
                 var idx = -1;
                 for (var i = 0; i < csvPasteEntries.length; i++) {
-                    if (csvPasteEntries[i].id === activeCsvPasteId) {
+                    if (csvPasteEntries[i].id === id) {
                         idx = i;
                         break;
                     }
                 }
                 if (idx < 0) return;
                 csvPasteEntries.splice(idx, 1);
-                var nextIdx = Math.min(idx, csvPasteEntries.length - 1);
-                activeCsvPasteId = csvPasteEntries[nextIdx].id;
+                if (activeCsvPasteId === id) {
+                    var nextIdx = Math.min(idx, csvPasteEntries.length - 1);
+                    activeCsvPasteId = csvPasteEntries[nextIdx].id;
+                }
+                invalidateCsvPasteLoadedSnapshot();
                 renumberCsvPasteLabels();
                 renderCsvTabBar();
                 loadActiveCsvPasteEntryToUi();
                 updateCsvTextBtnState();
+                scheduleAutoLoadCsvFromModal();
                 var ta = document.getElementById("csv-paste-input");
                 window.setTimeout(function () {
                     ta.focus();
@@ -3263,8 +3450,12 @@
              * 文本工具跳转：已存在相同 CSV 文本则切换标签；否则追加（或复用首个空位）。
              * @returns {{ added: boolean, duplicate: boolean, entry: object|null }}
              */
-            function appendOrSelectCsvPasteFromHandoff(text, autoLoad) {
-                saveActiveCsvPasteEntry();
+            function appendOrSelectCsvPasteFromHandoff(text, autoLoad, meta) {
+                var opts = meta && typeof meta === "object" ? meta : {};
+                var quiet = !!opts.quiet;
+                if (!opts.skipSave) {
+                    saveActiveCsvPasteEntry();
+                }
                 var norm = String(text || "");
                 var trimmed = normalizeCsvHandoffText(norm);
                 if (!trimmed) {
@@ -3274,48 +3465,133 @@
                 var existing = findCsvPasteEntryByText(trimmed);
                 if (existing) {
                     activeCsvPasteId = existing.id;
-                    renderCsvTabBar();
-                    loadActiveCsvPasteEntryToUi();
-                    updateCsvTextBtnState();
-                    setStatus("CSV 列表中已存在相同内容，已切换到「" + existing.label + "」。", false);
+                    if (opts.label) existing.label = String(opts.label);
+                    if (!quiet) {
+                        renderCsvTabBar();
+                        loadActiveCsvPasteEntryToUi();
+                        updateCsvTextBtnState();
+                        setStatus("CSV 列表中已存在相同内容，已切换到「" + existing.label + "」。", false);
+                    }
                     return { added: false, duplicate: true, entry: existing };
                 }
 
                 var entry;
                 var soleEmpty =
                     csvPasteEntries.length === 1 && !normalizeCsvHandoffText(csvPasteEntries[0].text);
+                var tabLabel = opts.label ? String(opts.label) : "";
                 if (soleEmpty) {
                     entry = csvPasteEntries[0];
                     entry.text = norm;
+                    if (tabLabel) entry.label = tabLabel;
                     activeCsvPasteId = entry.id;
                 } else {
                     var id = nextCsvPasteId++;
-                    var label = "CSV " + (csvPasteEntries.length + 1);
+                    var label = tabLabel || "CSV " + (csvPasteEntries.length + 1);
                     entry = { id: id, label: label, name: "", text: norm };
                     csvPasteEntries.push(entry);
                     activeCsvPasteId = id;
                 }
+                if (!quiet) {
+                    renderCsvTabBar();
+                    loadActiveCsvPasteEntryToUi();
+                    updateCsvTextBtnState();
+                    setStatus("已添加「" + entry.label + "」到 CSV 列表。", false);
+                    if (autoLoad) {
+                        void loadPastedCsv({ closeModal: true });
+                    } else {
+                        openCsvModal();
+                    }
+                }
+                return { added: true, duplicate: false, entry: entry };
+            }
+
+            function consumeCsvItemsHandoff(items, autoLoad) {
+                if (!items || !items.length) return;
+                saveActiveCsvPasteEntry();
+
+                var imported = [];
+                var usedFirstEmptySlot = false;
+
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
+                    if (!item) continue;
+                    var norm = String(item.text || "");
+                    var trimmed = normalizeCsvHandoffText(norm);
+                    if (!trimmed) continue;
+
+                    var sheetLabel = String(item.label || item.name || "Sheet " + (imported.length + 1));
+
+                    var existing = findCsvPasteEntryByText(trimmed);
+                    if (existing) {
+                        existing.label = sheetLabel;
+                        imported.push(existing);
+                        continue;
+                    }
+
+                    var entry;
+                    var canUseEmptySlot =
+                        !usedFirstEmptySlot &&
+                        csvPasteEntries.length === 1 &&
+                        !normalizeCsvHandoffText(csvPasteEntries[0].text);
+                    if (canUseEmptySlot) {
+                        entry = csvPasteEntries[0];
+                        usedFirstEmptySlot = true;
+                    } else {
+                        entry = {
+                            id: nextCsvPasteId++,
+                            label: sheetLabel,
+                            name: "",
+                            text: norm,
+                        };
+                        csvPasteEntries.push(entry);
+                    }
+                    entry.text = norm;
+                    entry.label = sheetLabel;
+                    imported.push(entry);
+                }
+
+                if (!imported.length) return;
+
+                activeCsvPasteId = imported[imported.length - 1].id;
                 renderCsvTabBar();
                 loadActiveCsvPasteEntryToUi();
                 updateCsvTextBtnState();
-                setStatus("已添加「" + entry.label + "」到 CSV 列表。", false);
-
                 if (autoLoad) {
-                    void loadPastedCsv();
+                    void loadPastedCsv({ closeModal: true });
                 } else {
                     openCsvModal();
                 }
-                return { added: true, duplicate: false, entry: entry };
+                setStatus("已从文本工具导入 " + imported.length + " 个工作表 CSV。", false);
+            }
+
+            function clearTextToExcelSqlHandoffStorage() {
+                try {
+                    sessionStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                try {
+                    localStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                } catch (e2) {
+                    // ignore
+                }
             }
 
             function consumeTextToExcelSqlHandoff(payload) {
                 if (!payload) return;
                 if (payload.jsonText) {
                     void loadJsonPasteText(payload.jsonText);
+                    clearTextToExcelSqlHandoffStorage();
+                    return;
+                }
+                if (payload.csvItems && payload.csvItems.length) {
+                    consumeCsvItemsHandoff(payload.csvItems, !!payload.autoLoad);
+                    clearTextToExcelSqlHandoffStorage();
                     return;
                 }
                 if (payload.csvText) {
                     appendOrSelectCsvPasteFromHandoff(payload.csvText, !!payload.autoLoad);
+                    clearTextToExcelSqlHandoffStorage();
                 }
             }
 
@@ -3388,7 +3664,9 @@
                 mask.setAttribute("aria-hidden", "true");
             }
 
-            async function loadPastedCsv() {
+            async function loadPastedCsv(options) {
+                options = options || {};
+                var closeWhenDone = options.closeModal === true;
                 saveActiveCsvPasteEntry();
                 const todo = csvPasteEntries.filter(function (e) {
                     return !!(e.text || "").trim();
@@ -3406,51 +3684,51 @@
                 try {
                     var loaded = 0;
                     var totalRows = 0;
-                    var firstNewDb = "";
                     var failLabels = [];
+                    var allTables = [];
+                    var usedTableNames = {};
+                    const dbName = resolveCsvDbName();
                     for (let i = 0; i < todo.length; i++) {
                         const entry = todo[i];
                         const raw = (entry.text || "").trim();
                         setStatus("正在载入 " + entry.label + " …", false);
                         await yieldToBrowser();
                         const fs = detectFieldSeparator(raw);
-                        const dbTables = await parseDelimitedTextToDbTables(raw, fs);
+                        const tableName = allocUniqueTableName(usedTableNames, entry.label || "Sheet" + (i + 1));
+                        const dbTables = await parseDelimitedTextToDbTables(raw, fs, tableName);
                         if (!dbTables.length) {
                             failLabels.push(entry.label);
                             continue;
                         }
-                        const nameInput = (entry.name || "").trim();
-                        const dbName = uniqueDbName(nameInput || entry.label || "粘贴数据");
-                        upsertDbStore(dbName, dbTables, "paste");
-                        if (!firstNewDb) firstNewDb = dbName;
+                        dbTables.forEach(function (t) {
+                            allTables.push(t);
+                            totalRows += t.rows.length;
+                        });
                         loaded++;
-                        totalRows += dbTables[0].rows.length;
                         await yieldToBrowser();
                     }
                     if (!loaded) {
                         setStatus("未能解析出有效数据行，请检查各 CSV 是否包含表头与至少一行数据。", true);
                         return;
                     }
+                    upsertDbStore(dbName, allTables, "paste");
                     await yieldToBrowser();
-                    var targetDb =
-                        firstNewDb && dbStore[firstNewDb] ? firstNewDb : currentDb;
-                    switchCurrentDb(targetDb, { updateSql: true });
+                    switchCurrentDb(dbName, { updateSql: true });
                     var statusMsg =
                         "已载入 " +
                         loaded +
-                        " 个 CSV 数据源，共 " +
+                        " 张表到 " +
+                        formatDbSelectLabel(currentDb) +
+                        "，共 " +
                         totalRows +
-                        " 行。当前库：" +
-                        formatDbSelectLabel(currentDb);
-                    if (Object.keys(dbStore).length > loaded) {
-                        statusMsg += "（可通过「当前 Excel 库」切换已上传文件与其它 CSV）";
-                    }
+                        " 行（可在「默认 Sheet 表」切换）";
                     if (failLabels.length) {
                         statusMsg += "（" + failLabels.join("、") + " 解析失败已跳过）";
                     }
                     setStatus(statusMsg, false);
                     updateCsvTextBtnState();
-                    closeCsvModal();
+                    markCsvPasteLoaded();
+                    if (closeWhenDone) closeCsvModal();
                 } catch (error) {
                     setStatus("粘贴数据载入失败：" + (error && error.message ? error.message : "未知错误"), true);
                 } finally {
@@ -3553,46 +3831,20 @@
                 openCsvModal();
             });
             document.getElementById("csv-modal-close").addEventListener("click", closeCsvModal);
-            document.getElementById("csv-modal-cancel").addEventListener("click", closeCsvModal);
             document.getElementById("csv-modal-mask").addEventListener("click", function (e) {
                 if (e.target.id === "csv-modal-mask") closeCsvModal();
             });
-            document.getElementById("csv-tab-bar").addEventListener("click", function (e) {
-                if (e.target.closest("[data-action=\"remove-tab\"]")) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    removeCurrentCsvPasteEntry();
-                    return;
-                }
-                var addBtn = e.target.closest("[data-action=\"add\"]");
-                if (addBtn) {
-                    e.preventDefault();
-                    addCsvPasteEntry();
-                    return;
-                }
-                var tab = e.target.closest(".csv-tab");
-                if (!tab) return;
-                var id = Number(tab.getAttribute("data-id"));
-                if (!Number.isFinite(id)) return;
-                switchCsvPasteTab(id);
-            });
-            document.getElementById("csv-paste-load-btn").addEventListener("click", function () {
-                void loadPastedCsv();
+            document.getElementById("csv-sheet-add").addEventListener("click", function (e) {
+                e.preventDefault();
+                addCsvPasteEntry();
             });
             document.getElementById("csv-paste-input").addEventListener("input", function () {
                 var entry = getActiveCsvPasteEntry();
                 if (entry) entry.text = this.value;
                 updateCsvTextBtnState();
-            });
-            document.getElementById("csv-paste-name").addEventListener("input", function () {
-                var entry = getActiveCsvPasteEntry();
-                if (entry) entry.name = this.value;
+                scheduleAutoLoadCsvFromModal();
             });
             document.getElementById("csv-paste-input").addEventListener("keydown", function (e) {
-                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                    e.preventDefault();
-                    void loadPastedCsv();
-                }
                 if (e.key === "Escape") {
                     e.preventDefault();
                     closeCsvModal();

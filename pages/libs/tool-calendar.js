@@ -59,6 +59,7 @@
         if (!root) return null;
         options = options || {};
         var compact = !!options.compact;
+        var fullscreen = !!options.fullscreen;
         var externalTick = !!options.externalTick;
 
         var today = todayParts();
@@ -72,7 +73,10 @@
         var viewMonth = options.month != null ? options.month : (selected ? selected.month : today.month);
 
         root.innerHTML =
-            '<div class="tool-cal' + (compact ? " tool-cal-compact" : "") + '">' +
+            '<div class="tool-cal' +
+            (compact ? " tool-cal-compact" : "") +
+            (fullscreen ? " tool-cal-fullscreen" : "") +
+            '">' +
             '  <div class="tool-cal-head">' +
             '    <select class="tool-cal-holiday-select" aria-label="选择假期">' +
             '      <option value="">假期</option>' +
@@ -490,6 +494,25 @@
             setLiveTimeEnabled: setLiveTimeEnabled,
             resumeLiveTime: resumeLiveTime,
             pauseLiveTime: pauseLiveTime,
+            applyState: function (state) {
+                if (!state) return;
+                if (state.selected) {
+                    goToYmd(state.selected);
+                } else if (state.viewYear != null && state.viewMonth != null) {
+                    viewYear = state.viewYear;
+                    viewMonth = state.viewMonth;
+                    syncPicker();
+                    fillHolidaySelect();
+                    paint();
+                }
+            },
+            getState: function () {
+                return {
+                    selected: selected ? ymdKey(selected.year, selected.month, selected.day) : "",
+                    viewYear: viewYear,
+                    viewMonth: viewMonth
+                };
+            },
             destroy: function () {
                 stopInfoTick();
             }
