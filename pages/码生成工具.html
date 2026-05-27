@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>二维码生成 / 条形码生成</title>
+        <title>二维码 / 条形码</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -74,8 +74,8 @@
                 align-items: center;
                 flex-shrink: 0;
             }
-            .editor-head .actions .json-tabs {
-                margin-right: 4px;
+            .editor-head-main .mode-seg {
+                flex-shrink: 0;
             }
             .hint {
                 color: var(--muted);
@@ -151,6 +151,55 @@
                 padding: 10px;
                 overflow: auto;
                 box-sizing: border-box;
+                position: relative;
+            }
+            .preview-loading {
+                position: absolute;
+                inset: 0;
+                z-index: 3;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(248, 251, 255, 0.9);
+                border-radius: 8px;
+            }
+            .preview-loading[hidden] {
+                display: none !important;
+            }
+            .preview-loading-inner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                padding: 14px 18px;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                border-radius: 10px;
+                box-shadow: 0 8px 20px rgba(36, 90, 190, 0.12);
+            }
+            .preview-loading-spinner {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                border: 3px solid #e0e9ff;
+                border-top-color: var(--primary);
+                animation: preview-spin 0.75s linear infinite;
+                flex-shrink: 0;
+            }
+            @keyframes preview-spin {
+                to { transform: rotate(360deg); }
+            }
+            .preview-loading-text {
+                font-size: 13px;
+                color: #3c4f78;
+                font-weight: 600;
+                text-align: center;
+                max-width: 220px;
+                line-height: 1.45;
+            }
+            .preview-wrap.is-generating #qrcode,
+            .preview-wrap.is-generating #barcode {
+                visibility: hidden;
             }
             #qrcode {
                 width: max-content;
@@ -191,29 +240,36 @@
             .hidden {
                 display: none !important;
             }
-            .json-tabs {
-                display: flex;
-                gap: 4px;
-                align-items: center;
+            .mode-seg {
+                display: inline-flex;
                 flex-wrap: wrap;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
             }
-            .json-tabs button {
-                border: 1px solid #cfdcf7;
-                background: #fff;
-                padding: 6px 12px;
-                font-size: 13px;
-                border-radius: 8px;
+            .mode-seg button {
+                border: none;
+                background: transparent;
+                padding: 6px 10px;
+                font-size: 12px;
                 cursor: pointer;
-                color: var(--text);
+                color: #3c4f78;
+                font-family: inherit;
             }
-            .json-tabs button:hover {
-                border-color: var(--primary);
-                color: var(--primary);
-            }
-            .json-tabs button.active {
-                border-color: var(--primary);
-                color: #fff;
+            .mode-seg button.active {
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .qr-chunk-opt {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .mode-seg.compact button {
+                padding: 5px 8px;
+                font-size: 11px;
             }
             .opt-label {
                 font-size: 13px;
@@ -266,14 +322,22 @@
             <div class="editor-wrap">
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
-                        <span id="head-label">二维码生成</span>
+                        <span class="mode-seg" id="mode-tabs" role="tablist">
+                            <button type="button" class="active" data-mode="qrcode">二维码</button>
+                            <button type="button" data-mode="barcode">条形码</button>
+                        </span>
                         <span class="hint" id="head-hint">UTF-8 最多约 45KB；较长内容仅手动点「生成」预览</span>
                     </div>
                     <div class="actions">
-                        <div class="json-tabs" id="mode-tabs" role="tablist">
-                            <button type="button" class="active" data-mode="qrcode">二维码生成</button>
-                            <button type="button" data-mode="barcode">条形码生成</button>
-                        </div>
+                        <span class="qr-chunk-opt" id="qr-chunk-opt">
+                            <span class="opt-label">单码上限</span>
+                            <span class="mode-seg compact" id="chunk-max-tabs" role="tablist" title="每张二维码最多编码的字符数，越小越易扫码">
+                                <button type="button" class="active" data-max="0">自动</button>
+                                <button type="button" data-max="1000">1000</button>
+                                <button type="button" data-max="2000">2000</button>
+                                <button type="button" data-max="2500">2500</button>
+                            </span>
+                        </span>
                         <button type="button" class="title-btn primary" id="generate-btn">生成</button>
                         <button type="button" class="title-btn" id="download-btn">下载图片</button>
                         <button type="button" class="title-btn danger" id="clear-btn">清空</button>
@@ -285,6 +349,12 @@
                         <div id="status"></div>
                     </div>
                     <div class="preview-wrap" id="preview-panel" aria-label="预览区">
+                        <div id="preview-loading" class="preview-loading" hidden aria-hidden="true" role="status">
+                            <div class="preview-loading-inner">
+                                <div class="preview-loading-spinner" aria-hidden="true"></div>
+                                <span id="preview-loading-text" class="preview-loading-text">正在生成…</span>
+                            </div>
+                        </div>
                         <div id="qrcode"></div>
                         <svg id="barcode" class="hidden"></svg>
                     </div>
@@ -303,6 +373,8 @@
                 var MAX_INPUT_UTF8_BYTES = 45000;
                 /** 超过此 UTF-8 长度不再输入时自动刷新，避免卡顿 */
                 var MAX_AUTO_PREVIEW_UTF8_BYTES = 9600;
+                /** 超过此长度显示加载动画并异步生成，避免界面假死感 */
+                var SHOW_LOADING_UTF8_BYTES = 2048;
                 /** 极端纠错下分片过多时保护主线程 */
                 var MAX_QR_CHUNKS = 120;
                 var teEnc = new TextEncoder();
@@ -313,10 +385,15 @@
                 var DEFAULT_QR_ECC = "L";
                 var DEFAULT_QR_SIZE = 280;
                 var DEFAULT_BAR_HEIGHT = 120;
-                var DEFAULT_CHUNK_MARGIN = 24;
+                var LS_CHUNK_MAX = "qr-tool-chunk-max-chars";
 
                 var mode = "qrcode";
                 var autoGenTimer = null;
+                var genToken = 0;
+                var previewLoadingEl = document.getElementById("preview-loading");
+                var previewLoadingTextEl = document.getElementById("preview-loading-text");
+                var previewPanelEl = document.getElementById("preview-panel");
+                var generateBtnEl = document.getElementById("generate-btn");
 
                 function toast(msg) {
                     var el = document.getElementById("toast");
@@ -332,6 +409,34 @@
                     var s = document.getElementById("status");
                     s.textContent = text;
                     s.classList.toggle("err", !!isError);
+                }
+
+                function setPreviewLoading(on, msg) {
+                    if (!previewLoadingEl) return;
+                    if (on) {
+                        previewLoadingEl.hidden = false;
+                        previewLoadingEl.setAttribute("aria-hidden", "false");
+                        if (previewPanelEl) previewPanelEl.classList.add("is-generating");
+                        if (previewLoadingTextEl && msg) previewLoadingTextEl.textContent = msg;
+                    } else {
+                        previewLoadingEl.hidden = true;
+                        previewLoadingEl.setAttribute("aria-hidden", "true");
+                        if (previewPanelEl) previewPanelEl.classList.remove("is-generating");
+                    }
+                }
+
+                function setGenerateBusy(busy) {
+                    if (!generateBtnEl) return;
+                    generateBtnEl.disabled = !!busy;
+                    generateBtnEl.setAttribute("aria-busy", busy ? "true" : "false");
+                }
+
+                function shouldUseAsyncLoading(byteLen) {
+                    return byteLen >= SHOW_LOADING_UTF8_BYTES;
+                }
+
+                function yieldToUi(cb) {
+                    window.setTimeout(cb, 0);
                 }
 
                 function normalizeInputText(raw) {
@@ -375,7 +480,37 @@
                 /**
                  * 按 UTF-8 边界切分：用 QRCodeLib.create 判断是否可进单码（与 Ctool 行为一致，避免旧 davidshimjs 中文 BOM/估长 bug）。
                  */
-                function splitUtf8ByQrCreate(text, ecc) {
+                function getMaxCharsPerQr() {
+                    var active = document.querySelector("#chunk-max-tabs button.active");
+                    if (!active) return 0;
+                    var v = parseInt(active.getAttribute("data-max"), 10);
+                    return v > 0 ? v : 0;
+                }
+
+                var CHUNK_MAX_OPTIONS = [0, 1000, 2000, 2500];
+
+                function setMaxCharsPerQr(value) {
+                    var want = parseInt(value, 10);
+                    if (!(want > 0)) want = 0;
+                    if (CHUNK_MAX_OPTIONS.indexOf(want) < 0) want = 0;
+                    document.querySelectorAll("#chunk-max-tabs button").forEach(function (b) {
+                        var n = parseInt(b.getAttribute("data-max"), 10) || 0;
+                        b.classList.toggle("active", n === want);
+                    });
+                    try {
+                        localStorage.setItem(LS_CHUNK_MAX, String(want));
+                    } catch (e) {}
+                }
+
+                function loadMaxCharsPerQr() {
+                    try {
+                        var saved = localStorage.getItem(LS_CHUNK_MAX);
+                        if (saved != null) setMaxCharsPerQr(saved);
+                    } catch (e) {}
+                }
+
+                function splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk) {
+                    var capChars = maxCharsPerChunk > 0 ? maxCharsPerChunk : 0;
                     var u8 = teEnc.encode(text);
                     if (u8.length === 0) return [];
                     var out = [];
@@ -402,7 +537,10 @@
                                 hi = mid - 1;
                                 continue;
                             }
-                            if (qrCreateOk(sliceStr, ecc)) {
+                            var fits =
+                                qrCreateOk(sliceStr, ecc) &&
+                                (capChars <= 0 || sliceStr.length <= capChars);
+                            if (fits) {
                                 best = mid;
                                 lo = mid + 1;
                             } else {
@@ -481,14 +619,13 @@
                     barcode.innerHTML = "";
                 }
 
-                function generateQrList(text, size, eccName, chunkMargin) {
-                    void chunkMargin;
+                function generateQrList(text, size, eccName, maxCharsPerChunk) {
                     var ecc = (eccName || "L").toUpperCase();
                     if (!/^[LMQH]$/.test(ecc)) ecc = "L";
                     if (typeof QRCodeLib === "undefined" || !QRCodeLib.create) {
                         throw new Error("二维码引擎未加载，请确认 pages/libs/qrcode-lib.bundle.js 存在且已先于本脚本加载。");
                     }
-                    var chunks = splitUtf8ByQrCreate(text, ecc);
+                    var chunks = splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk || 0);
                     if (chunks.length > MAX_QR_CHUNKS) {
                         throw new Error(
                             "分片数量超过 " +
@@ -515,21 +652,151 @@
                         var nm = renderChunkWithFallback(codeWrap, chunk, ecc, size);
                         usedLevels.push(nm);
                     });
-                    return { chunks: chunks, levels: usedLevels, cap: cap, ecc: ecc };
+                    return {
+                        chunks: chunks,
+                        levels: usedLevels,
+                        cap: cap,
+                        ecc: ecc,
+                        maxCharsPerChunk: maxCharsPerChunk || 0
+                    };
+                }
+
+                /** 分片较多时逐张渲染并让出主线程，便于加载动画转动 */
+                function generateQrListAsync(text, size, eccName, maxCharsPerChunk, token, onProgress) {
+                    return new Promise(function (resolve, reject) {
+                        yieldToUi(function () {
+                            if (token !== genToken) {
+                                reject(new Error("__cancelled__"));
+                                return;
+                            }
+                            try {
+                                if (onProgress) onProgress("正在分析内容并分片…");
+                                var ecc = (eccName || "L").toUpperCase();
+                                if (!/^[LMQH]$/.test(ecc)) ecc = "L";
+                                if (typeof QRCodeLib === "undefined" || !QRCodeLib.create) {
+                                    throw new Error(
+                                        "二维码引擎未加载，请确认 pages/libs/qrcode-lib.bundle.js 存在且已先于本脚本加载。"
+                                    );
+                                }
+                                var chunks = splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk || 0);
+                                if (chunks.length > MAX_QR_CHUNKS) {
+                                    throw new Error(
+                                        "分片数量超过 " +
+                                            MAX_QR_CHUNKS +
+                                            " 张，请缩短内容或改用纠错 L。当前约 " +
+                                            chunks.length +
+                                            " 张。"
+                                    );
+                                }
+                                var qrcodeEl = document.getElementById("qrcode");
+                                qrcodeEl.innerHTML = "";
+                                var usedLevels = [];
+                                var cap = CAPACITY_V40[ecc] || CAPACITY_V40.L;
+                                var idx = 0;
+
+                                function renderOne() {
+                                    if (token !== genToken) {
+                                        reject(new Error("__cancelled__"));
+                                        return;
+                                    }
+                                    if (idx >= chunks.length) {
+                                        resolve({
+                                            chunks: chunks,
+                                            levels: usedLevels,
+                                            cap: cap,
+                                            ecc: ecc,
+                                            maxCharsPerChunk: maxCharsPerChunk || 0
+                                        });
+                                        return;
+                                    }
+                                    if (onProgress && chunks.length > 1) {
+                                        onProgress(
+                                            "正在生成第 " + (idx + 1) + " / " + chunks.length + " 张二维码…"
+                                        );
+                                    } else if (onProgress) {
+                                        onProgress("正在生成二维码…");
+                                    }
+                                    var chunk = chunks[idx];
+                                    var item = document.createElement("div");
+                                    item.className = "qr-item";
+                                    var label = document.createElement("div");
+                                    label.className = "qr-item-label";
+                                    label.textContent =
+                                        chunks.length > 1
+                                            ? "第 " + (idx + 1) + " / " + chunks.length + " 张"
+                                            : "单张";
+                                    var codeWrap = document.createElement("div");
+                                    item.appendChild(label);
+                                    item.appendChild(codeWrap);
+                                    qrcodeEl.appendChild(item);
+                                    var nm = renderChunkWithFallback(codeWrap, chunk, ecc, size);
+                                    usedLevels.push(nm);
+                                    idx++;
+                                    if (idx < chunks.length) {
+                                        yieldToUi(renderOne);
+                                    } else {
+                                        resolve({
+                                            chunks: chunks,
+                                            levels: usedLevels,
+                                            cap: cap,
+                                            ecc: ecc,
+                                            maxCharsPerChunk: maxCharsPerChunk || 0
+                                        });
+                                    }
+                                }
+
+                                renderOne();
+                            } catch (e) {
+                                reject(e);
+                            }
+                        });
+                    });
                 }
 
                 function syncModeUi() {
                     var qr = mode === "qrcode";
-                    document.getElementById("head-label").textContent = qr ? "二维码生成" : "条形码生成";
                     document.getElementById("head-hint").textContent = qr
                         ? "UTF-8 最多约 " +
                           Math.floor(MAX_INPUT_UTF8_BYTES / 1024) +
-                          "KB；超过 " +
-                          Math.floor(MAX_AUTO_PREVIEW_UTF8_BYTES / 1024) +
-                          "KB 请点「生成」刷新"
+                          "KB；可用「单码上限」控制每张码量以利扫码"
                         : "条形码为 CODE128；中文建议改用二维码";
+                    document.getElementById("qr-chunk-opt").classList.toggle("hidden", !qr);
                     document.getElementById("qrcode").classList.toggle("hidden", !qr);
                     document.getElementById("barcode").classList.toggle("hidden", qr);
+                }
+
+                function applyQrResult(res, charLen, byteLen) {
+                    var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
+                    var limitNote =
+                        res.maxCharsPerChunk > 0 ? " 单码上限 " + res.maxCharsPerChunk + " 字符。" : "";
+                    var splitNote =
+                        res.chunks.length > 1
+                            ? " 已分为 " +
+                              res.chunks.length +
+                              " 张" +
+                              (res.maxCharsPerChunk > 0
+                                  ? "（每码 ≤ " + res.maxCharsPerChunk + " 字符）"
+                                  : "（按纠错 " +
+                                    res.ecc +
+                                    " 尽量填满；Version40 " +
+                                    res.ecc +
+                                    " 约 " +
+                                    res.cap +
+                                    " 字节）") +
+                              "。"
+                            : " 单张二维码，UTF-8 " + byteLen + " 字节。";
+                    setStatus(
+                        "共 " + charLen + " 字符 / " + byteLen + " 字节。" + limitNote + splitNote + " " + levelNote,
+                        false
+                    );
+                }
+
+                function finishGenerate(token, hadLoading) {
+                    if (token !== genToken) return;
+                    if (hadLoading) {
+                        setPreviewLoading(false);
+                        setGenerateBusy(false);
+                    }
                 }
 
                 function generateCode() {
@@ -539,6 +806,9 @@
                     var size = Math.max(80, Math.min(1200, DEFAULT_QR_SIZE));
                     var charLen = text.length;
                     var byteLen = getUtf8ByteLength(text);
+                    var token = ++genToken;
+                    setPreviewLoading(false);
+                    setGenerateBusy(false);
 
                     if (!text.trim()) {
                         clearPreview();
@@ -559,82 +829,101 @@
                         return;
                     }
 
-                    clearPreview();
+                    var asyncLoad = shouldUseAsyncLoading(byteLen);
+                    if (asyncLoad) {
+                        clearPreview();
+                        setPreviewLoading(
+                            true,
+                            mode === "qrcode" ? "正在生成二维码…" : "正在生成条形码…"
+                        );
+                        setGenerateBusy(true);
+                    } else {
+                        clearPreview();
+                    }
 
-                    if (mode === "qrcode") {
-                        var eccName = DEFAULT_QR_ECC;
-                        var marginBytes = DEFAULT_CHUNK_MARGIN;
+                    function runGenerate() {
+                        if (token !== genToken) return;
+
+                        if (mode === "qrcode") {
+                            var eccName = DEFAULT_QR_ECC;
+                            var maxChars = getMaxCharsPerQr();
+
+                            function onQrError(error) {
+                                if (token !== genToken || (error && error.message === "__cancelled__")) return;
+                                clearPreview();
+                                setStatus(
+                                    "生成失败：" +
+                                        (error && error.message ? error.message : String(error)) +
+                                        "（当前 " +
+                                        charLen +
+                                        " 字符 / " +
+                                        byteLen +
+                                        " 字节）",
+                                    true
+                                );
+                                finishGenerate(token, asyncLoad);
+                            }
+
+                            if (asyncLoad) {
+                                generateQrListAsync(text, size, eccName, maxChars, token, function (msg) {
+                                    if (token === genToken) setPreviewLoading(true, msg);
+                                })
+                                    .then(function (res) {
+                                        if (token !== genToken) return;
+                                        applyQrResult(res, charLen, byteLen);
+                                        finishGenerate(token, true);
+                                    })
+                                    .catch(onQrError);
+                                return;
+                            }
+
+                            try {
+                                var resSync = generateQrList(text, size, eccName, maxChars);
+                                applyQrResult(resSync, charLen, byteLen);
+                            } catch (error) {
+                                onQrError(error);
+                            }
+                            return;
+                        }
+
+                        var barcodeEl = document.getElementById("barcode");
+                        if (byteLen > 8000) {
+                            clearPreview();
+                            setStatus("条形码内容过长（>8000 字节），请缩短或改用二维码。", true);
+                            finishGenerate(token, asyncLoad);
+                            return;
+                        }
+                        var bh = DEFAULT_BAR_HEIGHT;
                         try {
-                            var res = generateQrList(text, size, eccName, marginBytes);
-                            var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
-                            var splitNote =
-                                res.chunks.length > 1
-                                    ? " 已分为 " +
-                                      res.chunks.length +
-                                      " 张（node-qrcode 按纠错 " +
-                                      res.ecc +
-                                      " 自动分片；Version40 " +
-                                      res.ecc +
-                                      " 约 " +
-                                      res.cap +
-                                      " 字节）。"
-                                    : " 单张二维码，UTF-8 " + byteLen + " 字节（Version40 " + res.ecc + " 最大约 " + res.cap + " 字节）。";
+                            JsBarcode(barcodeEl, text, {
+                                format: "CODE128",
+                                width: 2,
+                                height: bh,
+                                displayValue: true,
+                                margin: 10
+                            });
                             setStatus(
-                                "共 " +
+                                "条形码已生成。" +
                                     charLen +
                                     " 字符 / " +
                                     byteLen +
-                                    " 字节。" +
-                                    splitNote +
-                                    " " +
-                                    levelNote,
+                                    " 字节。若失败请缩短内容或改用二维码。",
                                 false
                             );
                         } catch (error) {
                             clearPreview();
                             setStatus(
-                                "生成失败：" +
-                                    (error && error.message ? error.message : String(error)) +
-                                    "（当前 " +
-                                    charLen +
-                                    " 字符 / " +
-                                    byteLen +
-                                    " 字节）",
+                                "条形码失败：CODE128 对中文、换行等支持有限，请改用二维码或仅使用 ASCII。",
                                 true
                             );
                         }
-                        return;
+                        finishGenerate(token, asyncLoad);
                     }
 
-                    var barcodeEl = document.getElementById("barcode");
-                    if (byteLen > 8000) {
-                        clearPreview();
-                        setStatus("条形码内容过长（>8000 字节），请缩短或改用二维码。", true);
-                        return;
-                    }
-                    var bh = DEFAULT_BAR_HEIGHT;
-                    try {
-                        JsBarcode(barcodeEl, text, {
-                            format: "CODE128",
-                            width: 2,
-                            height: bh,
-                            displayValue: true,
-                            margin: 10
-                        });
-                        setStatus(
-                            "条形码已生成。" +
-                                charLen +
-                                " 字符 / " +
-                                byteLen +
-                                " 字节。若失败请缩短内容或改用二维码。",
-                            false
-                        );
-                    } catch (error) {
-                        clearPreview();
-                        setStatus(
-                            "条形码失败：CODE128 对中文、换行等支持有限，请改用二维码或仅使用 ASCII。",
-                            true
-                        );
+                    if (asyncLoad) {
+                        yieldToUi(runGenerate);
+                    } else {
+                        runGenerate();
                     }
                 }
 
@@ -724,6 +1013,18 @@
                     generateCode();
                 });
 
+                document.getElementById("chunk-max-tabs").addEventListener("click", function (e) {
+                    var btn = e.target.closest("button[data-max]");
+                    if (!btn || btn.classList.contains("active")) return;
+                    document.querySelectorAll("#chunk-max-tabs button").forEach(function (b) {
+                        b.classList.toggle("active", b === btn);
+                    });
+                    try {
+                        localStorage.setItem(LS_CHUNK_MAX, btn.getAttribute("data-max") || "0");
+                    } catch (err) {}
+                    if (mode === "qrcode") generateCode();
+                });
+
                 document.getElementById("generate-btn").addEventListener("click", generateCode);
                 document.getElementById("download-btn").addEventListener("click", downloadCode);
                 document.getElementById("clear-btn").addEventListener("click", clearAll);
@@ -734,6 +1035,7 @@
                     scheduleGenerate(200);
                 });
 
+                loadMaxCharsPerQr();
                 syncModeUi();
                 setStatus(
                     "二维码 UTF-8 上限约 " +
