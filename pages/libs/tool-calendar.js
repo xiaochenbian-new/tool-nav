@@ -214,25 +214,37 @@
 
         var tickTimer = null;
 
+        function isSelectedToday() {
+            if (!selected) return false;
+            var now = todayParts();
+            return (
+                selected.year === now.year &&
+                selected.month === now.month &&
+                selected.day === now.day
+            );
+        }
+
         function formatInfoPrimaryLine() {
             var dt = new Date(selected.year, selected.month, selected.day);
             var weekName = WEEKDAY_NAMES[dt.getDay()];
-            var now = new Date();
-            return (
+            var line =
                 selected.year +
                 "年" +
                 (selected.month + 1) +
                 "月" +
                 selected.day +
-                "日 " +
-                pad(now.getHours()) +
-                ":" +
-                pad(now.getMinutes()) +
-                ":" +
-                pad(now.getSeconds()) +
-                " " +
-                weekName
-            );
+                "日";
+            if (isSelectedToday()) {
+                var now = new Date();
+                line +=
+                    " " +
+                    pad(now.getHours()) +
+                    ":" +
+                    pad(now.getMinutes()) +
+                    ":" +
+                    pad(now.getSeconds());
+            }
+            return line + " " + weekName;
         }
 
         function syncInfo() {
@@ -250,10 +262,11 @@
         }
 
         function tickInfoNow() {
-            if (externalTick) {
-                if (typeof options.shouldTick === "function" && !options.shouldTick()) {
-                    return;
-                }
+            if (typeof options.shouldTick === "function" && !options.shouldTick()) {
+                return;
+            }
+            if (!isSelectedToday()) {
+                return;
             }
             syncInfo();
         }
@@ -460,9 +473,7 @@
 
         fillHolidaySelect();
         paint();
-        if (!compact) {
-            startInfoTick();
-        }
+        startInfoTick();
 
         return {
             goToday: function (withTick) {
@@ -470,14 +481,13 @@
                 if (withTick !== false) {
                     startInfoTick();
                 } else {
-                    stopInfoTick();
                     syncInfo();
                 }
             },
             tickInfoNow: tickInfoNow,
             syncInfo: syncInfo,
             isLiveTimeActive: function () {
-                return true;
+                return tickTimer != null;
             },
             goToDate: goToDate,
             goToYmd: goToYmd,

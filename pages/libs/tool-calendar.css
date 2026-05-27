@@ -340,29 +340,96 @@
 
 /* —— 全屏展开 —— */
 .tool-cal-fullscreen .tool-cal-head {
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 14px 16px;
+    gap: 10px;
+    min-height: 48px;
+    margin-bottom: 12px;
 }
-.tool-cal-fullscreen .tool-cal-day {
-    min-height: 72px;
-    padding: 10px 2px 6px;
-}
-.tool-cal-fullscreen .tool-cal-day-num {
-    font-size: 16px;
-}
-.tool-cal-fullscreen .tool-cal-day-sub {
-    font-size: 11px;
-}
-.tool-cal-fullscreen .tool-cal-info-primary {
+.tool-cal-fullscreen .tool-cal-holiday-select {
+    flex: 0 0 76px;
+    width: 76px;
     font-size: 15px;
+    padding: 8px 6px;
 }
-.tool-cal-fullscreen .tool-cal-info-lunar {
-    font-size: 13px;
+.tool-cal-fullscreen .tool-cal-year-select,
+.tool-cal-fullscreen .tool-cal-month-select {
+    font-size: 15px;
+    padding: 8px 8px;
 }
-.tool-cal-fullscreen .tool-cal-footer {
-    font-size: 13px;
-    padding: 10px 12px;
+.tool-cal-fullscreen .tool-cal-year-select {
+    width: 100px;
+}
+.tool-cal-fullscreen .tool-cal-month-select {
+    width: 128px;
+}
+.tool-cal-fullscreen .tool-cal-today-btn {
+    font-size: 15px;
+    padding: 8px 14px;
+}
+.tool-cal-fullscreen .tool-cal-nav {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 22px;
+    border-radius: 6px;
+}
+.tool-cal-fullscreen .tool-cal-weekdays {
+    padding: 0 4px 10px;
 }
 .tool-cal-fullscreen .tool-cal-weekday {
+    font-size: 16px;
+    padding: 4px 0;
+}
+.tool-cal-fullscreen .tool-cal-weekday-zh {
+    font-size: 16px;
+}
+.tool-cal-fullscreen .tool-cal-weekday-en {
+    font-size: 11px;
+}
+.tool-cal-fullscreen .tool-cal-grid {
+    gap: 4px;
+}
+.tool-cal-fullscreen .tool-cal-day {
+    min-height: 96px;
+    padding: 12px 4px 8px;
+    border-radius: 8px;
+}
+.tool-cal-fullscreen .tool-cal-day-num {
+    font-size: 22px;
+}
+.tool-cal-fullscreen .tool-cal-day-sub {
     font-size: 13px;
+    line-height: 1.25;
+}
+.tool-cal-fullscreen .tool-cal-day-badge {
+    top: 3px;
+    right: 3px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+.tool-cal-fullscreen .tool-cal-info {
+    padding: 14px 12px 8px;
+    margin-top: 10px;
+    gap: 6px;
+}
+.tool-cal-fullscreen .tool-cal-info-primary {
+    font-size: 20px;
+    line-height: 1.5;
+}
+.tool-cal-fullscreen .tool-cal-info-lunar {
+    font-size: 16px;
+}
+.tool-cal-fullscreen .tool-cal-footer {
+    font-size: 16px;
+    padding: 14px 12px 10px;
+    gap: 8px;
+}
+.tool-cal-fullscreen .tool-cal-footer-icon {
+    font-size: 18px;
+}
+.tool-cal-fullscreen .tool-cal-footer-text em {
+    font-size: 18px;
 }

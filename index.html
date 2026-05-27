@@ -977,20 +977,13 @@
                 };
 
                 window.startCalendarPanelTick = function () {
-                    window.stopCalendarPanelTick();
-                    function tick() {
-                        var panel = document.getElementById("calendar-panel");
-                        if (!panel || !panel.classList.contains("visible")) {
-                            window.stopCalendarPanelTick();
-                            return;
-                        }
-                        var cal = window.__calInstance;
-                        if (cal && typeof cal.syncInfo === "function") {
-                            cal.syncInfo();
-                        }
+                    var cal = window.__calInstance;
+                    if (cal && typeof cal.syncInfo === "function") {
+                        cal.syncInfo();
                     }
-                    tick();
-                    window.__calendarPanelTickId = setInterval(tick, 1000);
+                    if (cal && typeof cal.startInfoTick === "function") {
+                        cal.startInfoTick();
+                    }
                 };
 
                 window.resumeCalendarLiveTime = function () {
@@ -1022,7 +1015,13 @@
                     }
                     try {
                         root.innerHTML = "";
-                        window.__calInstance = ToolCalendar.mount(root, { compact: true });
+                        window.__calInstance = ToolCalendar.mount(root, {
+                            compact: true,
+                            shouldTick: function () {
+                                var p = document.getElementById("calendar-panel");
+                                return !!(p && p.classList.contains("visible"));
+                            }
+                        });
                         if (root.querySelector(".tool-cal-grid button")) {
                             if (panel) panel.classList.add("has-cal-content");
                         } else {
@@ -1300,6 +1299,9 @@
                     typeof window.__positionCalendarPanel === "function"
                 ) {
                     window.__positionCalendarPanel();
+                }
+                if (panel && panel.classList.contains("visible")) {
+                    startCalendarPanelTick();
                 }
             }
             window.setCalendarPanelExpanded = setCalendarPanelExpanded;
