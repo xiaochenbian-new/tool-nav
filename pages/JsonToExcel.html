@@ -91,24 +91,176 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 background: #fff;
                 outline: none;
             }
+            .input-wrap {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            .input-wrap:focus-within {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .input-wrap[hidden] {
+                display: none !important;
+            }
             #text-input,
             #output {
                 width: 100%;
                 flex: 1;
                 min-height: 180px;
-                border: 1px solid #cfdcf7;
-                border-radius: 8px;
                 padding: 10px;
                 resize: none;
                 outline: none;
                 font-size: 13px;
                 line-height: 1.6;
+            }
+            #text-input {
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
+            #output {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
                 transition: border-color 0.2s ease, box-shadow 0.2s ease;
             }
-            #text-input:focus,
             #output:focus {
                 border-color: var(--primary);
                 box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            .input-hint {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .json-sheet-bar {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: flex-end;
+                min-height: 30px;
+                padding: 0 10px 2px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .json-sheet-strip {
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 2px;
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+            }
+            .json-sheet-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+            .json-sheet-tabs {
+                display: contents;
+            }
+            .json-sheet-tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                max-width: 148px;
+                height: 26px;
+                padding: 0 12px;
+                margin: 0;
+                border: 1px solid transparent;
+                border-radius: 4px 4px 0 0;
+                background: transparent;
+                color: #5a6d8f;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+                z-index: 1;
+            }
+            .json-sheet-tab:hover {
+                background: #f4f8ff;
+                color: #3c4f78;
+                z-index: 2;
+            }
+            .json-sheet-tab.active {
+                background: #edf3ff;
+                color: var(--primary);
+                font-weight: 600;
+                z-index: 3;
+                border-color: #d8e5ff;
+            }
+            .json-sheet-tab .sheet-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 120px;
+            }
+            .json-sheet-tab .sheet-rename-input {
+                width: 96px;
+                max-width: 120px;
+                height: 22px;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid var(--primary);
+                border-radius: 4px;
+                outline: none;
+                background: #fff;
+            }
+            .json-sheet-tab .sheet-close {
+                flex: 0 0 auto;
+                margin-left: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                border: none;
+                border-radius: 3px;
+                background: transparent;
+                color: #6f7d96;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                opacity: 0;
+            }
+            .json-sheet-tab:hover .sheet-close,
+            .json-sheet-tab.active .sheet-close {
+                opacity: 1;
+            }
+            .json-sheet-tab .sheet-close:hover {
+                background: rgba(224, 64, 64, 0.15);
+                color: var(--danger);
+            }
+            .json-sheet-add {
+                flex: 0 0 26px;
+                width: 26px;
+                height: 26px;
+                margin: 0;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                font-size: 18px;
+                line-height: 1;
+                color: #8a9bb8;
+                cursor: pointer;
+            }
+            .json-sheet-add:hover {
+                background: #f0f5ff;
+                color: var(--primary);
+            }
+            #jte-sheets-meta {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                border: 0;
             }
             .button-container {
                 display: flex;
@@ -119,7 +271,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
             button {
                 padding: 7px 12px;
                 border: none;
-                border-radius: 999px;
+                border-radius: 6px;
                 color: white;
                 cursor: pointer;
                 font-weight: bold;
@@ -186,8 +338,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                         <option value="json">JSON 文本</option>
                     </select>
                     <input id="excel-file" type="file" accept=".xlsx,.xls" style="display: none" />
+                    <span class="input-hint" id="input-hint" title="底部可切换多个输入工作表，双击标签可重命名">多工作表输入</span>
                 </div>
-                <textarea id="text-input" placeholder='JSON 示例：
+                <div class="input-wrap" id="input-wrap">
+                    <textarea id="text-input" data-persist-key="jte_text_input" placeholder='JSON 示例：
 [
   {"name":"张三","age":10},
   {"name":"李四","age":14}
@@ -201,6 +355,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
 SQL 示例：
 insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
+                    <div class="json-sheet-bar" id="jte-sheet-bar">
+                        <div class="json-sheet-strip">
+                            <div class="json-sheet-tabs" id="jte-sheet-tabs" role="tablist" aria-label="输入工作表"></div>
+                            <button type="button" class="json-sheet-add" id="jte-sheet-add" title="新建工作表">+</button>
+                        </div>
+                    </div>
+                    <textarea id="jte-sheets-meta" data-persist-key="jte_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
+                </div>
                 <div class="button-container">
                     <button id="convert-btn" type="button">执行转换</button>
                     <button id="download-btn" type="button">下载输出</button>
@@ -224,6 +386,278 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                 { value: "insert", label: "Insert 语句" },
                 { value: "json", label: "JSON 文本" }
             ];
+
+            const textInputEl = document.getElementById("text-input");
+            const sheetsMetaInput = document.getElementById("jte-sheets-meta");
+            const sheetTabsEl = document.getElementById("jte-sheet-tabs");
+            const sheetAddBtn = document.getElementById("jte-sheet-add");
+            const inputWrapEl = document.getElementById("input-wrap");
+            const inputHintEl = document.getElementById("input-hint");
+            let inputSheets = [];
+            let activeInputSheetId = null;
+            let sheetRenameId = null;
+            let _sheetPersistTimer = null;
+
+            function genSheetId() {
+                return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+            }
+
+            function getActiveSheet() {
+                for (let i = 0; i < inputSheets.length; i++) {
+                    if (inputSheets[i].id === activeInputSheetId) return inputSheets[i];
+                }
+                return null;
+            }
+
+            function nextSheetName() {
+                const used = {};
+                inputSheets.forEach((s) => {
+                    used[s.name] = true;
+                });
+                let n = 1;
+                while (used["Sheet" + n]) n++;
+                return "Sheet" + n;
+            }
+
+            function syncInputFromTextarea() {
+                const sheet = getActiveSheet();
+                if (sheet) sheet.content = textInputEl.value;
+            }
+
+            function persistSheetsState() {
+                syncInputFromTextarea();
+                if (!inputSheets.length) return;
+                sheetsMetaInput.value = JSON.stringify({
+                    activeId: activeInputSheetId,
+                    sheets: inputSheets,
+                });
+                sheetsMetaInput.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+
+            function schedulePersistSheets() {
+                clearTimeout(_sheetPersistTimer);
+                _sheetPersistTimer = setTimeout(persistSheetsState, 400);
+            }
+
+            function applyActiveSheetToInput() {
+                const sheet = getActiveSheet();
+                const content = sheet ? String(sheet.content == null ? "" : sheet.content) : "";
+                if (sheet) sheet.content = content;
+                textInputEl.value = content;
+            }
+
+            function initSheetsFromStorage() {
+                const legacy = textInputEl.value ? String(textInputEl.value) : "";
+                if (sheetsMetaInput.value) {
+                    try {
+                        const state = JSON.parse(sheetsMetaInput.value);
+                        if (state && state.sheets && state.sheets.length) {
+                            inputSheets = state.sheets.map((s) => ({
+                                id: s.id || genSheetId(),
+                                name: String(s.name || "Sheet1"),
+                                content: s.content == null ? "" : String(s.content),
+                            }));
+                            activeInputSheetId = state.activeId;
+                            if (!getActiveSheet()) activeInputSheetId = inputSheets[0].id;
+                            return;
+                        }
+                    } catch (e) {
+                        /* 损坏的存储，回退为单表 */
+                    }
+                }
+                inputSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy }];
+                activeInputSheetId = inputSheets[0].id;
+            }
+
+            function switchSheet(sheetId) {
+                if (!sheetId || sheetId === activeInputSheetId) return;
+                syncInputFromTextarea();
+                activeInputSheetId = sheetId;
+                applyActiveSheetToInput();
+                renderSheetTabs();
+                persistSheetsState();
+            }
+
+            function addSheet() {
+                syncInputFromTextarea();
+                const sheet = {
+                    id: genSheetId(),
+                    name: nextSheetName(),
+                    content: "",
+                };
+                inputSheets.push(sheet);
+                switchSheet(sheet.id);
+                setStatus("已新建 " + sheet.name, false);
+            }
+
+            function removeSheet(sheetId) {
+                if (inputSheets.length <= 1) {
+                    setStatus("至少保留一个工作表", true);
+                    return;
+                }
+                const idx = inputSheets.findIndex((s) => s.id === sheetId);
+                if (idx < 0) return;
+                const removed = inputSheets.splice(idx, 1)[0];
+                if (activeInputSheetId === sheetId) {
+                    const next = inputSheets[Math.min(idx, inputSheets.length - 1)];
+                    activeInputSheetId = next.id;
+                    applyActiveSheetToInput();
+                }
+                renderSheetTabs();
+                persistSheetsState();
+                setStatus("已删除 " + removed.name, false);
+            }
+
+            function renameSheet(sheetId, newName) {
+                const name = String(newName || "").trim();
+                if (!name) {
+                    setStatus("名称不能为空", true);
+                    return false;
+                }
+                if (inputSheets.some((s) => s.id !== sheetId && s.name === name)) {
+                    setStatus("名称已存在", true);
+                    return false;
+                }
+                const sheet = inputSheets.find((s) => s.id === sheetId);
+                if (sheet) sheet.name = name;
+                renderSheetTabs();
+                persistSheetsState();
+                return true;
+            }
+
+            function startSheetRename(sheetId) {
+                sheetRenameId = sheetId;
+                renderSheetTabs();
+                const tab = sheetTabsEl.querySelector('[data-sheet-id="' + sheetId + '"]');
+                const input = tab && tab.querySelector(".sheet-rename-input");
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }
+
+            function finishSheetRename(sheetId, value, cancel) {
+                sheetRenameId = null;
+                if (!cancel) renameSheet(sheetId, value);
+                renderSheetTabs();
+            }
+
+            function renderSheetTabs() {
+                if (!sheetTabsEl) return;
+                sheetTabsEl.innerHTML = "";
+                inputSheets.forEach((sheet) => {
+                    const tab = document.createElement("div");
+                    tab.className = "json-sheet-tab" + (sheet.id === activeInputSheetId ? " active" : "");
+                    tab.setAttribute("data-sheet-id", sheet.id);
+                    tab.setAttribute("role", "tab");
+                    tab.setAttribute("aria-selected", sheet.id === activeInputSheetId ? "true" : "false");
+                    tab.title = sheet.name + "（双击重命名）";
+
+                    if (sheetRenameId === sheet.id) {
+                        const inp = document.createElement("input");
+                        inp.className = "sheet-rename-input";
+                        inp.value = sheet.name;
+                        inp.addEventListener("keydown", (e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") finishSheetRename(sheet.id, inp.value, false);
+                            if (e.key === "Escape") finishSheetRename(sheet.id, "", true);
+                        });
+                        inp.addEventListener("blur", () => finishSheetRename(sheet.id, inp.value, false));
+                        tab.appendChild(inp);
+                    } else {
+                        const span = document.createElement("span");
+                        span.className = "sheet-name";
+                        span.textContent = sheet.name;
+                        tab.appendChild(span);
+                        tab.addEventListener("dblclick", (e) => {
+                            e.stopPropagation();
+                            startSheetRename(sheet.id);
+                        });
+                    }
+
+                    if (inputSheets.length > 1) {
+                        const closeBtn = document.createElement("button");
+                        closeBtn.type = "button";
+                        closeBtn.className = "sheet-close";
+                        closeBtn.title = "删除工作表";
+                        closeBtn.textContent = "×";
+                        closeBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            removeSheet(sheet.id);
+                        });
+                        tab.appendChild(closeBtn);
+                    }
+
+                    tab.addEventListener("click", () => {
+                        if (sheetRenameId) return;
+                        switchSheet(sheet.id);
+                    });
+                    sheetTabsEl.appendChild(tab);
+                });
+            }
+
+            function mergeWorkbooks(target, source) {
+                Object.keys(source).forEach((key) => {
+                    let name = key;
+                    let n = 2;
+                    while (Object.prototype.hasOwnProperty.call(target, name)) {
+                        name = key + "_" + n;
+                        n++;
+                    }
+                    target[name] = source[key];
+                });
+            }
+
+            function parseJsonSheetContent(text, sheetName) {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    return { [sheetName]: parsed };
+                }
+                if (parsed && typeof parsed === "object") {
+                    const keys = Object.keys(parsed);
+                    if (keys.length === 0) throw new Error("JSON 对象为空");
+                    const allArray = keys.every((k) => Array.isArray(parsed[k]));
+                    if (allArray) return parsed;
+                    return { [sheetName]: [parsed] };
+                }
+                throw new Error("JSON 格式不支持，请输入数组或多 Sheet 对象");
+            }
+
+            function getTextInputWorkbook(sourceType) {
+                syncInputFromTextarea();
+                const wb = {};
+                let hasContent = false;
+                inputSheets.forEach((sheet) => {
+                    const text = String(sheet.content || "").trim();
+                    if (!text) return;
+                    hasContent = true;
+                    let part;
+                    if (sourceType === "json") {
+                        part = parseJsonSheetContent(text, sheet.name);
+                    } else if (sourceType === "csv") {
+                        const csvPart = parseCsvTextToWorkbook(text);
+                        part = { [sheet.name]: csvPart.Sheet1 };
+                    } else if (sourceType === "sql") {
+                        part = parseInsertSqlToWorkbook(text);
+                    }
+                    mergeWorkbooks(wb, part);
+                });
+                if (!hasContent) {
+                    if (sourceType === "json") throw new Error("请输入 JSON 文本");
+                    if (sourceType === "csv") throw new Error("请输入 CSV 文本");
+                    if (sourceType === "sql") throw new Error("请输入 SQL Insert 文本");
+                }
+                return wb;
+            }
+
+            function resetInputSheets() {
+                inputSheets = [{ id: genSheetId(), name: "Sheet1", content: "" }];
+                activeInputSheetId = inputSheets[0].id;
+                sheetRenameId = null;
+                applyActiveSheetToInput();
+                renderSheetTabs();
+                persistSheetsState();
+            }
 
             function setStatus(text, isError) {
                 const status = document.getElementById("status");
@@ -315,20 +749,6 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                     return '"' + text.replace(/"/g, '""') + '"';
                 }
                 return text;
-            }
-
-            function normalizeWorkbookFromJson(text) {
-                const parsed = JSON.parse(text);
-                if (Array.isArray(parsed)) {
-                    return { Sheet1: parsed };
-                }
-                if (parsed && typeof parsed === "object") {
-                    const keys = Object.keys(parsed);
-                    if (keys.length === 0) throw new Error("JSON 对象为空");
-                    const allArray = keys.every((k) => Array.isArray(parsed[k]));
-                    if (allArray) return parsed;
-                }
-                throw new Error("JSON 格式不支持，请输入数组或多 Sheet 对象");
             }
 
             function splitCsvLine(line) {
@@ -480,18 +900,14 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
 
             function getSourceWorkbook() {
                 const sourceType = document.getElementById("source-type").value;
-                const text = document.getElementById("text-input").value.trim();
                 if (sourceType === "json") {
-                    if (!text) throw new Error("请输入 JSON 文本");
-                    return normalizeWorkbookFromJson(text);
+                    return getTextInputWorkbook("json");
                 }
                 if (sourceType === "csv") {
-                    if (!text) throw new Error("请输入 CSV 文本");
-                    return parseCsvTextToWorkbook(text);
+                    return getTextInputWorkbook("csv");
                 }
                 if (sourceType === "sql") {
-                    if (!text) throw new Error("请输入 SQL Insert 文本");
-                    return parseInsertSqlToWorkbook(text);
+                    return getTextInputWorkbook("sql");
                 }
                 if (!workbookData) throw new Error("请先上传 Excel 文件");
                 return workbookData;
@@ -681,7 +1097,7 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             }
 
             function clearAll() {
-                document.getElementById("text-input").value = "";
+                textInputEl.value = "";
                 document.getElementById("output").value = "";
                 document.getElementById("excel-file").value = "";
                 workbookData = null;
@@ -691,25 +1107,28 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                 outputSections = {};
                 activeSectionKey = "";
                 document.getElementById("output-tabs").innerHTML = "";
+                resetInputSheets();
                 setStatus("已清空。", false);
             }
 
             function syncUIBySourceType() {
                 const sourceType = document.getElementById("source-type").value;
                 const excelFile = document.getElementById("excel-file");
-                const textInput = document.getElementById("text-input");
-                if (sourceType === "excel") {
-                    excelFile.style.display = "inline-block";
-                    textInput.placeholder = "请上传 Excel 文件（支持多 Sheet），然后点击“执行转换”。";
+                const isExcel = sourceType === "excel";
+                if (inputWrapEl) inputWrapEl.hidden = isExcel;
+                if (inputHintEl) inputHintEl.hidden = isExcel;
+                excelFile.style.display = isExcel ? "inline-block" : "none";
+                if (isExcel) {
+                    textInputEl.placeholder = "请上传 Excel 文件（支持多 Sheet），然后点击“执行转换”。";
                 } else if (sourceType === "sql") {
-                    excelFile.style.display = "none";
-                    textInput.placeholder = "请输入 SQL Insert 语句（可多条、多表）。";
+                    textInputEl.placeholder =
+                        "每个工作表可粘贴 SQL Insert；底部 + 可新建工作表，双击标签可重命名。";
                 } else if (sourceType === "csv") {
-                    excelFile.style.display = "none";
-                    textInput.placeholder = "请输入 CSV 文本（首行为表头）。";
+                    textInputEl.placeholder =
+                        "每个工作表粘贴一份 CSV（首行为表头）；底部可切换多个工作表。";
                 } else {
-                    excelFile.style.display = "none";
-                    textInput.placeholder = "请输入 JSON 数组，或多 Sheet JSON 对象。";
+                    textInputEl.placeholder =
+                        "每个工作表可粘贴 JSON 数组；底部 + 可新建工作表，双击标签可重命名。";
                 }
                 refreshTargetOptionsVisibility();
                 enforceSourceTargetExclusion(false);
@@ -755,6 +1174,25 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                 event.preventDefault();
             });
             const output = document.getElementById("output");
+
+            sheetAddBtn.addEventListener("click", addSheet);
+            textInputEl.addEventListener("input", function () {
+                const sheet = getActiveSheet();
+                if (sheet) sheet.content = textInputEl.value;
+                schedulePersistSheets();
+            });
+            initSheetsFromStorage();
+            applyActiveSheetToInput();
+            renderSheetTabs();
+            persistSheetsState();
+            window.addEventListener("load", function () {
+                if (sheetsMetaInput.value) {
+                    initSheetsFromStorage();
+                    applyActiveSheetToInput();
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+            });
             syncUIBySourceType();
         </script>
     </body>
