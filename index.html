@@ -90,13 +90,14 @@
                 position: fixed;
                 inset: 0;
                 z-index: 65;
-                align-items: center;
-                justify-content: center;
-                padding: 12px 16px 28px;
+                align-items: stretch;
+                justify-content: stretch;
+                padding: 0;
                 box-sizing: border-box;
             }
             .test-data-modal.visible {
                 display: flex;
+                flex-direction: column;
             }
             .test-data-modal-backdrop {
                 position: absolute;
@@ -106,17 +107,20 @@
             .test-data-modal-dialog {
                 position: relative;
                 z-index: 1;
-                max-width: min(96vw, 920px);
-                width: 100%;
-                max-height: min(88vh, 760px);
+                margin: 6px;
+                margin-top: 0;
+                width: calc(100% - 12px);
+                flex: 1;
+                min-height: 0;
+                max-width: none;
+                max-height: none;
                 background: #fff;
-                border-radius: 12px;
+                border-radius: 8px;
                 border: 1px solid #dbe6ff;
                 box-shadow: 0 16px 48px rgba(36, 90, 190, 0.22);
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                min-height: 0;
             }
             .test-data-modal-head {
                 display: flex;
@@ -154,27 +158,103 @@
                 gap: 10px;
             }
             .test-data-tabs {
-                display: flex;
-                gap: 6px;
+                display: inline-flex;
+                align-self: flex-start;
                 flex-shrink: 0;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
             }
             .test-data-tab {
-                padding: 6px 14px;
+                border: none;
+                background: transparent;
+                padding: 6px 18px;
                 font-size: 13px;
-                border: 1px solid #d8e5ff;
-                border-radius: 999px;
-                background: #edf3ff;
-                color: #3c4f78;
                 cursor: pointer;
+                color: #3c4f78;
+                font-family: inherit;
+            }
+            .test-data-tab + .test-data-tab {
+                border-left: 1px solid #d8e5ff;
             }
             .test-data-tab.active {
-                color: #fff;
-                border-color: transparent;
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .test-data-hint {
+                font-size: 12px;
+                color: #5a6d8f;
+                line-height: 1.4;
+            }
+            .test-data-config {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px 16px;
+                flex-shrink: 0;
+                padding: 10px 12px;
+                background: #f8fbff;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+            }
+            .test-data-config label {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: #3c4f78;
+            }
+            .test-data-config input[type="number"] {
+                width: 72px;
+                padding: 5px 8px;
+                font-size: 13px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #fff;
+                color: #1f2a44;
+            }
+            .test-data-config button {
+                padding: 6px 14px;
+                font-size: 13px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            #test-data-generate-btn {
+                border: 1px solid transparent;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            #test-data-copy-btn {
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+            }
+            .test-data-types {
+                font-size: 12px;
+                color: #5a6d8f;
+                line-height: 1.5;
+                flex-shrink: 0;
+            }
+            .test-data-types strong {
+                color: #3c4f78;
+                font-weight: 600;
+            }
+            .test-data-copy-status {
+                font-size: 13px;
+                color: #2a8f4a;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .test-data-copy-status.visible {
+                opacity: 1;
+            }
+            .test-data-copy-status.error {
+                color: #c0392b;
             }
             .test-data-preview {
                 flex: 1;
-                min-height: 200px;
+                min-height: 280px;
                 width: 100%;
                 box-sizing: border-box;
                 border: 1px solid #d8e5ff;
@@ -186,31 +266,6 @@
                 resize: none;
                 background: #f8fbff;
                 color: #1f2a44;
-            }
-            .test-data-actions {
-                display: flex;
-                gap: 8px;
-                justify-content: flex-end;
-                flex-shrink: 0;
-            }
-            .test-data-actions button {
-                padding: 7px 14px;
-                font-size: 13px;
-                border-radius: 8px;
-                cursor: pointer;
-                border: 1px solid #d8e5ff;
-                background: #edf3ff;
-                color: #3c4f78;
-            }
-            .test-data-actions button.primary {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            }
-            .test-data-hint {
-                font-size: 12px;
-                color: #5a6d8f;
-                line-height: 1.4;
             }
             .recent-nav {
                 display: inline-flex;
@@ -872,16 +927,20 @@
                         <button type="button" class="test-data-modal-close" id="test-data-modal-close" title="关闭">×</button>
                     </div>
                     <div class="test-data-modal-body">
-                        <p class="test-data-hint">含字符串、数值、布尔、空值、数组、对象、日期、大整数等类型，可复制或载入 Excel SQL 查询工具。</p>
+                        <p class="test-data-hint">按 Java 数据类型生成测试数据，支持 JSON / CSV 格式复制。</p>
+                        <div class="test-data-config">
+                            <label>字段数 <input type="number" id="test-data-field-count" min="1" max="50" value="8" /></label>
+                            <label>数据量 <input type="number" id="test-data-row-count" min="1" max="10000" value="10" /></label>
+                            <button type="button" id="test-data-generate-btn">生成</button>
+                            <button type="button" id="test-data-copy-btn">复制</button>
+                            <span id="test-data-copy-status" class="test-data-copy-status" aria-live="polite"></span>
+                        </div>
+                        <div class="test-data-types" id="test-data-types-info"></div>
                         <div class="test-data-tabs" role="tablist">
                             <button type="button" class="test-data-tab active" data-tab="json" role="tab" aria-selected="true">JSON</button>
                             <button type="button" class="test-data-tab" data-tab="csv" role="tab" aria-selected="false">CSV</button>
                         </div>
                         <textarea id="test-data-preview" class="test-data-preview" readonly spellcheck="false"></textarea>
-                        <div class="test-data-actions">
-                            <button type="button" id="test-data-copy-btn">复制</button>
-                            <button type="button" class="primary" id="test-data-load-btn">载入 Excel SQL</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -2287,89 +2346,202 @@
                 if (isCalendarPanelVisible() && typeof window.__positionCalendarPanel === "function") {
                     window.__positionCalendarPanel();
                 }
+                var testModal = document.getElementById("test-data-modal");
+                if (testModal && testModal.classList.contains("visible")) {
+                    positionTestDataModal();
+                }
             });
 
-            const TEST_DATA_JSON_OBJ = [
+            const JAVA_TEST_TYPE_POOL = [
                 {
-                    id: 1,
-                    name: "张三",
-                    age: 28,
-                    score: 95.5,
-                    ratio: 0.875,
-                    active: true,
-                    verified: false,
-                    nullable: null,
-                    tags: ["开发", "测试"],
-                    meta: { city: "北京", level: 3 },
-                    created_at: "2024-06-15T08:30:00",
-                    birth_date: "1996-03-21",
-                    updated: "2024/06/15 18:00",
-                    bigint_val: 9007199254740993,
-                    zero: 0,
-                    negative: -42,
-                    empty_str: "",
-                    unicode: "emoji🎉",
-                    notes: "第一行\n第二行",
-                    optional_field: "有值"
+                    type: "String",
+                    field: "name",
+                    sample: function (row) {
+                        var names = ["张三", "李四", "王五", "Bob", "Alice", "测试用户"];
+                        return names[row % names.length] + (row > names.length ? row : "");
+                    }
                 },
                 {
-                    id: 2,
-                    name: "李四",
-                    age: 35,
-                    score: 88.25,
-                    ratio: 0.5,
-                    active: false,
-                    verified: true,
-                    nullable: "非空文本",
-                    tags: ["产品"],
-                    meta: { city: "上海", level: 1 },
-                    created_at: "2023-12-01",
-                    birth_date: "1989-07-08",
-                    updated: "2023-12-01 09:15",
-                    bigint_val: 42,
-                    zero: 1,
-                    negative: 100,
-                    empty_str: " ",
-                    unicode: "中文English",
-                    notes: "单行备注",
-                    optional_field: null
+                    type: "Integer",
+                    field: "age",
+                    sample: function (row) { return 18 + (row * 7) % 50; }
                 },
                 {
-                    id: 3,
-                    name: "Bob",
-                    age: 22,
-                    score: 76,
-                    ratio: 1,
-                    active: false,
-                    verified: false,
-                    nullable: null,
-                    tags: [],
-                    meta: {},
-                    created_at: "2025-01-20T12:00:00.000Z",
-                    birth_date: "2003-11-30",
-                    updated: "",
-                    bigint_val: 0.001,
-                    zero: 0,
-                    negative: -0.5,
-                    empty_str: "N/A",
-                    unicode: "test🚀",
-                    notes: "tab\t分隔测试",
-                    optional_field: undefined
+                    type: "Long",
+                    field: "id",
+                    sample: function (row) { return row; }
+                },
+                {
+                    type: "Double",
+                    field: "score",
+                    sample: function (row) { return Math.round((60 + (row * 13) % 400) / 10 * 100) / 100; }
+                },
+                {
+                    type: "Float",
+                    field: "ratio",
+                    sample: function (row) { return Math.round(((row * 17) % 100) / 100 * 1000) / 1000; }
+                },
+                {
+                    type: "Boolean",
+                    field: "active",
+                    sample: function (row) { return row % 2 === 1; }
+                },
+                {
+                    type: "BigDecimal",
+                    field: "amount",
+                    sample: function (row) { return (row * 123.45).toFixed(2); }
+                },
+                {
+                    type: "LocalDate",
+                    field: "birthDate",
+                    sample: function (row) {
+                        var y = 1980 + (row % 30);
+                        var m = String((row % 12) + 1).padStart(2, "0");
+                        var d = String((row % 28) + 1).padStart(2, "0");
+                        return y + "-" + m + "-" + d;
+                    }
+                },
+                {
+                    type: "LocalDateTime",
+                    field: "createdAt",
+                    sample: function (row) {
+                        var y = 2020 + (row % 6);
+                        var m = String((row % 12) + 1).padStart(2, "0");
+                        var d = String((row % 28) + 1).padStart(2, "0");
+                        var h = String(row % 24).padStart(2, "0");
+                        var min = String((row * 5) % 60).padStart(2, "0");
+                        return y + "-" + m + "-" + d + "T" + h + ":" + min + ":00";
+                    }
+                },
+                {
+                    type: "Byte",
+                    field: "status",
+                    sample: function (row) { return row % 128; }
+                },
+                {
+                    type: "Short",
+                    field: "level",
+                    sample: function (row) { return (row * 3) % 32767; }
+                },
+                {
+                    type: "Character",
+                    field: "grade",
+                    sample: function (row) {
+                        var grades = ["A", "B", "C", "D", "E"];
+                        return grades[row % grades.length];
+                    }
+                },
+                {
+                    type: "List",
+                    field: "tags",
+                    sample: function (row) {
+                        var pool = ["开发", "测试", "产品", "运维"];
+                        if (row % 4 === 0) return [];
+                        return [pool[row % pool.length], pool[(row + 1) % pool.length]];
+                    }
+                },
+                {
+                    type: "Map",
+                    field: "meta",
+                    sample: function (row) {
+                        if (row % 5 === 0) return {};
+                        return { city: row % 2 === 0 ? "北京" : "上海", level: (row % 5) + 1 };
+                    }
+                },
+                {
+                    type: "null",
+                    field: "nullable",
+                    sample: function (row) { return row % 3 === 0 ? null : "非空值"; }
                 }
             ];
-            const TEST_DATA_JSON = JSON.stringify(TEST_DATA_JSON_OBJ, null, 2);
-            const TEST_DATA_CSV =
-                "id,name,age,score,ratio,active,verified,nullable,tags,meta,created_at,birth_date,updated,bigint_val,zero,negative,empty_str,unicode,notes,optional_field\n"
-                + "1,张三,28,95.5,0.875,true,false,,\"[\"\"开发\"\",\"\"测试\"\"]\",\"{\"\"city\"\":\"\"北京\"\",\"\"level\"\":3}\",2024-06-15T08:30:00,1996-03-21,2024/06/15 18:00,9007199254740993,0,-42,,emoji🎉,\"第一行\n第二行\",有值\n"
-                + "2,李四,35,88.25,0.5,false,true,非空文本,单标签,\"{\"\"city\"\":\"\"上海\"\",\"\"level\"\":1}\",2023-12-01,1989-07-08,2023-12-01 09:15,42,1,100, ,中文English,单行备注,\n"
-                + "3,Bob,22,76,1,false,false,,[],{},2025-01-20T12:00:00.000Z,2003-11-30,,0.001,0,-0.5,N/A,test🚀,tab\t分隔测试,";
 
             let testDataActiveTab = "json";
-            let brandTitleClickCount = 0;
-            let brandTitleClickTimer = null;
+            let testDataFieldCount = 8;
+            let testDataRowCount = 10;
+            let testDataFields = [];
+            let testDataRows = [];
+            let testDataJsonText = "[]";
+            let testDataCsvText = "";
+
+            function clampTestDataConfig() {
+                var fieldEl = document.getElementById("test-data-field-count");
+                var rowEl = document.getElementById("test-data-row-count");
+                testDataFieldCount = Math.min(50, Math.max(1, parseInt(fieldEl && fieldEl.value, 10) || 8));
+                testDataRowCount = Math.min(10000, Math.max(1, parseInt(rowEl && rowEl.value, 10) || 10));
+                if (fieldEl) fieldEl.value = String(testDataFieldCount);
+                if (rowEl) rowEl.value = String(testDataRowCount);
+            }
+
+            function buildTestDataFields(fieldCount) {
+                var fields = [];
+                for (var i = 0; i < fieldCount; i += 1) {
+                    var def = JAVA_TEST_TYPE_POOL[i % JAVA_TEST_TYPE_POOL.length];
+                    var suffix = i >= JAVA_TEST_TYPE_POOL.length ? String(Math.floor(i / JAVA_TEST_TYPE_POOL.length) + 1) : "";
+                    fields.push({
+                        type: def.type,
+                        field: def.field + suffix,
+                        sample: def.sample
+                    });
+                }
+                return fields;
+            }
+
+            function buildTestDataRows(fields, rowCount) {
+                var rows = [];
+                for (var r = 1; r <= rowCount; r += 1) {
+                    var row = {};
+                    fields.forEach(function (f) {
+                        row[f.field] = f.sample(r);
+                    });
+                    rows.push(row);
+                }
+                return rows;
+            }
+
+            function csvEscapeCell(value) {
+                if (value === null || value === undefined) return "";
+                var text = typeof value === "object" ? JSON.stringify(value) : String(value);
+                if (/[",\r\n]/.test(text)) {
+                    return "\"" + text.replace(/"/g, "\"\"") + "\"";
+                }
+                return text;
+            }
+
+            function rowsToCsv(fields, rows) {
+                var header = fields.map(function (f) { return f.field; }).join(",");
+                var lines = rows.map(function (row) {
+                    return fields.map(function (f) {
+                        return csvEscapeCell(row[f.field]);
+                    }).join(",");
+                });
+                return header + "\n" + lines.join("\n");
+            }
+
+            function updateTestDataTypesInfo() {
+                var el = document.getElementById("test-data-types-info");
+                if (!el) return;
+                if (!testDataFields.length) {
+                    el.textContent = "";
+                    return;
+                }
+                var parts = testDataFields.map(function (f) {
+                    return f.field + " (" + f.type + ")";
+                });
+                el.innerHTML = "<strong>字段类型：</strong>" + parts.join("、");
+            }
+
+            function generateTestData() {
+                clampTestDataConfig();
+                testDataFields = buildTestDataFields(testDataFieldCount);
+                testDataRows = buildTestDataRows(testDataFields, testDataRowCount);
+                testDataJsonText = JSON.stringify(testDataRows, null, 2);
+                testDataCsvText = rowsToCsv(testDataFields, testDataRows);
+                updateTestDataTypesInfo();
+                syncTestDataPreview();
+            }
 
             function getTestDataText(tab) {
-                return tab === "csv" ? TEST_DATA_CSV : TEST_DATA_JSON;
+                return tab === "csv" ? testDataCsvText : testDataJsonText;
             }
 
             function syncTestDataPreview() {
@@ -2388,12 +2560,28 @@
                 syncTestDataPreview();
             }
 
+            let brandTitleClickCount = 0;
+            let brandTitleClickTimer = null;
+
+            function positionTestDataModal() {
+                var modal = document.getElementById("test-data-modal");
+                var header = document.querySelector(".header");
+                if (!modal || !header) return;
+                var headerRect = header.getBoundingClientRect();
+                modal.style.paddingTop = Math.round(headerRect.bottom + 6) + "px";
+                modal.style.paddingLeft = "6px";
+                modal.style.paddingRight = "6px";
+                modal.style.paddingBottom = "6px";
+            }
+
             function showTestDataModal() {
                 const el = document.getElementById("test-data-modal");
                 if (!el) return;
                 hideOverviewPanel();
                 hideCryptoAlgoModal();
+                generateTestData();
                 setTestDataTab(testDataActiveTab);
+                positionTestDataModal();
                 el.classList.add("visible");
                 el.setAttribute("aria-hidden", "false");
             }
@@ -2405,11 +2593,29 @@
                 el.setAttribute("aria-hidden", "true");
             }
 
+            let testDataCopyStatusTimer = null;
+
+            function showTestDataCopyStatus(message, isError) {
+                var el = document.getElementById("test-data-copy-status");
+                if (!el) return;
+                if (testDataCopyStatusTimer) {
+                    clearTimeout(testDataCopyStatusTimer);
+                    testDataCopyStatusTimer = null;
+                }
+                el.textContent = message;
+                el.classList.toggle("error", !!isError);
+                el.classList.add("visible");
+                testDataCopyStatusTimer = setTimeout(function () {
+                    el.classList.remove("visible");
+                    testDataCopyStatusTimer = null;
+                }, 2000);
+            }
+
             function copyTestDataToClipboard() {
                 const text = getTestDataText(testDataActiveTab);
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(function () {
-                        alert("已复制到剪贴板");
+                        showTestDataCopyStatus("已复制到剪贴板");
                     }).catch(function () {
                         fallbackCopyTestData(text);
                     });
@@ -2425,21 +2631,11 @@
                 ta.select();
                 try {
                     document.execCommand("copy");
-                    alert("已复制到剪贴板");
+                    showTestDataCopyStatus("已复制到剪贴板");
                 } catch (e) {
-                    alert("复制失败，请手动全选复制");
+                    showTestDataCopyStatus("复制失败，请手动全选复制", true);
                 }
                 ta.setAttribute("readonly", "readonly");
-            }
-
-            function loadTestDataToExcelSql() {
-                const payload = testDataActiveTab === "csv"
-                    ? { csvText: TEST_DATA_CSV, autoLoad: true }
-                    : { jsonText: TEST_DATA_JSON, autoLoad: true };
-                stashTextToExcelSqlHandoff(payload);
-                hideTestDataModal();
-                openTool(HANDOFF_EXCEL_SQL_TAB, true);
-                notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
             }
 
             function onBrandTitleClick() {
@@ -2485,9 +2681,17 @@
                     });
                 });
                 var copyBtn = document.getElementById("test-data-copy-btn");
-                var loadBtn = document.getElementById("test-data-load-btn");
                 if (copyBtn) copyBtn.addEventListener("click", copyTestDataToClipboard);
-                if (loadBtn) loadBtn.addEventListener("click", loadTestDataToExcelSql);
+                var generateBtn = document.getElementById("test-data-generate-btn");
+                if (generateBtn) generateBtn.addEventListener("click", generateTestData);
+                ["test-data-field-count", "test-data-row-count"].forEach(function (id) {
+                    var input = document.getElementById(id);
+                    if (input) {
+                        input.addEventListener("keydown", function (e) {
+                            if (e.key === "Enter") generateTestData();
+                        });
+                    }
+                });
                 var brandTitle = document.getElementById("brand-title");
                 if (brandTitle) brandTitle.addEventListener("click", onBrandTitleClick);
                 resetRecentNavToCommon();

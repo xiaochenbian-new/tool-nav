@@ -12,6 +12,9 @@ bin-release/
 # 离线 vendor（npm install / npm run copy:vendor 生成，体积大勿提交）
 # vendor/
 
+# uTools 打包输出（npm run pack:utools 生成）
+dist-utools/
+
 # 证件照换底色工具 AI 模型见 photo-background-change/.gitignore
 
 # Executables

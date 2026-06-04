@@ -1203,46 +1203,36 @@
                     mainCm.scrollIntoView({ from: a, to: b });
                 }
 
-                function activeEditorHasSelection() {
-                    var ae = document.activeElement;
-                    if (ae === outputConvert) {
-                        return outputConvert.selectionStart !== outputConvert.selectionEnd;
+                function getFindSelectionText() {
+                    if (mainCm && mainCm.somethingSelected()) {
+                        return mainCm.getSelection();
                     }
-                    if (mainCm && mainCm.getWrapperElement().contains(ae)) {
-                        return mainCm.somethingSelected();
-                    }
-                    return false;
+                    var s = outputConvert.selectionStart;
+                    var e = outputConvert.selectionEnd;
+                    if (s !== e) return outputConvert.value.slice(s, e);
+                    return "";
                 }
 
-                function focusFindInput(selectAll) {
+                function focusFindInput() {
                     setTimeout(function () {
                         findInput.focus();
-                        if (selectAll && findInput.value) {
+                        if (findInput.value) {
                             findInput.select();
-                        } else {
-                            var len = findInput.value.length;
-                            findInput.setSelectionRange(len, len);
                         }
                     }, 0);
                 }
 
-                /** 查找栏已打开时：无编辑器选区则仅聚焦查询框；有选区则用选中文本更新查询 */
+                /** 查找栏已打开时：有编辑器选区则更新查询；否则聚焦并全选查询框内容 */
                 function handleFindShortcut() {
+                    var selText = getFindSelectionText();
                     if (!findBar.hidden) {
-                        if (activeEditorHasSelection()) {
-                            if (getFindTargetIsOutput()) {
-                                findInput.value = outputConvert.value.slice(
-                                    outputConvert.selectionStart,
-                                    outputConvert.selectionEnd
-                                );
-                            } else {
-                                findInput.value = mainCm.getSelection();
-                            }
+                        if (selText) {
+                            findInput.value = selText;
                             resetFindNavigation();
-                            focusFindInput(true);
-                        } else {
-                            focusFindInput(false);
                         }
+                        focusFindInput();
+                        updateFindCount();
+                        refreshFindHighlights();
                         return;
                     }
                     openFind(false);
@@ -2574,18 +2564,11 @@
                     findBar.removeAttribute("hidden");
                     findReplaceRow.hidden = !withReplace;
                     resetFindNavigation();
-                    var hasSel = activeEditorHasSelection();
-                    if (hasSel) {
-                        if (getFindTargetIsOutput()) {
-                            findInput.value = outputConvert.value.slice(
-                                outputConvert.selectionStart,
-                                outputConvert.selectionEnd
-                            );
-                        } else {
-                            findInput.value = mainCm.getSelection();
-                        }
+                    var selText = getFindSelectionText();
+                    if (selText) {
+                        findInput.value = selText;
                     }
-                    focusFindInput(hasSel);
+                    focusFindInput();
                     updateFindCount();
                 }
 

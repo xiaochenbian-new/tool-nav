@@ -15,6 +15,10 @@ function mustDir(p) {
     fs.mkdirSync(p, { recursive: true });
 }
 
+function isDebugArtifact(name) {
+    return /\.map$/i.test(name) || /\.(js|css)\.gz$/i.test(name);
+}
+
 function copyThing(src, dest, label) {
     if (!fs.existsSync(src)) {
         console.warn("[copy-vendor] 跳过 " + label + "：未找到\n  " + src);
@@ -23,8 +27,17 @@ function copyThing(src, dest, label) {
     const st = fs.statSync(src);
     if (st.isDirectory()) {
         fs.mkdirSync(dest, { recursive: true });
-        fs.cpSync(src, dest, { recursive: true });
+        fs.cpSync(src, dest, {
+            recursive: true,
+            filter: function (srcPath) {
+                return !isDebugArtifact(path.basename(srcPath));
+            }
+        });
     } else {
+        if (isDebugArtifact(path.basename(src))) {
+            console.warn("[copy-vendor] 跳过调试文件 " + label + "：\n  " + src);
+            return false;
+        }
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.copyFileSync(src, dest);
     }
@@ -46,6 +59,7 @@ async function buildEsm(entryFile, outFile, label) {
         platform: "browser",
         target: ["es2020"],
         outfile: outFile,
+        sourcemap: false,
         logLevel: "warning"
     });
     console.log("[copy-vendor] bundle " + label + " -> " + path.relative(root, outFile));
@@ -66,6 +80,7 @@ async function buildZhTranIife() {
         platform: "browser",
         target: ["es2020"],
         outfile: outFile,
+        sourcemap: false,
         logLevel: "warning"
     });
     console.log("[copy-vendor] zh-tran IIFE（file:// 离线）-> " + path.relative(root, outFile));
@@ -79,7 +94,12 @@ async function main() {
     const monacoDest = path.join(vendor, "monaco", "min", "vs");
     if (fs.existsSync(monacoSrc)) {
         fs.mkdirSync(path.dirname(monacoDest), { recursive: true });
-        fs.cpSync(monacoSrc, monacoDest, { recursive: true });
+        fs.cpSync(monacoSrc, monacoDest, {
+            recursive: true,
+            filter: function (srcPath) {
+                return !isDebugArtifact(path.basename(srcPath));
+            }
+        });
         console.log("[copy-vendor] monaco -> " + path.relative(root, monacoDest));
     } else {
         console.warn("[copy-vendor] 跳过 monaco：请先安装 devDependency monaco-editor");

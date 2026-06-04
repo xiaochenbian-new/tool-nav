@@ -1218,35 +1218,32 @@
                     editor.scrollIntoView({ from: a, to: b });
                 }
 
-                function activeEditorHasSelection() {
-                    var ae = document.activeElement;
-                    if (editor && editor.getWrapperElement().contains(ae)) {
-                        return editor.somethingSelected();
+                function getFindSelectionText() {
+                    if (editor && editor.somethingSelected()) {
+                        return editor.getSelection();
                     }
-                    return false;
+                    return "";
                 }
 
-                function focusFindInput(selectAll) {
+                function focusFindInput() {
                     setTimeout(function () {
                         findInput.focus();
-                        if (selectAll && findInput.value) {
+                        if (findInput.value) {
                             findInput.select();
-                        } else {
-                            var len = findInput.value.length;
-                            findInput.setSelectionRange(len, len);
                         }
                     }, 0);
                 }
 
                 function handleFindShortcut() {
+                    var selText = getFindSelectionText();
                     if (!findBar.hidden) {
-                        if (activeEditorHasSelection()) {
-                            findInput.value = editor.getSelection();
+                        if (selText) {
+                            findInput.value = selText;
                             resetFindNavigation();
-                            focusFindInput(true);
-                        } else {
-                            focusFindInput(false);
                         }
+                        focusFindInput();
+                        updateFindCount();
+                        refreshFindHighlights();
                         return;
                     }
                     openFind(false);
@@ -1427,11 +1424,11 @@
                     findBar.removeAttribute("hidden");
                     findReplaceRow.hidden = !withReplace;
                     resetFindNavigation();
-                    var hasSel = activeEditorHasSelection();
-                    if (hasSel) {
-                        findInput.value = editor.getSelection();
+                    var selText = getFindSelectionText();
+                    if (selText) {
+                        findInput.value = selText;
                     }
-                    focusFindInput(hasSel);
+                    focusFindInput();
                     updateFindCount();
                 }
 
