@@ -92,10 +92,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 outline: none;
             }
             .input-wrap {
-                display: flex;
-                flex-direction: column;
+                display: grid;
+                grid-template-rows: minmax(0, 1fr) auto;
                 flex: 1;
-                min-height: 0;
+                min-height: 140px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 overflow: hidden;
@@ -112,8 +112,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
             #text-input,
             #output {
                 width: 100%;
-                flex: 1;
-                min-height: 180px;
                 padding: 10px;
                 resize: none;
                 outline: none;
@@ -121,11 +119,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 line-height: 1.6;
             }
             #text-input {
+                min-height: 0;
+                height: 100%;
                 border: none;
                 border-radius: 0;
                 background: transparent;
             }
             #output {
+                flex: 1;
+                min-height: 120px;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
                 transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -139,6 +141,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 color: var(--muted);
             }
             .json-sheet-bar {
+                grid-row: 2;
                 flex: 0 0 auto;
                 display: flex;
                 align-items: flex-end;
@@ -146,12 +149,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 padding: 0 10px 2px;
                 background: #fff;
                 overflow: hidden;
+                flex-shrink: 0;
+                border-top: 1px solid #eef2fa;
             }
             .json-sheet-strip {
                 display: flex;
                 align-items: flex-end;
                 flex-wrap: nowrap;
-                gap: 2px;
+                gap: 4px;
                 min-width: 0;
                 max-width: 100%;
                 overflow-x: auto;
@@ -162,7 +167,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 height: 4px;
             }
             .json-sheet-tabs {
-                display: contents;
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 4px;
+                min-width: 0;
+                flex: 1 1 auto;
+                overflow-x: auto;
+                overflow-y: hidden;
             }
             .json-sheet-tab {
                 flex: 0 0 auto;
@@ -170,22 +182,29 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 align-items: center;
                 max-width: 148px;
                 height: 26px;
-                padding: 0 12px;
+                padding: 0 10px;
                 margin: 0;
-                border: 1px solid transparent;
+                border: 1px solid #dbe4f0;
                 border-radius: 4px 4px 0 0;
-                background: transparent;
-                color: #5a6d8f;
+                background: #fff;
+                color: #516078;
                 font-size: 12px;
+                font-weight: 400;
+                font-family: inherit;
                 cursor: pointer;
                 user-select: none;
                 position: relative;
                 z-index: 1;
+                box-shadow: none;
+                transform: none;
             }
-            .json-sheet-tab:hover {
-                background: #f4f8ff;
+            .json-sheet-tab:hover:not(.active) {
+                background: #fafbfd;
+                border-color: #cdd8ea;
                 color: #3c4f78;
                 z-index: 2;
+                transform: none;
+                box-shadow: none;
             }
             .json-sheet-tab.active {
                 background: #edf3ff;
@@ -210,6 +229,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 border-radius: 4px;
                 outline: none;
                 background: #fff;
+                color: var(--text);
+                font-weight: 400;
             }
             .json-sheet-tab .sheet-close {
                 flex: 0 0 auto;
@@ -220,19 +241,23 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 border: none;
                 border-radius: 3px;
                 background: transparent;
-                color: #6f7d96;
+                color: #7a879e;
                 font-size: 14px;
                 line-height: 1;
+                font-weight: 400;
                 cursor: pointer;
-                opacity: 0;
-            }
-            .json-sheet-tab:hover .sheet-close,
-            .json-sheet-tab.active .sheet-close {
                 opacity: 1;
+                transform: none;
+                box-shadow: none;
+            }
+            .json-sheet-tab.active .sheet-close {
+                color: #5a7fd4;
             }
             .json-sheet-tab .sheet-close:hover {
                 background: rgba(224, 64, 64, 0.15);
                 color: var(--danger);
+                transform: none;
+                box-shadow: none;
             }
             .json-sheet-add {
                 flex: 0 0 26px;
@@ -245,12 +270,17 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 background: transparent;
                 font-size: 18px;
                 line-height: 1;
+                font-weight: 400;
                 color: #8a9bb8;
                 cursor: pointer;
+                transform: none;
+                box-shadow: none;
             }
             .json-sheet-add:hover {
                 background: #f0f5ff;
                 color: var(--primary);
+                transform: none;
+                box-shadow: none;
             }
             #jte-sheets-meta {
                 position: absolute;
@@ -268,7 +298,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 flex-wrap: wrap;
                 margin-top: 8px;
             }
-            button {
+            .button-container button {
                 padding: 7px 12px;
                 border: none;
                 border-radius: 6px;
@@ -278,7 +308,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                 font-size: 12px;
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
             }
-            button:hover {
+            .button-container button:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 8px 16px rgba(36, 90, 190, 0.25);
             }
@@ -361,8 +391,8 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                             <button type="button" class="json-sheet-add" id="jte-sheet-add" title="新建工作表">+</button>
                         </div>
                     </div>
-                    <textarea id="jte-sheets-meta" data-persist-key="jte_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
                 </div>
+                <textarea id="jte-sheets-meta" data-persist-key="jte_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
                 <div class="button-container">
                     <button id="convert-btn" type="button">执行转换</button>
                     <button id="download-btn" type="button">下载输出</button>
@@ -546,7 +576,8 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                 if (!sheetTabsEl) return;
                 sheetTabsEl.innerHTML = "";
                 inputSheets.forEach((sheet) => {
-                    const tab = document.createElement("div");
+                    const tab = document.createElement("button");
+                    tab.type = "button";
                     tab.className = "json-sheet-tab" + (sheet.id === activeInputSheetId ? " active" : "");
                     tab.setAttribute("data-sheet-id", sheet.id);
                     tab.setAttribute("role", "tab");
@@ -555,8 +586,10 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
 
                     if (sheetRenameId === sheet.id) {
                         const inp = document.createElement("input");
+                        inp.type = "text";
                         inp.className = "sheet-rename-input";
                         inp.value = sheet.name;
+                        inp.addEventListener("click", (e) => e.stopPropagation());
                         inp.addEventListener("keydown", (e) => {
                             e.stopPropagation();
                             if (e.key === "Enter") finishSheetRename(sheet.id, inp.value, false);
@@ -1097,7 +1130,11 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             }
 
             function clearAll() {
+                const sheet = getActiveSheet();
+                if (sheet) sheet.content = "";
                 textInputEl.value = "";
+                syncInputFromTextarea();
+                persistSheetsState();
                 document.getElementById("output").value = "";
                 document.getElementById("excel-file").value = "";
                 workbookData = null;
@@ -1107,8 +1144,7 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
                 outputSections = {};
                 activeSectionKey = "";
                 document.getElementById("output-tabs").innerHTML = "";
-                resetInputSheets();
-                setStatus("已清空。", false);
+                setStatus("已清空当前输入页。", false);
             }
 
             function syncUIBySourceType() {
@@ -1175,7 +1211,7 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             });
             const output = document.getElementById("output");
 
-            sheetAddBtn.addEventListener("click", addSheet);
+            if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
             textInputEl.addEventListener("input", function () {
                 const sheet = getActiveSheet();
                 if (sheet) sheet.content = textInputEl.value;
@@ -1186,12 +1222,10 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             renderSheetTabs();
             persistSheetsState();
             window.addEventListener("load", function () {
-                if (sheetsMetaInput.value) {
-                    initSheetsFromStorage();
-                    applyActiveSheetToInput();
-                    renderSheetTabs();
-                    persistSheetsState();
-                }
+                initSheetsFromStorage();
+                applyActiveSheetToInput();
+                renderSheetTabs();
+                persistSheetsState();
             });
             syncUIBySourceType();
         </script>
