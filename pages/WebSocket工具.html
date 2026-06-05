@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>WebSocket 调试</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <link rel="stylesheet" href="libs/tool-help-btn.css" />
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #ffffff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --success: #22a06b;
+                --warn: #c47f00;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --border: #dbe6ff;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .container {
+                height: calc(100vh - 16px);
+                display: grid;
+                grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+                gap: 8px;
+                min-height: 0;
+            }
+            .panel {
+                min-width: 0;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+                overflow: hidden;
+            }
+            .panel-content {
+                flex: 1;
+                min-height: 0;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+            .panel-right {
+                overflow: hidden;
+            }
+            .title {
+                margin: 0 0 10px;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--text);
+            }
+            .title-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .title-row .title {
+                margin: 0;
+            }
+            .title-with-action {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                min-width: 0;
+            }
+            input, select, textarea {
+                width: 100%;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 8px 10px;
+                font-size: 13px;
+                outline: none;
+            }
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            textarea {
+                resize: vertical;
+                min-height: 90px;
+            }
+            .field {
+                margin-bottom: 10px;
+            }
+            .field label {
+                display: block;
+                font-size: 12px;
+                color: var(--muted);
+                margin-bottom: 6px;
+            }
+            .hint {
+                margin: 0 0 8px;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+            }
+            .status-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 999px;
+                font-size: 11px;
+                font-weight: 600;
+                border: 1px solid var(--border);
+                background: #f8fbff;
+                color: var(--muted);
+                white-space: nowrap;
+            }
+            .status-badge::before {
+                content: "";
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+            .status-badge.connecting,
+            .status-badge.closing {
+                color: var(--warn);
+                border-color: #f5d9a8;
+                background: #fffaf0;
+            }
+            .status-badge.connected {
+                color: var(--success);
+                border-color: #b8e6cf;
+                background: #f0faf5;
+            }
+            .status-badge.error {
+                color: var(--danger);
+                border-color: #f5c4c4;
+                background: #fff5f5;
+            }
+            .conn-actions {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .conn-actions button {
+                flex: 1;
+            }
+            .section-block {
+                margin-bottom: 10px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: #fff;
+            }
+            .section-toggle {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 12px;
+                background: #f8fbff;
+                border: 0;
+                color: var(--text);
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                cursor: pointer;
+                text-align: left;
+            }
+            .section-toggle:hover {
+                background: #eef4ff;
+            }
+            .section-chevron {
+                font-size: 10px;
+                color: var(--muted);
+                transition: transform 0.2s;
+            }
+            .section-toggle.expanded .section-chevron {
+                transform: rotate(90deg);
+            }
+            .section-count {
+                margin-left: auto;
+                font-weight: 500;
+                color: var(--muted);
+                letter-spacing: 0;
+                font-size: 11px;
+            }
+            .section-body {
+                padding: 10px 12px 12px;
+                border-top: 1px solid var(--border);
+                overflow: visible;
+            }
+            .section-body.collapsed {
+                display: none;
+            }
+            .section-body .field-row {
+                flex-direction: column;
+            }
+            .check-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                color: var(--text);
+                font-weight: 600;
+                margin-bottom: 6px;
+                cursor: pointer;
+            }
+            .check-row input {
+                width: 14px;
+                height: 14px;
+                margin: 0;
+                accent-color: var(--primary);
+                flex-shrink: 0;
+            }
+            .options-columns {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 10px;
+            }
+            .option-group {
+                min-width: 0;
+                padding: 8px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: #fafcff;
+            }
+            .option-group .check-row {
+                margin-bottom: 8px;
+            }
+            .sub-options {
+                margin: 0;
+                padding-left: 0;
+            }
+            .sub-options.disabled {
+                opacity: 0.45;
+                pointer-events: none;
+            }
+            .sub-options .field:last-child {
+                margin-bottom: 0;
+            }
+            .field-row {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .field-row .field {
+                flex: 1;
+                margin-bottom: 0;
+                min-width: 0;
+            }
+            .field-row input[type="number"] {
+                padding: 6px 8px;
+            }
+            .log-line.ping .tag { color: #7c5cff; }
+            button {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border: 0;
+                border-radius: 6px;
+                font-size: 12px;
+                padding: 7px 12px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            button:hover:not(:disabled) {
+                filter: brightness(1.05);
+            }
+            button:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+                filter: none;
+            }
+            button.secondary {
+                background: #fff;
+                color: var(--muted);
+                border: 1px solid #cfdcf7;
+            }
+            button.secondary:hover:not(:disabled) {
+                color: var(--primary);
+                border-color: var(--primary);
+                filter: none;
+            }
+            button.section-toggle {
+                background: #f8fbff;
+                color: var(--text);
+                border: 0;
+                border-radius: 7px;
+                padding: 10px 12px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+            }
+            button.section-toggle.expanded {
+                border-radius: 7px 7px 0 0;
+            }
+            button.section-toggle:hover:not(:disabled) {
+                background: #eef4ff;
+                filter: none;
+            }
+            .send-block {
+                flex-shrink: 0;
+                padding-bottom: 10px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid var(--border);
+            }
+            .log-section {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            #message {
+                min-height: 140px;
+            }
+            .send-meta {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .send-meta select {
+                flex: 1;
+            }
+            .send-actions {
+                display: flex;
+                gap: 8px;
+                margin-top: 8px;
+            }
+            .log-toolbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .log-toolbar .actions {
+                display: flex;
+                gap: 6px;
+            }
+            .log-toolbar button {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            #log {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                background: #fafcff;
+                padding: 8px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.55;
+            }
+            .log-empty {
+                color: var(--muted);
+                font-family: inherit;
+                font-size: 12px;
+                padding: 8px 4px;
+            }
+            .log-line {
+                margin: 0 0 4px;
+                word-break: break-all;
+                white-space: pre-wrap;
+            }
+            .log-line .time {
+                color: #8a97ad;
+            }
+            .log-line .tag {
+                font-weight: 700;
+            }
+            .log-line.send .tag { color: #2f6bff; }
+            .log-line.recv .tag { color: #22a06b; }
+            .log-line.sys .tag { color: #6f7d96; }
+            .log-line.err .tag { color: #e04040; }
+            .log-line .body {
+                color: var(--text);
+            }
+            @media (max-width: 900px) {
+                .container {
+                    grid-template-columns: 1fr;
+                    grid-template-rows: auto 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="panel panel-left">
+                <div class="panel-content">
+                    <div class="title-row">
+                        <div class="title-with-action">
+                            <h3 class="title">连接</h3>
+                            <button
+                                type="button"
+                                class="tool-help-btn"
+                                id="conn-code-help-btn"
+                                title="查看前后端案例代码"
+                                aria-label="查看前后端案例代码"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+                                    <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H7.17L5 17.17V5h14v10zM7 9h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <span id="status-badge" class="status-badge">未连接</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="url">WebSocket 地址</label>
+                        <input id="url" type="text" placeholder="ws://localhost:8080/ws 或 wss://api.example.com/socket" />
+                    </div>
+                    <div class="field">
+                        <label for="protocol">子协议（可选，逗号分隔）</label>
+                        <input id="protocol" type="text" placeholder="例如：json, chat" />
+                    </div>
+                    <p class="hint">浏览器 WebSocket API 不支持自定义请求头；鉴权请用 URL 参数、Cookie 或子协议。</p>
+
+                    <div class="section-block">
+                        <button type="button" class="section-toggle" data-target="options-body" aria-expanded="false">
+                            <span class="section-chevron">&#9654;</span>
+                            <span>高级选项</span>
+                            <span id="options-summary" class="section-count"></span>
+                        </button>
+                        <div id="options-body" class="section-body collapsed">
+                            <div class="options-columns">
+                                <div class="option-group">
+                                    <label class="check-row">
+                                        <input id="auto-reconnect" type="checkbox" />
+                                        自动重连
+                                    </label>
+                                    <div id="reconnect-options" class="sub-options disabled">
+                                        <div class="field">
+                                            <label for="reconnect-interval">重连间隔（秒）</label>
+                                            <input id="reconnect-interval" type="number" min="1" max="300" value="3" />
+                                        </div>
+                                        <div class="field">
+                                            <label for="reconnect-max">最大次数（0=不限）</label>
+                                            <input id="reconnect-max" type="number" min="0" max="999" value="0" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="option-group">
+                                    <label class="check-row">
+                                        <input id="heartbeat-enable" type="checkbox" />
+                                        心跳检测
+                                    </label>
+                                    <div id="heartbeat-options" class="sub-options disabled">
+                                        <div class="field">
+                                            <label for="heartbeat-interval">发送间隔（秒）</label>
+                                            <input id="heartbeat-interval" type="number" min="5" max="3600" value="30" />
+                                        </div>
+                                        <div class="field">
+                                            <label for="heartbeat-timeout">响应超时（秒）</label>
+                                            <input id="heartbeat-timeout" type="number" min="3" max="300" value="10" />
+                                        </div>
+                                        <div class="field">
+                                            <label for="heartbeat-message">心跳消息</label>
+                                            <input id="heartbeat-message" type="text" value="ping" />
+                                        </div>
+                                        <p class="hint" style="margin:0">超时未收到消息则断线重连。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="conn-actions">
+                        <button id="connect-btn" type="button">连接</button>
+                        <button id="disconnect-btn" type="button" class="secondary" disabled>断开</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-right">
+                <div class="send-block">
+                    <h3 class="title">发送消息</h3>
+                    <div class="send-meta">
+                        <select id="msg-type">
+                            <option value="text">文本</option>
+                            <option value="json">JSON</option>
+                            <option value="binary">二进制 (Base64)</option>
+                        </select>
+                    </div>
+                    <textarea id="message" placeholder='{"action":"ping"}'></textarea>
+                    <p class="hint" style="margin:6px 0 0">Enter 发送，Shift+Enter 换行</p>
+                    <div class="send-actions">
+                        <button id="send-btn" type="button" disabled>发送</button>
+                        <button id="format-json-btn" type="button" class="secondary">格式化 JSON</button>
+                    </div>
+                </div>
+                <div class="log-section">
+                    <div class="log-toolbar">
+                        <h3 class="title" style="margin:0">消息日志</h3>
+                        <div class="actions">
+                            <button id="copy-log-btn" type="button" class="secondary">复制日志</button>
+                            <button id="clear-log-btn" type="button" class="danger tool-btn-danger">清空</button>
+                        </div>
+                    </div>
+                    <div id="log"><div class="log-empty">连接成功后，收发的消息会显示在这里。</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="ws-code-modal" class="tool-code-modal" aria-hidden="true">
+            <div class="tool-code-modal-backdrop" id="ws-code-modal-backdrop"></div>
+            <div class="tool-code-modal-dialog" role="dialog" aria-labelledby="ws-code-modal-title">
+                <div class="tool-code-modal-head">
+                    <span id="ws-code-modal-title">WebSocket 前后端案例代码</span>
+                    <button type="button" class="tool-code-modal-close" id="ws-code-modal-close" title="关闭">×</button>
+                </div>
+                <div class="tool-code-modal-body">
+                    <div class="tool-code-section">
+                        <div class="tool-code-section-head">
+                            <span class="tool-code-section-title">前端（浏览器 JavaScript）</span>
+                            <button type="button" class="tool-code-copy-btn" data-copy-target="ws-code-frontend">复制</button>
+                        </div>
+                        <pre class="tool-code-pre" id="ws-code-frontend"></pre>
+                    </div>
+                    <div class="tool-code-section">
+                        <div class="tool-code-section-head">
+                            <div class="tool-code-section-head-left">
+                                <span class="tool-code-section-title">后端</span>
+                                <select id="ws-backend-lang" class="tool-code-lang-select" aria-label="后端语言">
+                                    <option value="java" selected>Java (Spring)</option>
+                                    <option value="nodejs">Node.js (ws)</option>
+                                    <option value="python">Python</option>
+                                </select>
+                            </div>
+                            <button type="button" class="tool-code-copy-btn" id="ws-code-backend-copy">复制</button>
+                        </div>
+                        <pre class="tool-code-pre" id="ws-code-backend"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="libs/tool-copy.js"></script>
+        <script>
+            (function () {
+                var WS_CODE_FRONTEND =
+                    "// 建立连接\n" +
+                    "const ws = new WebSocket('ws://localhost:8080/ws');\n\n" +
+                    "ws.onopen = function () {\n" +
+                    "  console.log('已连接');\n" +
+                    "  ws.send(JSON.stringify({ action: 'hello' }));\n" +
+                    "};\n\n" +
+                    "ws.onmessage = function (event) {\n" +
+                    "  console.log('收到:', event.data);\n" +
+                    "};\n\n" +
+                    "ws.onerror = function () {\n" +
+                    "  console.error('连接错误');\n" +
+                    "};\n\n" +
+                    "ws.onclose = function (event) {\n" +
+                    "  console.log('已关闭', event.code, event.reason);\n" +
+                    "};\n\n" +
+                    "// 发送文本\n" +
+                    "ws.send('ping');\n\n" +
+                    "// 主动关闭\n" +
+                    "ws.close(1000, 'bye');";
+
+                var WS_CODE_BACKEND = {
+                    java:
+                        "// Spring Boot WebSocket 示例\n" +
+                        "@Configuration\n" +
+                        "@EnableWebSocket\n" +
+                        "public class WebSocketConfig implements WebSocketConfigurer {\n" +
+                        "    @Override\n" +
+                        "    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {\n" +
+                        "        registry.addHandler(new EchoWebSocketHandler(), \"/ws\")\n" +
+                        "                .setAllowedOrigins(\"*\");\n" +
+                        "    }\n" +
+                        "}\n\n" +
+                        "public class EchoWebSocketHandler extends TextWebSocketHandler {\n" +
+                        "    @Override\n" +
+                        "    public void afterConnectionEstablished(WebSocketSession session) {\n" +
+                        "        System.out.println(\"已连接: \" + session.getId());\n" +
+                        "    }\n\n" +
+                        "    @Override\n" +
+                        "    protected void handleTextMessage(WebSocketSession session, TextMessage message)\n" +
+                        "            throws IOException {\n" +
+                        "        String payload = message.getPayload();\n" +
+                        "        if (\"ping\".equals(payload)) {\n" +
+                        "            session.sendMessage(new TextMessage(\"pong\"));\n" +
+                        "        } else {\n" +
+                        "            session.sendMessage(new TextMessage(\"echo: \" + payload));\n" +
+                        "        }\n" +
+                        "    }\n\n" +
+                        "    @Override\n" +
+                        "    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {\n" +
+                        "        System.out.println(\"已关闭: \" + status);\n" +
+                        "    }\n" +
+                        "}\n\n" +
+                        "// 服务地址: ws://localhost:8080/ws",
+                    nodejs:
+                        "// npm install ws\n" +
+                        "const { WebSocketServer } = require('ws');\n\n" +
+                        "const wss = new WebSocketServer({ port: 8080, path: '/ws' });\n\n" +
+                        "wss.on('connection', function (ws) {\n" +
+                        "  console.log('客户端已连接');\n\n" +
+                        "  ws.on('message', function (data) {\n" +
+                        "    const text = data.toString();\n" +
+                        "    console.log('收到:', text);\n" +
+                        "    if (text === 'ping') {\n" +
+                        "      ws.send('pong');\n" +
+                        "    } else {\n" +
+                        "      ws.send('echo: ' + text);\n" +
+                        "    }\n" +
+                        "  });\n\n" +
+                        "  ws.on('close', function () {\n" +
+                        "    console.log('客户端已断开');\n" +
+                        "  });\n" +
+                        "});\n\n" +
+                        "console.log('WebSocket 服务: ws://localhost:8080/ws');",
+                    python:
+                        "# pip install websockets\n" +
+                        "import asyncio\n" +
+                        "import websockets\n\n" +
+                        "async def handler(websocket):\n" +
+                        "    print('客户端已连接')\n" +
+                        "    async for message in websocket:\n" +
+                        "        print('收到:', message)\n" +
+                        "        if message == 'ping':\n" +
+                        "            await websocket.send('pong')\n" +
+                        "        else:\n" +
+                        "            await websocket.send('echo: ' + message)\n\n" +
+                        "async def main():\n" +
+                        "    async with websockets.serve(handler, '0.0.0.0', 8080, path='/ws'):\n" +
+                        "        print('WebSocket 服务: ws://localhost:8080/ws')\n" +
+                        "        await asyncio.Future()\n\n" +
+                        "asyncio.run(main())",
+                };
+
+                var codeModal = document.getElementById("ws-code-modal");
+                var codeFrontend = document.getElementById("ws-code-frontend");
+                var codeBackend = document.getElementById("ws-code-backend");
+                var backendLangSelect = document.getElementById("ws-backend-lang");
+                codeFrontend.textContent = WS_CODE_FRONTEND;
+
+                function renderBackendCode() {
+                    var lang = backendLangSelect.value;
+                    codeBackend.textContent = WS_CODE_BACKEND[lang] || "";
+                }
+
+                renderBackendCode();
+
+                function showCodeModal() {
+                    codeModal.classList.add("visible");
+                    codeModal.setAttribute("aria-hidden", "false");
+                }
+
+                function hideCodeModal() {
+                    codeModal.classList.remove("visible");
+                    codeModal.setAttribute("aria-hidden", "true");
+                }
+
+                document.getElementById("conn-code-help-btn").addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    showCodeModal();
+                });
+                document.getElementById("ws-code-modal-close").addEventListener("click", hideCodeModal);
+                document.getElementById("ws-code-modal-backdrop").addEventListener("click", hideCodeModal);
+                document.addEventListener("keydown", function (e) {
+                    if (e.key === "Escape" && codeModal.classList.contains("visible")) {
+                        hideCodeModal();
+                    }
+                });
+                document.querySelectorAll(".tool-code-copy-btn[data-copy-target]").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        var target = document.getElementById(btn.getAttribute("data-copy-target"));
+                        ToolCopy.copy(target ? target.textContent : "");
+                    });
+                });
+                document.getElementById("ws-code-backend-copy").addEventListener("click", function () {
+                    ToolCopy.copy(codeBackend.textContent);
+                });
+                backendLangSelect.addEventListener("change", renderBackendCode);
+
+                var ws = null;
+                var logLines = [];
+                var manualDisconnect = false;
+                var sessionActive = false;
+                var reconnectAttempts = 0;
+                var reconnectTimer = null;
+                var heartbeatIntervalTimer = null;
+                var heartbeatTimeoutTimer = null;
+
+                var els = {
+                    url: document.getElementById("url"),
+                    protocol: document.getElementById("protocol"),
+                    statusBadge: document.getElementById("status-badge"),
+                    connectBtn: document.getElementById("connect-btn"),
+                    disconnectBtn: document.getElementById("disconnect-btn"),
+                    autoReconnect: document.getElementById("auto-reconnect"),
+                    reconnectOptions: document.getElementById("reconnect-options"),
+                    reconnectInterval: document.getElementById("reconnect-interval"),
+                    reconnectMax: document.getElementById("reconnect-max"),
+                    heartbeatEnable: document.getElementById("heartbeat-enable"),
+                    heartbeatOptions: document.getElementById("heartbeat-options"),
+                    heartbeatInterval: document.getElementById("heartbeat-interval"),
+                    heartbeatTimeout: document.getElementById("heartbeat-timeout"),
+                    heartbeatMessage: document.getElementById("heartbeat-message"),
+                    msgType: document.getElementById("msg-type"),
+                    message: document.getElementById("message"),
+                    sendBtn: document.getElementById("send-btn"),
+                    formatJsonBtn: document.getElementById("format-json-btn"),
+                    log: document.getElementById("log"),
+                    copyLogBtn: document.getElementById("copy-log-btn"),
+                    clearLogBtn: document.getElementById("clear-log-btn"),
+                    optionsSummary: document.getElementById("options-summary"),
+                };
+
+                function setStatus(text, state) {
+                    els.statusBadge.textContent = text;
+                    els.statusBadge.className = "status-badge" + (state ? " " + state : "");
+                }
+
+                function nowTime() {
+                    var d = new Date();
+                    var pad = function (n, len) {
+                        return String(n).padStart(len || 2, "0");
+                    };
+                    return (
+                        pad(d.getHours()) +
+                        ":" +
+                        pad(d.getMinutes()) +
+                        ":" +
+                        pad(d.getSeconds()) +
+                        "." +
+                        pad(d.getMilliseconds(), 3)
+                    );
+                }
+
+                function escapeHtml(text) {
+                    return String(text)
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+                }
+
+                function renderLog() {
+                    if (!logLines.length) {
+                        els.log.innerHTML = '<div class="log-empty">连接成功后，收发的消息会显示在这里。</div>';
+                        return;
+                    }
+                    els.log.innerHTML = logLines
+                        .map(function (item) {
+                            return (
+                                '<p class="log-line ' +
+                                item.kind +
+                                '"><span class="time">[' +
+                                escapeHtml(item.time) +
+                                "]</span> <span class=\"tag\">[" +
+                                escapeHtml(item.tag) +
+                                "]</span> <span class=\"body\">" +
+                                escapeHtml(item.body) +
+                                "</span></p>"
+                            );
+                        })
+                        .join("");
+                    els.log.scrollTop = els.log.scrollHeight;
+                }
+
+                function appendLog(kind, tag, body) {
+                    if (els.log.querySelector(".log-empty")) {
+                        logLines = [];
+                    }
+                    logLines.push({ kind: kind, tag: tag, body: body, time: nowTime() });
+                    if (logLines.length > 500) {
+                        logLines = logLines.slice(-500);
+                    }
+                    renderLog();
+                }
+
+                function parsePositiveInt(input, fallback, min, max) {
+                    var n = parseInt(input.value, 10);
+                    if (isNaN(n)) return fallback;
+                    return Math.min(max, Math.max(min, n));
+                }
+
+                function updateOptionsSummary() {
+                    var parts = [];
+                    if (els.autoReconnect.checked) parts.push("重连");
+                    if (els.heartbeatEnable.checked) parts.push("心跳");
+                    els.optionsSummary.textContent = parts.length ? parts.join(" · ") : "";
+                }
+
+                function toggleOptionPanels() {
+                    els.reconnectOptions.classList.toggle("disabled", !els.autoReconnect.checked);
+                    els.heartbeatOptions.classList.toggle("disabled", !els.heartbeatEnable.checked);
+                    updateOptionsSummary();
+                }
+
+                function initSectionToggles() {
+                    document.querySelectorAll(".section-toggle").forEach(function (btn) {
+                        btn.addEventListener("click", function () {
+                            var target = document.getElementById(btn.dataset.target);
+                            if (!target) return;
+                            var expanded = btn.classList.toggle("expanded");
+                            btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+                            target.classList.toggle("collapsed", !expanded);
+                        });
+                    });
+                }
+
+                function clearReconnectTimer() {
+                    if (reconnectTimer) {
+                        clearTimeout(reconnectTimer);
+                        reconnectTimer = null;
+                    }
+                }
+
+                function stopHeartbeat() {
+                    if (heartbeatIntervalTimer) {
+                        clearInterval(heartbeatIntervalTimer);
+                        heartbeatIntervalTimer = null;
+                    }
+                    clearHeartbeatTimeout();
+                }
+
+                function clearAllTimers() {
+                    clearReconnectTimer();
+                    stopHeartbeat();
+                }
+
+                function lockConnOptions(locked) {
+                    els.url.disabled = locked;
+                    els.protocol.disabled = locked;
+                    els.autoReconnect.disabled = locked;
+                    els.reconnectInterval.disabled = locked;
+                    els.reconnectMax.disabled = locked;
+                    els.heartbeatEnable.disabled = locked;
+                    els.heartbeatInterval.disabled = locked;
+                    els.heartbeatTimeout.disabled = locked;
+                    els.heartbeatMessage.disabled = locked;
+                }
+
+                function updateButtons() {
+                    var connected = ws && ws.readyState === WebSocket.OPEN;
+                    var connecting = ws && ws.readyState === WebSocket.CONNECTING;
+                    var reconnecting = !!reconnectTimer;
+                    els.connectBtn.disabled = connected || connecting || reconnecting;
+                    els.disconnectBtn.disabled = !sessionActive && !ws && !reconnecting;
+                    els.sendBtn.disabled = !connected;
+                    lockConnOptions(connected || connecting || reconnecting);
+                    toggleOptionPanels();
+                }
+
+                function clearHeartbeatTimeout() {
+                    if (heartbeatTimeoutTimer) {
+                        clearTimeout(heartbeatTimeoutTimer);
+                        heartbeatTimeoutTimer = null;
+                    }
+                }
+
+                function armHeartbeatTimeout() {
+                    if (!els.heartbeatEnable.checked || !ws || ws.readyState !== WebSocket.OPEN) {
+                        return;
+                    }
+                    clearHeartbeatTimeout();
+                    var timeoutSec = parsePositiveInt(els.heartbeatTimeout, 10, 3, 300);
+                    heartbeatTimeoutTimer = setTimeout(function () {
+                        appendLog("err", "ERR", "心跳超时（" + timeoutSec + "s 内未收到消息），断开并重连");
+                        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                            ws.close(4000, "heartbeat timeout");
+                        }
+                    }, timeoutSec * 1000);
+                }
+
+                function sendHeartbeat() {
+                    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                    var msg = els.heartbeatMessage.value;
+                    try {
+                        ws.send(msg);
+                        appendLog("ping", "PING", msg);
+                        armHeartbeatTimeout();
+                    } catch (err) {
+                        appendLog("err", "ERR", "心跳发送失败：" + (err.message || String(err)));
+                    }
+                }
+
+                function startHeartbeat() {
+                    stopHeartbeat();
+                    if (!els.heartbeatEnable.checked) return;
+                    var intervalSec = parsePositiveInt(els.heartbeatInterval, 30, 5, 3600);
+                    sendHeartbeat();
+                    heartbeatIntervalTimer = setInterval(sendHeartbeat, intervalSec * 1000);
+                }
+
+                function scheduleReconnect() {
+                    if (!els.autoReconnect.checked || manualDisconnect || !sessionActive) return;
+                    var max = parsePositiveInt(els.reconnectMax, 0, 0, 999);
+                    if (max > 0 && reconnectAttempts >= max) {
+                        sessionActive = false;
+                        setStatus("重连失败", "error");
+                        appendLog("err", "ERR", "已达最大重连次数（" + max + "），停止重连");
+                        updateButtons();
+                        return;
+                    }
+                    reconnectAttempts += 1;
+                    var intervalSec = parsePositiveInt(els.reconnectInterval, 3, 1, 300);
+                    setStatus("重连中… (" + reconnectAttempts + (max > 0 ? "/" + max : "") + ")", "connecting");
+                    appendLog("sys", "SYS", intervalSec + " 秒后尝试第 " + reconnectAttempts + " 次重连");
+                    clearReconnectTimer();
+                    reconnectTimer = setTimeout(function () {
+                        reconnectTimer = null;
+                        connectInternal(true);
+                    }, intervalSec * 1000);
+                    updateButtons();
+                }
+
+                function parseProtocols() {
+                    var raw = els.protocol.value.trim();
+                    if (!raw) return undefined;
+                    var list = raw.split(",").map(function (s) {
+                        return s.trim();
+                    }).filter(Boolean);
+                    return list.length === 1 ? list[0] : list;
+                }
+
+                function normalizeUrl(url) {
+                    var trimmed = url.trim();
+                    if (!trimmed) return "";
+                    if (!/^wss?:\/\//i.test(trimmed)) {
+                        trimmed = "ws://" + trimmed;
+                    }
+                    return trimmed;
+                }
+
+                function formatCloseInfo(ev) {
+                    var parts = ["连接已关闭"];
+                    if (ev && typeof ev.code === "number") {
+                        parts.push("code=" + ev.code);
+                    }
+                    if (ev && ev.reason) {
+                        parts.push("reason=" + ev.reason);
+                    }
+                    return parts.join("，");
+                }
+
+                function closeSocket(code, reason) {
+                    if (!ws) return;
+                    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                        ws.close(code || 1000, reason || "");
+                    }
+                }
+
+                function connectInternal(isReconnect) {
+                    var url = normalizeUrl(els.url.value);
+                    if (!url) {
+                        setStatus("请输入地址", "error");
+                        appendLog("err", "ERR", "WebSocket 地址不能为空");
+                        sessionActive = false;
+                        updateButtons();
+                        return;
+                    }
+
+                    closeSocket(1000, "reconnect");
+                    stopHeartbeat();
+                    setStatus(isReconnect ? "重连中…" : "连接中…", "connecting");
+                    appendLog("sys", "SYS", (isReconnect ? "正在重连 " : "正在连接 ") + url);
+
+                    try {
+                        var protocols = parseProtocols();
+                        ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
+                    } catch (err) {
+                        ws = null;
+                        setStatus("连接失败", "error");
+                        appendLog("err", "ERR", err.message || String(err));
+                        if (sessionActive && els.autoReconnect.checked && !manualDisconnect) {
+                            scheduleReconnect();
+                        } else {
+                            updateButtons();
+                        }
+                        return;
+                    }
+
+                    ws.binaryType = "arraybuffer";
+
+                    ws.onopen = function () {
+                        reconnectAttempts = 0;
+                        setStatus("已连接", "connected");
+                        appendLog("sys", "SYS", "连接成功" + (ws.protocol ? "，协议：" + ws.protocol : ""));
+                        startHeartbeat();
+                        updateButtons();
+                    };
+
+                    ws.onmessage = function (ev) {
+                        clearHeartbeatTimeout();
+                        if (typeof ev.data === "string") {
+                            appendLog("recv", "RECV", ev.data);
+                            return;
+                        }
+                        if (ev.data instanceof ArrayBuffer) {
+                            var bytes = new Uint8Array(ev.data);
+                            var b64 = btoa(String.fromCharCode.apply(null, bytes));
+                            appendLog("recv", "RECV", "[binary " + bytes.length + " bytes] base64:" + b64);
+                            return;
+                        }
+                        if (ev.data instanceof Blob) {
+                            var reader = new FileReader();
+                            reader.onload = function () {
+                                var buf = new Uint8Array(reader.result);
+                                var b64 = btoa(String.fromCharCode.apply(null, buf));
+                                appendLog("recv", "RECV", "[binary blob " + buf.length + " bytes] base64:" + b64);
+                            };
+                            reader.readAsArrayBuffer(ev.data);
+                            return;
+                        }
+                        appendLog("recv", "RECV", String(ev.data));
+                    };
+
+                    ws.onerror = function () {
+                        setStatus("连接错误", "error");
+                        appendLog("err", "ERR", "WebSocket 发生错误（详情见 onclose）");
+                        updateButtons();
+                    };
+
+                    ws.onclose = function (ev) {
+                        stopHeartbeat();
+                        ws = null;
+                        if (manualDisconnect || !sessionActive) {
+                            setStatus("未连接", "");
+                            appendLog("sys", "SYS", formatCloseInfo(ev));
+                            updateButtons();
+                            return;
+                        }
+                        appendLog("sys", "SYS", formatCloseInfo(ev));
+                        if (els.autoReconnect.checked) {
+                            scheduleReconnect();
+                        } else {
+                            sessionActive = false;
+                            setStatus("未连接", "");
+                            updateButtons();
+                        }
+                    };
+
+                    updateButtons();
+                }
+
+                function connect() {
+                    manualDisconnect = false;
+                    sessionActive = true;
+                    reconnectAttempts = 0;
+                    clearReconnectTimer();
+                    connectInternal(false);
+                }
+
+                function disconnect(logManual) {
+                    manualDisconnect = true;
+                    sessionActive = false;
+                    clearAllTimers();
+                    if (logManual !== false) {
+                        appendLog("sys", "SYS", "主动断开连接");
+                    }
+                    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                        setStatus("断开中…", "closing");
+                        ws.close(1000, "client disconnect");
+                    } else {
+                        setStatus("未连接", "");
+                    }
+                    ws = null;
+                    updateButtons();
+                }
+
+                function buildPayload() {
+                    var type = els.msgType.value;
+                    var raw = els.message.value;
+
+                    if (type === "text") {
+                        return { data: raw, label: raw };
+                    }
+
+                    if (type === "json") {
+                        if (!raw.trim()) {
+                            throw new Error("JSON 内容不能为空");
+                        }
+                        var parsed = JSON.parse(raw);
+                        var text = JSON.stringify(parsed);
+                        return { data: text, label: text };
+                    }
+
+                    if (type === "binary") {
+                        var b64 = raw.replace(/\s+/g, "");
+                        if (!b64) {
+                            throw new Error("Base64 内容不能为空");
+                        }
+                        var bin = atob(b64);
+                        var buf = new Uint8Array(bin.length);
+                        for (var i = 0; i < bin.length; i++) {
+                            buf[i] = bin.charCodeAt(i);
+                        }
+                        return { data: buf.buffer, label: "[binary " + buf.length + " bytes] base64:" + b64 };
+                    }
+
+                    return { data: raw, label: raw };
+                }
+
+                function sendMessage() {
+                    if (!ws || ws.readyState !== WebSocket.OPEN) {
+                        appendLog("err", "ERR", "当前未连接，无法发送");
+                        return;
+                    }
+                    try {
+                        var payload = buildPayload();
+                        ws.send(payload.data);
+                        appendLog("send", "SEND", payload.label);
+                    } catch (err) {
+                        appendLog("err", "ERR", err.message || String(err));
+                    }
+                }
+
+                function formatJson() {
+                    var raw = els.message.value.trim();
+                    if (!raw) return;
+                    try {
+                        els.message.value = JSON.stringify(JSON.parse(raw), null, 2);
+                        els.msgType.value = "json";
+                    } catch (err) {
+                        appendLog("err", "ERR", "JSON 格式无效：" + (err.message || String(err)));
+                    }
+                }
+
+                function copyLog() {
+                    if (!logLines.length) {
+                        ToolCopy.copy("");
+                        return;
+                    }
+                    var text = logLines
+                        .map(function (item) {
+                            return "[" + item.time + "] [" + item.tag + "] " + item.body;
+                        })
+                        .join("\n");
+                    ToolCopy.copy(text);
+                }
+
+                function clearLog() {
+                    logLines = [];
+                    renderLog();
+                }
+
+                els.autoReconnect.addEventListener("change", toggleOptionPanels);
+                els.heartbeatEnable.addEventListener("change", toggleOptionPanels);
+
+                els.connectBtn.addEventListener("click", connect);
+                els.disconnectBtn.addEventListener("click", function () {
+                    disconnect(true);
+                });
+                els.sendBtn.addEventListener("click", sendMessage);
+                els.formatJsonBtn.addEventListener("click", formatJson);
+                els.copyLogBtn.addEventListener("click", copyLog);
+                els.clearLogBtn.addEventListener("click", clearLog);
+
+                els.message.addEventListener("keydown", function (ev) {
+                    if (ev.key === "Enter" && !ev.shiftKey) {
+                        ev.preventDefault();
+                        sendMessage();
+                    }
+                });
+
+                els.msgType.addEventListener("change", function () {
+                    var type = els.msgType.value;
+                    els.message.placeholder =
+                        type === "json"
+                            ? '{"action":"ping"}'
+                            : type === "binary"
+                              ? "SGVsbG8gV29ybGQ="
+                              : "输入要发送的文本消息";
+                });
+
+                initSectionToggles();
+                toggleOptionPanels();
+                updateButtons();
+            })();
+        </script>
+    </body>
+</html>
