@@ -85,18 +85,6 @@
                 border-radius: 8px;
                 box-shadow: var(--shadow);
             }
-            .proxy-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            .proxy-row select {
-                width: auto;
-                min-width: 140px;
-                padding: 6px 8px;
-                font-size: 12px;
-            }
             .canvas-pane {
                 flex: 1;
                 min-height: 0;
@@ -181,18 +169,6 @@
                 align-items: center;
                 gap: 6px;
                 flex-shrink: 0;
-            }
-            .config-meta-label {
-                font-size: 11px;
-                color: var(--muted);
-                font-weight: 600;
-                white-space: nowrap;
-            }
-            .config-meta select {
-                width: auto;
-                min-width: 132px;
-                padding: 5px 8px;
-                font-size: 12px;
             }
             .config-scroll {
                 flex: 1;
@@ -298,7 +274,6 @@
             }
             .story-head h3 { margin: 0; font-size: 13px; font-weight: 700; flex-shrink: 0; }
             .story-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; margin-left: auto; }
-            .story-head h3 { flex-shrink: 0; }
             .code-head-opts {
                 display: flex;
                 align-items: center;
@@ -619,31 +594,10 @@
                 display: flex;
                 flex-direction: column;
             }
-            .card-scroll {
-                flex: 1;
-                min-height: 0;
-                overflow: auto;
-            }
-            .card-scroll[hidden] { display: none !important; }
             .card-title {
                 margin: 0 0 8px;
                 font-size: 13px;
                 font-weight: 700;
-            }
-            .card-title-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-                margin-bottom: 8px;
-                flex-shrink: 0;
-            }
-            .detail-actions {
-                display: flex;
-                gap: 6px;
-                flex-shrink: 0;
-                flex-wrap: wrap;
-                justify-content: flex-end;
             }
             .detail-title-wrap {
                 display: flex;
@@ -687,17 +641,6 @@
                 font-size: 13px;
                 font-weight: 700;
             }
-            .detail-tip {
-                margin-bottom: 12px;
-                padding: 10px 12px;
-                border: 1px solid #dbe6ff;
-                border-radius: 10px;
-                background: linear-gradient(135deg, #f4f8ff, #fafcff);
-                font-size: 11px;
-                line-height: 1.65;
-                color: var(--muted);
-            }
-            .detail-tip strong { color: var(--text); font-weight: 700; }
             .detail-section {
                 margin-bottom: 14px;
                 padding-bottom: 14px;
@@ -722,18 +665,6 @@
                 flex-shrink: 0;
             }
             .section-body { min-width: 0; }
-            .section-sub {
-                margin-top: 8px;
-                padding: 10px;
-                border: 1px dashed #dbe6ff;
-                border-radius: 8px;
-                background: #fafcff;
-            }
-            .detail-card .card-title-row {
-                padding: 8px 8px 6px;
-                margin-bottom: 0;
-                flex-shrink: 0;
-            }
             #detail-form { padding-top: 0; }
             .field-hint {
                 margin: 0 0 6px;
@@ -1054,9 +985,6 @@
             .body-file-row input[type="file"] { font-size: 12px; max-width: 100%; }
             .body-file-info { font-size: 12px; color: var(--muted); }
             .kv-toolbar { display: flex; gap: 8px; margin-top: 6px; }
-            .btn-text { background: transparent; color: var(--primary); padding: 4px 0; }
-            .btn-text-muted { background: transparent; color: var(--muted); padding: 4px 0; }
-            .btn-text-muted:hover { color: var(--danger); filter: none; }
             .empty-panel {
                 display: none;
                 align-items: center;
@@ -1158,16 +1086,6 @@
                 line-height: 1.5;
                 white-space: pre;
                 background: #fff;
-            }
-            .status {
-                font-size: 12px;
-                color: var(--muted);
-            }
-            .status.error { color: var(--danger); }
-            .status-bar {
-                font-size: 12px;
-                line-height: 1.45;
-                color: var(--muted);
             }
             .config-status {
                 font-size: 12px;
@@ -1898,11 +1816,6 @@
                 return true;
             }
 
-            function copySelectedNodes() {
-                if (!copySelectionToClipboard()) return;
-                pasteClipboardNodes();
-            }
-
             function focusCanvasForShortcuts() {
                 if (els.canvasScroll && !isCodeModalOpen()) {
                     els.canvasScroll.focus({ preventScroll: true });
@@ -1927,7 +1840,7 @@
                 return false;
             }
 
-            function shouldCopyNodes(e) {
+            function shouldCopyNodes() {
                 if (isCodeModalOpen() || !state.selectedIds.length) return false;
                 return !hasTextSelectionInFocusedField();
             }
@@ -2016,10 +1929,6 @@
             function hideCanvasContextMenu() {
                 var menu = $("canvas-context-menu");
                 if (menu) menu.hidden = true;
-            }
-
-            function showCanvasContextMenu(clientX, clientY) {
-                showNodeContextMenu(clientX, clientY);
             }
 
             function onCanvasContextMenu(e) {
@@ -3042,7 +2951,7 @@
                 }
             }
 
-            function bindEdgeInteractions(group, hitTarget, edgeId) {
+            function bindEdgeInteractions(hitTarget, edgeId) {
                 hitTarget.addEventListener("click", function (ev) {
                     ev.stopPropagation();
                     selectEdge(edgeId);
@@ -3067,7 +2976,7 @@
                     var hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
                     hit.setAttribute("d", pathD);
                     hit.setAttribute("class", "edge-hit");
-                    bindEdgeInteractions(g, hit, id);
+                    bindEdgeInteractions(hit, id);
                     g.appendChild(hit);
                 }
                 g.appendChild(line);
@@ -3472,10 +3381,6 @@
                 updateProxyStatusUI();
             }
 
-            function refreshProxyStatus() {
-                return Promise.resolve(state.proxyAvailable);
-            }
-
             function manualEnableProxy() {
                 var btn = $("proxy-enable-btn");
                 if (!getProxyBase()) {
@@ -3581,23 +3486,21 @@
                     setStatus("请先填写当前节点 URL。", true);
                     return;
                 }
-                refreshProxyStatus().then(function () {
-                    prepareTestRun([target.id]);
-                    target.runState = "running";
-                    target.runMsg = "请求中…";
+                prepareTestRun([target.id]);
+                target.runState = "running";
+                target.runMsg = "请求中…";
+                renderCanvas();
+                executeNode(target, {}).then(function (data) {
+                    target.runState = "success";
+                    target.runMsg = "成功 " + new Date().toLocaleTimeString();
+                    saveNodeResponse(target, data);
                     renderCanvas();
-                    executeNode(target, {}).then(function (data) {
-                        target.runState = "success";
-                        target.runMsg = "成功 " + new Date().toLocaleTimeString();
-                        saveNodeResponse(target, data);
-                        renderCanvas();
-                        setStatus("节点「" + getNodeDisplayLabel(target) + "」本节点测试成功。", false);
-                    }).catch(function (err) {
-                        handleTestError(target, err);
-                        setStatus("本节点测试失败。", true);
-                    }).then(function () {
-                        finishTestRun(target);
-                    });
+                    setStatus("节点「" + getNodeDisplayLabel(target) + "」本节点测试成功。", false);
+                }).catch(function (err) {
+                    handleTestError(target, err);
+                    setStatus("本节点测试失败。", true);
+                }).then(function () {
+                    finishTestRun(target);
                 });
             }
 
@@ -3614,9 +3517,7 @@
                     setStatus("当前子图存在循环依赖。", true);
                     return;
                 }
-                refreshProxyStatus().then(function () {
-                    runNodeTestChain(target, order);
-                });
+                runNodeTestChain(target, order);
             }
 
             function testAllNodesChain() {
@@ -3636,11 +3537,9 @@
                     setStatus("画布存在循环连线，请删除形成环路的箭头。", true);
                     return;
                 }
-                refreshProxyStatus().then(function () {
-                    runWorkflowStages(stages, {
-                        successMsg: "全节点链路测试完成。",
-                        errorMsg: "全节点链路测试中断，请检查节点配置或参数引用。"
-                    });
+                runWorkflowStages(stages, {
+                    successMsg: "全节点链路测试完成。",
+                    errorMsg: "全节点链路测试中断，请检查节点配置或参数引用。"
                 });
             }
 
@@ -3698,10 +3597,6 @@
                     var finishNode = (state.selectedId && getNode(state.selectedId)) || getNode(allIds[allIds.length - 1]);
                     finishTestRun(finishNode);
                 });
-            }
-
-            function testSelectedNode() {
-                testSelectedNodeOnly();
             }
 
             function runNodeTestChain(target, order) {
@@ -4237,7 +4132,7 @@
                 $("code-overlay").addEventListener("click", function (e) {
                     if (e.target === $("code-overlay")) closeCodeModal();
                 });
-                $("test-node-btn").addEventListener("click", testSelectedNode);
+                $("test-node-btn").addEventListener("click", testSelectedNodeOnly);
                 $("test-chain-btn").addEventListener("click", testChainToNode);
                 $("test-all-btn").addEventListener("click", testAllNodesChain);
                 $("cancel-link-btn").addEventListener("click", cancelLinking);
@@ -4372,7 +4267,9 @@
                     if (!btn) return;
                     e.stopPropagation();
                     hideCanvasContextMenu();
-                    if (btn.dataset.action === "copy") copySelectedNodes();
+                    if (btn.dataset.action === "copy") {
+                        if (copySelectionToClipboard()) pasteClipboardNodes();
+                    }
                     else if (btn.dataset.action === "delete") {
                         if (state.selectedEdgeId) removeSelectedEdge();
                         else removeSelectedNodes();
@@ -4414,7 +4311,7 @@
                         return;
                     }
                     if ((e.ctrlKey || e.metaKey) && !isCodeModalOpen()) {
-                        if (isCopyShortcut(e) && shouldCopyNodes(e)) {
+                        if (isCopyShortcut(e) && shouldCopyNodes()) {
                             e.preventDefault();
                             copySelectionToClipboard();
                             return;
