@@ -274,8 +274,8 @@
                     </div>
                     <div class="actions">
                         <button onclick="addModel()">添加模型</button>
-                        <button onclick="generateScript()">生成脚本</button>
-                        <button onclick="downloadScript()">下载脚本</button>
+                        <button onclick="generateScript()">生成</button>
+                        <button type="button" class="danger-btn tool-btn-danger" onclick="clearShellForm()">清空</button>
                     </div>
                 </div>
                 <div class="right-panel">
@@ -283,6 +283,7 @@
                         <h3 class="panel-title">生成结果</h3>
                         <div class="result-actions">
                             <button type="button" class="result-btn" id="btn-copy-result">复制</button>
+                            <button type="button" class="result-btn" onclick="downloadScript()">下载</button>
                             <button type="button" class="result-btn qr-btn" id="btn-qr-result" title="生成二维码">
                                 <span>二维码</span>
                                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -457,6 +458,42 @@ configItems.forEach(item => {
                 });
 
                 resultDiv.innerHTML = `<pre>${scriptContent}</pre>`;
+            }
+
+function clearShellForm() {
+                const modelsDiv = document.getElementById('models');
+                modelsDiv.innerHTML = `
+                    <div class="model-container">
+                        <div class="model-header">
+                            <span>模型 1</span>
+                            <button class="danger-btn tool-btn-danger" onclick="removeModel(this)">删除模型</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="model1-configFiles">配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label>
+                            <input id="model1-configFiles" placeholder="例如：application-prd,site_cm_common">
+                        </div>
+                        <div id="model1-configItems">
+                            <div class="config-item">
+                                <label>配置项 1:</label>
+                                <input placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
+                                <input placeholder="值（例如：Y）" class="configValue">
+                                <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
+                            </div>
+                        </div>
+                        <button onclick="addConfigItem(this)">添加配置项</button>
+                    </div>
+                `;
+                modelCount = 1;
+                scriptContent = '';
+                document.getElementById('result').innerHTML = '';
+                try {
+                    localStorage.removeItem(SHELL_FORM_STORAGE_KEY);
+                } catch (e) {
+                    // Ignore storage failure.
+                }
+                if (typeof ToolCopy !== 'undefined' && ToolCopy.toast) {
+                    ToolCopy.toast('已清空');
+                }
             }
 
 function downloadScript() {

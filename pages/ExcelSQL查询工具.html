@@ -1211,7 +1211,7 @@
                 <div class="left-header">
                     <h3 class="title">Excel 当数据库查询</h3>
                 </div>
-                <div class="muted">上传 Excel/CSV/TXT 或「CSV 文本」粘贴；自动识别 UTF-8/GBK，表名「文件名_Sheet名」，支持 JOIN。</div>
+                <div class="muted">上传 Excel/CSV/TXT 或「CSV 文本」粘贴；自动识别 UTF-8/GBK 及逗号、制表符、竖线（|）分隔，表名「文件名_Sheet名」，支持 JOIN。</div>
                 <div class="field">
                     <label for="excel-files">上传文件（Excel / CSV / TXT，支持多选）</label>
                     <div class="upload-row">
@@ -1306,7 +1306,7 @@
                     <button id="csv-modal-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
                 </div>
                 <div class="csv-modal-body">
-                    <p class="csv-modal-hint">通过文件上传的 Excel / .txt 会在此显示为标准 CSV 文本；手动新建并粘贴时仍支持逗号（CSV）或制表符（Excel 复制）。底部可切换多个工作表，双击标签可重命名。</p>
+                    <p class="csv-modal-hint">通过文件上传的 Excel / .txt 会在此显示为标准 CSV 文本；手动新建并粘贴时仍支持逗号（CSV）、制表符（Excel 复制）或竖线（|）分隔。底部可切换多个工作表，双击标签可重命名。</p>
                     <div class="csv-editor-wrap">
                         <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
                     </div>
@@ -1756,14 +1756,20 @@
                 if (!sample.length) return ",";
                 var tabs = 0;
                 var commas = 0;
+                var pipes = 0;
                 sample.forEach(function (line) {
                     tabs += (line.match(/\t/g) || []).length;
                     commas += (line.match(/,/g) || []).length;
+                    pipes += (line.match(/\|/g) || []).length;
                 });
-                return tabs > commas ? "\t" : ",";
+                var max = Math.max(tabs, commas, pipes);
+                if (max === 0) return ",";
+                if (tabs === max) return "\t";
+                if (pipes === max) return "|";
+                return ",";
             }
 
-            function parseCsvRow(line) {
+            function parseQuotedDelimitedRow(line, sep) {
                 var out = [];
                 var cur = "";
                 var inQ = false;
@@ -1782,7 +1788,7 @@
                         }
                     } else if (ch === '"') {
                         inQ = true;
-                    } else if (ch === ",") {
+                    } else if (ch === sep) {
                         out.push(cur);
                         cur = "";
                     } else {
@@ -1793,9 +1799,16 @@
                 return out;
             }
 
+            function parseCsvRow(line) {
+                return parseQuotedDelimitedRow(line, ",");
+            }
+
             function splitDelimitedRow(line, fs) {
                 if (fs === "\t") {
                     return String(line || "").split("\t");
+                }
+                if (fs === "|") {
+                    return parseQuotedDelimitedRow(line, "|");
                 }
                 return parseCsvRow(line);
             }
