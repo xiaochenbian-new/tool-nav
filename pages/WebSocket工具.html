@@ -153,6 +153,9 @@
             .conn-actions button {
                 flex: 1;
             }
+            .conn-actions .tool-btn-danger {
+                flex: 0 0 auto;
+            }
             .section-block {
                 margin-bottom: 10px;
                 border: 1px solid var(--border);
@@ -475,6 +478,7 @@
                     <div class="conn-actions">
                         <button id="connect-btn" type="button">连接</button>
                         <button id="disconnect-btn" type="button" class="secondary" disabled>断开</button>
+                        <button id="clear-conn-btn" type="button" class="danger tool-btn-danger">清空</button>
                     </div>
                 </div>
             </div>
@@ -714,6 +718,7 @@
                     log: document.getElementById("log"),
                     copyLogBtn: document.getElementById("copy-log-btn"),
                     clearLogBtn: document.getElementById("clear-log-btn"),
+                    clearConnBtn: document.getElementById("clear-conn-btn"),
                     optionsSummary: document.getElementById("options-summary"),
                 };
 
@@ -1146,6 +1151,35 @@
                     renderLog();
                 }
 
+                function clearConnConfig() {
+                    var wasActive =
+                        sessionActive ||
+                        reconnectTimer ||
+                        (ws &&
+                            (ws.readyState === WebSocket.OPEN ||
+                                ws.readyState === WebSocket.CONNECTING));
+                    if (wasActive) {
+                        disconnect(false);
+                    }
+                    els.url.value = "";
+                    els.protocol.value = "";
+                    els.autoReconnect.checked = false;
+                    els.reconnectInterval.value = "3";
+                    els.reconnectMax.value = "0";
+                    els.heartbeatEnable.checked = false;
+                    els.heartbeatInterval.value = "30";
+                    els.heartbeatTimeout.value = "10";
+                    els.heartbeatMessage.value = "ping";
+                    manualDisconnect = false;
+                    sessionActive = false;
+                    if (!wasActive) {
+                        setStatus("未连接", "");
+                    }
+                    toggleOptionPanels();
+                    updateButtons();
+                    appendLog("sys", "SYS", "已清空连接配置");
+                }
+
                 els.autoReconnect.addEventListener("change", toggleOptionPanels);
                 els.heartbeatEnable.addEventListener("change", toggleOptionPanels);
 
@@ -1157,6 +1191,7 @@
                 els.formatJsonBtn.addEventListener("click", formatJson);
                 els.copyLogBtn.addEventListener("click", copyLog);
                 els.clearLogBtn.addEventListener("click", clearLog);
+                els.clearConnBtn.addEventListener("click", clearConnConfig);
 
                 els.message.addEventListener("keydown", function (ev) {
                     if (ev.key === "Enter" && !ev.shiftKey) {

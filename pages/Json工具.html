@@ -804,6 +804,46 @@
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
                 var tomlStringifyCache = null;
+                /** 超过该体积启用大文本模式（关闭折行/折叠/语法高亮，降低输入卡顿） */
+                var LARGE_CONTENT_BYTES = 128 * 1024;
+                var NORMAL_PERSIST_MS = 400;
+                var LARGE_PERSIST_MS = 1800;
+                /** 序列化后超过该体积不再写入浏览器 localStorage */
+                var LARGE_LOCAL_STORAGE_SKIP = 1536 * 1024;
+                var editorPerfLarge = null;
+                var _largeStorageWarned = false;
+                var _editorSideFxTimer = null;
+                var _convertDebounceTimer = null;
+
+                function getContentByteSize(text) {
+                    var s = String(text == null ? "" : text);
+                    if (typeof TextEncoder !== "undefined") {
+                        return new TextEncoder().encode(s).length;
+                    }
+                    return s.length * 2;
+                }
+
+                function isLargeContent(text) {
+                    return getContentByteSize(text) >= LARGE_CONTENT_BYTES;
+                }
+
+                function applyEditorPerformanceMode(text) {
+                    var large = isLargeContent(text);
+                    if (large === editorPerfLarge) return;
+                    editorPerfLarge = large;
+                    if (!mainCm) return;
+                    mainCm.setOption("lineWrapping", !large);
+                    mainCm.setOption("foldGutter", !large);
+                    mainCm.setOption(
+                        "gutters",
+                        large ? ["CodeMirror-linenumbers"] : ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+                    );
+                    mainCm.setOption("mode", large ? "text/plain" : { name: "javascript", json: true });
+                    mainCm.setOption("workTime", large ? 50 : 200);
+                    mainCm.setOption("workDelay", large ? 400 : 300);
+                    mainCm.refresh();
+                    if (large) toast("大文本模式：已关闭折行与语法高亮以提升流畅度");
+                }
 
                 function toast(msg) {
                     toastEl.textContent = msg;
@@ -873,9 +913,10 @@
 
                 function syncMainInputFromCm() {
                     var v = mainCm.getValue();
-                    mainInput.value = v;
                     var sheet = getActiveSheet();
                     if (sheet) sheet.content = v;
+                    /* 内容以 json_sheets_state 为准，避免与隐藏域重复写入 localStorage */
+                    mainInput.value = "";
                 }
 
                 function setMainInputContent(text) {
@@ -883,7 +924,8 @@
                     mainCm.setValue(next);
                     var sheet = getActiveSheet();
                     if (sheet) sheet.content = next;
-                    mainInput.value = next;
+                    mainInput.value = "";
+                    applyEditorPerformanceMode(next);
                 }
 
                 /* —— 多 Sheet（类似 Excel 工作表） —— */
@@ -914,7 +956,16 @@
                     syncMainInputFromCm();
                     if (!jsonSheets.length) return;
                     var state = { activeId: activeSheetId, sheets: jsonSheets };
-                    sheetsMetaInput.value = JSON.stringify(state);
+                    var serialized = JSON.stringify(state);
+                    sheetsMetaInput.value = serialized;
+                    if (getContentByteSize(serialized) >= LARGE_LOCAL_STORAGE_SKIP) {
+                        if (!_largeStorageWarned) {
+                            _largeStorageWarned = true;
+                            toast("内容过大，已跳过自动保存到浏览器");
+                        }
+                        return;
+                    }
+                    _largeStorageWarned = false;
                     sheetsMetaInput.dispatchEvent(new Event("input", { bubbles: true }));
                 }
 
@@ -935,7 +986,8 @@
                     var content = sheet ? normalizeEditorText(sheet.content) : "";
                     if (sheet) sheet.content = content;
                     mainCm.setValue(content);
-                    mainInput.value = content;
+                    mainInput.value = "";
+                    applyEditorPerformanceMode(content);
                 }
 
                 function initSheetsFromStorage() {
@@ -1146,7 +1198,11 @@
                 sanitizeAllSheetsContent();
                 applyActiveSheetToEditor();
                 renderSheetTabs();
-                persistSheetsState();
+                if (isLargeContent(mainCm.getValue())) {
+                    setTimeout(persistSheetsState, 800);
+                } else {
+                    persistSheetsState();
+                }
 
                 window.addEventListener("load", function () {
                     if (sheetsMetaInput.value) {
@@ -1154,7 +1210,11 @@
                         sanitizeAllSheetsContent();
                         applyActiveSheetToEditor();
                         renderSheetTabs();
-                        persistSheetsState();
+                        if (isLargeContent(mainCm.getValue())) {
+                            setTimeout(persistSheetsState, 800);
+                        } else {
+                            persistSheetsState();
+                        }
                     }
                     resizeMainCm();
                 });
@@ -1162,14 +1222,39 @@
                 var _sheetPersistTimer = null;
                 function schedulePersistSheets() {
                     clearTimeout(_sheetPersistTimer);
-                    _sheetPersistTimer = setTimeout(persistSheetsState, 400);
+                    var delay = isLargeContent(mainCm.getValue()) ? LARGE_PERSIST_MS : NORMAL_PERSIST_MS;
+                    _sheetPersistTimer = setTimeout(persistSheetsState, delay);
+                }
+
+                function scheduleEditorSideEffects() {
+                    var text = mainCm.getValue();
+                    var large = isLargeContent(text);
+                    clearTimeout(_editorSideFxTimer);
+                    if (large) {
+                        _editorSideFxTimer = setTimeout(function () {
+                            _editorSideFxTimer = null;
+                            applyEditorPerformanceMode(text);
+                            refreshFindHighlights();
+                        }, 200);
+                    } else {
+                        applyEditorPerformanceMode(text);
+                        refreshFindHighlights();
+                    }
+                    if (currentTab === "convert") {
+                        clearTimeout(_convertDebounceTimer);
+                        _convertDebounceTimer = setTimeout(function () {
+                            _convertDebounceTimer = null;
+                            doConvert(true);
+                        }, large ? 900 : 0);
+                    }
                 }
 
                 mainCm.on("change", function (_cm, change) {
-                    syncMainInputFromCm();
+                    var v = mainCm.getValue();
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = v;
                     schedulePersistSheets();
-                    if (currentTab === "convert") doConvert(true);
-                    refreshFindHighlights();
+                    scheduleEditorSideEffects();
                     if (change && change.origin === "paste") scheduleAutoBeautifyAfterPaste();
                 });
                 mainCm.on("focus", function () {
@@ -1700,6 +1785,7 @@
 
                 var autoBeautifyPasteTimer = null;
                 function scheduleAutoBeautifyAfterPaste() {
+                    if (isLargeContent(mainCm.getValue())) return;
                     clearTimeout(autoBeautifyPasteTimer);
                     autoBeautifyPasteTimer = setTimeout(function () {
                         autoBeautifyPasteTimer = null;

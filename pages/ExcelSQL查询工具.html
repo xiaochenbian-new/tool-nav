@@ -799,6 +799,15 @@
                 color: var(--primary);
                 background: transparent;
             }
+            .sort-btn.has-priority {
+                min-width: 28px;
+                font-size: 12px;
+                gap: 0;
+            }
+            .sort-btn .sort-priority {
+                font-size: 11px;
+                line-height: 1;
+            }
             .filter-btn svg {
                 display: block;
             }
@@ -1341,7 +1350,8 @@
             let currentViewRows = [];
             let currentCols = [];
             let currentFilters = {};
-            let currentSort = { col: "", dir: "" };
+            let currentSorts = [];
+            const SORT_PRIORITY_MARKS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
             let lastExecutedSql = "";
             let currentColWidths = {};
             let resultHeadExpanded = false;
@@ -2755,11 +2765,66 @@
                 return sql + ";";
             }
 
+            function getSortPriorityMark(index) {
+                return SORT_PRIORITY_MARKS[index] || String(index + 1);
+            }
+
+            function findSortEntry(col) {
+                for (var i = 0; i < currentSorts.length; i++) {
+                    if (currentSorts[i].col === col) {
+                        return { index: i, entry: currentSorts[i] };
+                    }
+                }
+                return null;
+            }
+
+            function toggleSortColumn(col) {
+                var found = findSortEntry(col);
+                if (!found) {
+                    currentSorts.push({ col: col, dir: "asc" });
+                    return;
+                }
+                if (found.entry.dir === "asc") {
+                    found.entry.dir = "desc";
+                    return;
+                }
+                currentSorts.splice(found.index, 1);
+            }
+
+            function buildSortKeyForRow(row, col) {
+                var text = getRowDisplayValue(row, col);
+                var n = Number(text);
+                var p = parseDateFilterInput(text);
+                if (text !== "" && !Number.isNaN(n)) {
+                    return { mode: "num", key: n };
+                }
+                if (p) {
+                    return { mode: "date", key: partsToSortable(p) };
+                }
+                return { mode: "str", key: text };
+            }
+
+            function compareSortKeys(a, b, dir) {
+                if (a.mode === b.mode) {
+                    if (a.mode === "num") return (a.key - b.key) * dir;
+                    return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+                }
+                return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+            }
+
+            function renderSortBtnContent(col) {
+                var found = findSortEntry(col);
+                if (!found) return "↕";
+                var mark = getSortPriorityMark(found.index);
+                var arrow = found.entry.dir === "asc" ? "↑" : "↓";
+                return "<span class=\"sort-priority\">" + mark + "</span>" + arrow;
+            }
+
             function renderResult(rows) {
                 lastQueryRows = Array.isArray(rows) ? rows.slice() : [];
                 rowDisplayCache = new WeakMap();
                 currentFilters = {};
-                currentSort = { col: "", dir: "" };
+                currentSorts = [];
                 currentCols = lastQueryRows.length ? Object.keys(lastQueryRows[0]) : [];
                 currentColWidths = {};
                 currentPage = 1;
@@ -2784,33 +2849,22 @@
 
             function applyResultView() {
                 let rows = getRowsByCurrentFilters("", null);
-                if (currentSort.col && currentSort.dir) {
-                    const col = currentSort.col;
-                    const dir = currentSort.dir === "desc" ? -1 : 1;
+                if (currentSorts.length) {
                     const keyed = rows.map(function (r) {
-                        var text = getRowDisplayValue(r, col);
-                        var n = Number(text);
-                        var p = parseDateFilterInput(text);
-                        var key;
-                        var mode;
-                        if (text !== "" && !Number.isNaN(n)) {
-                            mode = "num";
-                            key = n;
-                        } else if (p) {
-                            mode = "date";
-                            key = partsToSortable(p);
-                        } else {
-                            mode = "str";
-                            key = text;
-                        }
-                        return { row: r, mode: mode, key: key };
+                        return {
+                            row: r,
+                            keys: currentSorts.map(function (s) {
+                                return buildSortKeyForRow(r, s.col);
+                            })
+                        };
                     });
                     keyed.sort(function (a, b) {
-                        if (a.mode === b.mode) {
-                            if (a.mode === "num") return (a.key - b.key) * dir;
-                            return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+                        for (var i = 0; i < currentSorts.length; i++) {
+                            var dir = currentSorts[i].dir === "desc" ? -1 : 1;
+                            var cmp = compareSortKeys(a.keys[i], b.keys[i], dir);
+                            if (cmp !== 0) return cmp;
                         }
-                        return String(a.key).localeCompare(String(b.key), "zh-CN", { numeric: true, sensitivity: "base" }) * dir;
+                        return 0;
                     });
                     rows = keyed.map(function (x) { return x.row; });
                 }
@@ -2876,8 +2930,12 @@
                     + "<button class=\"head-expand-btn" + expandClass + "\" type=\"button\" title=\"" + expandTitle + "\">" + expandIcon + "</button>"
                     + "</div></th>";
                 cols.forEach(function (c) {
-                    const active = currentSort.col === c ? " active" : "";
-                    const symbol = currentSort.col === c ? (currentSort.dir === "asc" ? "↑" : "↓") : "↕";
+                    const sortEntry = findSortEntry(c);
+                    const active = sortEntry ? " active" : "";
+                    const priorityClass = sortEntry ? " has-priority" : "";
+                    const sortTitle = sortEntry
+                        ? "排序优先级 " + getSortPriorityMark(sortEntry.index) + "，" + (sortEntry.entry.dir === "asc" ? "升序" : "降序") + "；再次点击切换方向或取消"
+                        : "点击加入排序；可对多列依次点击设置 ① ②… 优先级";
                     const filterRule = currentFilters[c] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
                     const hasFilter = !!String(filterRule.keyword || "").trim()
                         || (filterRule.selected && filterRule.selected.length > 0)
@@ -2888,7 +2946,7 @@
                     html += "<th><div class=\"th-cell\">"
                         + "<span class=\"th-name\"" + thTitle + ">" + escapeHtml(c) + "</span>"
                         + "<span class=\"th-actions\">"
-                        + "<button class=\"sort-btn" + active + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"排序\">" + symbol + "</button>"
+                        + "<button class=\"sort-btn" + active + priorityClass + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"" + escapeHtml(sortTitle) + "\">" + renderSortBtnContent(c) + "</button>"
                         + "<button class=\"filter-btn" + filterActive + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"筛选\">"
                         + "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3 5h18l-7 8v5l-4 2v-7L3 5z\" fill=\"currentColor\"></path></svg>"
                         + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\"></span></th>";
@@ -3299,7 +3357,7 @@
                     return;
                 }
                 const base = unwrapGeneratedViewBase(lastExecutedSql);
-                const hasSort = !!(currentSort.col && currentSort.dir);
+                const hasSort = currentSorts.length > 0;
                 const hasFilters = Object.keys(currentFilters).some(function (col) {
                     const rule = currentFilters[col] || { keyword: "", selected: [], dateFrom: "", dateTo: "" };
                     return !!String(rule.keyword || "").trim()
@@ -3348,8 +3406,10 @@
                     if (canDirectAppend) sql += " WHERE " + whereParts.join(" AND ");
                     else sql = "SELECT * FROM (" + base + ") AS [t] WHERE " + whereParts.join(" AND ");
                 }
-                if (currentSort.col && currentSort.dir) {
-                    sql += " ORDER BY [" + currentSort.col + "] " + (currentSort.dir === "desc" ? "DESC" : "ASC");
+                if (currentSorts.length) {
+                    sql += " ORDER BY " + currentSorts.map(function (s) {
+                        return "[" + s.col + "] " + (s.dir === "desc" ? "DESC" : "ASC");
+                    }).join(", ");
                 }
                 sql += ";";
                 sqlBox.value = sql;
@@ -4327,7 +4387,7 @@
                 currentViewRows = [];
                 currentCols = [];
                 currentFilters = {};
-                currentSort = { col: "", dir: "" };
+                currentSorts = [];
                 lastExecutedSql = "";
                 currentColWidths = {};
                 currentPage = 1;
@@ -4437,7 +4497,7 @@
             });
             document.getElementById("clear-view-btn").addEventListener("click", function () {
                 currentFilters = {};
-                currentSort = { col: "", dir: "" };
+                currentSorts = [];
                 currentPage = 1;
                 currentSumText = "";
                 rangeSelection = null;
@@ -4548,14 +4608,7 @@
                 const sortBtn = e.target.closest(".sort-btn");
                 if (sortBtn) {
                     e.stopPropagation();
-                    const col = sortBtn.getAttribute("data-col");
-                    if (currentSort.col !== col) {
-                        currentSort = { col: col, dir: "asc" };
-                    } else if (currentSort.dir === "asc") {
-                        currentSort = { col: col, dir: "desc" };
-                    } else {
-                        currentSort = { col: "", dir: "" };
-                    }
+                    toggleSortColumn(sortBtn.getAttribute("data-col"));
                     applyResultView();
                     return;
                 }
