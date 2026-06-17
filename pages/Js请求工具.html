@@ -3663,6 +3663,46 @@
                 return parts.length === 1 ? parts[0] : parts.join(" + ");
             }
 
+            function hasBodyTemplateRef(text) {
+                return /\{\{\s*[A-Za-z0-9_]+(?:\.[^}]+)?\s*\}\}/.test(text);
+            }
+
+            function jsValueToJsExpr(val, opts) {
+                if (val === null) return "null";
+                if (typeof val === "boolean") return val ? "true" : "false";
+                if (typeof val === "number") return String(val);
+                if (typeof val === "string") {
+                    if (hasBodyTemplateRef(val)) return textToJsExpr(val, opts);
+                    return "'" + escapeJsString(val) + "'";
+                }
+                if (Array.isArray(val)) {
+                    return "[" + val.map(function (item) { return jsValueToJsExpr(item, opts); }).join(", ") + "]";
+                }
+                if (typeof val === "object") {
+                    var pairs = Object.keys(val).map(function (key) {
+                        var keyExpr = /^[a-zA-Z_$][\w$]*$/.test(key) ? key : "'" + escapeJsString(key) + "'";
+                        return keyExpr + ": " + jsValueToJsExpr(val[key], opts);
+                    });
+                    return "{ " + pairs.join(", ") + " }";
+                }
+                return "undefined";
+            }
+
+            function buildJsonBodyExpr(text, opts) {
+                var trimmed = String(text || "").trim();
+                if (!trimmed) return null;
+                var wholeRef = trimmed.match(/^\{\{\s*([A-Za-z0-9_]+)(?:\.([^}]+))?\s*\}\}$/);
+                if (wholeRef) {
+                    var refExpr = wholeRef[2] ? pathToJsExpr(wholeRef[1], wholeRef[2]) : wholeRef[1];
+                    return "(typeof " + refExpr + " === 'string' ? " + refExpr + " : JSON.stringify(" + refExpr + "))";
+                }
+                try {
+                    return "JSON.stringify(" + jsValueToJsExpr(JSON.parse(trimmed), opts) + ")";
+                } catch (e) {
+                    return textToJsExpr(trimmed, opts);
+                }
+            }
+
             function buildUrlExpr(node, opts) {
                 var url = textToJsExpr(node.url, opts);
                 var qs = node.queryParams.filter(function (p) { return p.enabled !== false && p.key; });
@@ -3701,6 +3741,7 @@
                     return "'" + escapeJsString(node.bodyFile.data) + "'";
                 }
                 if (!node.body || !String(node.body).trim()) return null;
+                if (node.bodyFormat === "json") return buildJsonBodyExpr(node.body, opts);
                 return textToJsExpr(node.body, opts);
             }
 

@@ -110,15 +110,30 @@
                 flex-direction: row;
                 align-items: stretch;
                 padding: 0 8px 8px;
-                gap: 10px;
+                gap: 0;
             }
             .editor-main-col {
-                flex: 1;
-                min-width: 0;
+                flex: 1 1 62%;
+                min-width: 200px;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
+            }
+            .pane-resizer {
+                flex: 0 0 8px;
+                cursor: col-resize;
+                position: relative;
+                z-index: 5;
+                margin: 0 2px;
+                align-self: stretch;
+            }
+            .pane-resizer::before {
+                display: none;
+            }
+            body.pane-resizing {
+                cursor: col-resize;
+                user-select: none;
             }
             .input-box {
                 flex: 1;
@@ -134,6 +149,56 @@
                 border-color: #b8ccff;
                 box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
             }
+            .input-editor-wrap {
+                flex: 1;
+                min-height: 0;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+            }
+            #input-chunk-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 2;
+                overflow: hidden;
+                pointer-events: none;
+            }
+            #input-chunk-overlay:empty {
+                display: none;
+            }
+            .chunk-divider-bar {
+                position: absolute;
+                left: 0;
+                right: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                height: 22px;
+                margin: 0;
+                padding: 0 10px;
+                box-sizing: border-box;
+                transform: translateY(-11px);
+                user-select: none;
+            }
+            .chunk-divider-bar::before,
+            .chunk-divider-bar::after {
+                content: "";
+                flex: 1;
+                height: 0;
+                border-top: 2px dashed #8eb0ff;
+            }
+            .chunk-divider-label {
+                flex: 0 0 auto;
+                font-size: 11px;
+                line-height: 1;
+                font-weight: 600;
+                color: #4a66a8;
+                background: #eef4ff;
+                border: 1px solid #c8d8f5;
+                border-radius: 999px;
+                padding: 3px 8px;
+                white-space: nowrap;
+            }
             #input-text {
                 flex: 1;
                 width: 100%;
@@ -147,15 +212,15 @@
                 resize: none;
                 outline: none;
                 background: transparent;
+                position: relative;
+                z-index: 1;
             }
             #input-text:focus {
                 box-shadow: none;
             }
             .preview-wrap {
-                flex: 0 0 auto;
-                width: min(360px, 38vw);
+                flex: 1 1 auto;
                 min-width: 200px;
-                max-width: 100%;
                 min-height: 0;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
@@ -301,6 +366,14 @@
             @media (max-width: 720px) {
                 .editor-zone {
                     flex-direction: column;
+                    gap: 10px;
+                }
+                .pane-resizer {
+                    display: none;
+                }
+                .editor-main-col {
+                    flex: 1 1 auto !important;
+                    max-width: none !important;
                 }
                 .preview-wrap {
                     width: 100%;
@@ -484,10 +557,13 @@
                         <button type="button" class="title-btn danger" id="clear-btn">清空</button>
                     </div>
                 </div>
-                <div class="editor-zone">
-                    <div class="editor-main-col">
+                <div class="editor-zone" id="editor-zone">
+                    <div class="editor-main-col" id="pane-left">
                         <div class="input-box">
-                            <textarea id="input-text" name="qrInput" data-persist-key="qr_input" spellcheck="false" aria-label="输入要编码的字符串" placeholder="网址、文本、Wi‑Fi 等；超长内容将生成多张二维码，扫码后按顺序拼接字节"></textarea>
+                            <div class="input-editor-wrap" id="input-editor-wrap">
+                                <textarea id="input-text" name="qrInput" data-persist-key="qr_input" spellcheck="false" aria-label="输入要编码的字符串" placeholder="网址、文本、Wi‑Fi 等；超长内容将生成多张二维码，扫码后按顺序拼接字节"></textarea>
+                                <div id="input-chunk-overlay" aria-hidden="true"></div>
+                            </div>
                             <div class="json-sheet-bar" id="qr-sheet-bar">
                                 <div class="json-sheet-strip">
                                     <div class="json-sheet-tabs" id="qr-sheet-tabs" role="tablist" aria-label="输入工作表"></div>
@@ -497,6 +573,7 @@
                         </div>
                         <div id="status"></div>
                     </div>
+                    <div class="pane-resizer" id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="调整左右区域宽度" tabindex="0"></div>
                     <div class="preview-wrap" id="preview-panel" aria-label="预览区">
                         <div id="preview-loading" class="preview-loading" hidden aria-hidden="true" role="status">
                             <div class="preview-loading-inner">
@@ -536,18 +613,144 @@
                 var DEFAULT_QR_SIZE = 280;
                 var DEFAULT_BAR_HEIGHT = 120;
                 var LS_CHUNK_MAX = "qr-tool-chunk-max-chars";
+                var SPLIT_STORAGE_KEY = "qr-tool-split-ratio";
+                var DEFAULT_SPLIT_RATIO = 0.62;
 
                 var mode = "qrcode";
                 var autoGenTimer = null;
                 var genToken = 0;
+                var paneSplitRatio = DEFAULT_SPLIT_RATIO;
+                var resizeGenTimer = null;
                 var previewLoadingEl = document.getElementById("preview-loading");
                 var previewLoadingTextEl = document.getElementById("preview-loading-text");
                 var previewPanelEl = document.getElementById("preview-panel");
+                var paneLeftEl = document.getElementById("pane-left");
+                var paneResizerEl = document.getElementById("pane-resizer");
+                var editorZoneEl = document.getElementById("editor-zone");
                 var generateBtnEl = document.getElementById("generate-btn");
                 var inputEl = document.getElementById("input-text");
                 var sheetsMetaInput = document.getElementById("qr-sheets-meta");
                 var sheetTabsEl = document.getElementById("qr-sheet-tabs");
                 var sheetAddBtn = document.getElementById("qr-sheet-add");
+                var chunkOverlayEl = document.getElementById("input-chunk-overlay");
+                var chunkMirrorEl = null;
+                var lastQrChunks = null;
+                var chunkDividerTimer = null;
+
+                function getPreviewPanelInnerWidth() {
+                    if (!previewPanelEl) return DEFAULT_QR_SIZE;
+                    var style = window.getComputedStyle(previewPanelEl);
+                    var padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+                    return Math.max(80, previewPanelEl.clientWidth - padX);
+                }
+
+                function getPreviewQrSize() {
+                    return Math.max(80, Math.min(1200, getPreviewPanelInnerWidth()));
+                }
+
+                function getPreviewBarHeight() {
+                    var w = getPreviewPanelInnerWidth();
+                    return Math.max(80, Math.min(200, Math.round(w * 0.35)));
+                }
+
+                function isPaneSplitVertical() {
+                    return window.matchMedia("(max-width: 720px)").matches;
+                }
+
+                function applyPaneSplit(ratio) {
+                    if (!editorZoneEl || !paneLeftEl || !previewPanelEl) return;
+                    ratio = Math.max(0.28, Math.min(0.82, ratio));
+                    paneSplitRatio = ratio;
+                    if (isPaneSplitVertical()) {
+                        paneLeftEl.style.flex = "1 1 auto";
+                        paneLeftEl.style.maxWidth = "none";
+                        previewPanelEl.style.flex = "0 0 auto";
+                        return;
+                    }
+                    var totalW = editorZoneEl.clientWidth;
+                    var resizerW = paneResizerEl ? paneResizerEl.offsetWidth : 8;
+                    var leftW = Math.max(200, Math.round(totalW * ratio));
+                    if (leftW + resizerW > totalW - 200) leftW = totalW - resizerW - 200;
+                    paneLeftEl.style.flex = "0 0 " + leftW + "px";
+                    paneLeftEl.style.maxWidth = leftW + "px";
+                    previewPanelEl.style.flex = "1 1 auto";
+                }
+
+                function readSavedPaneSplitRatio() {
+                    try {
+                        var saved = parseFloat(localStorage.getItem(SPLIT_STORAGE_KEY));
+                        if (!isNaN(saved) && saved > 0 && saved < 1) return saved;
+                    } catch (e) {}
+                    return DEFAULT_SPLIT_RATIO;
+                }
+
+                function scheduleRegenerateOnResize() {
+                    if (resizeGenTimer) window.clearTimeout(resizeGenTimer);
+                    resizeGenTimer = window.setTimeout(function () {
+                        if (inputEl.value.trim()) generateCode();
+                    }, 180);
+                }
+
+                function initPaneResizer() {
+                    paneSplitRatio = readSavedPaneSplitRatio();
+                    applyPaneSplit(paneSplitRatio);
+
+                    if (!paneResizerEl || !editorZoneEl) return;
+
+                    var dragging = false;
+
+                    function onPointerMove(clientX) {
+                        var rect = editorZoneEl.getBoundingClientRect();
+                        applyPaneSplit((clientX - rect.left) / rect.width);
+                        scheduleRegenerateOnResize();
+                    }
+
+                    function stopDrag() {
+                        if (!dragging) return;
+                        dragging = false;
+                        document.body.classList.remove("pane-resizing");
+                        try {
+                            localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio));
+                        } catch (e) {}
+                        window.removeEventListener("mousemove", onMouseMove);
+                        window.removeEventListener("mouseup", onMouseUp);
+                        scheduleRegenerateOnResize();
+                    }
+
+                    function onMouseMove(e) { onPointerMove(e.clientX); }
+                    function onMouseUp() { stopDrag(); }
+
+                    paneResizerEl.addEventListener("mousedown", function (e) {
+                        if (isPaneSplitVertical()) return;
+                        e.preventDefault();
+                        dragging = true;
+                        document.body.classList.add("pane-resizing");
+                        window.addEventListener("mousemove", onMouseMove);
+                        window.addEventListener("mouseup", onMouseUp);
+                    });
+
+                    paneResizerEl.addEventListener("keydown", function (e) {
+                        if (isPaneSplitVertical()) return;
+                        var step = 0.02;
+                        if (e.key === "ArrowLeft") {
+                            e.preventDefault();
+                            applyPaneSplit(paneSplitRatio - step);
+                            try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
+                            scheduleRegenerateOnResize();
+                        } else if (e.key === "ArrowRight") {
+                            e.preventDefault();
+                            applyPaneSplit(paneSplitRatio + step);
+                            try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
+                            scheduleRegenerateOnResize();
+                        }
+                    });
+
+                    window.addEventListener("resize", function () {
+                        applyPaneSplit(paneSplitRatio);
+                        scheduleRegenerateOnResize();
+                        layoutChunkDividers();
+                    });
+                }
 
                 /* —— 多输入页（与文本处理工具一致） —— */
                 var docSheets = [];
@@ -842,6 +1045,23 @@
                         .replace(/\r\n/g, "\n");
                 }
 
+                function normalizedIndexToRawIndex(raw, normIndex) {
+                    raw = String(raw || "");
+                    if (normIndex <= 0) return 0;
+                    var ni = 0;
+                    var ri = 0;
+                    while (ri < raw.length && ni < normIndex) {
+                        if (raw.charCodeAt(ri) === 13 && raw.charCodeAt(ri + 1) === 10) {
+                            ri += 2;
+                            ni += 1;
+                        } else {
+                            ri += 1;
+                            ni += 1;
+                        }
+                    }
+                    return ri;
+                }
+
                 function getUtf8ByteLength(text) {
                     return teEnc.encode(text).length;
                 }
@@ -1014,6 +1234,134 @@
                     document.getElementById("qrcode").innerHTML = "";
                     var barcode = document.getElementById("barcode");
                     barcode.innerHTML = "";
+                    clearChunkDividers();
+                }
+
+                function clearChunkDividers() {
+                    lastQrChunks = null;
+                    if (chunkOverlayEl) chunkOverlayEl.innerHTML = "";
+                }
+
+                function getChunkMirror() {
+                    if (!chunkMirrorEl) {
+                        chunkMirrorEl = document.createElement("div");
+                        chunkMirrorEl.setAttribute("aria-hidden", "true");
+                        chunkMirrorEl.style.position = "absolute";
+                        chunkMirrorEl.style.visibility = "hidden";
+                        chunkMirrorEl.style.pointerEvents = "none";
+                        chunkMirrorEl.style.top = "0";
+                        chunkMirrorEl.style.left = "-9999px";
+                        chunkMirrorEl.style.whiteSpace = "pre-wrap";
+                        chunkMirrorEl.style.wordWrap = "break-word";
+                        chunkMirrorEl.style.overflowWrap = "break-word";
+                        document.body.appendChild(chunkMirrorEl);
+                    }
+                    return chunkMirrorEl;
+                }
+
+                function syncChunkMirrorStyles() {
+                    var mirror = getChunkMirror();
+                    var style = window.getComputedStyle(inputEl);
+                    mirror.style.width = inputEl.clientWidth + "px";
+                    mirror.style.fontFamily = style.fontFamily;
+                    mirror.style.fontSize = style.fontSize;
+                    mirror.style.fontWeight = style.fontWeight;
+                    mirror.style.lineHeight = style.lineHeight;
+                    mirror.style.letterSpacing = style.letterSpacing;
+                    mirror.style.paddingTop = style.paddingTop;
+                    mirror.style.paddingRight = style.paddingRight;
+                    mirror.style.paddingBottom = style.paddingBottom;
+                    mirror.style.paddingLeft = style.paddingLeft;
+                    mirror.style.boxSizing = style.boxSizing;
+                    mirror.style.borderStyle = "solid";
+                    mirror.style.borderWidth = style.borderWidth;
+                }
+
+                function getTextareaOffsetAtIndex(index) {
+                    syncChunkMirrorStyles();
+                    var mirror = getChunkMirror();
+                    var text = inputEl.value.substring(0, index);
+                    mirror.textContent = text;
+                    var marker = document.createElement("span");
+                    marker.textContent = "\u200b";
+                    mirror.appendChild(marker);
+                    var top = marker.offsetTop;
+                    mirror.textContent = "";
+                    return top;
+                }
+
+                function renderChunkDividers(chunks) {
+                    if (!chunkOverlayEl || !inputEl) return;
+                    chunkOverlayEl.innerHTML = "";
+                    if (mode !== "qrcode" || !chunks || chunks.length <= 1) {
+                        lastQrChunks = chunks && chunks.length === 1 ? chunks : null;
+                        return;
+                    }
+                    lastQrChunks = chunks;
+                    var total = chunks.length;
+                    var acc = 0;
+                    var rawText = inputEl.value;
+                    for (var i = 0; i < total - 1; i++) {
+                        acc += chunks[i].length;
+                        var bar = document.createElement("div");
+                        bar.className = "chunk-divider-bar";
+                        bar.setAttribute("data-chunk-index", String(i + 1));
+                        bar.setAttribute("data-char-index", String(normalizedIndexToRawIndex(rawText, acc)));
+                        var label = document.createElement("span");
+                        label.className = "chunk-divider-label";
+                        label.textContent = "第 " + (i + 2) + " / " + total + " 张";
+                        bar.appendChild(label);
+                        chunkOverlayEl.appendChild(bar);
+                    }
+                    layoutChunkDividers();
+                }
+
+                function layoutChunkDividers() {
+                    if (!chunkOverlayEl || !lastQrChunks || lastQrChunks.length <= 1) return;
+                    var bars = chunkOverlayEl.querySelectorAll(".chunk-divider-bar");
+                    if (!bars.length) return;
+                    var scrollTop = inputEl.scrollTop;
+                    for (var i = 0; i < bars.length; i++) {
+                        var bar = bars[i];
+                        var charIndex = parseInt(bar.getAttribute("data-char-index"), 10);
+                        if (isNaN(charIndex)) continue;
+                        var top = getTextareaOffsetAtIndex(charIndex) - scrollTop;
+                        bar.style.top = top + "px";
+                    }
+                }
+
+                function updateChunkDividersFromText(text) {
+                    if (mode !== "qrcode") {
+                        clearChunkDividers();
+                        return;
+                    }
+                    text = normalizeInputText(text);
+                    if (!text.trim()) {
+                        clearChunkDividers();
+                        return;
+                    }
+                    try {
+                        var ecc = DEFAULT_QR_ECC;
+                        var maxChars = getMaxCharsPerQr();
+                        var chunks = splitUtf8ByQrCreate(text, ecc, maxChars);
+                        renderChunkDividers(chunks);
+                    } catch (e) {
+                        clearChunkDividers();
+                    }
+                }
+
+                function scheduleChunkDividerUpdate(delayMs) {
+                    if (chunkDividerTimer) window.clearTimeout(chunkDividerTimer);
+                    chunkDividerTimer = window.setTimeout(function () {
+                        var t = normalizeInputText(inputEl.value);
+                        var bl = getUtf8ByteLength(t);
+                        if (mode !== "qrcode" || !t.trim()) {
+                            clearChunkDividers();
+                            return;
+                        }
+                        if (bl > MAX_AUTO_PREVIEW_UTF8_BYTES) return;
+                        updateChunkDividersFromText(t);
+                    }, delayMs);
                 }
 
                 function generateQrList(text, size, eccName, maxCharsPerChunk) {
@@ -1155,14 +1503,16 @@
                     document.getElementById("head-hint").textContent = qr
                         ? "UTF-8 最多约 " +
                           Math.floor(MAX_INPUT_UTF8_BYTES / 1024) +
-                          "KB；可用「单码上限」控制每张码量；底部可切换多个输入页"
+                          "KB；可用「单码上限」控制每张码量；多码时左侧显示分片横线（不参与编码）"
                         : "条形码为 CODE128；中文建议改用二维码；底部可切换多个输入页";
                     document.getElementById("qr-chunk-opt").classList.toggle("hidden", !qr);
                     document.getElementById("qrcode").classList.toggle("hidden", !qr);
                     document.getElementById("barcode").classList.toggle("hidden", qr);
+                    if (!qr) clearChunkDividers();
                 }
 
                 function applyQrResult(res, charLen, byteLen) {
+                    renderChunkDividers(res.chunks);
                     var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
                     var limitNote =
                         res.maxCharsPerChunk > 0 ? " 单码上限 " + res.maxCharsPerChunk + " 字符。" : "";
@@ -1200,7 +1550,7 @@
                     syncInputToSheet();
                     var normalizedText = normalizeInputText(inputEl.value);
                     var text = normalizedText;
-                    var size = Math.max(80, Math.min(1200, DEFAULT_QR_SIZE));
+                    var size = getPreviewQrSize();
                     var charLen = text.length;
                     var byteLen = getUtf8ByteLength(text);
                     var token = ++genToken;
@@ -1290,7 +1640,7 @@
                             finishGenerate(token, asyncLoad);
                             return;
                         }
-                        var bh = DEFAULT_BAR_HEIGHT;
+                        var bh = getPreviewBarHeight();
                         try {
                             JsBarcode(barcodeEl, text, {
                                 format: "CODE128",
@@ -1430,13 +1780,16 @@
                 inputEl.addEventListener("input", function () {
                     syncInputToSheet();
                     schedulePersistSheets();
+                    scheduleChunkDividerUpdate(300);
                     scheduleGenerate(400);
                 });
                 inputEl.addEventListener("paste", function () {
                     syncInputToSheet();
                     schedulePersistSheets();
+                    scheduleChunkDividerUpdate(150);
                     scheduleGenerate(200);
                 });
+                inputEl.addEventListener("scroll", layoutChunkDividers);
 
                 if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
                 initSheetsFromStorage();
@@ -1454,6 +1807,7 @@
                 });
 
                 loadMaxCharsPerQr();
+                initPaneResizer();
                 syncModeUi();
                 setStatus(
                     "二维码 UTF-8 上限约 " +
