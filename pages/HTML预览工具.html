@@ -155,12 +155,20 @@
                 cursor: col-resize;
                 position: relative;
                 z-index: 5;
-                margin: 0 2px;
+                margin: 0 -2px;
                 align-self: stretch;
+                touch-action: none;
+            }
+            .pane-resizer::before {
+                display: none;
             }
             body.pane-resizing {
                 cursor: col-resize;
                 user-select: none;
+            }
+            body.pane-resizing iframe,
+            body.pane-resizing .CodeMirror {
+                pointer-events: none;
             }
             body.has-fullscreen-panel .pane-resizer,
             body.has-fullscreen-panel .panel:not(.is-fullscreen) {
@@ -299,9 +307,21 @@
                 }
 
                 function applyPaneSplit(ratio) {
-                    paneSplitRatio = Math.max(0.15, Math.min(0.85, ratio));
-                    if (isPaneSplitVertical() || fullscreenPanel) return;
-                    panelCode.style.flex = "0 0 " + (paneSplitRatio * 100) + "%";
+                    if (!splitWrap || !panelCode || !panelPreview) return;
+                    ratio = Math.max(0.15, Math.min(0.85, ratio));
+                    paneSplitRatio = ratio;
+                    if (isPaneSplitVertical() || fullscreenPanel) {
+                        panelCode.style.flex = "1 1 auto";
+                        panelCode.style.maxWidth = "none";
+                        panelPreview.style.flex = "1 1 auto";
+                        return;
+                    }
+                    var totalW = splitWrap.clientWidth;
+                    var resizerW = paneResizer ? paneResizer.offsetWidth : 8;
+                    var leftW = Math.max(200, Math.round(totalW * ratio));
+                    if (leftW + resizerW > totalW - 200) leftW = totalW - resizerW - 200;
+                    panelCode.style.flex = "0 0 " + leftW + "px";
+                    panelCode.style.maxWidth = leftW + "px";
                     panelPreview.style.flex = "1 1 auto";
                 }
 
@@ -311,34 +331,52 @@
                     if (!paneResizer || !splitWrap) return;
 
                     var dragging = false;
+                    var activePointerId = null;
 
                     function onPointerMove(clientX) {
                         var rect = splitWrap.getBoundingClientRect();
                         applyPaneSplit((clientX - rect.left) / rect.width);
                     }
 
-                    function stopDrag() {
+                    function stopDrag(e) {
                         if (!dragging) return;
+                        if (e && e.pointerId !== undefined && activePointerId !== null && e.pointerId !== activePointerId) return;
                         dragging = false;
+                        activePointerId = null;
                         document.body.classList.remove("pane-resizing");
                         try {
                             localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio));
-                        } catch (e) {}
-                        window.removeEventListener("mousemove", onMouseMove);
-                        window.removeEventListener("mouseup", onMouseUp);
+                        } catch (err) {}
+                        if (e && paneResizer.releasePointerCapture) {
+                            try { paneResizer.releasePointerCapture(e.pointerId); } catch (err2) {}
+                        }
                         if (cm) cm.refresh();
                     }
 
-                    function onMouseMove(e) { onPointerMove(e.clientX); }
-                    function onMouseUp() { stopDrag(); }
-
-                    paneResizer.addEventListener("mousedown", function (e) {
-                        if (isPaneSplitVertical() || fullscreenPanel) return;
+                    paneResizer.addEventListener("pointerdown", function (e) {
+                        if (isPaneSplitVertical() || fullscreenPanel || e.button !== 0) return;
                         e.preventDefault();
                         dragging = true;
+                        activePointerId = e.pointerId;
                         document.body.classList.add("pane-resizing");
-                        window.addEventListener("mousemove", onMouseMove);
-                        window.addEventListener("mouseup", onMouseUp);
+                        if (paneResizer.setPointerCapture) {
+                            try { paneResizer.setPointerCapture(e.pointerId); } catch (err) {}
+                        }
+                        onPointerMove(e.clientX);
+                    });
+
+                    paneResizer.addEventListener("pointermove", function (e) {
+                        if (!dragging) return;
+                        if (activePointerId !== null && e.pointerId !== activePointerId) return;
+                        e.preventDefault();
+                        onPointerMove(e.clientX);
+                    });
+
+                    paneResizer.addEventListener("pointerup", stopDrag);
+                    paneResizer.addEventListener("pointercancel", stopDrag);
+
+                    paneResizer.addEventListener("lostpointercapture", function () {
+                        if (dragging) stopDrag();
                     });
 
                     paneResizer.addEventListener("keydown", function (e) {
