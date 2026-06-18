@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Crontab 定时任务工具</title>
+        <link rel="stylesheet" href="libs/tool-help-btn.css" />
         <style>
             * { box-sizing: border-box; }
             :root {
@@ -40,6 +41,61 @@
             .left-panel { flex: 1; }
             .right-panel { flex: 1; }
             .panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--text); }
+            .title-with-action {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 6px;
+            }
+            .title-with-action h3 { margin: 0; }
+            .cron-format-modal-body {
+                display: block;
+                padding: 14px 16px 18px;
+                overflow: auto;
+                font-size: 12px;
+                line-height: 1.7;
+                color: #2f3d5d;
+            }
+            .cron-format-modal-body h4 {
+                margin: 0 0 6px;
+                font-size: 13px;
+                color: var(--text);
+            }
+            .cron-format-modal-body h4:not(:first-child) { margin-top: 14px; }
+            .cron-format-modal-body p { margin: 0 0 8px; }
+            .cron-format-modal-body ul {
+                margin: 0 0 8px 16px;
+                padding: 0;
+            }
+            .cron-format-modal-body li { margin-bottom: 4px; }
+            .cron-format-modal-body code {
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 11px;
+                background: #f0f5ff;
+                border: 1px solid #dbe7ff;
+                border-radius: 4px;
+                padding: 1px 5px;
+            }
+            .cron-format-compare {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin: 10px 0;
+            }
+            .cron-format-compare .compare-card {
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            .cron-format-compare .compare-card strong {
+                display: block;
+                margin-bottom: 6px;
+                color: var(--text);
+            }
+            @media (max-width: 560px) {
+                .cron-format-compare { grid-template-columns: 1fr; }
+            }
             .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
             label { font-size: 12px; color: var(--muted); }
             input, select, textarea {
@@ -143,7 +199,20 @@
     <body>
         <div class="page">
             <div class="panel left-panel">
-                <h3>表达式编辑</h3>
+                <div class="title-with-action">
+                    <h3>表达式编辑</h3>
+                    <button
+                        type="button"
+                        class="tool-help-btn"
+                        id="cron-format-help-btn"
+                        title="5 位与 6 位表达式区别"
+                        aria-label="5 位与 6 位表达式区别"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H7.17L5 17.17V5h14v10zM7 9h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z" />
+                        </svg>
+                    </button>
+                </div>
                 <div class="row">
                     <label for="cronExpr">Cron 表达式</label>
                     <input id="cronExpr" type="text" value="0 */5 * * * *" />
@@ -229,6 +298,54 @@
                 </div>
             </div>
         </div>
+
+        <div id="cron-format-modal" class="tool-code-modal" aria-hidden="true">
+            <div class="tool-code-modal-backdrop" id="cron-format-modal-backdrop"></div>
+            <div class="tool-code-modal-dialog" role="dialog" aria-labelledby="cron-format-modal-title">
+                <div class="tool-code-modal-head">
+                    <span id="cron-format-modal-title">5 位与 6 位 Cron 表达式区别</span>
+                    <button type="button" class="tool-code-modal-close" id="cron-format-modal-close" title="关闭">×</button>
+                </div>
+                <div class="cron-format-modal-body">
+                    <p>Cron 表达式由若干时间字段组成，字段之间用空格分隔。常见为 <strong>5 位</strong>（Unix 传统）与 <strong>6 位</strong>（含秒，常见于 Quartz、Spring 等）两种格式。</p>
+                    <div class="cron-format-compare">
+                        <div class="compare-card">
+                            <strong>6 位格式（推荐）</strong>
+                            <p><code>秒 分 时 日 月 周</code></p>
+                            <p>例如：<code>0 */15 9-18 * * 1-5</code><br>工作日 9–18 点每 15 分钟</p>
+                        </div>
+                        <div class="compare-card">
+                            <strong>5 位格式（Unix / 传统 crontab）</strong>
+                            <p><code>分 时 日 月 周</code></p>
+                            <p>无秒字段，解析时秒固定为 <code>0</code><br>例如：<code>*/5 * * * *</code> 每 5 分钟</p>
+                        </div>
+                    </div>
+                    <h4>字段取值范围</h4>
+                    <ul>
+                        <li>秒：0–59（仅 6 位）</li>
+                        <li>分：0–59</li>
+                        <li>时：0–23</li>
+                        <li>日：1–31</li>
+                        <li>月：1–12</li>
+                        <li>周：0–6（0=周日，7 视为周日）</li>
+                    </ul>
+                    <h4>如何选择</h4>
+                    <ul>
+                        <li>Linux <code>crontab</code>、传统 Unix 任务调度 → 使用 <strong>5 位</strong></li>
+                        <li>Quartz、Spring <code>@Scheduled</code>、需要秒级精度 → 使用 <strong>6 位</strong></li>
+                        <li>本工具输入 5 位时会自动将秒视为 <code>0</code>，并在下方字段编辑区显示</li>
+                    </ul>
+                    <h4>常见示例</h4>
+                    <ul>
+                        <li><code>*/5 * * * * *</code> — 每 5 秒（6 位）</li>
+                        <li><code>0 */10 * * * *</code> — 每 10 分钟（6 位）</li>
+                        <li><code>*/5 * * * *</code> — 每 5 分钟（5 位）</li>
+                        <li><code>30 8 * * 1-5</code> — 工作日 08:30（5 位）</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <script>
             const FIELD_LABELS_6 = ["秒", "分", "时", "日", "月", "周"];
             const FIELD_LABELS_5 = ["分", "时", "日", "月", "周"];
@@ -476,6 +593,25 @@
                     parseAndRender();
                 }
             });
+
+            var cronFormatModal = document.getElementById("cron-format-modal");
+            function showCronFormatModal() {
+                cronFormatModal.classList.add("visible");
+                cronFormatModal.setAttribute("aria-hidden", "false");
+            }
+            function hideCronFormatModal() {
+                cronFormatModal.classList.remove("visible");
+                cronFormatModal.setAttribute("aria-hidden", "true");
+            }
+            document.getElementById("cron-format-help-btn").addEventListener("click", showCronFormatModal);
+            document.getElementById("cron-format-modal-close").addEventListener("click", hideCronFormatModal);
+            document.getElementById("cron-format-modal-backdrop").addEventListener("click", hideCronFormatModal);
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && cronFormatModal.classList.contains("visible")) {
+                    hideCronFormatModal();
+                }
+            });
+
             parseAndRender();
         </script>
     </body>

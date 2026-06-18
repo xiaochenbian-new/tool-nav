@@ -213,6 +213,7 @@
         });
 
         var tickTimer = null;
+        var lastTickDateKey = ymdKey(today.year, today.month, today.day);
 
         function isSelectedToday() {
             if (!selected) return false;
@@ -261,14 +262,80 @@
                 (lunarLine ? '<div class="tool-cal-info-lunar">' + lunarLine + "</div>" : "");
         }
 
+        function shouldRunLiveTick() {
+            return typeof options.shouldTick !== "function" || options.shouldTick();
+        }
+
+        function handleDayRollover() {
+            var nowToday = todayParts();
+            var nowKey = ymdKey(nowToday.year, nowToday.month, nowToday.day);
+            if (nowKey === lastTickDateKey) return false;
+
+            var prevKey = lastTickDateKey;
+            lastTickDateKey = nowKey;
+
+            var wasShowingToday =
+                selected &&
+                ymdKey(selected.year, selected.month, selected.day) === prevKey;
+
+            if (wasShowingToday) {
+                goToDate(copyParts(nowToday));
+            } else {
+                today = nowToday;
+                paint();
+            }
+            return true;
+        }
+
         function tickInfoNow() {
-            if (typeof options.shouldTick === "function" && !options.shouldTick()) {
+            if (handleDayRollover()) {
+                return;
+            }
+            if (!shouldRunLiveTick()) {
                 return;
             }
             if (!isSelectedToday()) {
                 return;
             }
             syncInfo();
+        }
+
+        function wake() {
+            if (handleDayRollover()) {
+                if (shouldRunLiveTick()) {
+                    startInfoTick();
+                }
+                return;
+            }
+            if (shouldRunLiveTick()) {
+                if (isSelectedToday()) {
+                    syncInfo();
+                }
+                startInfoTick();
+            }
+        }
+
+        function onResume() {
+            wake();
+        }
+
+        var onVisChange = function () {
+            if (document.visibilityState === "visible") {
+                onResume();
+            }
+        };
+        var onPageShow = function (e) {
+            if (e.persisted) {
+                onResume();
+            }
+        };
+
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", onVisChange);
+        }
+        if (typeof window !== "undefined") {
+            window.addEventListener("pageshow", onPageShow);
+            window.addEventListener("focus", onResume);
         }
 
         function startInfoTick() {
@@ -303,6 +370,7 @@
 
         function paint() {
             today = todayParts();
+            lastTickDateKey = ymdKey(today.year, today.month, today.day);
             syncPicker();
             gridEl.innerHTML = "";
 
@@ -484,6 +552,7 @@
                     syncInfo();
                 }
             },
+            wake: wake,
             tickInfoNow: tickInfoNow,
             syncInfo: syncInfo,
             isLiveTimeActive: function () {
@@ -525,6 +594,13 @@
             },
             destroy: function () {
                 stopInfoTick();
+                if (typeof document !== "undefined") {
+                    document.removeEventListener("visibilitychange", onVisChange);
+                }
+                if (typeof window !== "undefined") {
+                    window.removeEventListener("pageshow", onPageShow);
+                    window.removeEventListener("focus", onResume);
+                }
             }
         };
     }
