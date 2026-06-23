@@ -254,7 +254,14 @@
                 return;
             }
             var ctx = getDayContext(selected.year, selected.month, selected.day);
-            var lunarLine = ctx.lunar && ctx.lunar.text ? "农历" + ctx.lunar.text : "";
+            var lunarLine = "";
+            if (ctx.lunar && ctx.lunar.text) {
+                lunarLine = "农历";
+                if (ctx.lunar.zodiac) {
+                    lunarLine += '<span class="tool-cal-info-zodiac">' + ctx.lunar.zodiac + "年</span>";
+                }
+                lunarLine += ctx.lunar.text;
+            }
             infoEl.innerHTML =
                 '<div class="tool-cal-info-primary">' +
                 formatInfoPrimaryLine() +

@@ -286,6 +286,16 @@
     color: #6f7d96;
     line-height: 1.4;
 }
+.tool-cal-info-zodiac {
+    display: inline-block;
+    margin-right: 4px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #c45a1a;
+    background: linear-gradient(135deg, #fff4e8 0%, #ffe8d4 100%);
+    border: 1px solid #f5d4b8;
+}
 
 .tool-cal-footer {
     display: flex;
@@ -332,6 +342,10 @@
     font-size: 13px;
 }
 .tool-cal-compact .tool-cal-info-lunar {
+    font-size: 12px;
+}
+.tool-cal-compact .tool-cal-info-zodiac {
+    padding: 0 6px;
     font-size: 12px;
 }
 .tool-cal-compact .tool-cal-footer {
@@ -421,6 +435,11 @@
 }
 .tool-cal-fullscreen .tool-cal-info-lunar {
     font-size: 16px;
+}
+.tool-cal-fullscreen .tool-cal-info-zodiac {
+    padding: 1px 8px;
+    font-size: 15px;
+    border-radius: 5px;
 }
 .tool-cal-fullscreen .tool-cal-footer {
     font-size: 16px;

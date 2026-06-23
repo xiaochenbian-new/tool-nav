@@ -45,6 +45,8 @@
         "12-23": "小年"
     };
 
+    var ZODIAC_ANIMALS = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
+
     var SOLAR_FESTIVALS = {
         "1-1": "元旦",
         "2-14": "情人节",
@@ -86,6 +88,13 @@
 
     function monthDays(y, m) {
         return LUNAR_INFO[y - 1900] & (0x10000 >> m) ? 30 : 29;
+    }
+
+    function getZodiac(lunarYear) {
+        if (!lunarYear || lunarYear < 1900 || lunarYear > 2100) {
+            return "";
+        }
+        return ZODIAC_ANIMALS[(lunarYear - 4) % 12];
     }
 
     function solarToLunar(year, month, day) {
@@ -150,6 +159,8 @@
         var festival = LUNAR_FESTIVALS[festivalKey] || "";
         var text = monthName + dayName;
 
+        var zodiac = getZodiac(lunarYear);
+
         return {
             lunarYear: lunarYear,
             lunarMonth: lunarMonth,
@@ -158,6 +169,7 @@
             monthName: monthName,
             dayName: dayName,
             festival: festival,
+            zodiac: zodiac,
             text: text
         };
     }
@@ -188,6 +200,7 @@
 
     global.ToolLunar = {
         solarToLunar: solarToLunar,
+        getZodiac: getZodiac,
         getSolarFestival: getSolarFestival,
         getCellSubText: getCellSubText
     };
