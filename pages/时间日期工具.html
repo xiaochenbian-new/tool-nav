@@ -175,6 +175,239 @@
             }
             .tz-row input { flex: 1; min-width: 160px; }
             .num-in { width: 88px; }
+            #pane-calc.active {
+                display: grid;
+                grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+                gap: 12px;
+                align-content: start;
+                align-items: start;
+            }
+            .calc-col {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                min-width: 0;
+            }
+            #pane-calc .card {
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+            #pane-calc .card-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin: 0;
+                padding: 9px 14px;
+                background: #f0f5ff;
+                border-bottom: 1px solid #e4edff;
+            }
+            #pane-calc .card-head h4 { margin: 0; font-size: 13px; }
+            #pane-calc .card-head .hint {
+                margin: 0;
+                font-size: 11px;
+                color: var(--muted);
+            }
+            #pane-calc .card-body {
+                padding: 12px 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                flex: 1;
+            }
+            .calc-form-row {
+                display: grid;
+                grid-template-columns: 56px minmax(0, 1fr);
+                gap: 8px 10px;
+                align-items: center;
+            }
+            #pane-calc .calc-card-diff .calc-form-row {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+            #pane-calc .calc-card-diff .calc-form-row > label {
+                text-align: left;
+            }
+            #pane-calc .calc-card-diff .calc-form-row input.mono {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+            #pane-calc .calc-card-diff .calc-diff-result {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 8px;
+                width: 100%;
+            }
+            #pane-calc .calc-card-diff .calc-diff-result input,
+            #pane-calc .calc-card-diff .calc-diff-result select {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+            #pane-calc .calc-card-diff .calc-diff-times {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+                gap: 8px;
+                align-items: center;
+                width: 100%;
+            }
+            #pane-calc .calc-card-diff .calc-diff-times input {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+            #pane-calc .calc-card-diff .calc-diff-sep {
+                text-align: center;
+                color: var(--muted);
+                font-size: 12px;
+                white-space: nowrap;
+            }
+            .input-action-wrap {
+                position: relative;
+                width: 100%;
+                min-width: 0;
+            }
+            .input-action-wrap input {
+                width: 100%;
+                padding-right: 44px;
+                box-sizing: border-box;
+            }
+            .input-action-btn {
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                border: 0;
+                background: transparent;
+                color: var(--primary);
+                font-size: 11px;
+                cursor: pointer;
+                padding: 2px 4px;
+                line-height: 1;
+            }
+            .input-action-btn:hover { text-decoration: underline; }
+            .calc-conv-line {
+                display: grid;
+                grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) 24px minmax(0, 1.15fr) minmax(0, 0.95fr) 36px;
+                gap: 8px;
+                width: 100%;
+                align-items: center;
+            }
+            .calc-conv-line input[type="number"],
+            .calc-conv-line select,
+            .calc-conv-line .readonly-wrap {
+                width: 100%;
+                min-width: 0;
+            }
+            .calc-conv-line input[type="number"],
+            .calc-conv-line .readonly-wrap input {
+                font-family: Consolas, "Courier New", monospace;
+                box-sizing: border-box;
+            }
+            .calc-conv-line .readonly-wrap input {
+                font-weight: 600;
+                color: var(--primary);
+                background: #f8fbff;
+            }
+            .calc-conv-eq {
+                color: #9aafd4;
+                font-size: 14px;
+                font-weight: 600;
+                text-align: center;
+                line-height: 1;
+            }
+            .calc-conv-swap {
+                width: 36px;
+                padding: 6px 0;
+                font-size: 12px;
+                line-height: 1;
+            }
+            .calc-form-row > label {
+                font-size: 12px;
+                color: #465a84;
+                text-align: right;
+                white-space: nowrap;
+            }
+            .calc-form-row input.mono,
+            .calc-form-row .readonly-wrap input {
+                width: 100%;
+            }
+            .calc-inline,
+            .calc-result-line {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                min-width: 0;
+            }
+            .calc-inline { flex-wrap: wrap; }
+            .calc-result-line .readonly-wrap {
+                flex: 1;
+                min-width: 0;
+            }
+            .calc-result-line .num-in { width: 88px; flex-shrink: 0; }
+            .calc-result-line select { width: 88px; flex-shrink: 0; }
+            .calc-inline .calc-op-sign { width: 52px; flex-shrink: 0; }
+            .calc-inline .num-in { width: 72px; flex-shrink: 0; }
+            .calc-inline select { flex: 1; min-width: 72px; max-width: 100px; }
+            .calc-an-summary {
+                font-size: 12px;
+                color: #465a84;
+                padding: 7px 10px;
+                background: #f8fbff;
+                border-radius: 6px;
+                border: 1px solid #e4edff;
+            }
+            .calc-an-stats {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+            .calc-stat {
+                background: #f8fbff;
+                border: 1px solid #dbe7ff;
+                border-radius: 8px;
+                padding: 10px 6px;
+                text-align: center;
+            }
+            .calc-stat-label {
+                display: block;
+                font-size: 11px;
+                color: var(--muted);
+                margin-bottom: 5px;
+            }
+            .calc-stat-val {
+                display: block;
+                font-size: 15px;
+                font-weight: 600;
+                color: var(--primary);
+                font-family: Consolas, "Courier New", monospace;
+                line-height: 1.2;
+            }
+            .calc-an-empty {
+                grid-column: 1 / -1;
+                padding: 16px;
+                text-align: center;
+                color: var(--muted);
+                font-size: 12px;
+                border: 1px dashed #dbe7ff;
+                border-radius: 8px;
+                background: #fafcff;
+            }
+            @media (max-width: 900px) {
+                #pane-calc.active { grid-template-columns: 1fr; }
+                .calc-an-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
+            @media (max-width: 480px) {
+                .calc-form-row {
+                    grid-template-columns: 1fr;
+                    gap: 4px;
+                }
+                .calc-form-row > label { text-align: left; }
+                .calc-an-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
         </style>
     </head>
     <body>
@@ -260,65 +493,62 @@
 
             <!-- 计算 -->
             <div id="pane-calc" class="tab-pane" role="tabpanel">
-                <div class="card">
-                    <h4>时间差</h4>
-                    <div class="row" style="align-items: flex-end;">
-                        <div class="field-block">
-                            <label for="calc-d1">时间 1</label>
-                            <input id="calc-d1" class="mono" name="calc_d1" type="text" />
+                <div class="calc-col">
+                <div class="card calc-card-diff">
+                    <div class="card-head"><h4>时间差</h4></div>
+                    <div class="card-body">
+                        <div class="calc-form-row">
+                            <label>时间</label>
+                            <div class="calc-diff-times">
+                                <input id="calc-d1" class="mono" name="calc_d1" type="text" aria-label="时间 1" />
+                                <span class="calc-diff-sep">与</span>
+                                <input id="calc-d2" class="mono" name="calc_d2" type="text" aria-label="时间 2" />
+                            </div>
                         </div>
-                        <span>与</span>
-                        <div class="field-block">
-                            <label for="calc-d2">时间 2</label>
-                            <input id="calc-d2" class="mono" name="calc_d2" type="text" />
-                        </div>
-                        <span>相差</span>
-                        <div class="field-block" style="flex:0;">
-                            <label for="calc-diff">数值</label>
-                            <input id="calc-diff" class="mono num-in" type="text" readonly />
-                        </div>
-                        <div class="field-block" style="flex:0;">
-                            <label for="calc-diff-unit">单位</label>
-                            <select id="calc-diff-unit" name="calc_diff_unit">
-                                <option value="years">年</option>
-                                <option value="months">月</option>
-                                <option value="weeks">周</option>
-                                <option value="days">天</option>
-                                <option value="hours">小时</option>
-                                <option value="minutes">分钟</option>
-                                <option value="seconds" selected>秒</option>
-                            </select>
+                        <div class="calc-form-row">
+                            <label for="calc-diff">相差</label>
+                            <div class="calc-diff-result">
+                                <input id="calc-diff" class="mono" type="text" readonly />
+                                <select id="calc-diff-unit" name="calc_diff_unit">
+                                    <option value="years">年</option>
+                                    <option value="months">月</option>
+                                    <option value="weeks">周</option>
+                                    <option value="days">天</option>
+                                    <option value="hours">小时</option>
+                                    <option value="minutes">分钟</option>
+                                    <option value="seconds" selected>秒</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <h4>时间加减</h4>
-                    <div class="row" style="align-items: flex-end;">
-                        <div class="field-block">
-                            <label for="calc-op-in">基准时间</label>
+                <div class="card calc-card-op">
+                    <div class="card-head"><h4>时间加减</h4></div>
+                    <div class="card-body">
+                        <div class="calc-form-row">
+                            <label for="calc-op-in">基准</label>
                             <input id="calc-op-in" class="mono" name="calc_op_in" type="text" />
                         </div>
-                        <select id="calc-op-sign" name="calc_op_sign">
-                            <option value="+">加</option>
-                            <option value="-">减</option>
-                        </select>
-                        <div class="field-block" style="flex:0;">
-                            <label for="calc-op-len">数量</label>
-                            <input id="calc-op-len" class="num-in" type="number" step="1" value="1" name="calc_op_len" />
+                        <div class="calc-form-row">
+                            <label>运算</label>
+                            <div class="calc-inline">
+                                <select id="calc-op-sign" class="calc-op-sign" name="calc_op_sign">
+                                    <option value="+">加</option>
+                                    <option value="-">减</option>
+                                </select>
+                                <input id="calc-op-len" class="num-in" type="number" step="1" value="1" name="calc_op_len" />
+                                <select id="calc-op-unit" name="calc_op_unit">
+                                    <option value="years">年</option>
+                                    <option value="months">月</option>
+                                    <option value="weeks">周</option>
+                                    <option value="days" selected>天</option>
+                                    <option value="hours">小时</option>
+                                    <option value="minutes">分钟</option>
+                                    <option value="seconds">秒</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="field-block" style="flex:0;">
-                            <label for="calc-op-unit">单位</label>
-                            <select id="calc-op-unit" name="calc_op_unit">
-                                <option value="years">年</option>
-                                <option value="months">月</option>
-                                <option value="weeks">周</option>
-                                <option value="days" selected>天</option>
-                                <option value="hours">小时</option>
-                                <option value="minutes">分钟</option>
-                                <option value="seconds">秒</option>
-                            </select>
-                        </div>
-                        <div class="field-block" style="flex:1; min-width:180px;">
+                        <div class="calc-form-row">
                             <label for="calc-op-out">结果</label>
                             <div class="readonly-wrap">
                                 <input id="calc-op-out" class="mono" type="text" readonly />
@@ -327,29 +557,66 @@
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <h4>年内统计</h4>
-                    <div class="row" style="align-items: flex-end;">
-                        <div class="field-block">
-                            <label for="calc-an-in">时间</label>
-                            <input id="calc-an-in" class="mono" name="calc_an_in" type="text" />
-                        </div>
-                        <div class="field-block" style="flex:0;">
-                            <label for="calc-an-type">粒度</label>
-                            <select id="calc-an-type" name="calc_an_type">
-                                <option value="year">年</option>
-                                <option value="quarter">季度</option>
-                                <option value="month">月</option>
+                </div>
+                <div class="calc-col">
+                <div class="card calc-card-conv">
+                    <div class="card-head">
+                        <h4>时间换算</h4>
+                        <span class="hint">支持小数</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="calc-conv-line">
+                            <input id="calc-conv-val" type="number" step="any" value="1.2" name="calc_conv_val" aria-label="数量" />
+                            <select id="calc-conv-from" name="calc_conv_from" aria-label="源单位">
+                                <option value="milliseconds">毫秒</option>
+                                <option value="seconds">秒</option>
+                                <option value="minutes">分钟</option>
+                                <option value="hours" selected>小时</option>
+                                <option value="days">天</option>
+                                <option value="weeks">周</option>
                             </select>
-                        </div>
-                        <div class="field-block" style="flex:1; min-width:200px;">
-                            <label for="calc-an-out">输出</label>
+                            <span class="calc-conv-eq">=</span>
                             <div class="readonly-wrap">
-                                <input id="calc-an-out" type="text" readonly />
-                                <span class="copy-tag" data-copy="calc-an-out">复制</span>
+                                <input id="calc-conv-out" class="mono" type="text" readonly aria-label="换算结果" />
+                                <span class="copy-tag" data-copy="calc-conv-out">复制</span>
                             </div>
+                            <select id="calc-conv-to" name="calc_conv_to" aria-label="目标单位">
+                                <option value="milliseconds">毫秒</option>
+                                <option value="seconds">秒</option>
+                                <option value="minutes" selected>分钟</option>
+                                <option value="hours">小时</option>
+                                <option value="days">天</option>
+                                <option value="weeks">周</option>
+                            </select>
+                            <button type="button" class="btn btn-sm calc-conv-swap" id="calc-conv-swap" title="交换单位">⇄</button>
                         </div>
                     </div>
+                </div>
+                <div class="card calc-card-an">
+                    <div class="card-head"><h4>年内统计</h4></div>
+                    <div class="card-body">
+                        <div class="calc-form-row">
+                            <label for="calc-an-in">时间</label>
+                            <div class="input-action-wrap">
+                                <input id="calc-an-in" class="mono" name="calc_an_in" type="text" />
+                                <button type="button" class="input-action-btn" id="calc-an-refresh" title="刷新为当前时间">刷新</button>
+                            </div>
+                        </div>
+                        <div class="calc-form-row">
+                            <label for="calc-an-type">粒度</label>
+                            <div class="calc-result-line">
+                                <select id="calc-an-type" name="calc_an_type">
+                                    <option value="year">年</option>
+                                    <option value="quarter">季度</option>
+                                    <option value="month">月</option>
+                                </select>
+                                <button type="button" class="btn btn-sm" id="calc-an-copy">复制</button>
+                            </div>
+                        </div>
+                        <div id="calc-an-summary" class="calc-an-summary" style="display:none;"></div>
+                        <div id="calc-an-stats" class="calc-an-stats"></div>
+                    </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -1033,69 +1300,103 @@
                     return Math.floor(d.getMonth() / 3) + 1;
                 }
 
+                var CONV_SEC = {
+                    milliseconds: 0.001,
+                    seconds: 1,
+                    minutes: 60,
+                    hours: 3600,
+                    days: 86400,
+                    weeks: 604800
+                };
+
+                function formatConvNum(n) {
+                    if (!isFinite(n)) return "";
+                    if (n === 0) return "0";
+                    if (Math.abs(n) >= 1e12 || (Math.abs(n) < 1e-8 && n !== 0)) return String(n);
+                    var r = Math.round(n * 1e8) / 1e8;
+                    if (Math.abs(r - Math.round(r)) < 1e-10) return String(Math.round(r));
+                    return String(r).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+                }
+
+                function calcConvert() {
+                    var val = parseFloat(document.getElementById("calc-conv-val").value, 10);
+                    var from = document.getElementById("calc-conv-from").value;
+                    var to = document.getElementById("calc-conv-to").value;
+                    var out = document.getElementById("calc-conv-out");
+                    if (!isFinite(val)) {
+                        out.value = "";
+                        return;
+                    }
+                    var sec = val * CONV_SEC[from];
+                    out.value = formatConvNum(sec / CONV_SEC[to]);
+                }
+
+                var calcAnalyzeText = "";
+
                 function calcAnalyze() {
                     var d = parseLocal(document.getElementById("calc-an-in").value);
                     var typ = document.getElementById("calc-an-type").value;
-                    var out = document.getElementById("calc-an-out");
+                    var statsEl = document.getElementById("calc-an-stats");
+                    var summaryEl = document.getElementById("calc-an-summary");
                     if (!d) {
-                        out.value = "";
+                        statsEl.innerHTML = '<div class="calc-an-empty">请输入有效时间</div>';
+                        summaryEl.style.display = "none";
+                        summaryEl.textContent = "";
+                        calcAnalyzeText = "";
                         return;
                     }
                     var y = d.getFullYear();
                     var q = quarterOf(d);
+                    var items = [];
+                    var summary = "";
                     if (typ === "quarter") {
                         var qStart = new Date(y, (q - 1) * 3, 1);
                         var secQ = Math.floor((d - qStart) / 1000);
-                        out.value =
-                            "第 " +
-                            q +
-                            " 季度：第 " +
-                            Math.ceil(secQ / (86400 * 7)) +
-                            " 周，第 " +
-                            Math.ceil(secQ / 86400) +
-                            " 天，第 " +
-                            Math.ceil(secQ / 3600) +
-                            " 小时，第 " +
-                            Math.ceil(secQ / 60) +
-                            " 分钟，" +
-                            secQ +
-                            " 秒（自季度起算，与 Ctool 展示一致）";
-                        return;
-                    }
-                    if (typ === "month") {
+                        summary = y + " 年第 " + q + " 季度（自季度起算）";
+                        items = [
+                            { label: "周", val: "第 " + Math.ceil(secQ / (86400 * 7)) + " 周" },
+                            { label: "天", val: "第 " + Math.ceil(secQ / 86400) + " 天" },
+                            { label: "小时", val: "第 " + Math.ceil(secQ / 3600) + " 小时" },
+                            { label: "分钟", val: "第 " + Math.ceil(secQ / 60) + " 分钟" },
+                            { label: "秒", val: secQ + " 秒" }
+                        ];
+                    } else if (typ === "month") {
                         var mo = d.getMonth() + 1;
                         var mStart = new Date(y, mo - 1, 1);
                         var secM = Math.floor((d - mStart) / 1000);
-                        out.value =
-                            mo +
-                            " 月：第 " +
-                            Math.ceil(secM / (86400 * 7)) +
-                            " 周，第 " +
-                            Math.ceil(secM / 3600) +
-                            " 小时，第 " +
-                            Math.ceil(secM / 60) +
-                            " 分钟，" +
-                            secM +
-                            " 秒（自月初起算）";
-                        return;
+                        summary = y + " 年 " + mo + " 月（自月初起算）";
+                        items = [
+                            { label: "周", val: "第 " + Math.ceil(secM / (86400 * 7)) + " 周" },
+                            { label: "小时", val: "第 " + Math.ceil(secM / 3600) + " 小时" },
+                            { label: "分钟", val: "第 " + Math.ceil(secM / 60) + " 分钟" },
+                            { label: "秒", val: secM + " 秒" }
+                        ];
+                    } else {
+                        var yStart = new Date(y, 0, 1);
+                        var secY = Math.floor((d - yStart) / 1000);
+                        summary = y + " 年（自年初起算）";
+                        items = [
+                            { label: "季度", val: "第 " + q + " 季度" },
+                            { label: "ISO 周", val: "第 " + isoWeek(d) + " 周" },
+                            { label: "天", val: "第 " + dayOfYear(d) + " 天" },
+                            { label: "小时", val: "第 " + Math.ceil(secY / 3600) + " 小时" },
+                            { label: "分钟", val: "第 " + Math.ceil(secY / 60) + " 分钟" },
+                            { label: "秒", val: secY + " 秒" }
+                        ];
                     }
-                    var yStart = new Date(y, 0, 1);
-                    var secY = Math.floor((d - yStart) / 1000);
-                    out.value =
-                        y +
-                        " 年：第 " +
-                        q +
-                        " 季度，ISO 第 " +
-                        isoWeek(d) +
-                        " 周，第 " +
-                        dayOfYear(d) +
-                        " 天，第 " +
-                        Math.ceil(secY / 3600) +
-                        " 小时，第 " +
-                        Math.ceil(secY / 60) +
-                        " 分钟，" +
-                        secY +
-                        " 秒（自年初起算）";
+                    summaryEl.textContent = summary;
+                    summaryEl.style.display = "block";
+                    var html = "";
+                    for (var i = 0; i < items.length; i++) {
+                        html +=
+                            '<div class="calc-stat"><span class="calc-stat-label">' +
+                            items[i].label +
+                            '</span><span class="calc-stat-val">' +
+                            items[i].val +
+                            "</span></div>";
+                    }
+                    statsEl.innerHTML = html;
+                    calcAnalyzeText = summary + "\n" + items.map(function (it) { return it.label + "：" + it.val; }).join("\n");
                 }
 
                 var now = new Date();
@@ -1113,12 +1414,33 @@
                     document.getElementById(id).addEventListener("input", calcOp);
                     document.getElementById(id).addEventListener("change", calcOp);
                 });
+                ["calc-conv-val", "calc-conv-from", "calc-conv-to"].forEach(function (id) {
+                    document.getElementById(id).addEventListener("input", calcConvert);
+                    document.getElementById(id).addEventListener("change", calcConvert);
+                });
+                document.getElementById("calc-conv-swap").addEventListener("click", function () {
+                    var from = document.getElementById("calc-conv-from");
+                    var to = document.getElementById("calc-conv-to");
+                    var tmp = from.value;
+                    from.value = to.value;
+                    to.value = tmp;
+                    calcConvert();
+                });
+                document.getElementById("calc-an-copy").addEventListener("click", function () {
+                    var btn = document.getElementById("calc-an-copy");
+                    copyText(calcAnalyzeText, btn);
+                });
+                document.getElementById("calc-an-refresh").addEventListener("click", function () {
+                    document.getElementById("calc-an-in").value = fmtLocal(new Date());
+                    calcAnalyze();
+                });
                 ["calc-an-in", "calc-an-type"].forEach(function (id) {
                     document.getElementById(id).addEventListener("input", calcAnalyze);
                     document.getElementById(id).addEventListener("change", calcAnalyze);
                 });
                 calcDiff();
                 calcOp();
+                calcConvert();
                 calcAnalyze();
             })();
         </script>
