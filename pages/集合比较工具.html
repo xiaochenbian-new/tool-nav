@@ -38,6 +38,7 @@
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
+                overflow-y: auto;
             }
             .toolbar {
                 display: flex;
@@ -132,13 +133,18 @@
                 font-family: Consolas, "Courier New", monospace;
             }
             .result-wrap {
-                flex: 1;
-                min-height: 0;
+                flex: 1 1 220px;
+                min-height: 220px;
                 display: grid;
                 grid-template-columns: 1fr 1fr 1fr;
                 gap: 8px;
             }
+            .result-wrap > .panel {
+                min-height: 0;
+            }
             .result-list {
+                flex: 1;
+                min-height: 0;
                 padding: 8px;
                 overflow: auto;
                 display: flex;
@@ -213,12 +219,121 @@
                 flex-direction: column;
                 gap: 6px;
             }
+            .split-panel {
+                flex-shrink: 0;
+            }
+            .split-panel > summary {
+                padding: 8px 10px;
+                font-size: 14px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                cursor: pointer;
+                list-style: none;
+                user-select: none;
+            }
+            .split-panel > summary::-webkit-details-marker {
+                display: none;
+            }
+            .split-panel > summary::before {
+                content: "▸ ";
+                display: inline-block;
+                transition: transform 0.15s ease;
+            }
+            .split-panel[open] > summary::before {
+                transform: rotate(90deg);
+            }
+            .split-panel[open] > summary {
+                border-bottom: 1px solid #e4edff;
+            }
+            .split-panel:not([open]) > summary {
+                border-bottom: none;
+            }
+            .split-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 10px;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+            }
+            .split-toolbar label {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 13px;
+                color: #324a76;
+            }
+            .split-toolbar select,
+            .split-toolbar input[type="number"] {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #fff;
+                color: var(--text);
+                padding: 4px 8px;
+                font-size: 13px;
+                min-width: 0;
+            }
+            .split-toolbar input[type="number"] {
+                width: 72px;
+            }
+            .split-summary {
+                font-size: 12px;
+                color: var(--muted);
+                margin-left: auto;
+            }
+            .split-result-wrap {
+                padding: 8px;
+                overflow: auto;
+                max-height: 28vh;
+                min-height: 80px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-content: flex-start;
+            }
+            .split-group {
+                flex: 1 1 180px;
+                max-width: 280px;
+                border: 1px solid #e6eeff;
+                border-radius: 8px;
+                background: #f8fbff;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .split-group-title {
+                padding: 6px 8px;
+                font-size: 12px;
+                color: #324a76;
+                border-bottom: 1px solid #e6eeff;
+                background: #fff;
+                font-weight: 600;
+            }
+            .split-group-list {
+                padding: 6px;
+                overflow: auto;
+                max-height: 140px;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .split-group-list .item {
+                font-size: 12px;
+                padding: 3px 6px;
+            }
             @media (max-width: 900px) {
                 .input-wrap {
                     grid-template-columns: 1fr;
                 }
                 .result-wrap {
                     grid-template-columns: 1fr;
+                }
+                .split-summary {
+                    margin-left: 0;
+                    width: 100%;
                 }
             }
         </style>
@@ -278,6 +393,30 @@
                     <div id="b-only" class="result-list"></div>
                 </div>
             </div>
+
+            <details id="split-panel" class="panel split-panel">
+                <summary>分隔集合（点击展开）</summary>
+                <div class="split-toolbar">
+                    <label>
+                        来源
+                        <select id="split-source">
+                            <option value="set-a">A 集合</option>
+                            <option value="set-b">B 集合</option>
+                        </select>
+                    </label>
+                    <label>
+                        每组
+                        <input id="split-size" type="number" min="1" step="1" value="100" />
+                        个
+                    </label>
+                    <button id="split-btn" class="title-btn" type="button">开始分隔</button>
+                    <button id="split-export-btn" class="title-btn" type="button" disabled>导出 Excel</button>
+                    <span id="split-summary" class="split-summary">按指定个数将集合均分，每组对应 Excel 一个 sheet</span>
+                </div>
+                <div id="split-result" class="split-result-wrap">
+                    <div class="empty">选择来源并设置每组个数后点击「开始分隔」</div>
+                </div>
+            </details>
         </div>
         <div id="dup-modal" class="dup-modal">
             <div class="dup-card">
@@ -295,11 +434,43 @@
 
         <script>
             var STORAGE_KEY = "form_data_set_compare_tool_v1";
+            var XLSX_SCRIPT_URL = "../vendor/xlsx/xlsx.full.min.js";
+            var xlsxLoadingPromise = null;
+
+            function loadXlsxLibrary() {
+                if (window.XLSX) {
+                    return Promise.resolve(window.XLSX);
+                }
+                if (xlsxLoadingPromise) {
+                    return xlsxLoadingPromise;
+                }
+                xlsxLoadingPromise = new Promise(function (resolve, reject) {
+                    var script = document.createElement("script");
+                    script.src = XLSX_SCRIPT_URL;
+                    script.onload = function () {
+                        if (window.XLSX) {
+                            resolve(window.XLSX);
+                        } else {
+                            reject(new Error("XLSX not available"));
+                        }
+                    };
+                    script.onerror = function () {
+                        reject(new Error("Failed to load XLSX"));
+                    };
+                    document.head.appendChild(script);
+                });
+                return xlsxLoadingPromise;
+            }
+
+            var lastSplitGroups = [];
 
             function saveFormData() {
                 var payload = {
                     setA: document.getElementById("set-a").value,
-                    setB: document.getElementById("set-b").value
+                    setB: document.getElementById("set-b").value,
+                    splitSource: document.getElementById("split-source").value,
+                    splitSize: document.getElementById("split-size").value,
+                    splitOpen: document.getElementById("split-panel").open
                 };
                 try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -315,6 +486,15 @@
                     var data = JSON.parse(raw);
                     document.getElementById("set-a").value = data.setA || "";
                     document.getElementById("set-b").value = data.setB || "";
+                    if (data.splitSource) {
+                        document.getElementById("split-source").value = data.splitSource;
+                    }
+                    if (data.splitSize) {
+                        document.getElementById("split-size").value = data.splitSize;
+                    }
+                    if (data.splitOpen) {
+                        document.getElementById("split-panel").open = true;
+                    }
                 } catch (e) {
                     // Ignore storage parse/read errors.
                 }
@@ -458,6 +638,139 @@
                 ToolCopy.copy(lastDuplicateValues.join("\n"), { onLabelEl: btn, labelText: "复制" });
             }
 
+            function getSplitSourceItems() {
+                var inputId = document.getElementById("split-source").value;
+                var text = document.getElementById(inputId).value;
+                return uniquePreserveOrder(parseRawItems(text));
+            }
+
+            function getSplitChunkSize() {
+                var size = parseInt(document.getElementById("split-size").value, 10);
+                if (!Number.isFinite(size) || size < 1) {
+                    return null;
+                }
+                return size;
+            }
+
+            function splitIntoGroups(items, chunkSize) {
+                var groups = [];
+                for (var i = 0; i < items.length; i += chunkSize) {
+                    groups.push(items.slice(i, i + chunkSize));
+                }
+                return groups;
+            }
+
+            function renderSplitGroups(groups) {
+                var el = document.getElementById("split-result");
+                var exportBtn = document.getElementById("split-export-btn");
+                if (!groups.length) {
+                    el.innerHTML = '<div class="empty">没有可分隔的数据</div>';
+                    exportBtn.disabled = true;
+                    return;
+                }
+                exportBtn.disabled = false;
+                el.innerHTML = groups
+                    .map(function (group, idx) {
+                        var itemsHtml = group.length
+                            ? group
+                                  .map(function (val) {
+                                      return '<div class="item">' + escapeHtml(val) + "</div>";
+                                  })
+                                  .join("")
+                            : '<div class="empty">空组</div>';
+                        return (
+                            '<div class="split-group">' +
+                            '<div class="split-group-title">第 ' +
+                            (idx + 1) +
+                            " 组（" +
+                            group.length +
+                            " 项）</div>" +
+                            '<div class="split-group-list">' +
+                            itemsHtml +
+                            "</div></div>"
+                        );
+                    })
+                    .join("");
+            }
+
+            function updateSplitSummary(groups, sourceLabel, chunkSize, total) {
+                var summary = document.getElementById("split-summary");
+                if (!groups.length) {
+                    summary.textContent = sourceLabel + " 无数据，无法分隔";
+                    return;
+                }
+                summary.textContent =
+                    sourceLabel +
+                    " 共 " +
+                    total +
+                    " 项，每组 " +
+                    chunkSize +
+                    " 个，共 " +
+                    groups.length +
+                    " 组";
+            }
+
+            function runSplitCollection() {
+                var chunkSize = getSplitChunkSize();
+                if (chunkSize === null) {
+                    alert("请输入有效的每组个数（正整数）");
+                    return;
+                }
+                document.getElementById("split-panel").open = true;
+                var sourceId = document.getElementById("split-source").value;
+                var sourceLabel = sourceId === "set-a" ? "A 集合" : "B 集合";
+                var items = getSplitSourceItems();
+                var groups = splitIntoGroups(items, chunkSize);
+                lastSplitGroups = groups;
+                renderSplitGroups(groups);
+                updateSplitSummary(groups, sourceLabel, chunkSize, items.length);
+                saveFormData();
+            }
+
+            function sanitizeSheetName(name, fallback) {
+                var safe = String(name || fallback)
+                    .replace(/[\\/?*[\]:]/g, "_")
+                    .slice(0, 31);
+                return safe || fallback;
+            }
+
+            function exportSplitToExcel() {
+                if (!lastSplitGroups.length) {
+                    alert("请先执行分隔操作");
+                    return;
+                }
+                loadXlsxLibrary()
+                    .then(function () {
+                        var wb = XLSX.utils.book_new();
+                        var usedNames = new Set();
+                        lastSplitGroups.forEach(function (group, idx) {
+                            var baseName = "组" + (idx + 1);
+                            var sheetName = baseName;
+                            var suffix = 1;
+                            while (usedNames.has(sheetName)) {
+                                sheetName = sanitizeSheetName(baseName + "_" + suffix, "Sheet" + (idx + 1));
+                                suffix += 1;
+                            }
+                            usedNames.add(sheetName);
+                            sheetName = sanitizeSheetName(sheetName, "Sheet" + (idx + 1));
+
+                            var aoa = [["序号", "元素"]];
+                            group.forEach(function (item, i) {
+                                aoa.push([i + 1, item]);
+                            });
+                            var ws = XLSX.utils.aoa_to_sheet(aoa);
+                            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                        });
+
+                        var sourceId = document.getElementById("split-source").value;
+                        var prefix = sourceId === "set-a" ? "A集合" : "B集合";
+                        XLSX.writeFile(wb, prefix + "_分隔_" + lastSplitGroups.length + "组.xlsx");
+                    })
+                    .catch(function () {
+                        alert("Excel 导出组件加载失败，请刷新页面后重试");
+                    });
+            }
+
             function showDuplicates(inputId, title) {
                 dupModalInputId = inputId;
                 var text = document.getElementById(inputId).value;
@@ -534,6 +847,23 @@
             document.getElementById("set-b").addEventListener("input", function () {
                 saveFormData();
                 updateInputStats();
+            });
+            document.getElementById("split-btn").addEventListener("click", runSplitCollection);
+            document.getElementById("split-export-btn").addEventListener("click", exportSplitToExcel);
+            document.getElementById("split-source").addEventListener("change", function () {
+                saveFormData();
+            });
+            document.getElementById("split-size").addEventListener("change", function () {
+                saveFormData();
+            });
+            document.getElementById("split-size").addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    runSplitCollection();
+                }
+            });
+            document.getElementById("split-panel").addEventListener("toggle", function () {
+                saveFormData();
             });
 
             restoreFormData();
