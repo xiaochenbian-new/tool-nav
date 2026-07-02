@@ -1204,20 +1204,18 @@
                     persistSheetsState();
                 }
 
-                window.addEventListener("load", function () {
-                    if (sheetsMetaInput.value) {
-                        initSheetsFromStorage();
-                        sanitizeAllSheetsContent();
-                        applyActiveSheetToEditor();
-                        renderSheetTabs();
-                        if (isLargeContent(mainCm.getValue())) {
-                            setTimeout(persistSheetsState, 800);
-                        } else {
-                            persistSheetsState();
-                        }
-                    }
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !mainInput.value) return;
+                    initSheetsFromStorage();
+                    sanitizeAllSheetsContent();
+                    applyActiveSheetToEditor();
+                    renderSheetTabs();
                     resizeMainCm();
-                });
+                }
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+
+                window.addEventListener("load", restoreSheetsFromPersist);
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
 
                 var _sheetPersistTimer = null;
                 function schedulePersistSheets() {
@@ -2814,5 +2812,6 @@
                 resizeMainCm();
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

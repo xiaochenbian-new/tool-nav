@@ -1116,19 +1116,19 @@
 
                 sheetAddBtn.addEventListener("click", addSheet);
 
-                initSheetsFromStorage();
-                applyActiveSheetToEditor();
-                renderSheetTabs();
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !persistTa.value) return;
+                    initSheetsFromStorage();
+                    applyActiveSheetToEditor();
+                    renderSheetTabs();
+                }
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+
+                restoreSheetsFromPersist();
                 persistSheetsState();
 
-                window.addEventListener("load", function () {
-                    if (sheetsMetaInput.value) {
-                        initSheetsFromStorage();
-                        applyActiveSheetToEditor();
-                        renderSheetTabs();
-                        persistSheetsState();
-                    }
-                });
+                window.addEventListener("load", restoreSheetsFromPersist);
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
 
                 editor.on("change", function () {
                     syncEditorToPersist();
@@ -2312,5 +2312,6 @@
                 refreshStatPreviewBtn();
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

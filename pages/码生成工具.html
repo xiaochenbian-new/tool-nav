@@ -1792,19 +1792,20 @@
                 inputEl.addEventListener("scroll", layoutChunkDividers);
 
                 if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
-                initSheetsFromStorage();
-                applyActiveSheetToInput();
-                renderSheetTabs();
+
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !inputEl.value) return;
+                    initSheetsFromStorage();
+                    applyActiveSheetToInput();
+                    renderSheetTabs();
+                    if (inputEl.value.trim()) scheduleGenerate(100);
+                }
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+
+                restoreSheetsFromPersist();
                 persistSheetsState();
-                window.addEventListener("load", function () {
-                    if (sheetsMetaInput.value) {
-                        initSheetsFromStorage();
-                        applyActiveSheetToInput();
-                        renderSheetTabs();
-                        persistSheetsState();
-                        if (inputEl.value.trim()) scheduleGenerate(100);
-                    }
-                });
+                window.addEventListener("load", restoreSheetsFromPersist);
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
 
                 loadMaxCharsPerQr();
                 initPaneResizer();
@@ -1819,5 +1820,6 @@
                 );
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

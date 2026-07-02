@@ -249,7 +249,8 @@
                     "  <h1>Hello HTML</h1>\n" +
                     "  <p>在此编辑 HTML，右侧实时预览效果。</p>\n" +
                     "  <div class=\"card\">支持 CSS、JavaScript 与内联样式。</div>\n" +
-                    "</body>\n" +
+                    "        <script src="libs/tool-form-persist.js"></script>
+    </body>\n" +
                     "</html>";
 
                 var ta = document.getElementById("html-input");
@@ -457,6 +458,19 @@
                 cm.setValue(initialValue);
                 cm.on("change", schedulePreview);
 
+                function restoreHtmlFromPersist() {
+                    var v = ta.value;
+                    if (v == null) return;
+                    if (String(v) !== cm.getValue()) {
+                        cm.setValue(String(v));
+                        updatePreview();
+                        updateStat();
+                        syncToTextarea();
+                    }
+                }
+                window.toolNavRestoreForm = restoreHtmlFromPersist;
+                document.addEventListener("tool-nav:form-restored", restoreHtmlFromPersist);
+
                 document.getElementById("btn-format").addEventListener("click", function () {
                     var text = cm.getValue();
                     if (!text.trim()) return;
@@ -483,6 +497,7 @@
                     if (!cm.getValue().trim()) return;
                     if (confirm("确定清空 HTML 代码？")) {
                         cm.setValue("");
+                        syncToTextarea();
                     }
                 });
 

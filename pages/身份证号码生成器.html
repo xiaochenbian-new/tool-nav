@@ -260,7 +260,9 @@
 
             fillSelect(provinceSelect, AREA_TREE);
             refreshCities();
-            birthdayInput.value = getDefaultBirthday();
+            if (!birthdayInput.value) {
+                birthdayInput.value = getDefaultBirthday();
+            }
             provinceSelect.addEventListener("change", refreshCities);
             citySelect.addEventListener("change", refreshDistricts);
             districtSelect.addEventListener("change", updateCodeHint);
@@ -302,5 +304,6 @@
                 event.preventDefault();
             });
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

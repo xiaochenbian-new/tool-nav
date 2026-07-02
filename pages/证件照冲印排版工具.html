@@ -1864,7 +1864,8 @@
                             dataUrl +
                             '" style="max-width:100%;height:auto" alt="排版" onload="window.focus();setTimeout(function(){window.print();},50);" />'
                     );
-                    doc.document.write("</body></html>");
+                    doc.document.write("        <script src="libs/tool-form-persist.js"></script>
+    </body></html>");
                     doc.document.close();
                 });
 

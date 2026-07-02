@@ -1243,6 +1243,28 @@
                 }
             }
 
+            function notifyFrameFormRestored(toolId, data) {
+                const doc = getFrameDoc(toolId);
+                if (!doc) return;
+                try {
+                    doc.dispatchEvent(
+                        new CustomEvent("tool-nav:form-restored", { bubbles: true, detail: { data: data || null } })
+                    );
+                } catch (e) {
+                    // Ignore event dispatch failure.
+                }
+                try {
+                    const win = doc.defaultView;
+                    if (win && typeof win.toolNavRestoreForm === "function") {
+                        win.toolNavRestoreForm();
+                    } else if (win && typeof win.__toolNavRestoreForm === "function") {
+                        win.__toolNavRestoreForm();
+                    }
+                } catch (e) {
+                    // Ignore hook failures.
+                }
+            }
+
             function restoreToolFormData(toolId) {
                 if (!toolId) return;
                 const doc = getFrameDoc(toolId);
@@ -1278,10 +1300,39 @@
                     } catch (eventError) {
                         // Ignore event dispatch failure.
                     }
+                    notifyFrameFormRestored(toolId, data);
                 } catch (e) {
                     // Ignore parse/DOM errors.
                 }
             }
+
+            function injectToolFormPersist(tool) {
+                if (!tool || !tool.path) return;
+                const doc = getFrameDoc(tool.id);
+                if (!doc || doc.documentElement.getAttribute("data-tool-persist-lib") === "1") return;
+                try {
+                    const script = doc.createElement("script");
+                    const base = tool.path.includes("/") ? tool.path.replace(/[^/]+$/, "") : "pages/";
+                    script.src = base + "libs/tool-form-persist.js";
+                    script.setAttribute("data-tool-persist-injected", "1");
+                    (doc.head || doc.documentElement).appendChild(script);
+                    doc.documentElement.setAttribute("data-tool-persist-lib", "1");
+                } catch (e) {
+                    // Ignore injection failures.
+                }
+            }
+
+            window.ToolNavPersist = {
+                saveCurrent: function () {
+                    if (currentId) saveToolFormData(currentId);
+                },
+                restoreCurrent: function () {
+                    if (currentId) restoreToolFormData(currentId);
+                },
+                getStorageKey: function (toolId) {
+                    return STORAGE_PREFIX + (toolId || currentId || "");
+                },
+            };
 
             function bindFrameAutosave(toolId) {
                 const frame = getToolFrame(toolId);
@@ -1584,6 +1635,9 @@
                 setTimeout(function () {
                     if (currentId === toolId) restoreToolFormData(toolId);
                 }, 220);
+                setTimeout(function () {
+                    if (currentId === toolId) restoreToolFormData(toolId);
+                }, 480);
             }
 
             function buildDefaultRecentState() {
@@ -1779,6 +1833,7 @@
                 frame.onload = function () {
                     frame.setAttribute("data-loaded", "1");
                     try {
+                        injectToolFormPersist(tool);
                         restoreToolFormDataTwice(tool.id);
                         bindFrameAutosave(tool.id);
                         bindFrameCalendarDismiss(tool.id);
@@ -2725,6 +2780,15 @@
                     notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
                 }
                 isInitialPageLoad = false;
+                window.addEventListener("pagehide", function () {
+                    if (currentId) {
+                        try {
+                            saveToolFormData(currentId);
+                        } catch (e) {
+                            // Ignore save failures on unload.
+                        }
+                    }
+                });
                 window.location.replace(
                     window.location.pathname +
                         window.location.search +

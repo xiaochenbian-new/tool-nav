@@ -275,7 +275,7 @@
                     <div class="actions">
                         <button onclick="addModel()">添加模型</button>
                         <button onclick="generateScript()">生成</button>
-                        <button type="button" class="danger-btn tool-btn-danger" onclick="clearShellForm()">清空</button>
+                        <button type="button" class="danger-btn tool-btn-danger" data-tool-form-clear onclick="clearShellForm()">清空</button>
                     </div>
                 </div>
                 <div class="right-panel">
@@ -494,6 +494,15 @@ function clearShellForm() {
                 if (typeof ToolCopy !== 'undefined' && ToolCopy.toast) {
                     ToolCopy.toast('已清空');
                 }
+                setTimeout(function () {
+                    document.querySelectorAll('input, textarea, select').forEach(function (field) {
+                        field.dispatchEvent(new Event('input', { bubbles: true }));
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    if (window.ToolFormPersist && ToolFormPersist.saveNow) {
+                        ToolFormPersist.saveNow();
+                    }
+                }, 0);
             }
 
 function downloadScript() {
@@ -634,5 +643,6 @@ document.getElementById('btn-qr-result').addEventListener('click', function () {
 
 restoreShellForm();
 		</script>
+        <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

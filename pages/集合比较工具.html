@@ -822,8 +822,19 @@
             document.getElementById("clear-btn").addEventListener("click", function () {
                 document.getElementById("set-a").value = "";
                 document.getElementById("set-b").value = "";
+                lastSplitGroups = [];
+                renderSplitGroups([]);
+                document.getElementById("split-export-btn").disabled = true;
+                document.getElementById("split-summary").textContent =
+                    "按指定个数将集合均分，每组对应 Excel 一个 sheet";
                 saveFormData();
                 compareSets();
+                ["set-a", "set-b", "split-source", "split-size"].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    el.dispatchEvent(new Event("input", { bubbles: true }));
+                    el.dispatchEvent(new Event("change", { bubbles: true }));
+                });
             });
             document.getElementById("show-dup-a").addEventListener("click", function () {
                 showDuplicates("set-a", "A 集合重复元素");
@@ -869,5 +880,6 @@
             restoreFormData();
             compareSets();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>
