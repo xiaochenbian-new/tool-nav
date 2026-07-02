@@ -413,6 +413,7 @@
                     <button id="split-export-btn" class="title-btn" type="button" disabled>导出 Excel</button>
                     <span id="split-summary" class="split-summary">按指定个数将集合均分，每组对应 Excel 一个 sheet</span>
                 </div>
+                <input type="hidden" id="split-open-persist" data-persist-key="split_open" value="0" />
                 <div id="split-result" class="split-result-wrap">
                     <div class="empty">选择来源并设置每组个数后点击「开始分隔」</div>
                 </div>
@@ -436,6 +437,20 @@
             var STORAGE_KEY = "form_data_set_compare_tool_v1";
             var XLSX_SCRIPT_URL = "../vendor/xlsx/xlsx.full.min.js";
             var xlsxLoadingPromise = null;
+
+            function syncSplitOpenPersist() {
+                var el = document.getElementById("split-open-persist");
+                if (el) {
+                    el.value = document.getElementById("split-panel").open ? "1" : "0";
+                }
+            }
+
+            function applySplitOpenFromPersist() {
+                var el = document.getElementById("split-open-persist");
+                if (el) {
+                    document.getElementById("split-panel").open = el.value === "1";
+                }
+            }
 
             function loadXlsxLibrary() {
                 if (window.XLSX) {
@@ -465,6 +480,11 @@
             var lastSplitGroups = [];
 
             function saveFormData() {
+                syncSplitOpenPersist();
+                if (window.ToolFormPersist && ToolFormPersist.saveNow) {
+                    ToolFormPersist.saveNow();
+                    return;
+                }
                 var payload = {
                     setA: document.getElementById("set-a").value,
                     setB: document.getElementById("set-b").value,
@@ -479,7 +499,7 @@
                 }
             }
 
-            function restoreFormData() {
+            function migrateLegacyFormData() {
                 try {
                     var raw = localStorage.getItem(STORAGE_KEY);
                     if (!raw) return;
@@ -495,9 +515,17 @@
                     if (data.splitOpen) {
                         document.getElementById("split-panel").open = true;
                     }
+                    syncSplitOpenPersist();
+                    saveFormData();
+                    localStorage.removeItem(STORAGE_KEY);
                 } catch (e) {
                     // Ignore storage parse/read errors.
                 }
+            }
+
+            function refreshAfterPersistRestore() {
+                applySplitOpenFromPersist();
+                compareSets();
             }
 
             function parseRawItems(text) {
@@ -874,10 +902,14 @@
                 }
             });
             document.getElementById("split-panel").addEventListener("toggle", function () {
+                syncSplitOpenPersist();
                 saveFormData();
             });
 
-            restoreFormData();
+            window.toolNavRestoreForm = refreshAfterPersistRestore;
+            document.addEventListener("tool-nav:form-restored", refreshAfterPersistRestore);
+
+            migrateLegacyFormData();
             compareSets();
         </script>
             <script src="libs/tool-form-persist.js"></script>

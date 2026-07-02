@@ -779,8 +779,24 @@
                 });
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     cm.setValue("");
+                    ta.value = "";
                     updateStat();
+                    if (window.ToolFormPersist && ToolFormPersist.saveNow) {
+                        ToolFormPersist.saveNow();
+                    }
                 });
+
+                function restoreEditorFromPersist() {
+                    if (!cm || !ta) return;
+                    var v = ta.value == null ? "" : String(ta.value);
+                    if (cm.getValue() !== v) {
+                        cm.setValue(v);
+                        refreshEditorMode();
+                        updateStat();
+                    }
+                }
+                window.toolNavRestoreForm = restoreEditorFromPersist;
+                document.addEventListener("tool-nav:form-restored", restoreEditorFromPersist);
 
                 sqlDialect.addEventListener("change", function () {
                     if (kind === "sql") {
@@ -807,7 +823,10 @@
                 window.addEventListener("resize", resizeCm);
                 setTimeout(resizeCm, 0);
 
-                cm.on("change", updateStat);
+                cm.on("change", function () {
+                    ta.value = cm.getValue();
+                    updateStat();
+                });
                 syncHeadUi();
                 refreshEditorMode();
                 updateStat();

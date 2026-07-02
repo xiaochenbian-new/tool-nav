@@ -1334,6 +1334,37 @@
                 },
             };
 
+            window.addEventListener("message", function (event) {
+                const data = event && event.data;
+                if (!data || typeof data !== "object") return;
+                if (data.type === "tool-nav-persist-save" && data.toolId) {
+                    try {
+                        const payload = data.data && typeof data.data === "object" ? data.data : {};
+                        FORM_CACHE[data.toolId] = payload;
+                        localStorage.setItem(STORAGE_PREFIX + data.toolId, JSON.stringify(payload));
+                    } catch (e) {
+                        // Ignore storage failures.
+                    }
+                    return;
+                }
+                if (data.type === "tool-nav-persist-restore" && data.toolId) {
+                    try {
+                        const raw = localStorage.getItem(STORAGE_PREFIX + data.toolId);
+                        if (!raw || !event.source) return;
+                        event.source.postMessage(
+                            {
+                                type: "tool-nav-persist-restore-data",
+                                toolId: data.toolId,
+                                data: JSON.parse(raw),
+                            },
+                            "*"
+                        );
+                    } catch (e) {
+                        // Ignore restore bridge failures.
+                    }
+                }
+            });
+
             function bindFrameAutosave(toolId) {
                 const frame = getToolFrame(toolId);
                 if (!frame || frame.getAttribute("data-autosave-bound") === "1") return;
@@ -1825,6 +1856,12 @@
                 });
             }
 
+            function toolFrameSrc(tool) {
+                if (!tool || !tool.path) return "";
+                const sep = tool.path.indexOf("?") >= 0 ? "&" : "?";
+                return tool.path + sep + "_toolNavId=" + encodeURIComponent(tool.id);
+            }
+
             function getOrCreateToolFrame(tool) {
                 if (FRAME_CACHE[tool.id]) return FRAME_CACHE[tool.id];
                 const container = document.getElementById("tool-frame-container");
@@ -1850,7 +1887,7 @@
                         notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
                     }
                 };
-                frame.src = tool.path;
+                frame.src = toolFrameSrc(tool);
                 FRAME_CACHE[tool.id] = frame;
                 container.appendChild(frame);
                 return frame;

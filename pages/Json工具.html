@@ -1205,7 +1205,7 @@
                 }
 
                 function restoreSheetsFromPersist() {
-                    if (!sheetsMetaInput.value && !mainInput.value) return;
+                    if (!sheetsMetaInput.value && !mainInput.value && docSheets.length > 0) return;
                     initSheetsFromStorage();
                     sanitizeAllSheetsContent();
                     applyActiveSheetToEditor();

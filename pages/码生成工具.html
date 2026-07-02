@@ -1794,7 +1794,7 @@
                 if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
 
                 function restoreSheetsFromPersist() {
-                    if (!sheetsMetaInput.value && !inputEl.value) return;
+                    if (!sheetsMetaInput.value && !inputEl.value && docSheets.length > 0) return;
                     initSheetsFromStorage();
                     applyActiveSheetToInput();
                     renderSheetTabs();

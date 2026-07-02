@@ -1220,7 +1220,7 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             });
 
             function restoreSheetsFromPersist() {
-                if (!sheetsMetaInput.value && !textInputEl.value) return;
+                if (!sheetsMetaInput.value && !textInputEl.value && docSheets.length > 0) return;
                 initSheetsFromStorage();
                 applyActiveSheetToInput();
                 renderSheetTabs();

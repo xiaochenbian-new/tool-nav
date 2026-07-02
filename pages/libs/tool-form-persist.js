@@ -1,6 +1,6 @@
 /**
  * 工具页表单持久化：刷新后保留输入；带「清空」按钮的页面仅在点击清空时清除。
- * 在 index 的 iframe 内由父页注入并配合 ToolNavPersist；单独打开页面时自行读写 localStorage。
+ * 支持 file:// 离线包（iframe 跨域时由子页自行读写 localStorage）。
  */
 (function (global) {
     var STORAGE_PREFIX = "tool_form_data_";
@@ -19,6 +19,7 @@
     ];
     var autosaveTimer = null;
     var booted = false;
+    var storageBackend = null;
 
     function isInIframe() {
         try {
@@ -28,14 +29,47 @@
         }
     }
 
+    function getStorageBackend() {
+        if (storageBackend) return storageBackend;
+        try {
+            var probe = "__tool_nav_persist_probe__";
+            global.localStorage.setItem(probe, "1");
+            global.localStorage.removeItem(probe);
+            storageBackend = global.localStorage;
+            return storageBackend;
+        } catch (e) {
+            // file:// 或隐私模式下 localStorage 可能不可用
+        }
+        try {
+            storageBackend = global.sessionStorage;
+            return storageBackend;
+        } catch (e2) {
+            storageBackend = null;
+            return null;
+        }
+    }
+
+    function getToolIdFromQuery() {
+        try {
+            var search = global.location && global.location.search ? global.location.search : "";
+            var m = search.match(/(?:\?|&)_toolNavId=([^&]+)/);
+            if (m && m[1]) return decodeURIComponent(m[1]);
+        } catch (e) {
+            // ignore
+        }
+        return "";
+    }
+
     function getToolId() {
+        var fromQuery = getToolIdFromQuery();
+        if (fromQuery) return fromQuery;
         try {
             if (global.frameElement) {
                 var frameId = global.frameElement.getAttribute("data-tool-id");
                 if (frameId) return frameId;
             }
         } catch (e) {
-            // cross-origin
+            // cross-origin iframe
         }
         var path = (global.location && global.location.pathname) || "";
         var name = path.split("/").pop() || "tool";
@@ -109,16 +143,21 @@
     }
 
     function saveToLocal() {
+        var store = getStorageBackend();
+        if (!store) return;
         try {
-            localStorage.setItem(getStorageKey(), JSON.stringify(collectFormData()));
+            store.setItem(getStorageKey(), JSON.stringify(collectFormData()));
         } catch (e) {
             // ignore
         }
+        notifyParentSave();
     }
 
     function restoreFromLocal() {
+        var store = getStorageBackend();
+        if (!store) return false;
         try {
-            var raw = localStorage.getItem(getStorageKey());
+            var raw = store.getItem(getStorageKey());
             if (!raw) return false;
             return applyFormData(JSON.parse(raw));
         } catch (e) {
@@ -127,33 +166,59 @@
     }
 
     function clearLocal() {
+        var store = getStorageBackend();
+        if (!store) return;
         try {
-            localStorage.removeItem(getStorageKey());
+            store.removeItem(getStorageKey());
+        } catch (e) {
+            // ignore
+        }
+        notifyParentSave();
+    }
+
+    function canParentAccessFrame() {
+        try {
+            if (!isInIframe()) return false;
+            if (!global.parent || global.parent === global) return false;
+            if (!global.parent.ToolNavPersist) return false;
+            if (global.frameElement) return true;
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function notifyParentSave() {
+        try {
+            if (!isInIframe() || !global.parent) return;
+            global.parent.postMessage(
+                {
+                    type: "tool-nav-persist-save",
+                    toolId: getToolId(),
+                    data: collectFormData(),
+                },
+                "*"
+            );
         } catch (e) {
             // ignore
         }
     }
 
-    function parentPersist() {
+    function tryParentSave() {
+        if (!canParentAccessFrame()) return false;
         try {
-            if (isInIframe() && global.parent.ToolNavPersist) {
-                return global.parent.ToolNavPersist;
-            }
+            global.parent.ToolNavPersist.saveCurrent();
+            return true;
         } catch (e) {
-            // ignore
+            return false;
         }
-        return null;
     }
 
     function scheduleSave() {
         clearTimeout(autosaveTimer);
         autosaveTimer = setTimeout(function () {
-            var parentApi = parentPersist();
-            if (parentApi && parentApi.saveCurrent) {
-                parentApi.saveCurrent();
-            } else {
-                saveToLocal();
-            }
+            saveToLocal();
+            tryParentSave();
         }, 120);
     }
 
@@ -170,8 +235,15 @@
         }
     }
 
+    function scheduleRestoreFromLocal() {
+        [0, 80, 200, 450, 800].forEach(function (ms) {
+            setTimeout(restoreFromLocal, ms);
+        });
+        scheduleRestoreHooks();
+    }
+
     function scheduleRestoreHooks() {
-        [0, 90, 220, 450].forEach(function (ms) {
+        [0, 90, 220, 450, 800].forEach(function (ms) {
             setTimeout(runRestoreHooks, ms);
         });
     }
@@ -209,55 +281,69 @@
                 if (btn.getAttribute("data-tool-persist-bound") === "1") return;
                 btn.setAttribute("data-tool-persist-bound", "1");
                 btn.addEventListener("click", function () {
-                        setTimeout(function () {
-                            var parentApi = parentPersist();
-                            if (parentApi && parentApi.saveCurrent) {
-                                parentApi.saveCurrent();
-                            } else {
-                                saveToLocal();
-                            }
-                        }, 0);
-                        setTimeout(function () {
-                            var parentApi = parentPersist();
-                            if (parentApi && parentApi.saveCurrent) {
-                                parentApi.saveCurrent();
-                            } else {
-                                saveToLocal();
-                            }
-                        }, 150);
-                    });
+                    setTimeout(function () {
+                        saveToLocal();
+                        tryParentSave();
+                    }, 0);
+                    setTimeout(function () {
+                        saveToLocal();
+                        tryParentSave();
+                    }, 150);
+                });
             });
         });
     }
 
-    function boot(opts) {
+    function bindPageHideSave() {
+        if (document.documentElement.getAttribute("data-tool-persist-pagehide") === "1") return;
+        document.documentElement.setAttribute("data-tool-persist-pagehide", "1");
+        global.addEventListener("pagehide", function () {
+            saveToLocal();
+            tryParentSave();
+        });
+    }
+
+    function boot() {
         if (booted) return;
         booted = true;
-        opts = opts || {};
         document.documentElement.setAttribute("data-tool-persist-lib", "1");
-        var inIframe = isInIframe();
 
         bindClearButtons();
-
-        if (inIframe) {
-            document.addEventListener("tool-nav:form-restored", runRestoreHooks);
-            scheduleRestoreHooks();
-            return;
-        }
-
         bindAutosave();
-        [0, 100, 280, 500].forEach(function (ms) {
-            setTimeout(restoreFromLocal, ms);
+        bindPageHideSave();
+        scheduleRestoreFromLocal();
+
+        document.addEventListener("tool-nav:form-restored", runRestoreHooks);
+
+        global.addEventListener("message", function (event) {
+            var data = event && event.data;
+            if (!data || data.type !== "tool-nav-persist-restore-data") return;
+            if (data.toolId && data.toolId !== getToolId()) return;
+            try {
+                applyFormData(data.data);
+            } catch (e) {
+                // ignore
+            }
         });
+
+        if (isInIframe()) {
+            try {
+                global.parent.postMessage(
+                    { type: "tool-nav-persist-restore", toolId: getToolId() },
+                    "*"
+                );
+            } catch (e) {
+                // ignore
+            }
+        }
     }
 
     global.ToolFormPersist = {
         boot: boot,
         save: scheduleSave,
         saveNow: function () {
-            var parentApi = parentPersist();
-            if (parentApi && parentApi.saveCurrent) parentApi.saveCurrent();
-            else saveToLocal();
+            saveToLocal();
+            tryParentSave();
         },
         restore: restoreFromLocal,
         clearStorage: clearLocal,
@@ -267,9 +353,7 @@
     };
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-            boot();
-        });
+        document.addEventListener("DOMContentLoaded", boot);
     } else {
         boot();
     }
