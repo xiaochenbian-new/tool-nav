@@ -351,6 +351,40 @@
                 color: var(--primary);
                 background: #f4f8ff;
             }
+            .csv-modal-handoff-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.35;
+                color: #3c5a94;
+                border: 1px dashed #7a94c8;
+                background: #f8fbff;
+                background-image: none;
+                cursor: pointer;
+            }
+            .csv-modal-handoff-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #f4f8ff;
+            }
+            .csv-modal-handoff-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
+            .icon-paper-plane {
+                fill: none;
+            }
+            .icon-paper-plane path {
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 1.6;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
             .csv-modal-close {
                 width: 28px;
                 height: 28px;
@@ -408,6 +442,21 @@
                 outline: none;
                 border-color: #b8cff5;
                 box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
+            }
+            #csv-preview-text {
+                flex: 1;
+                min-height: 200px;
+                width: 100%;
+                box-sizing: border-box;
+                font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.45;
+                resize: none;
+                border: 1px solid #e4eaf4;
+                border-radius: 8px;
+                padding: 10px 12px;
+                background: #fafcff;
+                color: #2f3d5d;
             }
             .csv-sheet-bar {
                 flex: 0 0 auto;
@@ -1274,6 +1323,7 @@
                     <div class="result-tools">
                         <button id="export-xlsx-btn" class="result-tool-btn" type="button">导出 Excel</button>
                         <button id="export-csv-btn" class="result-tool-btn" type="button">导出 CSV</button>
+                        <button id="preview-csv-btn" class="result-tool-btn" type="button">预览 CSV</button>
                         <button id="clear-view-btn" class="result-tool-btn" type="button">清除排序和过滤</button>
                     </div>
                 </div>
@@ -1304,6 +1354,30 @@
         </div>
         <div id="sql-help-mask" class="text-popup-mask">
             <div id="sql-help-popup" class="text-popup sql-help-content"></div>
+        </div>
+        <div id="csv-preview-mask" class="csv-modal-mask" aria-hidden="true">
+            <div class="csv-modal" role="dialog" aria-labelledby="csv-preview-title" aria-modal="true">
+                <div class="csv-modal-head">
+                    <div class="csv-modal-head-left">
+                        <h4 id="csv-preview-title">CSV 预览</h4>
+                        <button id="csv-preview-copy-btn" class="csv-modal-copy-btn" type="button" title="复制 CSV 文本">复制</button>
+                        <button id="csv-preview-text-handoff-btn" class="csv-modal-handoff-btn" type="button" title="将 CSV 文本导入文本处理工具">
+                            <span>文本处理</span>
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-paper-plane">
+                                <path d="M22 2L11 13"></path>
+                                <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button id="csv-preview-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
+                </div>
+                <div class="csv-modal-body">
+                    <p class="csv-modal-hint">当前查询结果（含排序与过滤）的 CSV 文本预览，与「导出 CSV」内容一致。</p>
+                    <div class="csv-editor-wrap">
+                        <textarea id="csv-preview-text" readonly placeholder="暂无数据"></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="csv-modal-mask" class="csv-modal-mask" aria-hidden="true">
             <div class="csv-modal" role="dialog" aria-labelledby="csv-modal-title" aria-modal="true">
@@ -1371,6 +1445,8 @@
             const SQL_HISTORY_PAGE_SIZE = 10;
             let sqlHistoryPage = 1;
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+            const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
+            const HANDOFF_TEXT_TAB = "tab18";
             /** 统一数据源：Excel 上传与 CSV 粘贴均注册为同一库中的表 */
             const UNIFIED_DB_KEY = "__data__";
             let csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "", importRows: null }];
@@ -2498,6 +2574,75 @@
                     });
                     return o;
                 });
+            }
+
+            function buildResultCsvText() {
+                if (!currentViewRows.length) return "";
+                var ws = XLSX.utils.json_to_sheet(rowsWithDisplayStrings(currentViewRows));
+                return XLSX.utils.sheet_to_csv(ws);
+            }
+
+            function openCsvPreviewModal() {
+                if (!currentViewRows.length) {
+                    setStatus("没有可预览的查询结果。", true);
+                    return;
+                }
+                document.getElementById("csv-preview-text").value = buildResultCsvText();
+                var mask = document.getElementById("csv-preview-mask");
+                mask.classList.add("show");
+                mask.setAttribute("aria-hidden", "false");
+            }
+
+            function closeCsvPreviewModal() {
+                var mask = document.getElementById("csv-preview-mask");
+                mask.classList.remove("show");
+                mask.setAttribute("aria-hidden", "true");
+            }
+
+            function handoffCsvPreviewToTextTool() {
+                var text = document.getElementById("csv-preview-text").value;
+                if (!String(text || "").trim()) {
+                    setStatus("没有可发送的 CSV 文本。", true);
+                    return;
+                }
+                var payload = { text: text, sheetName: "查询结果" };
+                if (window.parent && window.parent !== window) {
+                    try {
+                        window.parent.postMessage(
+                            {
+                                type: "tool-nav:open-tool",
+                                toolId: HANDOFF_TEXT_TAB,
+                                handoff: "excel-sql-to-text",
+                                payload: payload,
+                            },
+                            "*"
+                        );
+                        setStatus("已发送到文本处理工具。", false);
+                        closeCsvPreviewModal();
+                        return;
+                    } catch (e1) {
+                        // fall through to storage navigation
+                    }
+                }
+                try {
+                    sessionStorage.setItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY, JSON.stringify(payload));
+                } catch (e2) {
+                    // ignore
+                }
+                try {
+                    localStorage.setItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY, JSON.stringify(payload));
+                } catch (e3) {
+                    // ignore
+                }
+                var base = "../index.html";
+                try {
+                    if (/pages\//i.test(window.location.pathname)) {
+                        base = "../index.html";
+                    }
+                } catch (e4) {
+                    // ignore
+                }
+                window.location.href = base + "#tab=" + HANDOFF_TEXT_TAB;
             }
 
             function getRowDisplayValue(row, col) {
@@ -4460,6 +4605,10 @@
                 }
             });
             document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && document.getElementById("csv-preview-mask").classList.contains("show")) {
+                    closeCsvPreviewModal();
+                    return;
+                }
                 if (e.key === "Escape" && document.getElementById("csv-modal-mask").classList.contains("show")) {
                     closeCsvModal();
                 }
@@ -4554,8 +4703,7 @@
                     setStatus("没有可导出的查询结果。", true);
                     return;
                 }
-                const ws = XLSX.utils.json_to_sheet(rowsWithDisplayStrings(currentViewRows));
-                const csv = XLSX.utils.sheet_to_csv(ws);
+                const csv = buildResultCsvText();
                 const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -4566,6 +4714,21 @@
                 a.remove();
                 URL.revokeObjectURL(url);
                 setStatus("已导出 CSV（query_result.csv）。", false);
+            });
+            document.getElementById("preview-csv-btn").addEventListener("click", openCsvPreviewModal);
+            document.getElementById("csv-preview-close").addEventListener("click", closeCsvPreviewModal);
+            document.getElementById("csv-preview-text-handoff-btn").addEventListener("click", function (e) {
+                e.stopPropagation();
+                handoffCsvPreviewToTextTool();
+            });
+            document.getElementById("csv-preview-copy-btn").addEventListener("click", function (e) {
+                e.stopPropagation();
+                var text = document.getElementById("csv-preview-text").value;
+                if (!text) return;
+                writeClipboardText(text, "已复制 CSV 文本");
+            });
+            document.getElementById("csv-preview-mask").addEventListener("click", function (e) {
+                if (e.target.id === "csv-preview-mask") closeCsvPreviewModal();
             });
             document.addEventListener("click", function () {
                 closeAllFilterPopup();

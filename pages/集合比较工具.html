@@ -103,6 +103,12 @@
                 gap: 2px;
                 min-width: 0;
             }
+            .panel-title-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
             .input-stats {
                 font-size: 12px;
                 color: var(--muted);
@@ -311,6 +317,10 @@
                 border-bottom: 1px solid #e6eeff;
                 background: #fff;
                 font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 6px;
             }
             .split-group-list {
                 padding: 6px;
@@ -354,7 +364,10 @@
                             <span>A 集合输入</span>
                             <span id="stats-a" class="input-stats">共 0 项 · 去重后 0 项</span>
                         </div>
-                        <button id="show-dup-a" class="title-btn" type="button">查看重复</button>
+                        <div class="panel-title-actions">
+                            <button id="show-dup-a" class="title-btn" type="button">查看重复</button>
+                            <button id="copy-set-a" class="title-btn" type="button">复制</button>
+                        </div>
                     </div>
                     <textarea id="set-a" placeholder="输入 A 集合，支持空格、换行、逗号混合分隔"></textarea>
                 </div>
@@ -364,7 +377,10 @@
                             <span>B 集合输入</span>
                             <span id="stats-b" class="input-stats">共 0 项 · 去重后 0 项</span>
                         </div>
-                        <button id="show-dup-b" class="title-btn" type="button">查看重复</button>
+                        <div class="panel-title-actions">
+                            <button id="show-dup-b" class="title-btn" type="button">查看重复</button>
+                            <button id="copy-set-b" class="title-btn" type="button">复制</button>
+                        </div>
                     </div>
                     <textarea id="set-b" placeholder="输入 B 集合，支持空格、换行、逗号混合分隔"></textarea>
                 </div>
@@ -402,6 +418,9 @@
                         <select id="split-source">
                             <option value="set-a">A 集合</option>
                             <option value="set-b">B 集合</option>
+                            <option value="a-only">A 独有</option>
+                            <option value="both">A/B 共有</option>
+                            <option value="b-only">B 独有</option>
                         </select>
                     </label>
                     <label>
@@ -662,13 +681,52 @@
                 ToolCopy.copy(arr.join("\n"), { onLabelEl: btn, labelText: "复制" });
             }
 
+            function copySetInput(btn, inputId) {
+                var text = document.getElementById(inputId).value;
+                if (!String(text || "").trim()) return;
+                ToolCopy.copy(text, { onLabelEl: btn, labelText: "复制" });
+            }
+
+            function copySplitGroup(btn, groupIdx) {
+                var group = lastSplitGroups[groupIdx];
+                if (!group || !group.length) return;
+                ToolCopy.copy(group.join("\n"), { onLabelEl: btn, labelText: "复制" });
+            }
+
             function copyDuplicates(btn) {
                 ToolCopy.copy(lastDuplicateValues.join("\n"), { onLabelEl: btn, labelText: "复制" });
             }
 
+            function getSplitSourceLabel(sourceId) {
+                var labels = {
+                    "set-a": "A 集合",
+                    "set-b": "B 集合",
+                    "a-only": "A 独有",
+                    both: "A/B 共有",
+                    "b-only": "B 独有",
+                };
+                return labels[sourceId] || sourceId;
+            }
+
+            function getSplitExportPrefix(sourceId) {
+                var prefixes = {
+                    "set-a": "A集合",
+                    "set-b": "B集合",
+                    "a-only": "A独有",
+                    both: "AB共有",
+                    "b-only": "B独有",
+                };
+                return prefixes[sourceId] || "集合";
+            }
+
             function getSplitSourceItems() {
-                var inputId = document.getElementById("split-source").value;
-                var text = document.getElementById(inputId).value;
+                var sourceId = document.getElementById("split-source").value;
+                if (sourceId === "a-only" || sourceId === "both" || sourceId === "b-only") {
+                    compareSets();
+                    var keyMap = { "a-only": "aOnly", both: "both", "b-only": "bOnly" };
+                    return (lastCompareResult[keyMap[sourceId]] || []).slice();
+                }
+                var text = document.getElementById(sourceId).value;
                 return uniquePreserveOrder(parseRawItems(text));
             }
 
@@ -708,11 +766,16 @@
                             : '<div class="empty">空组</div>';
                         return (
                             '<div class="split-group">' +
-                            '<div class="split-group-title">第 ' +
+                            '<div class="split-group-title">' +
+                            '<span>第 ' +
                             (idx + 1) +
                             " 组（" +
                             group.length +
-                            " 项）</div>" +
+                            " 项）</span>" +
+                            '<button type="button" class="title-btn split-group-copy" data-group-idx="' +
+                            idx +
+                            '">复制</button>' +
+                            "</div>" +
                             '<div class="split-group-list">' +
                             itemsHtml +
                             "</div></div>"
@@ -746,7 +809,7 @@
                 }
                 document.getElementById("split-panel").open = true;
                 var sourceId = document.getElementById("split-source").value;
-                var sourceLabel = sourceId === "set-a" ? "A 集合" : "B 集合";
+                var sourceLabel = getSplitSourceLabel(sourceId);
                 var items = getSplitSourceItems();
                 var groups = splitIntoGroups(items, chunkSize);
                 lastSplitGroups = groups;
@@ -791,7 +854,7 @@
                         });
 
                         var sourceId = document.getElementById("split-source").value;
-                        var prefix = sourceId === "set-a" ? "A集合" : "B集合";
+                        var prefix = getSplitExportPrefix(sourceId);
                         XLSX.writeFile(wb, prefix + "_分隔_" + lastSplitGroups.length + "组.xlsx");
                     })
                     .catch(function () {
@@ -869,6 +932,19 @@
             });
             document.getElementById("show-dup-b").addEventListener("click", function () {
                 showDuplicates("set-b", "B 集合重复元素");
+            });
+            document.getElementById("copy-set-a").addEventListener("click", function () {
+                copySetInput(this, "set-a");
+            });
+            document.getElementById("copy-set-b").addEventListener("click", function () {
+                copySetInput(this, "set-b");
+            });
+            document.getElementById("split-result").addEventListener("click", function (e) {
+                var btn = e.target.closest(".split-group-copy");
+                if (!btn) return;
+                var idx = parseInt(btn.getAttribute("data-group-idx"), 10);
+                if (!Number.isFinite(idx) || idx < 0) return;
+                copySplitGroup(btn, idx);
             });
             document.getElementById("dup-close").addEventListener("click", function () {
                 document.getElementById("dup-modal").classList.remove("show");

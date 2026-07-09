@@ -2241,7 +2241,99 @@
                 });
 
                 var HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+                var HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
                 var HANDOFF_EXCEL_SQL_TAB = "tab14";
+
+                function clearExcelSqlToTextHandoffStorage() {
+                    try {
+                        sessionStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+
+                function allocUniqueSheetName(baseName) {
+                    var name = String(baseName || "查询结果").trim() || "查询结果";
+                    var used = {};
+                    for (var i = 0; i < docSheets.length; i++) used[docSheets[i].name] = true;
+                    if (!used[name]) return name;
+                    var n = 2;
+                    while (used[name + " " + n]) n++;
+                    return name + " " + n;
+                }
+
+                function loadHandoffTextToSheet(text, sheetName) {
+                    syncEditorToPersist();
+                    var trimmed = String(text || "");
+                    if (!trimmed.trim()) return false;
+                    var label = allocUniqueSheetName(sheetName);
+                    var soleEmpty =
+                        docSheets.length === 1 && !String(docSheets[0].content || "").trim();
+                    if (soleEmpty) {
+                        docSheets[0].content = trimmed;
+                        docSheets[0].name = label;
+                        activeSheetId = docSheets[0].id;
+                    } else {
+                        var sheet = {
+                            id: genSheetId(),
+                            name: label,
+                            content: trimmed,
+                        };
+                        docSheets.push(sheet);
+                        activeSheetId = sheet.id;
+                    }
+                    applyActiveSheetToEditor();
+                    renderSheetTabs();
+                    persistSheetsState();
+                    refreshStatPreviewBtn();
+                    refreshFindHighlights();
+                    return true;
+                }
+
+                function consumeExcelSqlToTextHandoff(payload) {
+                    if (!payload || !payload.text) return;
+                    if (loadHandoffTextToSheet(payload.text, payload.sheetName || "查询结果")) {
+                        showToast("已载入 CSV 文本到「" + getActiveSheet().name + "」");
+                        clearExcelSqlToTextHandoffStorage();
+                    }
+                }
+
+                function tryConsumeHandoffFromStorage() {
+                    var raw = null;
+                    try {
+                        raw = sessionStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    if (!raw) {
+                        try {
+                            raw = localStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                        } catch (e2) {
+                            // ignore
+                        }
+                    }
+                    if (!raw) return;
+                    try {
+                        consumeExcelSqlToTextHandoff(JSON.parse(raw));
+                    } catch (e3) {
+                        // ignore invalid json
+                    }
+                }
+
+                window.addEventListener("message", function (e) {
+                    var d = e.data;
+                    if (!d || d.type !== "tool-nav:consume-handoff") return;
+                    if (d.handoff === "excel-sql-to-text") {
+                        consumeExcelSqlToTextHandoff(d.payload || null);
+                    }
+                });
+
+                tryConsumeHandoffFromStorage();
 
                 function detectFieldSeparatorForCsv(text) {
                     var sample = String(text || "").split(/\r?\n/).slice(0, 8).filter(function (line) {

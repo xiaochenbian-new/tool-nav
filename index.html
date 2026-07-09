@@ -1189,13 +1189,16 @@
             const HANDOFF_PRINT_TAB = "tab27";
             const HANDOFF_PHOTO_BG_TAB = "tab38";
             const HANDOFF_EXCEL_SQL_TAB = "tab14";
+            const HANDOFF_TEXT_TAB = "tab18";
             const HANDOFF_PRINT_STORAGE_KEY = "tool-nav:handoff:photo-to-print";
             const HANDOFF_PRINT_TO_PHOTO_KEY = "tool-nav:handoff:print-to-photo-bg";
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+            const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
             /** 换底色 ↔ 冲印排版：经父页中转（file:// 下 iframe 无法共享 sessionStorage） */
             let pendingPhotoPrintHandoff = null;
             let pendingPrintToPhotoHandoff = null;
             let pendingTextToExcelSqlHandoff = null;
+            let pendingExcelSqlToTextHandoff = null;
             let currentId = "";
             let overviewVisible = false;
             /** 首次根据 hash 打开工具时不写入最近槽位，保证刷新后头部仍为常用前五个 */
@@ -1886,6 +1889,9 @@
                     if (tool.id === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
                         notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
                     }
+                    if (tool.id === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
+                        notifyTextToolHandoff("excel-sql-to-text", 0);
+                    }
                 };
                 frame.src = toolFrameSrc(tool);
                 FRAME_CACHE[tool.id] = frame;
@@ -1920,6 +1926,7 @@
                 if (pendingPhotoPrintHandoff) return HANDOFF_PRINT_TAB;
                 if (pendingPrintToPhotoHandoff) return HANDOFF_PHOTO_BG_TAB;
                 if (pendingTextToExcelSqlHandoff) return HANDOFF_EXCEL_SQL_TAB;
+                if (pendingExcelSqlToTextHandoff) return HANDOFF_TEXT_TAB;
                 return DEFAULT_TAB_ID;
             }
 
@@ -2390,6 +2397,79 @@
                 }
             }
 
+            function stashExcelSqlToTextHandoff(payload) {
+                if (!payload || !payload.text) return;
+                pendingExcelSqlToTextHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takeExcelSqlToTextHandoffPayload() {
+                const payload = pendingExcelSqlToTextHandoff;
+                pendingExcelSqlToTextHandoff = null;
+                return payload;
+            }
+
+            function bridgeExcelSqlToTextHandoffFromStorage() {
+                if (pendingExcelSqlToTextHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashExcelSqlToTextHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function notifyTextToolHandoff(kind, attempt) {
+                if (kind !== "excel-sql-to-text") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_TEXT_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyTextToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takeExcelSqlToTextHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingExcelSqlToTextHandoff = payload;
+                }
+            }
+
             window.addEventListener("message", function (e) {
                 const d = e.data;
                 if (!d || d.type !== "tool-nav:open-tool") return;
@@ -2407,6 +2487,9 @@
                 if (d.handoff === "text-to-excel-sql" && d.payload) {
                     stashTextToExcelSqlHandoff(d.payload);
                 }
+                if (d.handoff === "excel-sql-to-text" && d.payload) {
+                    stashExcelSqlToTextHandoff(d.payload);
+                }
                 openTool(d.toolId, true);
                 if (d.handoff === "photo-to-print") {
                     notifyPrintToolHandoff("photo-to-print", 0);
@@ -2416,6 +2499,9 @@
                 }
                 if (d.handoff === "text-to-excel-sql") {
                     notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                }
+                if (d.handoff === "excel-sql-to-text") {
+                    notifyTextToolHandoff("excel-sql-to-text", 0);
                 }
             });
 
@@ -2805,6 +2891,7 @@
                 bridgePhotoPrintHandoffFromStorage();
                 bridgePrintToPhotoHandoffFromStorage();
                 bridgeTextToExcelSqlHandoffFromStorage();
+                bridgeExcelSqlToTextHandoffFromStorage();
                 const initialTab = resolveStartupTab();
                 openTool(initialTab, false);
                 if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
@@ -2815,6 +2902,9 @@
                 }
                 if (initialTab === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
                     notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                }
+                if (initialTab === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
+                    notifyTextToolHandoff("excel-sql-to-text", 0);
                 }
                 isInitialPageLoad = false;
                 window.addEventListener("pagehide", function () {
