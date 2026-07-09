@@ -592,6 +592,7 @@
 
         <script src="./libs/qrcode-lib.bundle.js"></script>
         <script src="./libs/JsBarcode.all.min.js"></script>
+        <script src="libs/tool-sheet-tabs-drag.js"></script>
         <script>
             (function () {
                 /** Version40 字节模式参考容量（与 node-qrcode 一致，仅作状态栏说明） */
@@ -925,6 +926,14 @@
                     renderSheetTabs();
                 }
 
+                function reorderSheet(fromIndex, toIndex) {
+                    if (fromIndex === toIndex) return;
+                    var item = docSheets.splice(fromIndex, 1)[0];
+                    docSheets.splice(toIndex, 0, item);
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+
                 function renderSheetTabs() {
                     if (!sheetTabsEl) return;
                     sheetTabsEl.innerHTML = "";
@@ -937,7 +946,7 @@
                             tab.setAttribute("data-sheet-id", sheet.id);
                             tab.setAttribute("role", "tab");
                             tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
-                            tab.title = sheet.name + "（双击重命名）";
+                            tab.title = sheet.name + "（拖拽排序，双击重命名）";
 
                             if (sheetRenameId === sheet.id) {
                                 var inp = document.createElement("input");
@@ -1792,6 +1801,16 @@
                 inputEl.addEventListener("scroll", layoutChunkDividers);
 
                 if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
+
+                if (sheetTabsEl && window.ToolSheetTabsDrag) {
+                    ToolSheetTabsDrag.attach({
+                        container: sheetTabsEl,
+                        isDragDisabled: function () {
+                            return !!sheetRenameId;
+                        },
+                        onReorder: reorderSheet,
+                    });
+                }
 
                 function restoreSheetsFromPersist() {
                     if (!sheetsMetaInput.value && !inputEl.value && docSheets.length > 0) return;

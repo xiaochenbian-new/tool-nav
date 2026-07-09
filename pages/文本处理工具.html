@@ -617,8 +617,8 @@
                         <div class="find-row">
                             <span class="find-label">查找</span>
                             <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
-                            <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter)">↑</button>
-                            <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter)">↓</button>
+                            <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter / ↑)">↑</button>
+                            <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter / ↓)">↓</button>
                             <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
                             <span id="find-count" class="find-count"></span>
                             <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
@@ -802,6 +802,7 @@
         <script src="libs/tool-copy.js"></script>
         <script src="libs/qrcode-lib.bundle.js"></script>
         <script src="libs/tool-qr.js"></script>
+        <script src="libs/tool-sheet-tabs-drag.js"></script>
         <script>
             (function () {
                 if (typeof CodeMirror === "undefined") {
@@ -1044,6 +1045,14 @@
                     renderSheetTabs();
                 }
 
+                function reorderSheet(fromIndex, toIndex) {
+                    if (fromIndex === toIndex) return;
+                    var item = docSheets.splice(fromIndex, 1)[0];
+                    docSheets.splice(toIndex, 0, item);
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+
                 function renderSheetTabs() {
                     if (!sheetTabsEl) return;
                     sheetTabsEl.innerHTML = "";
@@ -1056,7 +1065,7 @@
                             tab.setAttribute("data-sheet-id", sheet.id);
                             tab.setAttribute("role", "tab");
                             tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
-                            tab.title = sheet.name + "（双击重命名）";
+                            tab.title = sheet.name + "（拖拽排序，双击重命名）";
 
                             if (sheetRenameId === sheet.id) {
                                 var inp = document.createElement("input");
@@ -1115,6 +1124,16 @@
                 }
 
                 sheetAddBtn.addEventListener("click", addSheet);
+
+                if (sheetTabsEl && window.ToolSheetTabsDrag) {
+                    ToolSheetTabsDrag.attach({
+                        container: sheetTabsEl,
+                        isDragDisabled: function () {
+                            return !!sheetRenameId;
+                        },
+                        onReorder: reorderSheet,
+                    });
+                }
 
                 function restoreSheetsFromPersist() {
                     if (!sheetsMetaInput.value && !persistTa.value && docSheets.length > 0) return;
@@ -1177,9 +1196,55 @@
                     findNavMatchIndex = -1;
                 }
 
-                editor.getWrapperElement().addEventListener("mousedown", function () {
-                    resetFindNavigation();
-                });
+                function getFindAnchorOffsetForNext() {
+                    return cmGetSelOffsets().end;
+                }
+
+                function getFindAnchorOffsetForPrev() {
+                    return cmGetSelOffsets().start;
+                }
+
+                function resolveFindMatchIndexFromSelection(positions) {
+                    var o = cmGetSelOffsets();
+                    var s = o.start;
+                    var e = o.end;
+                    for (var i = 0; i < positions.length; i++) {
+                        if (positions[i].start === s && positions[i].end === e) return i;
+                    }
+                    for (var j = 0; j < positions.length; j++) {
+                        if (s >= positions[j].start && s < positions[j].end) return j;
+                    }
+                    return -1;
+                }
+
+                function shouldKeepFindFocus() {
+                    var a = document.activeElement;
+                    return (
+                        a === findInput ||
+                        a === replaceInput ||
+                        (findBar && !findBar.hidden && findBar.contains(a))
+                    );
+                }
+
+                function isFindContentEditorFocused() {
+                    var a = document.activeElement;
+                    if (!a) return false;
+                    if (editor && editor.getWrapperElement().contains(a)) return true;
+                    return false;
+                }
+
+                function handleFindArrowKey(e) {
+                    if (findBar.hidden || !findInput.value) return false;
+                    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+                    if (isFindContentEditorFocused()) return false;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var keep = shouldKeepFindFocus();
+                    if (e.key === "ArrowUp") findPrev(keep);
+                    else findNext(keep);
+                    return true;
+                }
 
                 function getMatchPositions(text, needle, caseSens) {
                     var res = [];
@@ -1314,20 +1379,25 @@
                     var s = o.start;
                     var e = o.end;
                     var idx = -1;
-                    for (var i = 0; i < positions.length; i++) {
-                        if (positions[i].start === s && positions[i].end === e) {
-                            idx = i;
-                            break;
-                        }
-                    }
-                    if (idx < 0) {
-                        for (var j = 0; j < positions.length; j++) {
-                            if (s >= positions[j].start && s < positions[j].end) {
-                                idx = j;
+                    if (findNavMatchIndex >= 0 && findNavMatchIndex < positions.length) {
+                        idx = findNavMatchIndex;
+                    } else {
+                        for (var i = 0; i < positions.length; i++) {
+                            if (positions[i].start === s && positions[i].end === e) {
+                                idx = i;
                                 break;
                             }
                         }
+                        if (idx < 0) {
+                            for (var j = 0; j < positions.length; j++) {
+                                if (s >= positions[j].start && s < positions[j].end) {
+                                    idx = j;
+                                    break;
+                                }
+                            }
+                        }
                     }
+                    if (idx >= 0) findNavMatchIndex = idx;
                     findCountEl.textContent = (idx >= 0 ? idx + 1 : "—") + " / " + positions.length;
                     refreshFindHighlights();
                 }
@@ -1346,26 +1416,29 @@
                         return;
                     }
                     var i;
-                    if (findNavMatchIndex < 0) {
-                        var wrap = editor.getWrapperElement();
-                        var from = wrap.contains(document.activeElement)
-                            ? editor.indexFromPos(editor.getCursor("head"))
-                            : 0;
-                        var qi;
-                        for (qi = 0; qi < positions.length; qi++) {
-                            var pm = positions[qi];
-                            if (from > pm.start && from < pm.end) {
-                                from = pm.end;
-                                break;
-                            }
-                        }
-                        i = positions.findIndex(function (p) {
-                            return p.start >= from;
-                        });
-                        if (i === -1) i = 0;
-                    } else {
+                    if (findNavMatchIndex >= 0) {
                         i = findNavMatchIndex + 1;
                         if (i >= positions.length) i = 0;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions);
+                        if (curIdx >= 0) {
+                            i = curIdx + 1;
+                            if (i >= positions.length) i = 0;
+                        } else {
+                            var from = getFindAnchorOffsetForNext();
+                            var qi;
+                            for (qi = 0; qi < positions.length; qi++) {
+                                var pm = positions[qi];
+                                if (from > pm.start && from < pm.end) {
+                                    from = pm.end;
+                                    break;
+                                }
+                            }
+                            i = positions.findIndex(function (p) {
+                                return p.start >= from;
+                            });
+                            if (i === -1) i = 0;
+                        }
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
@@ -1388,30 +1461,33 @@
                         return;
                     }
                     var i;
-                    if (findNavMatchIndex < 0) {
-                        var wrap2 = editor.getWrapperElement();
-                        var from = wrap2.contains(document.activeElement)
-                            ? editor.indexFromPos(editor.getCursor("head"))
-                            : editor.getValue().length;
-                        var qj;
-                        for (qj = 0; qj < positions.length; qj++) {
-                            var pn = positions[qj];
-                            if (from > pn.start && from < pn.end) {
-                                from = pn.start;
-                                break;
-                            }
-                        }
-                        i = -1;
-                        for (var k = positions.length - 1; k >= 0; k--) {
-                            if (positions[k].start < from) {
-                                i = k;
-                                break;
-                            }
-                        }
-                        if (i === -1) i = positions.length - 1;
-                    } else {
+                    if (findNavMatchIndex >= 0) {
                         i = findNavMatchIndex - 1;
                         if (i < 0) i = positions.length - 1;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions);
+                        if (curIdx >= 0) {
+                            i = curIdx - 1;
+                            if (i < 0) i = positions.length - 1;
+                        } else {
+                            var from = getFindAnchorOffsetForPrev();
+                            var qj;
+                            for (qj = 0; qj < positions.length; qj++) {
+                                var pn = positions[qj];
+                                if (from > pn.start && from < pn.end) {
+                                    from = pn.start;
+                                    break;
+                                }
+                            }
+                            i = -1;
+                            for (var k = positions.length - 1; k >= 0; k--) {
+                                if (positions[k].start < from) {
+                                    i = k;
+                                    break;
+                                }
+                            }
+                            if (i === -1) i = positions.length - 1;
+                        }
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
@@ -1466,8 +1542,12 @@
                     if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
                 });
 
-                document.getElementById("find-prev").addEventListener("click", findPrev);
-                document.getElementById("find-next").addEventListener("click", findNext);
+                document.getElementById("find-prev").addEventListener("click", function () {
+                    findPrev(shouldKeepFindFocus());
+                });
+                document.getElementById("find-next").addEventListener("click", function () {
+                    findNext(shouldKeepFindFocus());
+                });
                 document.getElementById("find-close").addEventListener("click", closeFind);
                 findCase.addEventListener("change", function () {
                     resetFindNavigation();
@@ -1485,12 +1565,32 @@
                         e.preventDefault();
                         if (e.shiftKey) findPrev(true);
                         else findNext(true);
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
                     }
                 });
                 replaceInput.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();
                         replaceOne();
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
                     }
                 });
 
@@ -1519,7 +1619,9 @@
                             e.preventDefault();
                             if (e.shiftKey) findPrev();
                             else findNext();
+                            return;
                         }
+                        if (handleFindArrowKey(e)) return;
                     },
                     true
                 );
