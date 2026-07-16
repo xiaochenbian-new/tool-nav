@@ -246,10 +246,93 @@
                 var modifiedModel = null;
                 var changes = 0;
                 var currentChange = 0;
+                var pendingSheetsDiffHandoff = null;
+                var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
 
                 function $(id) {
                     return document.getElementById(id);
                 }
+
+                function clearSheetsDiffHandoffStorage() {
+                    try {
+                        sessionStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+
+                function applySheetsDiffHandoff(payload) {
+                    if (!payload) return;
+                    if (!originalModel || !modifiedModel) {
+                        pendingSheetsDiffHandoff = payload;
+                        return;
+                    }
+                    originalModel.setValue(payload.left == null ? "" : String(payload.left));
+                    modifiedModel.setValue(payload.right == null ? "" : String(payload.right));
+                    var lang = payload.language || "plaintext";
+                    var sel = $("lang-select");
+                    if (sel) {
+                        var hasOpt = false;
+                        for (var i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === lang) {
+                                hasOpt = true;
+                                break;
+                            }
+                        }
+                        if (hasOpt) sel.value = lang;
+                        else {
+                            lang = "plaintext";
+                            sel.value = lang;
+                        }
+                    }
+                    setLanguage(lang);
+                    pendingSheetsDiffHandoff = null;
+                    clearSheetsDiffHandoffStorage();
+                    var leftLabel = payload.leftName ? String(payload.leftName) : "左侧";
+                    var rightLabel = payload.rightName ? String(payload.rightName) : "右侧";
+                    $("summary").textContent = "已载入对比：" + leftLabel + " ↔ " + rightLabel;
+                    requestAnimationFrame(function () {
+                        if (diffEditor) {
+                            applyFoldUnchangedAndRefreshDiff();
+                            layoutEditor();
+                        }
+                    });
+                }
+
+                function tryConsumeSheetsDiffHandoffFromStorage() {
+                    var raw = null;
+                    try {
+                        raw = sessionStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    if (!raw) {
+                        try {
+                            raw = localStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                        } catch (e2) {
+                            // ignore
+                        }
+                    }
+                    if (!raw) return;
+                    try {
+                        applySheetsDiffHandoff(JSON.parse(raw));
+                    } catch (e3) {
+                        // ignore invalid json
+                    }
+                }
+
+                window.addEventListener("message", function (e) {
+                    var d = e.data;
+                    if (!d || d.type !== "tool-nav:consume-handoff") return;
+                    if (d.handoff === "sheets-to-text-diff") {
+                        applySheetsDiffHandoff(d.payload || null);
+                    }
+                });
 
                 function fillLangSelect() {
                     var sel = $("lang-select");
@@ -407,6 +490,12 @@
                     updateChangeNav();
                     updateSummary();
 
+                    if (pendingSheetsDiffHandoff) {
+                        applySheetsDiffHandoff(pendingSheetsDiffHandoff);
+                    } else {
+                        tryConsumeSheetsDiffHandoffFromStorage();
+                    }
+
                     window.addEventListener("resize", layoutEditor);
                     setTimeout(layoutEditor, 50);
                     setTimeout(function () {
@@ -460,6 +549,7 @@
 
                 fillLangSelect();
                 bindControls();
+                tryConsumeSheetsDiffHandoffFromStorage();
 
                 require.config({ paths: { vs: MONACO_ROOT } });
                 require(

@@ -508,6 +508,15 @@
                 z-index: 3;
                 border-color: #d8e5ff;
             }
+            .json-sheet-tab.compare-selected {
+                box-shadow: inset 0 0 0 1px #2f6bff;
+                border-color: #2f6bff;
+                background: #e8f0ff;
+            }
+            .json-sheet-tab.compare-selected:not(.active) {
+                color: #2f6bff;
+                font-weight: 600;
+            }
             .json-sheet-tab .sheet-name {
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -584,12 +593,21 @@
                     <div class="editor-head-main">
                         <div class="editor-head-title-row">
                             <span>文本内容</span>
-                            <span class="hint" title="底部可切换多个文本工作表，双击标签可重命名">多工作表 · Ctrl+F 查找 · Ctrl+H 替换</span>
+                            <span class="hint" title="底部可切换多个文本工作表，双击标签可重命名；Ctrl+点击可选两个工作表后点「对比」">多工作表 · Ctrl+F 查找 · Ctrl+H 替换</span>
                         </div>
                         <span id="editor-line-stats" class="line-stats-hint">共 0 行 · 重复 0 行</span>
                     </div>
                     <div class="actions">
+                        <button type="button" class="title-btn" id="btn-copy">复制</button>
                         <button type="button" class="title-btn dotted" id="btn-stat-preview" title="打开详细统计">统计预览…</button>
+                        <button type="button" class="title-btn handoff-btn" id="btn-compare-diff" title="按住 Ctrl 选择两个工作表后点击，跳转到文本对比">
+                            <span>对比</span>
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-diff-split">
+                                <path d="M12 4H5V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M12 3V21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="butt"></path>
+                                <path d="M12 4H19V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
                         <button type="button" class="title-btn handoff-btn" id="btn-excel-sql" title="将各工作表中符合 CSV 格式的文本导入 Excel SQL 查询工具">
                             <span>Excel SQL</span>
                             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-paper-plane">
@@ -597,7 +615,6 @@
                                 <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
                             </svg>
                         </button>
-                        <button type="button" class="title-btn" id="btn-copy">复制</button>
                         <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成二维码">
                             <span>二维码</span>
                             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -889,6 +906,9 @@
                 var activeSheetId = null;
                 var sheetRenameId = null;
                 var _sheetPersistTimer = null;
+                var compareSelectedIds = [];
+                var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+                var HANDOFF_TEXT_DIFF_TAB = "tab10";
 
                 function genSheetId() {
                     return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -979,6 +999,87 @@
                     showToast("已新建 " + sheet.name);
                 }
 
+                function clearCompareSelect() {
+                    if (!compareSelectedIds.length) return;
+                    compareSelectedIds = [];
+                    renderSheetTabs();
+                }
+
+                function toggleCompareSelect(sheetId) {
+                    var pos = compareSelectedIds.indexOf(sheetId);
+                    if (pos >= 0) {
+                        compareSelectedIds.splice(pos, 1);
+                    } else if (compareSelectedIds.length >= 2) {
+                        showToast("最多选择两个工作表，请先取消其中一个");
+                        return;
+                    } else {
+                        compareSelectedIds.push(sheetId);
+                    }
+                    renderSheetTabs();
+                }
+
+                function getSheetContentById(sheetId) {
+                    syncEditorToPersist();
+                    for (var i = 0; i < docSheets.length; i++) {
+                        if (docSheets[i].id === sheetId) {
+                            return String(docSheets[i].content == null ? "" : docSheets[i].content);
+                        }
+                    }
+                    return "";
+                }
+
+                function getSheetNameById(sheetId) {
+                    for (var i = 0; i < docSheets.length; i++) {
+                        if (docSheets[i].id === sheetId) return docSheets[i].name;
+                    }
+                    return "";
+                }
+
+                function handoffSelectedSheetsToTextDiff() {
+                    syncEditorToPersist();
+                    if (compareSelectedIds.length !== 2) {
+                        showToast("请按住 Ctrl 选择两个工作表后再对比");
+                        return;
+                    }
+                    var leftId = compareSelectedIds[0];
+                    var rightId = compareSelectedIds[1];
+                    var payload = {
+                        left: getSheetContentById(leftId),
+                        right: getSheetContentById(rightId),
+                        leftName: getSheetNameById(leftId),
+                        rightName: getSheetNameById(rightId),
+                        language: "plaintext",
+                    };
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: HANDOFF_TEXT_DIFF_TAB,
+                                    handoff: "sheets-to-text-diff",
+                                    payload: payload,
+                                },
+                                "*"
+                            );
+                            showToast("已发送到文本对比");
+                            return;
+                        } catch (e1) {
+                            // fall through
+                        }
+                    }
+                    try {
+                        sessionStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e2) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e3) {
+                        // ignore
+                    }
+                    window.location.href = "../index.html#tab=" + HANDOFF_TEXT_DIFF_TAB;
+                }
+
                 function removeSheet(sheetId) {
                     if (docSheets.length <= 1) {
                         showToast("至少保留一个工作表");
@@ -992,6 +1093,9 @@
                         }
                     }
                     if (idx < 0) return;
+                    compareSelectedIds = compareSelectedIds.filter(function (id) {
+                        return id !== sheetId;
+                    });
                     var removed = docSheets.splice(idx, 1)[0];
                     if (activeSheetId === sheetId) {
                         var next = docSheets[Math.min(idx, docSheets.length - 1)];
@@ -1058,14 +1162,20 @@
                     sheetTabsEl.innerHTML = "";
                     for (var i = 0; i < docSheets.length; i++) {
                         (function (sheet) {
+                            var isCompareSel = compareSelectedIds.indexOf(sheet.id) >= 0;
                             var tab = document.createElement("button");
                             tab.type = "button";
                             tab.className =
-                                "json-sheet-tab" + (sheet.id === activeSheetId ? " active" : "");
+                                "json-sheet-tab" +
+                                (sheet.id === activeSheetId ? " active" : "") +
+                                (isCompareSel ? " compare-selected" : "");
                             tab.setAttribute("data-sheet-id", sheet.id);
                             tab.setAttribute("role", "tab");
                             tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
-                            tab.title = sheet.name + "（拖拽排序，双击重命名）";
+                            var selMark = isCompareSel
+                                ? " · 对比选中" + (compareSelectedIds.indexOf(sheet.id) + 1)
+                                : "";
+                            tab.title = sheet.name + "（拖拽排序，双击重命名；Ctrl+点击多选对比）" + selMark;
 
                             if (sheetRenameId === sheet.id) {
                                 var inp = document.createElement("input");
@@ -1113,8 +1223,14 @@
                                 tab.appendChild(closeBtn);
                             }
 
-                            tab.addEventListener("click", function () {
+                            tab.addEventListener("click", function (e) {
                                 if (sheetRenameId) return;
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    toggleCompareSelect(sheet.id);
+                                    return;
+                                }
+                                clearCompareSelect();
                                 switchSheet(sheet.id);
                             });
 
@@ -1123,6 +1239,7 @@
                     }
                 }
 
+                document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
                 sheetAddBtn.addEventListener("click", addSheet);
 
                 if (sheetTabsEl && window.ToolSheetTabsDrag) {
