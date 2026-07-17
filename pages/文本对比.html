@@ -262,7 +262,7 @@
                 var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
                 var returnToolId = "";
                 var returnToolName = "";
-                var ALLOWED_RETURN_TOOL_IDS = { tab8: true, tab18: true };
+                var ALLOWED_RETURN_TOOL_IDS = { tab8: true, tab18: true, tab19: true };
 
                 function $(id) {
                     return document.getElementById(id);
@@ -275,7 +275,13 @@
                     btn.classList.toggle("show", ok);
                     btn.setAttribute("aria-hidden", ok ? "false" : "true");
                     if (ok) {
-                        var name = returnToolName || (returnToolId === "tab8" ? "Json工具" : "文本处理");
+                        var name =
+                            returnToolName ||
+                            (returnToolId === "tab8"
+                                ? "Json工具"
+                                : returnToolId === "tab19"
+                                  ? "格式化工具"
+                                  : "文本处理");
                         btn.title = "返回" + name;
                         btn.textContent = "返回";
                     }
