@@ -639,6 +639,10 @@
                         <span class="hint" title="底部可切换多个 JSON 工作表，双击标签可重命名；Ctrl+点击可选两个工作表后点「对比」">多工作表 · JSON 配色与折叠 · Ctrl+F 查找</span>
                     </div>
                     <div class="actions">
+                        <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
+                        <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
+                        <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
+                        <button type="button" class="title-btn" id="btn-copy">复制</button>
                         <button type="button" class="title-btn handoff-btn" id="btn-compare-diff" title="按住 Ctrl 选择两个工作表后点击，跳转到文本对比">
                             <span>对比</span>
                             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-diff-split">
@@ -647,9 +651,6 @@
                                 <path d="M12 4H19V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
                         </button>
-                        <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
-                        <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
-                        <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
                         <button type="button" class="title-btn qr-btn" id="btn-qr-out" style="display:none" title="生成输出二维码">
                             <span>二维码</span>
                             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -659,7 +660,6 @@
                                 ></path>
                             </svg>
                         </button>
-                        <button type="button" class="title-btn" id="btn-copy">复制</button>
                         <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成输入二维码">
                             <span>二维码</span>
                             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -1122,6 +1122,8 @@
                         leftName: getSheetNameById(leftId),
                         rightName: getSheetNameById(rightId),
                         language: "json",
+                        returnToolId: "tab8",
+                        returnToolName: "Json工具",
                     };
                     if (window.parent && window.parent !== window) {
                         try {

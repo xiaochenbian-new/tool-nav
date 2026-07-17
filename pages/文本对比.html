@@ -57,10 +57,21 @@
                 opacity: 0.45;
                 cursor: not-allowed;
             }
-            .btn.primary {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            .btn.back-btn {
+                display: none;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .btn.back-btn.show {
+                display: inline-flex;
+            }
+            .btn.back-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
             }
             .hint {
                 color: var(--muted);
@@ -157,6 +168,7 @@
     <body>
         <div class="page">
             <div class="toolbar">
+                <button id="back-btn" class="btn back-btn" type="button" title="返回来源工具" aria-hidden="true">返回</button>
                 <button id="swap-btn" class="btn" type="button">左右互换</button>
                 <button id="clear-btn" class="btn tool-btn-danger" type="button">清空</button>
                 <span id="summary" class="hint">正在加载对比引擎…</span>
@@ -248,9 +260,57 @@
                 var currentChange = 0;
                 var pendingSheetsDiffHandoff = null;
                 var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+                var returnToolId = "";
+                var returnToolName = "";
+                var ALLOWED_RETURN_TOOL_IDS = { tab8: true, tab18: true };
 
                 function $(id) {
                     return document.getElementById(id);
+                }
+
+                function updateBackButton() {
+                    var btn = $("back-btn");
+                    if (!btn) return;
+                    var ok = !!(returnToolId && ALLOWED_RETURN_TOOL_IDS[returnToolId]);
+                    btn.classList.toggle("show", ok);
+                    btn.setAttribute("aria-hidden", ok ? "false" : "true");
+                    if (ok) {
+                        var name = returnToolName || (returnToolId === "tab8" ? "Json工具" : "文本处理");
+                        btn.title = "返回" + name;
+                        btn.textContent = "返回";
+                    }
+                }
+
+                function setReturnToolFromPayload(payload) {
+                    var id = payload && payload.returnToolId ? String(payload.returnToolId) : "";
+                    if (ALLOWED_RETURN_TOOL_IDS[id]) {
+                        returnToolId = id;
+                        returnToolName = payload.returnToolName ? String(payload.returnToolName) : "";
+                    } else {
+                        returnToolId = "";
+                        returnToolName = "";
+                    }
+                    updateBackButton();
+                }
+
+                function goBackToSourceTool() {
+                    if (!returnToolId || !ALLOWED_RETURN_TOOL_IDS[returnToolId]) return;
+                    var toolId = returnToolId;
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: toolId,
+                                },
+                                "*"
+                            );
+                            return;
+                        } catch (e1) {
+                            // fall through
+                        }
+                    }
+                    window.location.href = "../index.html#tab=" + toolId;
                 }
 
                 function clearSheetsDiffHandoffStorage() {
@@ -268,6 +328,7 @@
 
                 function applySheetsDiffHandoff(payload) {
                     if (!payload) return;
+                    setReturnToolFromPayload(payload);
                     if (!originalModel || !modifiedModel) {
                         pendingSheetsDiffHandoff = payload;
                         return;
@@ -505,6 +566,7 @@
                 }
 
                 function bindControls() {
+                    $("back-btn").addEventListener("click", goBackToSourceTool);
                     $("swap-btn").addEventListener("click", function () {
                         if (!originalModel || !modifiedModel) return;
                         var a = originalModel.getValue();
@@ -549,6 +611,7 @@
 
                 fillLangSelect();
                 bindControls();
+                updateBackButton();
                 tryConsumeSheetsDiffHandoffFromStorage();
 
                 require.config({ paths: { vs: MONACO_ROOT } });
