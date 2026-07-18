@@ -931,8 +931,8 @@
                         <button type="button" class="test-data-modal-close" id="test-data-modal-close" title="关闭">×</button>
                     </div>
                     <div class="test-data-modal-body">
-                        <p class="test-data-hint">按 Java 数据类型生成测试数据，支持 JSON / CSV 格式复制。</p>
-                        <div class="test-data-config">
+                        <p class="test-data-hint">按 Java 数据类型生成测试数据（JSON / CSV），并提供 Markdown 常用语法示例，便于复制联调。</p>
+                        <div class="test-data-config" id="test-data-config">
                             <label>字段数 <input type="number" id="test-data-field-count" min="1" max="50" value="8" /></label>
                             <label>数据量 <input type="number" id="test-data-row-count" min="1" max="10000" value="10" /></label>
                             <button type="button" id="test-data-generate-btn">生成</button>
@@ -943,6 +943,7 @@
                         <div class="test-data-tabs" role="tablist">
                             <button type="button" class="test-data-tab active" data-tab="json" role="tab" aria-selected="true">JSON</button>
                             <button type="button" class="test-data-tab" data-tab="csv" role="tab" aria-selected="false">CSV</button>
+                            <button type="button" class="test-data-tab" data-tab="md" role="tab" aria-selected="false">Markdown</button>
                         </div>
                         <textarea id="test-data-preview" class="test-data-preview" readonly spellcheck="false"></textarea>
                     </div>
@@ -1162,6 +1163,7 @@
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "体积", "质量", "温度", "压强", "功率", "能量", "密度", "力", "速度", "字节", "角度"] },
                 { id: "tab39", name: "人民币大写", category: "解析与转换", path: "pages/阿拉伯数字转大写人民币工具.html", keywords: ["人民币", "大写", "金额", "财务", "票据", "数字", "元角分", "转换", "阿拉伯数字", "反向", "双向", "解析"] },
                 { id: "tab45", name: "YAML/Properties", category: "解析与转换", path: "pages/YAML Properties工具.html", keywords: ["yaml", "yml", "properties", "配置", "转换", "spring", "application", "配置文件", "离线"] },
+                { id: "tab47", name: "Markdown 转 Word", category: "文件格式转换", path: "pages/Markdown转Word工具.html", keywords: ["markdown", "md", "word", "docx", "转换", "导出", "预览", "表格", "公式", "脚注", "离线"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
                 { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
                 { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
@@ -2036,7 +2038,7 @@
                 }
 
                 /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
-                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "编解码", "图片&视频", "其他"];
+                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "文件格式转换", "运维工具", "生成", "比较", "加解密", "编解码", "图片&视频", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
                 appendToolGroup("常用", commonTools, { commonGroup: true });
 
@@ -2740,6 +2742,118 @@
             let testDataRows = [];
             let testDataJsonText = "[]";
             let testDataCsvText = "";
+            const TEST_DATA_MARKDOWN_SAMPLE =
+                "# Markdown 常用语法示例\n" +
+                "\n" +
+                "> 用于「Markdown 转 Word」等工具联调，可直接复制。\n" +
+                "\n" +
+                "## 1. 标题与段落\n" +
+                "\n" +
+                "这是普通段落。支持 **粗体**、*斜体*、***粗斜体***、~~删除线~~ 与 `行内代码`。\n" +
+                "\n" +
+                "硬换行示例（上一行末尾两个空格）：  \n" +
+                "这一行应紧接在上一行下方。\n" +
+                "\n" +
+                "### 三级标题\n" +
+                "#### 四级标题\n" +
+                "\n" +
+                "## 2. 列表\n" +
+                "\n" +
+                "无序列表：\n" +
+                "\n" +
+                "- 苹果\n" +
+                "- 香蕉\n" +
+                "  - 嵌套：红香蕉\n" +
+                "  - 嵌套：黄香蕉\n" +
+                "- 橙子\n" +
+                "\n" +
+                "有序列表：\n" +
+                "\n" +
+                "1. 打开工具\n" +
+                "2. 粘贴 Markdown\n" +
+                "3. 导出 Word\n" +
+                "\n" +
+                "任务列表：\n" +
+                "\n" +
+                "- [x] 已完成：标题与段落\n" +
+                "- [x] 已完成：列表\n" +
+                "- [ ] 待办：检查图片导出\n" +
+                "- [ ] 待办：检查公式预览\n" +
+                "\n" +
+                "## 3. 链接与引用\n" +
+                "\n" +
+                "访问 [示例站点](https://example.com) 或直接写 URL：https://example.com\n" +
+                "\n" +
+                "> 这是引用块。\n" +
+                "> 可跨多行，适合摘录说明。\n" +
+                "\n" +
+                "## 4. 代码\n" +
+                "\n" +
+                "行内：`const n = 42;`\n" +
+                "\n" +
+                "```js\n" +
+                "function hello(name) {\n" +
+                "  console.log(\"Hello, \" + name);\n" +
+                "  return true;\n" +
+                "}\n" +
+                "hello(\"Word\");\n" +
+                "```\n" +
+                "\n" +
+                "```bash\n" +
+                "npm install\n" +
+                "npm run copy:vendor\n" +
+                "```\n" +
+                "\n" +
+                "## 5. 表格\n" +
+                "\n" +
+                "| 姓名 | 部门 | 状态 |\n" +
+                "| --- | --- | --- |\n" +
+                "| 张三 | 研发 | 在职 |\n" +
+                "| 李四 | 产品 | 试用 |\n" +
+                "| 王五 | 设计 | 在职 |\n" +
+                "\n" +
+                "## 6. 分割线\n" +
+                "\n" +
+                "上方内容结束。\n" +
+                "\n" +
+                "---\n" +
+                "\n" +
+                "下方继续。\n" +
+                "\n" +
+                "## 7. 公式\n" +
+                "\n" +
+                "行内公式：$E = mc^2$\n" +
+                "\n" +
+                "块级公式：\n" +
+                "\n" +
+                "$$\n" +
+                "\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n" +
+                "$$\n" +
+                "\n" +
+                "## 8. 脚注\n" +
+                "\n" +
+                "Markdown 支持脚注写法[^note1]，文末会汇总。\n" +
+                "\n" +
+                "也可再引用一次同一脚注[^note1]。\n" +
+                "\n" +
+                "[^note1]: 这是脚注正文，用于说明补充信息。\n" +
+                "\n" +
+                "## 9. 图片（占位说明）\n" +
+                "\n" +
+                "请在「Markdown 转 Word」工具中使用「插入图片」或粘贴图片；此处仅保留语法示意：\n" +
+                "\n" +
+                "```md\n" +
+                "![示意图](mdimg:示例id)\n" +
+                "```\n" +
+                "\n" +
+                "## 10. 混合排版小结\n" +
+                "\n" +
+                "1. **标题** 分六级（本文用到 H1–H4）\n" +
+                "2. **强调**：粗体 / 斜体 / 删除线 / 行内代码\n" +
+                "3. **结构**：列表、任务列表、引用、表格、代码块、分割线\n" +
+                "4. **扩展**：链接、公式、脚注\n" +
+                "\n" +
+                "—— 示例文档结束 ——\n";
 
             function clampTestDataConfig() {
                 var fieldEl = document.getElementById("test-data-field-count");
@@ -2819,7 +2933,9 @@
             }
 
             function getTestDataText(tab) {
-                return tab === "csv" ? testDataCsvText : testDataJsonText;
+                if (tab === "csv") return testDataCsvText;
+                if (tab === "md") return TEST_DATA_MARKDOWN_SAMPLE;
+                return testDataJsonText;
             }
 
             function syncTestDataPreview() {
@@ -2829,12 +2945,26 @@
             }
 
             function setTestDataTab(tab) {
-                testDataActiveTab = tab === "csv" ? "csv" : "json";
+                if (tab === "csv") testDataActiveTab = "csv";
+                else if (tab === "md") testDataActiveTab = "md";
+                else testDataActiveTab = "json";
                 document.querySelectorAll(".test-data-tab").forEach(function (btn) {
                     const on = btn.getAttribute("data-tab") === testDataActiveTab;
                     btn.classList.toggle("active", on);
                     btn.setAttribute("aria-selected", on ? "true" : "false");
                 });
+                var config = document.getElementById("test-data-config");
+                var types = document.getElementById("test-data-types-info");
+                var isMd = testDataActiveTab === "md";
+                if (config) {
+                    var labels = config.querySelectorAll("label");
+                    var genBtn = document.getElementById("test-data-generate-btn");
+                    labels.forEach(function (el) {
+                        el.style.display = isMd ? "none" : "";
+                    });
+                    if (genBtn) genBtn.style.display = isMd ? "none" : "";
+                }
+                if (types) types.style.display = isMd ? "none" : "";
                 syncTestDataPreview();
             }
 

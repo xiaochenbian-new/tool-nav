@@ -45,14 +45,14 @@ function copyThing(src, dest, label) {
     return true;
 }
 
-async function buildEsm(entryFile, outFile, label) {
+async function buildEsm(entryFile, outFile, label, extraOpts) {
     var entryPath = path.join(entriesDir, entryFile);
     if (!fs.existsSync(entryPath)) {
         console.warn("[copy-vendor] 跳过 bundle " + label + "：无入口 " + entryPath);
         return;
     }
     mustDir(path.dirname(outFile));
-    await esbuild.build({
+    var opts = {
         entryPoints: [entryPath],
         bundle: true,
         format: "esm",
@@ -60,9 +60,43 @@ async function buildEsm(entryFile, outFile, label) {
         target: ["es2020"],
         outfile: outFile,
         sourcemap: false,
-        logLevel: "warning"
-    });
+        logLevel: "warning",
+    };
+    if (extraOpts) {
+        Object.keys(extraOpts).forEach(function (k) {
+            opts[k] = extraOpts[k];
+        });
+    }
+    await esbuild.build(opts);
     console.log("[copy-vendor] bundle " + label + " -> " + path.relative(root, outFile));
+}
+
+async function buildMdDocxIife() {
+    var entryPath = path.join(entriesDir, "md-docx-global.mjs");
+    if (!fs.existsSync(entryPath)) {
+        console.warn("[copy-vendor] 跳过 md-docx-offline：无入口 " + entryPath);
+        return;
+    }
+    var outFile = path.join(vendor, "md-docx", "md-docx-offline.js");
+    mustDir(path.dirname(outFile));
+    await esbuild.build({
+        entryPoints: [entryPath],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: ["es2020"],
+        outfile: outFile,
+        sourcemap: false,
+        logLevel: "warning",
+        alias: {
+            buffer: path.join(root, "node_modules", "buffer", "index.js"),
+        },
+        define: {
+            global: "globalThis",
+            "process.env.NODE_DEBUG": "false",
+        },
+    });
+    console.log("[copy-vendor] md-docx IIFE（file:// 离线）-> " + path.relative(root, outFile));
 }
 
 async function buildZhTranIife() {
@@ -161,7 +195,34 @@ async function main() {
     await buildEsm("toml.mjs", path.join(bundlesDir, "toml.mjs"), "toml");
     await buildEsm("uuid.mjs", path.join(bundlesDir, "uuid.mjs"), "uuid");
     await buildEsm("zh-tran.mjs", path.join(bundlesDir, "zh-tran.mjs"), "zh-tran");
+    await buildEsm("md-docx.mjs", path.join(bundlesDir, "md-docx.mjs"), "md-docx（Markdown→Word）", {
+        alias: {
+            buffer: path.join(root, "node_modules", "buffer", "index.js"),
+        },
+        define: {
+            global: "globalThis",
+            "process.env.NODE_DEBUG": "false",
+        },
+    });
     await buildZhTranIife();
+    await buildMdDocxIife();
+
+    // KaTeX（预览公式）
+    copyThing(
+        path.join(root, "node_modules", "katex", "dist", "katex.min.js"),
+        path.join(vendor, "katex", "katex.min.js"),
+        "katex.min.js"
+    );
+    copyThing(
+        path.join(root, "node_modules", "katex", "dist", "katex.min.css"),
+        path.join(vendor, "katex", "katex.min.css"),
+        "katex.min.css"
+    );
+    copyThing(
+        path.join(root, "node_modules", "katex", "dist", "fonts"),
+        path.join(vendor, "katex", "fonts"),
+        "katex/fonts"
+    );
 }
 
 main().catch(function (e) {
