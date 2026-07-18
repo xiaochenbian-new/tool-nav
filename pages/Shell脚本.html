@@ -58,6 +58,59 @@
                 background: #f8fbff;
                 padding: 8px;
             }
+            .result-head {
+                margin: 0 0 8px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .result-head .panel-title {
+                margin: 0;
+            }
+            .result-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .result-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                margin: 0;
+                transform: none;
+                box-shadow: none;
+            }
+            .result-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                transform: none;
+                box-shadow: none;
+            }
+            .result-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 4px 10px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .result-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .result-btn.qr-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
             .panel-title {
                 margin: 0 0 8px;
                 font-size: 13px;
@@ -95,7 +148,7 @@
                 color: #fff;
                 padding: 7px 12px;
                 border: 0;
-                border-radius: 999px;
+                border-radius: 6px;
                 cursor: pointer;
                 margin: 4px 4px 4px 0;
                 font-size: 12px;
@@ -221,16 +274,34 @@
                     </div>
                     <div class="actions">
                         <button onclick="addModel()">添加模型</button>
-                        <button onclick="generateScript()">生成脚本</button>
-                        <button onclick="downloadScript()">下载脚本</button>
+                        <button onclick="generateScript()">生成</button>
+                        <button type="button" class="danger-btn tool-btn-danger" data-tool-form-clear onclick="clearShellForm()">清空</button>
                     </div>
                 </div>
                 <div class="right-panel">
-                    <h3 class="panel-title">生成结果</h3>
+                    <div class="result-head">
+                        <h3 class="panel-title">生成结果</h3>
+                        <div class="result-actions">
+                            <button type="button" class="result-btn" id="btn-copy-result">复制</button>
+                            <button type="button" class="result-btn" onclick="downloadScript()">下载</button>
+                            <button type="button" class="result-btn qr-btn" id="btn-qr-result" title="生成二维码">
+                                <span>二维码</span>
+                                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                    <path
+                                        fill="currentColor"
+                                        d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                    ></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                     <div id="result"></div>
                 </div>
             </div>
         </div>
+        <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
         <script>
 const SHELL_FORM_STORAGE_KEY = "shell_script_tool_form_v1";
 let modelCount = 1; // 跟踪模型的数量
@@ -389,6 +460,51 @@ configItems.forEach(item => {
                 resultDiv.innerHTML = `<pre>${scriptContent}</pre>`;
             }
 
+function clearShellForm() {
+                const modelsDiv = document.getElementById('models');
+                modelsDiv.innerHTML = `
+                    <div class="model-container">
+                        <div class="model-header">
+                            <span>模型 1</span>
+                            <button class="danger-btn tool-btn-danger" onclick="removeModel(this)">删除模型</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="model1-configFiles">配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label>
+                            <input id="model1-configFiles" placeholder="例如：application-prd,site_cm_common">
+                        </div>
+                        <div id="model1-configItems">
+                            <div class="config-item">
+                                <label>配置项 1:</label>
+                                <input placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
+                                <input placeholder="值（例如：Y）" class="configValue">
+                                <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
+                            </div>
+                        </div>
+                        <button onclick="addConfigItem(this)">添加配置项</button>
+                    </div>
+                `;
+                modelCount = 1;
+                scriptContent = '';
+                document.getElementById('result').innerHTML = '';
+                try {
+                    localStorage.removeItem(SHELL_FORM_STORAGE_KEY);
+                } catch (e) {
+                    // Ignore storage failure.
+                }
+                if (typeof ToolCopy !== 'undefined' && ToolCopy.toast) {
+                    ToolCopy.toast('已清空');
+                }
+                setTimeout(function () {
+                    document.querySelectorAll('input, textarea, select').forEach(function (field) {
+                        field.dispatchEvent(new Event('input', { bubbles: true }));
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    if (window.ToolFormPersist && ToolFormPersist.saveNow) {
+                        ToolFormPersist.saveNow();
+                    }
+                }, 0);
+            }
+
 function downloadScript() {
                 // 先调用 generateScript() 以确保 scriptContent 是最新的
                 generateScript();
@@ -501,7 +617,32 @@ document.addEventListener('change', function (e) {
                 }
             });
 
+function getResultText() {
+                if (scriptContent && scriptContent.trim()) return scriptContent;
+                const pre = document.querySelector('#result pre');
+                return pre ? pre.textContent : '';
+            }
+
+document.getElementById('btn-copy-result').addEventListener('click', function () {
+                const text = getResultText();
+                if (!text.trim()) {
+                    ToolCopy.copy('', { emptyMsg: '请先生成脚本' });
+                    return;
+                }
+                ToolCopy.copy(text, { onLabelEl: this, labelText: '复制' });
+            });
+
+document.getElementById('btn-qr-result').addEventListener('click', function () {
+                const text = getResultText();
+                if (!text.trim()) {
+                    ToolCopy.toast('请先生成脚本');
+                    return;
+                }
+                ToolQr.toggle(text, this);
+            });
+
 restoreShellForm();
 		</script>
+        <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

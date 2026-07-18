@@ -47,6 +47,9 @@
         "generate:imgly-file-assets": "npm run generate:imgly-file-assets --prefix photo-background-change",
     "copy:monaco": "node scripts/copy-vendor-all.cjs",
     "postinstall": "node scripts/copy-vendor-all.cjs",
+    "pack:utools": "node scripts/pack-utools.cjs",
+    "serve": "node scripts/local-server.cjs",
+    "start": "node scripts/local-server.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

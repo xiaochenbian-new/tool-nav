@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>阿拉伯数字 ↔ 大写人民币</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <link rel="stylesheet" href="libs/tool-help-btn.css" />
         <style>
             * {
                 margin: 0;
@@ -73,6 +74,12 @@
                 gap: 4px;
                 min-width: 0;
                 flex: 1;
+            }
+            .title-with-action {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                min-width: 0;
             }
             .editor-head h3 {
                 font-size: 14px;
@@ -264,7 +271,21 @@
             <div class="editor-wrap">
                 <div class="panel-title editor-head">
                     <div class="editor-head-main">
-                        <h3>阿拉伯数字 ↔ 大写人民币</h3>
+                        <div class="title-with-action">
+                            <h3>阿拉伯数字 ↔ 大写人民币</h3>
+                            <button
+                                type="button"
+                                class="tool-help-btn"
+                                id="rmb-code-help-btn"
+                                title="查看各语言工具类代码"
+                                aria-label="查看各语言工具类代码"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+                                    <path fill="currentColor" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+                                    <path fill="currentColor" d="M12.6 5.2L14.1 5.8L11.4 18.8L9.9 18.2z" />
+                                </svg>
+                            </button>
+                        </div>
                         <p class="hint">
                             双向转换：左侧阿拉伯数字与右侧大写金额（壹贰叁…元角分整）实时联动。支持负号、千分位逗号；整数最多 15 位、小数最多 2 位。反向识别本工具生成的大写格式，亦兼容圆/负/常用异体字。
                         </p>
@@ -314,6 +335,43 @@
         </div>
         <div id="copy-toast" role="status" aria-live="polite"></div>
 
+        <div id="rmb-code-modal" class="tool-code-modal" aria-hidden="true">
+            <div class="tool-code-modal-backdrop" id="rmb-code-modal-backdrop"></div>
+            <div class="tool-code-modal-dialog" role="dialog" aria-labelledby="rmb-code-modal-title">
+                <div class="tool-code-modal-head">
+                    <span id="rmb-code-modal-title">人民币大写转换 — 各语言工具类</span>
+                    <button type="button" class="tool-code-modal-close" id="rmb-code-modal-close" title="关闭">×</button>
+                </div>
+                <div class="tool-code-modal-body">
+                    <div class="tool-code-section">
+                        <div class="tool-code-section-head">
+                            <span class="tool-code-section-title">JavaScript（本页逻辑）</span>
+                            <button type="button" class="tool-code-copy-btn" data-copy-target="rmb-code-js">复制</button>
+                        </div>
+                        <pre class="tool-code-pre" id="rmb-code-js"></pre>
+                    </div>
+                    <div class="tool-code-section">
+                        <div class="tool-code-section-head">
+                            <div class="tool-code-section-head-left">
+                                <span class="tool-code-section-title">其他语言</span>
+                                <select id="rmb-code-lang-select" class="tool-code-lang-select" aria-label="编程语言">
+                                    <option value="java" selected>Java</option>
+                                    <option value="python">Python</option>
+                                    <option value="csharp">C#</option>
+                                    <option value="go">Go</option>
+                                    <option value="php">PHP</option>
+                                </select>
+                            </div>
+                            <button type="button" class="tool-code-copy-btn" id="rmb-code-lang-copy">复制</button>
+                        </div>
+                        <pre class="tool-code-pre" id="rmb-code-lang"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="libs/tool-copy.js"></script>
+        <script src="libs/rmb-code-samples.js"></script>
         <script>
             (function () {
                 var CN_NUM = ["\u96f6", "\u58f9", "\u8d30", "\u53c1", "\u8086", "\u4f0d", "\u9646", "\u67d2", "\u634c", "\u7396"];
@@ -810,7 +868,54 @@
 
                 amountIn.value = "1234.56";
                 onNumberInput();
+
+                var codeModal = document.getElementById("rmb-code-modal");
+                var codeJs = document.getElementById("rmb-code-js");
+                var codeLang = document.getElementById("rmb-code-lang");
+                var langSelect = document.getElementById("rmb-code-lang-select");
+                var samples = window.RmbCodeSamples || {};
+
+                codeJs.textContent = samples.javascript || "";
+
+                function renderLangCode() {
+                    codeLang.textContent = samples[langSelect.value] || "";
+                }
+
+                renderLangCode();
+
+                function showCodeModal() {
+                    codeModal.classList.add("visible");
+                    codeModal.setAttribute("aria-hidden", "false");
+                }
+
+                function hideCodeModal() {
+                    codeModal.classList.remove("visible");
+                    codeModal.setAttribute("aria-hidden", "true");
+                }
+
+                document.getElementById("rmb-code-help-btn").addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    showCodeModal();
+                });
+                document.getElementById("rmb-code-modal-close").addEventListener("click", hideCodeModal);
+                document.getElementById("rmb-code-modal-backdrop").addEventListener("click", hideCodeModal);
+                document.addEventListener("keydown", function (e) {
+                    if (e.key === "Escape" && codeModal.classList.contains("visible")) {
+                        hideCodeModal();
+                    }
+                });
+                document.querySelectorAll(".tool-code-copy-btn[data-copy-target]").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        var target = document.getElementById(btn.getAttribute("data-copy-target"));
+                        ToolCopy.copy(target ? target.textContent : "");
+                    });
+                });
+                document.getElementById("rmb-code-lang-copy").addEventListener("click", function () {
+                    ToolCopy.copy(codeLang.textContent);
+                });
+                langSelect.addEventListener("change", renderLangCode);
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

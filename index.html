@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>工具大全</title>
+        <link rel="stylesheet" href="pages/libs/tool-calendar.css" />
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -36,13 +37,13 @@
                 border: 1px solid var(--border);
                 border-radius: 8px;
                 box-shadow: var(--shadow);
-                padding: 6px 8px;
+                padding: 6px 34px 6px 8px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                justify-content: space-between;
                 gap: 8px;
                 position: relative;
+                z-index: 50;
             }
             .left-zone {
                 display: flex;
@@ -57,30 +58,214 @@
                 gap: 6px;
             }
             .clover-icon {
-                width: 30px;
-                height: 30px;
-                flex: 0 0 30px;
-                border: 1px solid #d8e5ff;
-                border-radius: 50%;
-                background: #edf3ff;
-                color: #3c4f78;
-                font-size: 18px;
+                flex: 0 0 auto;
+                border: none;
+                background: transparent;
+                color: #000;
                 line-height: 1;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 user-select: none;
+                padding: 0;
+            }
+            .clover-icon svg {
+                display: block;
+                width: 16px;
+                height: 16px;
             }
             .clover-icon.active {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #000;
             }
             .brand-title {
                 font-size: 15px;
                 font-weight: 700;
                 white-space: nowrap;
+                cursor: default;
+                user-select: none;
+            }
+            .test-data-modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 65;
+                align-items: stretch;
+                justify-content: stretch;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            .test-data-modal.visible {
+                display: flex;
+                flex-direction: column;
+            }
+            .test-data-modal-backdrop {
+                position: absolute;
+                inset: 0;
+                background: rgba(31, 42, 68, 0.45);
+            }
+            .test-data-modal-dialog {
+                position: relative;
+                z-index: 1;
+                margin: 6px;
+                margin-top: 0;
+                width: calc(100% - 12px);
+                flex: 1;
+                min-height: 0;
+                max-width: none;
+                max-height: none;
+                background: #fff;
+                border-radius: 8px;
+                border: 1px solid #dbe6ff;
+                box-shadow: 0 16px 48px rgba(36, 90, 190, 0.22);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .test-data-modal-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+                padding: 12px 16px;
+                background: #f8fbff;
+                border-bottom: 1px solid #e4edff;
+                font-size: 16px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .test-data-modal-close {
+                width: 28px;
+                height: 28px;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #fff;
+                color: #3c4f78;
+                font-size: 18px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .test-data-modal-close:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .test-data-modal-body {
+                flex: 1;
+                min-height: 0;
+                padding: 12px 16px 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .test-data-tabs {
+                display: inline-flex;
+                align-self: flex-start;
+                flex-shrink: 0;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
+            }
+            .test-data-tab {
+                border: none;
+                background: transparent;
+                padding: 6px 18px;
+                font-size: 13px;
+                cursor: pointer;
+                color: #3c4f78;
+                font-family: inherit;
+            }
+            .test-data-tab + .test-data-tab {
+                border-left: 1px solid #d8e5ff;
+            }
+            .test-data-tab.active {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .test-data-hint {
+                font-size: 12px;
+                color: #5a6d8f;
+                line-height: 1.4;
+            }
+            .test-data-config {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px 16px;
+                flex-shrink: 0;
+                padding: 10px 12px;
+                background: #f8fbff;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+            }
+            .test-data-config label {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: #3c4f78;
+            }
+            .test-data-config input[type="number"] {
+                width: 72px;
+                padding: 5px 8px;
+                font-size: 13px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #fff;
+                color: #1f2a44;
+            }
+            .test-data-config button {
+                padding: 6px 14px;
+                font-size: 13px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            #test-data-generate-btn {
+                border: 1px solid transparent;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            #test-data-copy-btn {
+                border: 1px solid #d8e5ff;
+                background: #edf3ff;
+                color: #3c4f78;
+            }
+            .test-data-types {
+                font-size: 12px;
+                color: #5a6d8f;
+                line-height: 1.5;
+                flex-shrink: 0;
+            }
+            .test-data-types strong {
+                color: #3c4f78;
+                font-weight: 600;
+            }
+            .test-data-copy-status {
+                font-size: 13px;
+                color: #2a8f4a;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .test-data-copy-status.visible {
+                opacity: 1;
+            }
+            .test-data-copy-status.error {
+                color: #c0392b;
+            }
+            .test-data-preview {
+                flex: 1;
+                min-height: 280px;
+                width: 100%;
+                box-sizing: border-box;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.45;
+                resize: none;
+                background: #f8fbff;
+                color: #1f2a44;
             }
             .recent-nav {
                 display: inline-flex;
@@ -108,8 +293,132 @@
             }
             .search-wrap {
                 width: 300px;
-                max-width: 46%;
+                flex-shrink: 0;
                 position: relative;
+            }
+            .header-calendar-anchor {
+                position: absolute;
+                right: 0;
+                top: 0;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                z-index: 51;
+                overflow: visible;
+            }
+            .header-calendar-btn {
+                border: none;
+                background: transparent;
+                color: #3c4f78;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 8px;
+                height: 100%;
+                line-height: 0;
+            }
+            .header-calendar-btn:hover,
+            .header-calendar-btn.active {
+                color: var(--primary);
+                background: transparent;
+            }
+            .header-calendar-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
+            .calendar-backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 49;
+                background: transparent;
+                cursor: default;
+            }
+            .calendar-backdrop.visible {
+                display: block;
+            }
+            .calendar-panel {
+                display: none;
+                position: fixed;
+                width: 372px;
+                max-width: calc(100vw - 16px);
+                padding: 8px 10px 10px;
+                border: 1px solid #d8e5ff;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 8px 24px rgba(36, 90, 190, 0.14);
+                z-index: 10000;
+                box-sizing: border-box;
+            }
+            .calendar-panel.visible {
+                display: block;
+            }
+            .calendar-panel.expanded {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.16);
+            }
+            .calendar-panel.expanded #calendar-panel-root {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+                display: flex;
+                justify-content: center;
+            }
+            .calendar-panel.expanded #calendar-panel-root .tool-cal {
+                width: 100%;
+                max-width: 980px;
+            }
+            .calendar-panel-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 6px;
+                padding: 0 2px;
+            }
+            .calendar-panel-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #2b3e63;
+            }
+            .calendar-panel-actions {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .calendar-panel-action {
+                width: 26px;
+                height: 26px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #f8fbff;
+                color: #4a5978;
+                padding: 0;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none;
+            }
+            .calendar-panel-action:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #edf3ff;
+            }
+            #calendar-panel-root {
+                width: 100%;
+            }
+            .tool-cal-loading {
+                padding: 12px;
+                font-size: 12px;
+                color: #6f7d96;
+                text-align: center;
+            }
+            .tool-cal-error {
+                color: #e05454;
             }
             #search-input {
                 width: 100%;
@@ -469,10 +778,10 @@
                 pointer-events: auto;
             }
             @media (max-width: 900px) {
-                .header { flex-direction: column; align-items: stretch; }
+                .header { flex-direction: column; align-items: stretch; padding: 6px 34px 6px 8px; }
                 .left-zone { min-width: 0; }
-                .recent-nav { width: 100%; margin-left: 0; justify-content: flex-start; }
-                .search-wrap { width: 100%; max-width: 100%; }
+                .recent-nav { width: 100%; margin-left: 0; justify-content: flex-start; margin-right: 0; }
+                .search-wrap { width: 100%; }
             }
         </style>
     </head>
@@ -481,8 +790,12 @@
             <div class="header">
                 <div class="left-zone">
                     <div class="brand-mark">
-                        <div id="clover-toggle" class="clover-icon" title="全部分类工具">✤</div>
-                        <div class="brand-title">工具导航</div>
+                        <div id="clover-toggle" class="clover-icon" title="全部分类工具" aria-label="全部分类工具">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>
+                            </svg>
+                        </div>
+                        <div id="brand-title" class="brand-title">工具导航</div>
                     </div>
                     <div id="recent-nav" class="recent-nav" title="最近打开的工具"></div>
                 </div>
@@ -492,6 +805,13 @@
                         <div class="result-title">搜索结果</div>
                         <div id="result-list" class="result-list"></div>
                     </div>
+                </div>
+                <div class="header-calendar-anchor">
+                    <button type="button" id="calendar-toggle" class="header-calendar-btn" title="日历" aria-label="打开日历">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-8 4h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div id="overview-panel" class="overview-panel"></div>
@@ -603,10 +923,211 @@
                     </div>
                 </div>
             </div>
+            <div id="test-data-modal" class="test-data-modal" aria-hidden="true">
+                <div class="test-data-modal-backdrop" id="test-data-modal-backdrop"></div>
+                <div class="test-data-modal-dialog" role="dialog" aria-labelledby="test-data-modal-title">
+                    <div class="test-data-modal-head">
+                        <span id="test-data-modal-title">测试数据</span>
+                        <button type="button" class="test-data-modal-close" id="test-data-modal-close" title="关闭">×</button>
+                    </div>
+                    <div class="test-data-modal-body">
+                        <p class="test-data-hint">按 Java 数据类型生成测试数据，支持 JSON / CSV 格式复制。</p>
+                        <div class="test-data-config">
+                            <label>字段数 <input type="number" id="test-data-field-count" min="1" max="50" value="8" /></label>
+                            <label>数据量 <input type="number" id="test-data-row-count" min="1" max="10000" value="10" /></label>
+                            <button type="button" id="test-data-generate-btn">生成</button>
+                            <button type="button" id="test-data-copy-btn">复制</button>
+                            <span id="test-data-copy-status" class="test-data-copy-status" aria-live="polite"></span>
+                        </div>
+                        <div class="test-data-types" id="test-data-types-info"></div>
+                        <div class="test-data-tabs" role="tablist">
+                            <button type="button" class="test-data-tab active" data-tab="json" role="tab" aria-selected="true">JSON</button>
+                            <button type="button" class="test-data-tab" data-tab="csv" role="tab" aria-selected="false">CSV</button>
+                        </div>
+                        <textarea id="test-data-preview" class="test-data-preview" readonly spellcheck="false"></textarea>
+                    </div>
+                </div>
+            </div>
             <div class="content">
                 <div id="tool-frame-container"></div>
             </div>
         </div>
+        <div id="calendar-backdrop" class="calendar-backdrop" aria-hidden="true"></div>
+        <div id="calendar-panel" class="calendar-panel" aria-hidden="true">
+            <div class="calendar-panel-head">
+                <span class="calendar-panel-title">日历</span>
+                <div class="calendar-panel-actions">
+                    <button type="button" id="calendar-expand-btn" class="calendar-panel-action" title="展开" aria-label="展开日历">
+                        <svg id="calendar-expand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                        </svg>
+                        <svg id="calendar-collapse-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false" hidden>
+                            <path fill="currentColor" d="M9 16h2v-2H9v2zm-4 0h2v-2H5v2zm8 0h2v-2h-2v2zm4 0h2v-2h-2v2zM9 8h2V6H9v2zm-4 0h2V6H5v2zm8 0h2V6h-2v2zm4 0h2V6h-2v2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="calendar-panel-root"></div>
+        </div>
+        <script src="pages/libs/tool-lunar.js"></script>
+        <script src="pages/libs/tool-holidays-cn.js"></script>
+        <script src="pages/libs/tool-calendar.js"></script>
+        <script>
+            (function () {
+                function ensureCalendarUiInBody() {
+                    var backdrop = document.getElementById("calendar-backdrop");
+                    var panel = document.getElementById("calendar-panel");
+                    if (backdrop && backdrop.parentElement !== document.body) {
+                        document.body.appendChild(backdrop);
+                    }
+                    if (panel && panel.parentElement !== document.body) {
+                        document.body.appendChild(panel);
+                    }
+                }
+
+                function setCalendarBackdropVisible(show) {
+                    var backdrop = document.getElementById("calendar-backdrop");
+                    if (!backdrop) return;
+                    backdrop.classList.toggle("visible", !!show);
+                    backdrop.setAttribute("aria-hidden", show ? "false" : "true");
+                }
+
+                window.__positionCalendarPanel = function () {
+                    var panel = document.getElementById("calendar-panel");
+                    var btn = document.getElementById("calendar-toggle");
+                    if (!panel || !btn) return;
+                    ensureCalendarUiInBody();
+                    if (panel.classList.contains("expanded")) {
+                        var header = document.querySelector(".header");
+                        var container = document.querySelector(".container");
+                        if (!header || !container) return;
+                        var headerRect = header.getBoundingClientRect();
+                        var containerRect = container.getBoundingClientRect();
+                        panel.style.top = Math.round(headerRect.bottom + 6) + "px";
+                        panel.style.left = Math.round(containerRect.left + 6) + "px";
+                        panel.style.right = "auto";
+                        panel.style.width = Math.max(280, containerRect.width - 12) + "px";
+                        panel.style.height = Math.max(180, window.innerHeight - headerRect.bottom - 12) + "px";
+                    } else {
+                        var r = btn.getBoundingClientRect();
+                        panel.style.top = Math.round(r.bottom + 6) + "px";
+                        panel.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
+                        panel.style.left = "auto";
+                        panel.style.width = "";
+                        panel.style.height = "";
+                    }
+                };
+
+                window.resetCalendarToToday = function () {
+                    if (window.__calInstance && typeof window.__calInstance.goToday === "function") {
+                        window.__calInstance.goToday(false);
+                    }
+                };
+
+                window.__calendarPanelTickId = null;
+
+                window.stopCalendarPanelTick = function () {
+                    if (window.__calendarPanelTickId != null) {
+                        clearInterval(window.__calendarPanelTickId);
+                        window.__calendarPanelTickId = null;
+                    }
+                    var cal = window.__calInstance;
+                    if (cal && typeof cal.pauseLiveTime === "function") {
+                        cal.pauseLiveTime();
+                    } else if (cal && typeof cal.stopInfoTick === "function") {
+                        cal.stopInfoTick();
+                    }
+                };
+
+                window.startCalendarPanelTick = function () {
+                    var cal = window.__calInstance;
+                    if (cal && typeof cal.syncInfo === "function") {
+                        cal.syncInfo();
+                    }
+                    if (cal && typeof cal.startInfoTick === "function") {
+                        cal.startInfoTick();
+                    }
+                };
+
+                window.resumeCalendarLiveTime = function () {
+                    window.startCalendarPanelTick();
+                };
+
+                window.ensureCalendarMounted = function () {
+                    var panel = document.getElementById("calendar-panel");
+                    var root = document.getElementById("calendar-panel-root");
+                    if (!root) return null;
+                    ensureCalendarUiInBody();
+                    var calEl = root.querySelector(".tool-cal");
+                    var hasGrid = root.querySelector(".tool-cal-grid button");
+                    var isLegacyLayout = calEl && !calEl.querySelector(".tool-cal-head");
+                    if (calEl && hasGrid && !isLegacyLayout) {
+                        if (panel) panel.classList.add("has-cal-content");
+                        if (window.__calInstance) {
+                            if (typeof window.__calInstance.wake === "function") {
+                                window.__calInstance.wake();
+                            }
+                            return window.__calInstance;
+                        }
+                        root.innerHTML = "";
+                    }
+                    if (isLegacyLayout) {
+                        root.innerHTML = "";
+                    }
+                    if (typeof ToolCalendar === "undefined") {
+                        root.innerHTML = '<div class="tool-cal-loading">日历模块未加载，请刷新页面（Ctrl+F5）</div>';
+                        if (panel) panel.classList.remove("has-cal-content");
+                        return null;
+                    }
+                    try {
+                        root.innerHTML = "";
+                        window.__calInstance = ToolCalendar.mount(root, {
+                            compact: true,
+                            shouldTick: function () {
+                                var p = document.getElementById("calendar-panel");
+                                return !!(p && p.classList.contains("visible"));
+                            }
+                        });
+                        if (root.querySelector(".tool-cal-grid button")) {
+                            if (panel) panel.classList.add("has-cal-content");
+                        } else {
+                            root.innerHTML = '<div class="tool-cal-loading tool-cal-error">日历渲染异常，请刷新页面</div>';
+                            if (panel) panel.classList.remove("has-cal-content");
+                        }
+                        return window.__calInstance;
+                    } catch (err) {
+                        console.error("日历初始化失败", err);
+                        root.innerHTML = '<div class="tool-cal-loading tool-cal-error">日历加载失败：' + (err && err.message ? err.message : "未知错误") + "</div>";
+                        if (panel) panel.classList.remove("has-cal-content");
+                        return null;
+                    }
+                };
+
+                document.addEventListener("DOMContentLoaded", function () {
+                    ensureCalendarUiInBody();
+                    var backdrop = document.getElementById("calendar-backdrop");
+                    if (backdrop) {
+                        backdrop.addEventListener("pointerdown", function () {
+                            if (typeof window.hideCalendarPanel === "function" && window.isCalendarPanelVisible()) {
+                                window.hideCalendarPanel();
+                            }
+                        });
+                    }
+                    window.ensureCalendarMounted();
+                    var btn = document.getElementById("calendar-toggle");
+                    if (btn && !btn.getAttribute("data-cal-bound")) {
+                        btn.setAttribute("data-cal-bound", "1");
+                        btn.addEventListener("click", function (e) {
+                            if (typeof window.toggleCalendarPanel === "function") {
+                                window.toggleCalendarPanel(e);
+                            } else {
+                                window.__toggleCal(e);
+                            }
+                        });
+                    }
+                });
+            })();
+        </script>
         <script>
             const STORAGE_PREFIX = "tool_form_data_";
             const RECENT_TOOLS_MAX = 5;
@@ -616,7 +1137,8 @@
             const FRAME_CACHE = {};
             const TOOLS = [
                 { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", keywords: ["json", "format", "yaml", "xml", "toml", "转换"] },
-                { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", keywords: ["format", "json", "xml", "sql", "css", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
+                { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", keywords: ["format", "json", "xml", "sql", "css", "js", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
+                { id: "tab44", name: "HTML 预览", category: "解析与转换", path: "pages/HTML预览工具.html", keywords: ["html", "preview", "预览", "实时", "编辑", "iframe", "网页", "渲染"] },
                 { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", keywords: ["ddl", "mysql", "pgsql", "oracle"] },
                 { id: "tab21", name: "MyBatis SQL 填充", category: "解析与转换", path: "pages/MyBatisSql日志填充.html", keywords: ["mybatis", "sql", "日志", "jdbc", "参数", "preparing", "ibatis", "完整sql"] },
                 { id: "tab2", name: "Java 与 JSON", category: "解析与转换", path: "pages/JavaToJson.html", keywords: ["java", "json"] },
@@ -626,17 +1148,20 @@
                 { id: "tab5", name: "Shell 脚本生成", category: "运维工具", path: "pages/Shell脚本.html", keywords: ["shell", "script"] },
                 { id: "tab6", name: "Crontab", category: "运维工具", path: "pages/Crontab工具.html", keywords: ["cron", "schedule"] },
                 { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", keywords: ["curl", "linux", "http", "api"] },
+                { id: "tab43", name: "Js编排", category: "运维工具", path: "pages/Js请求工具.html", keywords: ["js", "javascript", "fetch", "ajax", "xhr", "axios", "jquery", "http", "api", "请求", "接口", "编排", "依赖", "多接口", "串联", "并行"] },
+                { id: "tab42", name: "WebSocket", category: "运维工具", path: "pages/WebSocket工具.html", keywords: ["websocket", "ws", "wss", "socket", "实时", "调试", "消息"] },
                 { id: "tab7", name: "身份证生成", category: "生成", path: "pages/身份证号码生成器.html", keywords: ["idcard", "身份证"] },
                 { id: "tab22", name: "时间日期", category: "其他", path: "pages/时间日期工具.html", keywords: ["时间", "日期", "时间戳", "时区", "unix", "timestamp", "换算", "离线"] },
                 { id: "tab18", name: "文本处理", category: "其他", path: "pages/文本处理工具.html", keywords: ["文本", "trim", "排序", "去重", "base64", "url", "行号", "换行", "text"] },
                 { id: "tab11", name: "二维码/条形码生成", category: "生成", path: "pages/码生成工具.html", keywords: ["二维码", "条形码", "qrcode", "barcode"] },
                 { id: "tab20", name: "UUID 工具", category: "生成", path: "pages/UUID工具.html", keywords: ["uuid", "guid", "唯一标识", "生成", "rfc4122"] },
-                { id: "tab14", name: "Excel SQL 查询", category: "其他", path: "pages/ExcelSQL查询工具.html", keywords: ["excel", "sql", "查询", "数据分析", "时间筛选"] },
+                { id: "tab14", name: "Excel SQL 查询", category: "其他", path: "pages/ExcelSQL查询工具.html", keywords: ["excel", "sql", "查询", "数据分析", "时间筛选", "csv", "粘贴"] },
                 { id: "tab15", name: "统一社会信用代码生成", category: "生成", path: "pages/统一社会信用代码生成工具.html", keywords: ["统一社会信用代码", "社会信用代码", "信用代码", "生成", "校验"] },
                 { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
-                { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "比较", "对比", "交集", "差异", "compare", "set", "diff"] },
+                { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "分隔", "分割", "分组", "比较", "对比", "交集", "差异", "compare", "set", "diff", "excel"] },
                 { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "体积", "质量", "温度", "压强", "功率", "能量", "密度", "力", "速度", "字节", "角度"] },
                 { id: "tab39", name: "人民币大写", category: "解析与转换", path: "pages/阿拉伯数字转大写人民币工具.html", keywords: ["人民币", "大写", "金额", "财务", "票据", "数字", "元角分", "转换", "阿拉伯数字", "反向", "双向", "解析"] },
+                { id: "tab45", name: "YAML/Properties", category: "解析与转换", path: "pages/YAML Properties工具.html", keywords: ["yaml", "yml", "properties", "配置", "转换", "spring", "application", "配置文件", "离线"] },
                 { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
                 { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
                 { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
@@ -651,21 +1176,32 @@
                 { id: "tab34", name: "GZIP / Deflate", category: "编解码", path: "pages/GZIP编解码工具.html", keywords: ["gzip", "deflate", "压缩", "解压", "pako", "base64", "离线"] },
                 { id: "tab35", name: "ASN.1 DER 解析", category: "编解码", path: "pages/ASN1解析工具.html", keywords: ["asn1", "der", "证书", "x509", "xml", "离线"] },
                 { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
-                { id: "tab27", name: "证件照冲印排版", category: "其他", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] },
-                { id: "tab38", name: "证件照换底色", category: "其他", path: "photo-background-change/index.html", keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
+                { id: "tab46", name: "图片压缩", category: "图片&视频", path: "pages/图片压缩工具.html", keywords: ["图片", "压缩", "jpeg", "jpg", "png", "webp", "质量", "体积", "离线", "image", "compress", "指定大小"] },
+                { id: "tab27", name: "证件照冲印排版", category: "图片&视频", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] },
+                { id: "tab38", name: "证件照换底色", category: "图片&视频", path: "photo-background-change/index.html", keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
                 { id: "tab37", name: "翻译工具", category: "其他", path: "pages/翻译工具.html", keywords: ["翻译", "中英", "日语", "韩语", "词典", "例句", "领域", "自动检测", "translate", "mymemory"] },
-                { id: "tab40", name: "工作语言", category: "其他", path: "pages/工作语言工具.html", keywords: ["工作语言", "口语", "润色", "职场", "汇报", "纪要", "会议纪要", "待办", "产品经理", "研发", "岗位", "角色", "书面语", "整理", "大模型"] }
+                { id: "tab40", name: "工作语言", category: "其他", path: "pages/工作语言工具.html", keywords: ["工作语言", "口语", "润色", "职场", "汇报", "纪要", "会议纪要", "待办", "产品经理", "研发", "岗位", "角色", "书面语", "整理", "大模型"] },
+                { id: "tab41", name: "VIN码生成", category: "生成", path: "pages/VIN工具.html", keywords: ["vin", "车架号", "车辆识别码", "校验", "生成", "wmi", "离线"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序；头部快捷入口取前 RECENT_TOOLS_MAX 个） */
             const COMMON_TOOL_IDS = ["tab8", "tab18", "tab37", "tab11", "tab13", "tab10", "tab14", "tab5"];
             const DEFAULT_TAB_ID = "tab8";
             const HANDOFF_PRINT_TAB = "tab27";
             const HANDOFF_PHOTO_BG_TAB = "tab38";
+            const HANDOFF_EXCEL_SQL_TAB = "tab14";
+            const HANDOFF_TEXT_TAB = "tab18";
+            const HANDOFF_TEXT_DIFF_TAB = "tab10";
             const HANDOFF_PRINT_STORAGE_KEY = "tool-nav:handoff:photo-to-print";
             const HANDOFF_PRINT_TO_PHOTO_KEY = "tool-nav:handoff:print-to-photo-bg";
+            const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
+            const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
+            const HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
             /** 换底色 ↔ 冲印排版：经父页中转（file:// 下 iframe 无法共享 sessionStorage） */
             let pendingPhotoPrintHandoff = null;
             let pendingPrintToPhotoHandoff = null;
+            let pendingTextToExcelSqlHandoff = null;
+            let pendingExcelSqlToTextHandoff = null;
+            let pendingSheetsToTextDiffHandoff = null;
             let currentId = "";
             let overviewVisible = false;
             /** 首次根据 hash 打开工具时不写入最近槽位，保证刷新后头部仍为常用前五个 */
@@ -713,6 +1249,28 @@
                 }
             }
 
+            function notifyFrameFormRestored(toolId, data) {
+                const doc = getFrameDoc(toolId);
+                if (!doc) return;
+                try {
+                    doc.dispatchEvent(
+                        new CustomEvent("tool-nav:form-restored", { bubbles: true, detail: { data: data || null } })
+                    );
+                } catch (e) {
+                    // Ignore event dispatch failure.
+                }
+                try {
+                    const win = doc.defaultView;
+                    if (win && typeof win.toolNavRestoreForm === "function") {
+                        win.toolNavRestoreForm();
+                    } else if (win && typeof win.__toolNavRestoreForm === "function") {
+                        win.__toolNavRestoreForm();
+                    }
+                } catch (e) {
+                    // Ignore hook failures.
+                }
+            }
+
             function restoreToolFormData(toolId) {
                 if (!toolId) return;
                 const doc = getFrameDoc(toolId);
@@ -748,10 +1306,70 @@
                     } catch (eventError) {
                         // Ignore event dispatch failure.
                     }
+                    notifyFrameFormRestored(toolId, data);
                 } catch (e) {
                     // Ignore parse/DOM errors.
                 }
             }
+
+            function injectToolFormPersist(tool) {
+                if (!tool || !tool.path) return;
+                const doc = getFrameDoc(tool.id);
+                if (!doc || doc.documentElement.getAttribute("data-tool-persist-lib") === "1") return;
+                try {
+                    const script = doc.createElement("script");
+                    const base = tool.path.includes("/") ? tool.path.replace(/[^/]+$/, "") : "pages/";
+                    script.src = base + "libs/tool-form-persist.js";
+                    script.setAttribute("data-tool-persist-injected", "1");
+                    (doc.head || doc.documentElement).appendChild(script);
+                    doc.documentElement.setAttribute("data-tool-persist-lib", "1");
+                } catch (e) {
+                    // Ignore injection failures.
+                }
+            }
+
+            window.ToolNavPersist = {
+                saveCurrent: function () {
+                    if (currentId) saveToolFormData(currentId);
+                },
+                restoreCurrent: function () {
+                    if (currentId) restoreToolFormData(currentId);
+                },
+                getStorageKey: function (toolId) {
+                    return STORAGE_PREFIX + (toolId || currentId || "");
+                },
+            };
+
+            window.addEventListener("message", function (event) {
+                const data = event && event.data;
+                if (!data || typeof data !== "object") return;
+                if (data.type === "tool-nav-persist-save" && data.toolId) {
+                    try {
+                        const payload = data.data && typeof data.data === "object" ? data.data : {};
+                        FORM_CACHE[data.toolId] = payload;
+                        localStorage.setItem(STORAGE_PREFIX + data.toolId, JSON.stringify(payload));
+                    } catch (e) {
+                        // Ignore storage failures.
+                    }
+                    return;
+                }
+                if (data.type === "tool-nav-persist-restore" && data.toolId) {
+                    try {
+                        const raw = localStorage.getItem(STORAGE_PREFIX + data.toolId);
+                        if (!raw || !event.source) return;
+                        event.source.postMessage(
+                            {
+                                type: "tool-nav-persist-restore-data",
+                                toolId: data.toolId,
+                                data: JSON.parse(raw),
+                            },
+                            "*"
+                        );
+                    } catch (e) {
+                        // Ignore restore bridge failures.
+                    }
+                }
+            });
 
             function bindFrameAutosave(toolId) {
                 const frame = getToolFrame(toolId);
@@ -773,6 +1391,279 @@
                 }
             }
 
+            function bindFrameCalendarDismiss(toolId) {
+                const frame = getToolFrame(toolId);
+                const doc = getFrameDoc(toolId);
+                const dismiss = function () {
+                    if (!isCalendarPanelVisible()) return;
+                    hideCalendarPanel();
+                };
+                if (frame && frame.getAttribute("data-cal-dismiss-frame") !== "1") {
+                    try {
+                        frame.setAttribute("data-cal-dismiss-frame", "1");
+                        frame.addEventListener("pointerdown", dismiss, true);
+                    } catch (e) {
+                        // Ignore bind failures.
+                    }
+                }
+                if (!doc || doc.documentElement.getAttribute("data-calendar-dismiss-bound") === "1") return;
+                try {
+                    doc.documentElement.setAttribute("data-calendar-dismiss-bound", "1");
+                    doc.addEventListener("pointerdown", dismiss, true);
+                    doc.addEventListener("mousedown", dismiss, true);
+                } catch (e) {
+                    // Ignore cross-origin or bind failures.
+                }
+            }
+
+            function bindAllFramesCalendarDismiss() {
+                Object.keys(FRAME_CACHE).forEach(bindFrameCalendarDismiss);
+            }
+
+            let calendarPanelInstance = null;
+            let calendarPanelExpanded = false;
+
+            function updateCalendarExpandButton() {
+                const expandBtn = document.getElementById("calendar-expand-btn");
+                const expandIcon = document.getElementById("calendar-expand-icon");
+                const collapseIcon = document.getElementById("calendar-collapse-icon");
+                if (!expandBtn) return;
+                if (calendarPanelExpanded) {
+                    expandBtn.title = "收起";
+                    expandBtn.setAttribute("aria-label", "收起日历");
+                    if (expandIcon) expandIcon.hidden = true;
+                    if (collapseIcon) collapseIcon.hidden = false;
+                } else {
+                    expandBtn.title = "展开";
+                    expandBtn.setAttribute("aria-label", "展开日历");
+                    if (expandIcon) expandIcon.hidden = false;
+                    if (collapseIcon) collapseIcon.hidden = true;
+                }
+            }
+
+            function setCalendarPanelExpanded(expanded) {
+                calendarPanelExpanded = !!expanded;
+                const panel = document.getElementById("calendar-panel");
+                if (panel) {
+                    panel.classList.toggle("expanded", calendarPanelExpanded);
+                }
+                const calEl = panel && panel.querySelector(".tool-cal");
+                if (calEl) {
+                    calEl.classList.toggle("tool-cal-compact", !calendarPanelExpanded);
+                    calEl.classList.toggle("tool-cal-fullscreen", calendarPanelExpanded);
+                }
+                updateCalendarExpandButton();
+                if (
+                    panel &&
+                    panel.classList.contains("visible") &&
+                    typeof window.__positionCalendarPanel === "function"
+                ) {
+                    window.__positionCalendarPanel();
+                }
+                if (panel && panel.classList.contains("visible")) {
+                    startCalendarPanelTick();
+                }
+            }
+            window.setCalendarPanelExpanded = setCalendarPanelExpanded;
+
+            function isCalendarPanelVisible() {
+                const panel = document.getElementById("calendar-panel");
+                return !!(panel && panel.classList.contains("visible"));
+            }
+
+            function isInsideCalendarUi(target, event) {
+                if (event && typeof event.composedPath === "function") {
+                    const path = event.composedPath();
+                    for (let i = 0; i < path.length; i++) {
+                        const node = path[i];
+                        if (!node || node.nodeType !== 1) continue;
+                        if (node.id === "calendar-panel" || node.id === "calendar-toggle") return true;
+                    }
+                }
+                const el = target && target.nodeType === 1 ? target : (target && target.parentElement);
+                if (!el || !el.closest) return false;
+                return !!(el.closest("#calendar-panel") || el.closest("#calendar-toggle"));
+            }
+
+            function setCalendarBackdropVisible(show) {
+                const backdrop = document.getElementById("calendar-backdrop");
+                if (!backdrop) return;
+                backdrop.classList.toggle("visible", !!show);
+                backdrop.setAttribute("aria-hidden", show ? "false" : "true");
+            }
+
+            function ensureCalendarUiInBody() {
+                const backdrop = document.getElementById("calendar-backdrop");
+                const panel = document.getElementById("calendar-panel");
+                if (backdrop && backdrop.parentElement !== document.body) {
+                    document.body.appendChild(backdrop);
+                }
+                if (panel && panel.parentElement !== document.body) {
+                    document.body.appendChild(panel);
+                }
+            }
+
+            function resetCalendarToToday() {
+                if (window.__calInstance && typeof window.__calInstance.goToday === "function") {
+                    window.__calInstance.goToday(false);
+                }
+            }
+
+            function resumeCalendarLiveTime() {
+                if (typeof window.resumeCalendarLiveTime === "function") {
+                    window.resumeCalendarLiveTime();
+                }
+            }
+
+            function stopCalendarPanelTick() {
+                if (typeof window.stopCalendarPanelTick === "function") {
+                    window.stopCalendarPanelTick();
+                }
+            }
+
+            function startCalendarPanelTick() {
+                if (typeof window.startCalendarPanelTick === "function") {
+                    window.startCalendarPanelTick();
+                }
+            }
+
+            function hideCalendarPanel(options) {
+                options = options || {};
+                const el = document.getElementById("calendar-panel");
+                const toggle = document.getElementById("calendar-toggle");
+                try {
+                    stopCalendarPanelTick();
+                } catch (e) {
+                    // Ignore tick stop failures.
+                }
+                setCalendarBackdropVisible(false);
+                if (el) {
+                    el.classList.remove("visible", "expanded");
+                    el.setAttribute("aria-hidden", "true");
+                    el.style.width = "";
+                    el.style.height = "";
+                    el.style.left = "";
+                    el.style.right = "";
+                    el.style.top = "";
+                }
+                setCalendarPanelExpanded(false);
+                if (toggle) toggle.classList.remove("active");
+                if (!options.skipReset) {
+                    try {
+                        resetCalendarToToday();
+                    } catch (e) {
+                        console.warn("日历关闭清理失败", e);
+                    }
+                }
+            }
+            window.hideCalendarPanel = hideCalendarPanel;
+            window.isCalendarPanelVisible = isCalendarPanelVisible;
+
+            function showCalendarPanel() {
+                const el = document.getElementById("calendar-panel");
+                const toggle = document.getElementById("calendar-toggle");
+                if (!el) return;
+                setCalendarPanelExpanded(false);
+                hideOverviewPanel();
+                hideCryptoAlgoModal();
+                hideTestDataModal();
+                document.getElementById("search-results").classList.remove("visible");
+                ensureCalendarUiInBody();
+                setCalendarBackdropVisible(true);
+                el.classList.add("visible");
+                el.setAttribute("aria-hidden", "false");
+                if (toggle) toggle.classList.add("active");
+                if (typeof window.__positionCalendarPanel === "function") {
+                    window.__positionCalendarPanel();
+                }
+                if (currentId) bindFrameCalendarDismiss(currentId);
+                bindAllFramesCalendarDismiss();
+                if (typeof window.ensureCalendarMounted === "function") {
+                    const inst = window.ensureCalendarMounted();
+                    if (inst) calendarPanelInstance = inst;
+                } else {
+                    const root = document.getElementById("calendar-panel-root");
+                    if (root) {
+                        root.innerHTML = '<div class="tool-cal-loading">日历脚本未就绪，请刷新页面</div>';
+                    }
+                }
+                var cal = window.__calInstance;
+                if (cal && typeof cal.wake === "function") {
+                    cal.wake();
+                } else if (cal && typeof cal.goToday === "function") {
+                    cal.goToday(false);
+                } else if (cal && typeof cal.syncInfo === "function") {
+                    cal.syncInfo();
+                }
+                if (typeof window.startCalendarPanelTick === "function") {
+                    window.startCalendarPanelTick();
+                }
+            }
+            window.showCalendarPanel = showCalendarPanel;
+
+            function toggleCalendarPanelExpand(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (!isCalendarPanelVisible()) return;
+                setCalendarPanelExpanded(!calendarPanelExpanded);
+            }
+
+            function toggleCalendarPanel(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (isCalendarPanelVisible()) {
+                    hideCalendarPanel();
+                } else {
+                    showCalendarPanel();
+                }
+            }
+            window.toggleCalendarPanel = toggleCalendarPanel;
+            window.__toggleCal = toggleCalendarPanel;
+
+            function setupCalendarDismissListeners() {
+                const backdrop = document.getElementById("calendar-backdrop");
+                if (backdrop && backdrop.getAttribute("data-dismiss-bound") !== "1") {
+                    backdrop.setAttribute("data-dismiss-bound", "1");
+                    backdrop.addEventListener("pointerdown", function () {
+                        hideCalendarPanel();
+                    });
+                }
+                const contentEl = document.querySelector(".content");
+                if (contentEl && contentEl.getAttribute("data-calendar-dismiss-bound") !== "1") {
+                    contentEl.setAttribute("data-calendar-dismiss-bound", "1");
+                    contentEl.addEventListener(
+                        "pointerdown",
+                        function (e) {
+                            if (!isCalendarPanelVisible()) return;
+                            if (isInsideCalendarUi(e.target, e)) return;
+                            hideCalendarPanel();
+                        },
+                        true
+                    );
+                }
+                if (document.documentElement.getAttribute("data-calendar-dismiss-bound") !== "1") {
+                    document.documentElement.setAttribute("data-calendar-dismiss-bound", "1");
+                    document.addEventListener(
+                        "pointerdown",
+                        function (e) {
+                            if (!isCalendarPanelVisible()) return;
+                            if (isInsideCalendarUi(e.target, e)) return;
+                            hideCalendarPanel();
+                        },
+                        true
+                    );
+                }
+                window.addEventListener("resize", function () {
+                    if (isCalendarPanelVisible() && typeof window.__positionCalendarPanel === "function") {
+                        window.__positionCalendarPanel();
+                    }
+                });
+            }
+
             function restoreToolFormDataTwice(toolId) {
                 restoreToolFormData(toolId);
                 setTimeout(function () {
@@ -781,6 +1672,9 @@
                 setTimeout(function () {
                     if (currentId === toolId) restoreToolFormData(toolId);
                 }, 220);
+                setTimeout(function () {
+                    if (currentId === toolId) restoreToolFormData(toolId);
+                }, 480);
             }
 
             function buildDefaultRecentState() {
@@ -917,6 +1811,12 @@
                         renderRecentNav();
                     }
                     updateActiveStates();
+                    if (tool.id === HANDOFF_EXCEL_SQL_TAB) {
+                        bridgeTextToExcelSqlHandoffFromStorage();
+                        if (pendingTextToExcelSqlHandoff) {
+                            notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                        }
+                    }
                     return;
                 }
 
@@ -934,6 +1834,7 @@
                 if (frame.getAttribute("data-loaded") === "1") {
                     try {
                         restoreToolFormDataTwice(currentId);
+                        bindFrameCalendarDismiss(currentId);
                     } catch (e) {
                         // Ignore runtime restore failures.
                     }
@@ -961,6 +1862,12 @@
                 });
             }
 
+            function toolFrameSrc(tool) {
+                if (!tool || !tool.path) return "";
+                const sep = tool.path.indexOf("?") >= 0 ? "&" : "?";
+                return tool.path + sep + "_toolNavId=" + encodeURIComponent(tool.id);
+            }
+
             function getOrCreateToolFrame(tool) {
                 if (FRAME_CACHE[tool.id]) return FRAME_CACHE[tool.id];
                 const container = document.getElementById("tool-frame-container");
@@ -969,8 +1876,10 @@
                 frame.onload = function () {
                     frame.setAttribute("data-loaded", "1");
                     try {
+                        injectToolFormPersist(tool);
                         restoreToolFormDataTwice(tool.id);
                         bindFrameAutosave(tool.id);
+                        bindFrameCalendarDismiss(tool.id);
                     } catch (e) {
                         // Never block tool display due to restore failures.
                     }
@@ -980,8 +1889,17 @@
                     if (tool.id === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
                         notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
                     }
+                    if (tool.id === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
+                        notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                    }
+                    if (tool.id === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
+                        notifyTextToolHandoff("excel-sql-to-text", 0);
+                    }
+                    if (tool.id === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
+                        notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                    }
                 };
-                frame.src = tool.path;
+                frame.src = toolFrameSrc(tool);
                 FRAME_CACHE[tool.id] = frame;
                 container.appendChild(frame);
                 return frame;
@@ -1013,6 +1931,9 @@
             function resolveStartupTab() {
                 if (pendingPhotoPrintHandoff) return HANDOFF_PRINT_TAB;
                 if (pendingPrintToPhotoHandoff) return HANDOFF_PHOTO_BG_TAB;
+                if (pendingTextToExcelSqlHandoff) return HANDOFF_EXCEL_SQL_TAB;
+                if (pendingExcelSqlToTextHandoff) return HANDOFF_TEXT_TAB;
+                if (pendingSheetsToTextDiffHandoff) return HANDOFF_TEXT_DIFF_TAB;
                 return DEFAULT_TAB_ID;
             }
 
@@ -1115,7 +2036,7 @@
                 }
 
                 /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
-                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "编解码", "其他"];
+                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "运维工具", "生成", "比较", "加解密", "编解码", "图片&视频", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
                 appendToolGroup("常用", commonTools, { commonGroup: true });
 
@@ -1206,6 +2127,7 @@
                     return;
                 }
                 document.getElementById("search-results").classList.remove("visible");
+                hideCalendarPanel();
                 renderOverviewPanel();
                 syncOverviewPanelPosition();
                 document.getElementById("overview-panel").classList.add("visible");
@@ -1397,6 +2319,237 @@
                 }
             }
 
+            function stashTextToExcelSqlHandoff(payload) {
+                if (
+                    !payload ||
+                    (!payload.csvText &&
+                        !payload.jsonText &&
+                        !(payload.csvItems && payload.csvItems.length))
+                ) {
+                    return;
+                }
+                pendingTextToExcelSqlHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takeTextToExcelSqlHandoffPayload() {
+                const payload = pendingTextToExcelSqlHandoff;
+                pendingTextToExcelSqlHandoff = null;
+                return payload;
+            }
+
+            function bridgeTextToExcelSqlHandoffFromStorage() {
+                if (pendingTextToExcelSqlHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashTextToExcelSqlHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_TEXT_TO_EXCEL_SQL_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function notifyExcelSqlToolHandoff(kind, attempt) {
+                if (kind !== "text-to-excel-sql") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_EXCEL_SQL_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyExcelSqlToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = pendingTextToExcelSqlHandoff;
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                    pendingTextToExcelSqlHandoff = null;
+                } catch (e) {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyExcelSqlToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                }
+            }
+
+            function stashExcelSqlToTextHandoff(payload) {
+                if (!payload || !payload.text) return;
+                pendingExcelSqlToTextHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takeExcelSqlToTextHandoffPayload() {
+                const payload = pendingExcelSqlToTextHandoff;
+                pendingExcelSqlToTextHandoff = null;
+                return payload;
+            }
+
+            function bridgeExcelSqlToTextHandoffFromStorage() {
+                if (pendingExcelSqlToTextHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashExcelSqlToTextHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_EXCEL_SQL_TO_TEXT_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function notifyTextToolHandoff(kind, attempt) {
+                if (kind !== "excel-sql-to-text") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_TEXT_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyTextToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takeExcelSqlToTextHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingExcelSqlToTextHandoff = payload;
+                }
+            }
+
+            function stashSheetsToTextDiffHandoff(payload) {
+                if (!payload || (payload.left == null && payload.right == null)) return;
+                pendingSheetsToTextDiffHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function takeSheetsToTextDiffHandoffPayload() {
+                const payload = pendingSheetsToTextDiffHandoff;
+                pendingSheetsToTextDiffHandoff = null;
+                return payload;
+            }
+
+            function bridgeSheetsToTextDiffHandoffFromStorage() {
+                if (pendingSheetsToTextDiffHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                } catch (e1) {
+                    // ignore
+                }
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                if (!raw) return;
+                try {
+                    stashSheetsToTextDiffHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e3) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e4) {
+                        // ignore
+                    }
+                } catch (e5) {
+                    // ignore invalid json
+                }
+            }
+
+            function notifyTextDiffToolHandoff(kind, attempt) {
+                if (kind !== "sheets-to-text-diff") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_TEXT_DIFF_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyTextDiffToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takeSheetsToTextDiffHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingSheetsToTextDiffHandoff = payload;
+                }
+            }
+
             window.addEventListener("message", function (e) {
                 const d = e.data;
                 if (!d || d.type !== "tool-nav:open-tool") return;
@@ -1411,6 +2564,15 @@
                 if (d.handoff === "print-to-photo-bg" && d.payload) {
                     stashPrintToPhotoHandoff(d.payload);
                 }
+                if (d.handoff === "text-to-excel-sql" && d.payload) {
+                    stashTextToExcelSqlHandoff(d.payload);
+                }
+                if (d.handoff === "excel-sql-to-text" && d.payload) {
+                    stashExcelSqlToTextHandoff(d.payload);
+                }
+                if (d.handoff === "sheets-to-text-diff" && d.payload) {
+                    stashSheetsToTextDiffHandoff(d.payload);
+                }
                 openTool(d.toolId, true);
                 if (d.handoff === "photo-to-print") {
                     notifyPrintToolHandoff("photo-to-print", 0);
@@ -1418,19 +2580,30 @@
                 if (d.handoff === "print-to-photo-bg") {
                     notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
                 }
+                if (d.handoff === "text-to-excel-sql") {
+                    notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                }
+                if (d.handoff === "excel-sql-to-text") {
+                    notifyTextToolHandoff("excel-sql-to-text", 0);
+                }
+                if (d.handoff === "sheets-to-text-diff") {
+                    notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                }
             });
 
             document.querySelector(".content").addEventListener("click", function () {
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
+                if (isCalendarPanelVisible()) hideCalendarPanel();
             });
 
             document.addEventListener("click", function (e) {
                 if (e.target.closest("#crypto-algo-modal")) return;
-                if (e.target.closest(".search-wrap")) return;
+                if (e.target.closest("#test-data-modal")) return;
                 if (e.target.closest("#clover-toggle")) return;
                 if (e.target.closest("#overview-panel")) return;
                 document.getElementById("search-results").classList.remove("visible");
+                if (e.target.closest(".search-wrap")) return;
                 if (e.target.closest(".header")) {
                     if (e.target.closest(".recent-tool")) return;
                     hideOverviewPanel();
@@ -1448,22 +2621,364 @@
                 if (overviewVisible) {
                     syncOverviewPanelPosition();
                 }
+                if (isCalendarPanelVisible() && typeof window.__positionCalendarPanel === "function") {
+                    window.__positionCalendarPanel();
+                }
+                var testModal = document.getElementById("test-data-modal");
+                if (testModal && testModal.classList.contains("visible")) {
+                    positionTestDataModal();
+                }
             });
 
+            const JAVA_TEST_TYPE_POOL = [
+                {
+                    type: "String",
+                    field: "name",
+                    sample: function (row) {
+                        var names = ["张三", "李四", "王五", "Bob", "Alice", "测试用户"];
+                        return names[row % names.length] + (row > names.length ? row : "");
+                    }
+                },
+                {
+                    type: "Integer",
+                    field: "age",
+                    sample: function (row) { return 18 + (row * 7) % 50; }
+                },
+                {
+                    type: "Long",
+                    field: "id",
+                    sample: function (row) { return row; }
+                },
+                {
+                    type: "Double",
+                    field: "score",
+                    sample: function (row) { return Math.round((60 + (row * 13) % 400) / 10 * 100) / 100; }
+                },
+                {
+                    type: "Float",
+                    field: "ratio",
+                    sample: function (row) { return Math.round(((row * 17) % 100) / 100 * 1000) / 1000; }
+                },
+                {
+                    type: "Boolean",
+                    field: "active",
+                    sample: function (row) { return row % 2 === 1; }
+                },
+                {
+                    type: "BigDecimal",
+                    field: "amount",
+                    sample: function (row) { return (row * 123.45).toFixed(2); }
+                },
+                {
+                    type: "LocalDate",
+                    field: "birthDate",
+                    sample: function (row) {
+                        var y = 1980 + (row % 30);
+                        var m = String((row % 12) + 1).padStart(2, "0");
+                        var d = String((row % 28) + 1).padStart(2, "0");
+                        return y + "-" + m + "-" + d;
+                    }
+                },
+                {
+                    type: "LocalDateTime",
+                    field: "createdAt",
+                    sample: function (row) {
+                        var y = 2020 + (row % 6);
+                        var m = String((row % 12) + 1).padStart(2, "0");
+                        var d = String((row % 28) + 1).padStart(2, "0");
+                        var h = String(row % 24).padStart(2, "0");
+                        var min = String((row * 5) % 60).padStart(2, "0");
+                        return y + "-" + m + "-" + d + "T" + h + ":" + min + ":00";
+                    }
+                },
+                {
+                    type: "Byte",
+                    field: "status",
+                    sample: function (row) { return row % 128; }
+                },
+                {
+                    type: "Short",
+                    field: "level",
+                    sample: function (row) { return (row * 3) % 32767; }
+                },
+                {
+                    type: "Character",
+                    field: "grade",
+                    sample: function (row) {
+                        var grades = ["A", "B", "C", "D", "E"];
+                        return grades[row % grades.length];
+                    }
+                },
+                {
+                    type: "List",
+                    field: "tags",
+                    sample: function (row) {
+                        var pool = ["开发", "测试", "产品", "运维"];
+                        if (row % 4 === 0) return [];
+                        return [pool[row % pool.length], pool[(row + 1) % pool.length]];
+                    }
+                },
+                {
+                    type: "Map",
+                    field: "meta",
+                    sample: function (row) {
+                        if (row % 5 === 0) return {};
+                        return { city: row % 2 === 0 ? "北京" : "上海", level: (row % 5) + 1 };
+                    }
+                },
+                {
+                    type: "null",
+                    field: "nullable",
+                    sample: function (row) { return row % 3 === 0 ? null : "非空值"; }
+                }
+            ];
+
+            let testDataActiveTab = "json";
+            let testDataFieldCount = 8;
+            let testDataRowCount = 10;
+            let testDataFields = [];
+            let testDataRows = [];
+            let testDataJsonText = "[]";
+            let testDataCsvText = "";
+
+            function clampTestDataConfig() {
+                var fieldEl = document.getElementById("test-data-field-count");
+                var rowEl = document.getElementById("test-data-row-count");
+                testDataFieldCount = Math.min(50, Math.max(1, parseInt(fieldEl && fieldEl.value, 10) || 8));
+                testDataRowCount = Math.min(10000, Math.max(1, parseInt(rowEl && rowEl.value, 10) || 10));
+                if (fieldEl) fieldEl.value = String(testDataFieldCount);
+                if (rowEl) rowEl.value = String(testDataRowCount);
+            }
+
+            function buildTestDataFields(fieldCount) {
+                var fields = [];
+                for (var i = 0; i < fieldCount; i += 1) {
+                    var def = JAVA_TEST_TYPE_POOL[i % JAVA_TEST_TYPE_POOL.length];
+                    var suffix = i >= JAVA_TEST_TYPE_POOL.length ? String(Math.floor(i / JAVA_TEST_TYPE_POOL.length) + 1) : "";
+                    fields.push({
+                        type: def.type,
+                        field: def.field + suffix,
+                        sample: def.sample
+                    });
+                }
+                return fields;
+            }
+
+            function buildTestDataRows(fields, rowCount) {
+                var rows = [];
+                for (var r = 1; r <= rowCount; r += 1) {
+                    var row = {};
+                    fields.forEach(function (f) {
+                        row[f.field] = f.sample(r);
+                    });
+                    rows.push(row);
+                }
+                return rows;
+            }
+
+            function csvEscapeCell(value) {
+                if (value === null || value === undefined) return "";
+                var text = typeof value === "object" ? JSON.stringify(value) : String(value);
+                if (/[",\r\n]/.test(text)) {
+                    return "\"" + text.replace(/"/g, "\"\"") + "\"";
+                }
+                return text;
+            }
+
+            function rowsToCsv(fields, rows) {
+                var header = fields.map(function (f) { return f.field; }).join(",");
+                var lines = rows.map(function (row) {
+                    return fields.map(function (f) {
+                        return csvEscapeCell(row[f.field]);
+                    }).join(",");
+                });
+                return header + "\n" + lines.join("\n");
+            }
+
+            function updateTestDataTypesInfo() {
+                var el = document.getElementById("test-data-types-info");
+                if (!el) return;
+                if (!testDataFields.length) {
+                    el.textContent = "";
+                    return;
+                }
+                var parts = testDataFields.map(function (f) {
+                    return f.field + " (" + f.type + ")";
+                });
+                el.innerHTML = "<strong>字段类型：</strong>" + parts.join("、");
+            }
+
+            function generateTestData() {
+                clampTestDataConfig();
+                testDataFields = buildTestDataFields(testDataFieldCount);
+                testDataRows = buildTestDataRows(testDataFields, testDataRowCount);
+                testDataJsonText = JSON.stringify(testDataRows, null, 2);
+                testDataCsvText = rowsToCsv(testDataFields, testDataRows);
+                updateTestDataTypesInfo();
+                syncTestDataPreview();
+            }
+
+            function getTestDataText(tab) {
+                return tab === "csv" ? testDataCsvText : testDataJsonText;
+            }
+
+            function syncTestDataPreview() {
+                const ta = document.getElementById("test-data-preview");
+                if (!ta) return;
+                ta.value = getTestDataText(testDataActiveTab);
+            }
+
+            function setTestDataTab(tab) {
+                testDataActiveTab = tab === "csv" ? "csv" : "json";
+                document.querySelectorAll(".test-data-tab").forEach(function (btn) {
+                    const on = btn.getAttribute("data-tab") === testDataActiveTab;
+                    btn.classList.toggle("active", on);
+                    btn.setAttribute("aria-selected", on ? "true" : "false");
+                });
+                syncTestDataPreview();
+            }
+
+            let brandTitleClickCount = 0;
+            let brandTitleClickTimer = null;
+
+            function positionTestDataModal() {
+                var modal = document.getElementById("test-data-modal");
+                var header = document.querySelector(".header");
+                if (!modal || !header) return;
+                var headerRect = header.getBoundingClientRect();
+                modal.style.paddingTop = Math.round(headerRect.bottom + 6) + "px";
+                modal.style.paddingLeft = "6px";
+                modal.style.paddingRight = "6px";
+                modal.style.paddingBottom = "6px";
+            }
+
+            function showTestDataModal() {
+                const el = document.getElementById("test-data-modal");
+                if (!el) return;
+                hideOverviewPanel();
+                hideCryptoAlgoModal();
+                generateTestData();
+                setTestDataTab(testDataActiveTab);
+                positionTestDataModal();
+                el.classList.add("visible");
+                el.setAttribute("aria-hidden", "false");
+            }
+
+            function hideTestDataModal() {
+                const el = document.getElementById("test-data-modal");
+                if (!el) return;
+                el.classList.remove("visible");
+                el.setAttribute("aria-hidden", "true");
+            }
+
+            let testDataCopyStatusTimer = null;
+
+            function showTestDataCopyStatus(message, isError) {
+                var el = document.getElementById("test-data-copy-status");
+                if (!el) return;
+                if (testDataCopyStatusTimer) {
+                    clearTimeout(testDataCopyStatusTimer);
+                    testDataCopyStatusTimer = null;
+                }
+                el.textContent = message;
+                el.classList.toggle("error", !!isError);
+                el.classList.add("visible");
+                testDataCopyStatusTimer = setTimeout(function () {
+                    el.classList.remove("visible");
+                    testDataCopyStatusTimer = null;
+                }, 2000);
+            }
+
+            function copyTestDataToClipboard() {
+                const text = getTestDataText(testDataActiveTab);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showTestDataCopyStatus("已复制到剪贴板");
+                    }).catch(function () {
+                        fallbackCopyTestData(text);
+                    });
+                } else {
+                    fallbackCopyTestData(text);
+                }
+            }
+
+            function fallbackCopyTestData(text) {
+                const ta = document.getElementById("test-data-preview");
+                if (!ta) return;
+                ta.removeAttribute("readonly");
+                ta.select();
+                try {
+                    document.execCommand("copy");
+                    showTestDataCopyStatus("已复制到剪贴板");
+                } catch (e) {
+                    showTestDataCopyStatus("复制失败，请手动全选复制", true);
+                }
+                ta.setAttribute("readonly", "readonly");
+            }
+
+            function onBrandTitleClick() {
+                brandTitleClickCount += 1;
+                if (brandTitleClickTimer) clearTimeout(brandTitleClickTimer);
+                brandTitleClickTimer = setTimeout(function () {
+                    brandTitleClickCount = 0;
+                }, 900);
+                if (brandTitleClickCount >= 3) {
+                    brandTitleClickCount = 0;
+                    if (brandTitleClickTimer) clearTimeout(brandTitleClickTimer);
+                    showTestDataModal();
+                }
+            }
+
             document.addEventListener("DOMContentLoaded", function () {
+                setupCalendarDismissListeners();
                 var bd = document.getElementById("crypto-algo-modal-backdrop");
                 var closeBtn = document.getElementById("crypto-algo-modal-close");
                 if (bd) bd.addEventListener("click", hideCryptoAlgoModal);
                 if (closeBtn) closeBtn.addEventListener("click", hideCryptoAlgoModal);
                 document.addEventListener("keydown", function (e) {
                     if (e.key !== "Escape") return;
-                    var modal = document.getElementById("crypto-algo-modal");
-                    if (modal && modal.classList.contains("visible")) hideCryptoAlgoModal();
+                    var cryptoModal = document.getElementById("crypto-algo-modal");
+                    if (cryptoModal && cryptoModal.classList.contains("visible")) hideCryptoAlgoModal();
+                    var testModal = document.getElementById("test-data-modal");
+                    if (testModal && testModal.classList.contains("visible")) hideTestDataModal();
+                    var calendarPanel = document.getElementById("calendar-panel");
+                    if (calendarPanel && calendarPanel.classList.contains("visible")) hideCalendarPanel();
                 });
+                var calendarExpandBtn = document.getElementById("calendar-expand-btn");
+                if (calendarExpandBtn && !calendarExpandBtn.getAttribute("data-cal-bound")) {
+                    calendarExpandBtn.setAttribute("data-cal-bound", "1");
+                    calendarExpandBtn.addEventListener("click", toggleCalendarPanelExpand);
+                }
+                var testBd = document.getElementById("test-data-modal-backdrop");
+                var testClose = document.getElementById("test-data-modal-close");
+                if (testBd) testBd.addEventListener("click", hideTestDataModal);
+                if (testClose) testClose.addEventListener("click", hideTestDataModal);
+                document.querySelectorAll(".test-data-tab").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        setTestDataTab(btn.getAttribute("data-tab"));
+                    });
+                });
+                var copyBtn = document.getElementById("test-data-copy-btn");
+                if (copyBtn) copyBtn.addEventListener("click", copyTestDataToClipboard);
+                var generateBtn = document.getElementById("test-data-generate-btn");
+                if (generateBtn) generateBtn.addEventListener("click", generateTestData);
+                ["test-data-field-count", "test-data-row-count"].forEach(function (id) {
+                    var input = document.getElementById(id);
+                    if (input) {
+                        input.addEventListener("keydown", function (e) {
+                            if (e.key === "Enter") generateTestData();
+                        });
+                    }
+                });
+                var brandTitle = document.getElementById("brand-title");
+                if (brandTitle) brandTitle.addEventListener("click", onBrandTitleClick);
                 resetRecentNavToCommon();
                 renderRecentNav();
                 bridgePhotoPrintHandoffFromStorage();
                 bridgePrintToPhotoHandoffFromStorage();
+                bridgeTextToExcelSqlHandoffFromStorage();
+                bridgeExcelSqlToTextHandoffFromStorage();
+                bridgeSheetsToTextDiffHandoffFromStorage();
                 const initialTab = resolveStartupTab();
                 openTool(initialTab, false);
                 if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
@@ -1472,7 +2987,25 @@
                 if (initialTab === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
                     notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
                 }
+                if (initialTab === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
+                    notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                }
+                if (initialTab === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
+                    notifyTextToolHandoff("excel-sql-to-text", 0);
+                }
+                if (initialTab === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
+                    notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                }
                 isInitialPageLoad = false;
+                window.addEventListener("pagehide", function () {
+                    if (currentId) {
+                        try {
+                            saveToolFormData(currentId);
+                        } catch (e) {
+                            // Ignore save failures on unload.
+                        }
+                    }
+                });
                 window.location.replace(
                     window.location.pathname +
                         window.location.search +

@@ -450,6 +450,13 @@
                     run();
                 });
 
+                function restoreFromPersist() {
+                    if (timer) clearTimeout(timer);
+                    run();
+                }
+                window.toolNavRestoreForm = restoreFromPersist;
+                document.addEventListener("tool-nav:form-restored", restoreFromPersist);
+
                 dialectEl.addEventListener("change", function () {
                     sqlEditor.setOption("mode", dialectToMime(dialectEl.value));
                 });
@@ -491,5 +498,6 @@
                 });
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

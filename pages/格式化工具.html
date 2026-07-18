@@ -95,6 +95,26 @@
                 border-color: var(--primary);
                 color: var(--primary);
             }
+            .title-btn.handoff-btn,
+            .title-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .title-btn.handoff-btn:hover,
+            .title-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.handoff-btn svg,
+            .title-btn.qr-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
             .editor-zone {
                 flex: 1;
                 min-height: 0;
@@ -129,21 +149,227 @@
             .cm-editor-wrap .CodeMirror-focused {
                 box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
             }
-            #main-input {
-                width: 100%;
-                min-height: 120px;
-                margin: 0;
-                padding: 10px;
-                border: none;
+            /* 悬浮于编辑区右上角的查找/替换面板（与 Json / 文本处理工具一致） */
+            .find-bar {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                z-index: 30;
+                width: min(440px, calc(100% - 16px));
+                padding: 8px 10px;
+                font-size: 12px;
+                border: 1px solid #cfdcf7;
                 border-radius: 8px;
-                font-size: 13px;
-                line-height: 1.6;
-                font-family: Consolas, "Courier New", monospace;
-                resize: none;
-                outline: none;
-                tab-size: 4;
-                -moz-tab-size: 4;
                 background: #fff;
+                box-shadow: 0 6px 24px rgba(36, 90, 190, 0.18);
+                pointer-events: auto;
+            }
+            .find-bar .btn {
+                min-height: 1.75rem;
+                padding: 0 10px;
+                font-size: 12px;
+            }
+            .find-bar[hidden] { display: none !important; }
+            .find-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin-top: 4px;
+            }
+            .find-row:first-child { margin-top: 0; }
+            .find-label {
+                flex: 0 0 auto;
+                width: 2.5rem;
+                color: var(--muted);
+                text-align: right;
+            }
+            .find-input {
+                flex: 1 1 80px;
+                min-width: 72px;
+                max-width: 100%;
+                height: 1.75rem;
+                padding: 0 8px;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                font-size: 12px;
+                font-family: Consolas, "Courier New", monospace;
+                outline: none;
+            }
+            .find-input:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.15);
+            }
+            .find-bar .btn-icon {
+                min-width: 1.75rem;
+                padding: 0 8px;
+            }
+            .find-count {
+                color: var(--muted);
+                font-size: 11px;
+                min-width: 3.5rem;
+            }
+            .find-bar label.chk {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+                color: #3c4f78;
+                user-select: none;
+            }
+            .cm-editor-wrap .CodeMirror .cm-find-hl {
+                background: rgba(255, 220, 120, 0.55);
+                padding: 0 1px;
+                border-radius: 2px;
+            }
+            .cm-editor-wrap .CodeMirror .cm-find-hl-current {
+                background: rgba(255, 165, 60, 0.88);
+                box-shadow: 0 0 0 1px rgba(200, 100, 0, 0.35);
+            }
+            #main-input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+            .json-sheet-bar {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: flex-end;
+                min-height: 30px;
+                padding: 0 10px 2px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .json-sheet-strip {
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 4px;
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+            }
+            .json-sheet-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+            .json-sheet-tabs {
+                display: contents;
+            }
+            .json-sheet-tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                max-width: 148px;
+                height: 26px;
+                padding: 0 10px;
+                margin: 0;
+                border: 1px solid #dbe4f0;
+                border-radius: 4px 4px 0 0;
+                background: #fff;
+                color: #516078;
+                font-size: 12px;
+                font-weight: 400;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+                z-index: 1;
+            }
+            .json-sheet-tab:hover:not(.active) {
+                background: #fafbfd;
+                border-color: #cdd8ea;
+                color: #3c4f78;
+                z-index: 2;
+            }
+            .json-sheet-tab.active {
+                background: #edf3ff;
+                color: var(--primary);
+                font-weight: 600;
+                z-index: 3;
+                border-color: #d8e5ff;
+            }
+            .json-sheet-tab.compare-selected {
+                box-shadow: inset 0 0 0 1px #2f6bff;
+                border-color: #2f6bff;
+                background: #e8f0ff;
+            }
+            .json-sheet-tab.compare-selected:not(.active) {
+                color: #2f6bff;
+                font-weight: 600;
+            }
+            .json-sheet-tab .sheet-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 120px;
+            }
+            .json-sheet-tab .sheet-rename-input {
+                width: 96px;
+                max-width: 120px;
+                height: 22px;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid var(--primary);
+                border-radius: 4px;
+                outline: none;
+                background: #fff;
+            }
+            .json-sheet-tab .sheet-close {
+                flex: 0 0 auto;
+                margin-left: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                border: none;
+                border-radius: 3px;
+                background: transparent;
+                color: #7a879e;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                opacity: 1;
+            }
+            .json-sheet-tab.active .sheet-close {
+                color: #5a7fd4;
+            }
+            .json-sheet-tab .sheet-close:hover {
+                background: rgba(224, 64, 64, 0.15);
+                color: var(--danger);
+            }
+            .json-sheet-add {
+                flex: 0 0 26px;
+                width: 26px;
+                height: 26px;
+                margin: 0;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                font-size: 18px;
+                line-height: 1;
+                color: #8a9bb8;
+                cursor: pointer;
+            }
+            .json-sheet-add:hover {
+                background: #f0f5ff;
+                color: var(--primary);
+            }
+            #fmt-sheets-meta {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                border: 0;
             }
             /* 与 Json工具 Ctool 区块一致 */
             .ctool-page-option {
@@ -292,18 +518,59 @@
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
                         <span id="head-title">JSON</span>
-                        <span id="stat-hint" class="hint">粘贴内容后在下方选择类型并操作</span>
+                        <span id="stat-hint" class="hint" title="底部可切换多个工作表，双击标签可重命名；Ctrl+点击可选两个后点「对比」；Ctrl+F 查找">多工作表 · Ctrl+F 查找</span>
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        <button type="button" class="title-btn handoff-btn" id="btn-compare-diff" title="按住 Ctrl 选择两个工作表后点击，跳转到文本对比">
+                            <span>对比</span>
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-diff-split">
+                                <path d="M12 4H5V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M12 3V21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="butt"></path>
+                                <path d="M12 4H19V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
                 </div>
                 <div class="editor-zone">
                     <div class="cm-editor-wrap">
-                        <textarea id="main-input" name="mainInput" spellcheck="false" placeholder='例如 JSON：{"a":1,"b":[2,3]}'></textarea>
+                        <textarea id="main-input" name="mainInput" data-persist-key="fmt_input" aria-hidden="true" tabindex="-1" spellcheck="false" placeholder='例如 JSON：{"a":1,"b":[2,3]}'></textarea>
+                        <div id="find-bar" class="find-bar" hidden>
+                            <div class="find-row">
+                                <span class="find-label">查找</span>
+                                <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
+                                <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter / ↑)">↑</button>
+                                <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter / ↓)">↓</button>
+                                <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
+                                <span id="find-count" class="find-count"></span>
+                                <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
+                            </div>
+                            <div class="find-row" id="find-replace-row" hidden>
+                                <span class="find-label">替换</span>
+                                <input type="text" id="find-replace-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="替换为" />
+                                <button type="button" class="btn" id="find-rep-one">替换</button>
+                                <button type="button" class="btn" id="find-rep-all">全部替换</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                <div class="json-sheet-bar" id="fmt-sheet-bar">
+                    <div class="json-sheet-strip">
+                        <div class="json-sheet-tabs" id="fmt-sheet-tabs" role="tablist" aria-label="格式化工作表"></div>
+                        <button type="button" class="json-sheet-add" id="fmt-sheet-add" title="新建工作表">+</button>
+                    </div>
+                </div>
+                <textarea id="fmt-sheets-meta" data-persist-key="fmt_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
             </div>
 
             <div class="ctool-page-option">
@@ -312,7 +579,7 @@
                         <button type="button" class="active" data-kind="json">JSON</button>
                         <button type="button" data-kind="xml">XML</button>
                         <button type="button" data-kind="sql">SQL</button>
-                        <button type="button" data-kind="javascript">JavaScript</button>
+                        <button type="button" data-kind="javascript">JS</button>
                         <button type="button" data-kind="css">CSS</button>
                         <button type="button" data-kind="html">HTML</button>
                     </div>
@@ -355,6 +622,10 @@
         <script src="../vendor/codemirror/mode/sql/sql.js"></script>
         <script src="../vendor/codemirror/addon/display/placeholder.js"></script>
         <script src="../vendor/sql-formatter/sql-formatter.min.js"></script>
+        <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
+        <script src="libs/tool-sheet-tabs-drag.js"></script>
         <script>
             (function () {
                 var ta = document.getElementById("main-input");
@@ -367,11 +638,506 @@
                 var kind = "json";
                 var cm;
 
+                /* —— 多工作表（按格式类型各自独立） —— */
+                var sheetsMetaInput = document.getElementById("fmt-sheets-meta");
+                var sheetTabsEl = document.getElementById("fmt-sheet-tabs");
+                var sheetAddBtn = document.getElementById("fmt-sheet-add");
+                var KIND_LIST = ["json", "xml", "sql", "javascript", "css", "html"];
+                var sheetsByKind = {};
+                var fmtSheets = [];
+                var activeSheetId = null;
+                var sheetRenameId = null;
+                var compareSelectedIds = [];
+                var _sheetPersistTimer = null;
+                var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+                var HANDOFF_TEXT_DIFF_TAB = "tab10";
+
+                function genSheetId() {
+                    return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                }
+
+                function createDefaultKindState(legacyContent) {
+                    var id = genSheetId();
+                    return {
+                        activeId: id,
+                        sheets: [{ id: id, name: "Sheet1", content: legacyContent == null ? "" : String(legacyContent) }]
+                    };
+                }
+
+                function cloneKindState(state) {
+                    return {
+                        activeId: state.activeId,
+                        sheets: state.sheets.map(function (s) {
+                            return {
+                                id: s.id,
+                                name: s.name,
+                                content: s.content == null ? "" : String(s.content)
+                            };
+                        })
+                    };
+                }
+
+                function ensureKindBucket(k, legacyContent) {
+                    if (!sheetsByKind[k] || !sheetsByKind[k].sheets || !sheetsByKind[k].sheets.length) {
+                        sheetsByKind[k] = createDefaultKindState(k === kind ? legacyContent : "");
+                    }
+                    return sheetsByKind[k];
+                }
+
+                function getActiveSheet() {
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        if (fmtSheets[i].id === activeSheetId) return fmtSheets[i];
+                    }
+                    return null;
+                }
+
+                function nextSheetName() {
+                    var used = {};
+                    for (var i = 0; i < fmtSheets.length; i++) used[fmtSheets[i].name] = true;
+                    var n = 1;
+                    while (used["Sheet" + n]) n++;
+                    return "Sheet" + n;
+                }
+
+                function syncEditorToSheets() {
+                    if (!cm) return;
+                    var v = cm.getValue();
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = v;
+                    ta.value = "";
+                }
+
+                function snapshotCurrentKindToStore() {
+                    syncEditorToSheets();
+                    if (!fmtSheets.length) {
+                        sheetsByKind[kind] = createDefaultKindState("");
+                        fmtSheets = sheetsByKind[kind].sheets;
+                        activeSheetId = sheetsByKind[kind].activeId;
+                        return;
+                    }
+                    sheetsByKind[kind] = {
+                        activeId: activeSheetId,
+                        sheets: fmtSheets.map(function (s) {
+                            return {
+                                id: s.id,
+                                name: s.name,
+                                content: s.content == null ? "" : String(s.content)
+                            };
+                        })
+                    };
+                }
+
+                function loadKindIntoMemory(k) {
+                    var bucket = ensureKindBucket(k);
+                    var cloned = cloneKindState(bucket);
+                    fmtSheets = cloned.sheets;
+                    activeSheetId = cloned.activeId;
+                    if (!getActiveSheet()) activeSheetId = fmtSheets[0].id;
+                    compareSelectedIds = [];
+                    sheetRenameId = null;
+                }
+
+                function persistSheetsState() {
+                    snapshotCurrentKindToStore();
+                    if (!sheetsMetaInput) return;
+                    sheetsMetaInput.value = JSON.stringify({
+                        version: 2,
+                        activeKind: kind,
+                        byKind: sheetsByKind
+                    });
+                    sheetsMetaInput.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+
+                function schedulePersistSheets() {
+                    clearTimeout(_sheetPersistTimer);
+                    _sheetPersistTimer = setTimeout(persistSheetsState, 400);
+                }
+
+                function kindToDiffLanguage(k) {
+                    if (k === "json") return "json";
+                    if (k === "javascript") return "javascript";
+                    if (k === "html") return "html";
+                    if (k === "css") return "css";
+                    if (k === "xml") return "xml";
+                    if (k === "sql") return "sql";
+                    return "plaintext";
+                }
+
+                function applyActiveSheetToEditor() {
+                    var sheet = getActiveSheet();
+                    var content = sheet ? String(sheet.content == null ? "" : sheet.content) : "";
+                    if (sheet) sheet.content = content;
+                    if (cm) {
+                        cm.setValue(content);
+                        ta.value = content;
+                        refreshEditorMode();
+                        updateStat();
+                        if (typeof resizeCm === "function") resizeCm();
+                    }
+                }
+
+                function syncFmtTabsUi() {
+                    document.querySelectorAll("#fmt-tabs button[data-kind]").forEach(function (b) {
+                        b.classList.toggle("active", b.getAttribute("data-kind") === kind);
+                    });
+                    if (typeof syncHeadUi === "function") syncHeadUi();
+                }
+
+                function initSheetsFromStorage() {
+                    var legacy = ta && ta.value ? String(ta.value) : "";
+                    sheetsByKind = {};
+                    if (sheetsMetaInput && sheetsMetaInput.value) {
+                        try {
+                            var state = JSON.parse(sheetsMetaInput.value);
+                            if (state && state.version === 2 && state.byKind) {
+                                KIND_LIST.forEach(function (k) {
+                                    var bucket = state.byKind[k];
+                                    if (bucket && bucket.sheets && bucket.sheets.length) {
+                                        sheetsByKind[k] = {
+                                            activeId: bucket.activeId,
+                                            sheets: bucket.sheets.map(function (s) {
+                                                return {
+                                                    id: s.id || genSheetId(),
+                                                    name: String(s.name || "Sheet1"),
+                                                    content: s.content == null ? "" : String(s.content)
+                                                };
+                                            })
+                                        };
+                                        if (
+                                            !sheetsByKind[k].sheets.some(function (s) {
+                                                return s.id === sheetsByKind[k].activeId;
+                                            })
+                                        ) {
+                                            sheetsByKind[k].activeId = sheetsByKind[k].sheets[0].id;
+                                        }
+                                    }
+                                });
+                                if (state.activeKind && KIND_LIST.indexOf(state.activeKind) >= 0) {
+                                    kind = state.activeKind;
+                                }
+                            } else if (state && state.sheets && state.sheets.length) {
+                                // 兼容旧版：共用 sheet 归到当前/默认 JSON
+                                var migrateKind =
+                                    state.activeKind && KIND_LIST.indexOf(state.activeKind) >= 0
+                                        ? state.activeKind
+                                        : "json";
+                                sheetsByKind[migrateKind] = {
+                                    activeId: state.activeId,
+                                    sheets: state.sheets.map(function (s) {
+                                        return {
+                                            id: s.id || genSheetId(),
+                                            name: String(s.name || "Sheet1"),
+                                            content: s.content == null ? "" : String(s.content)
+                                        };
+                                    })
+                                };
+                                if (
+                                    !sheetsByKind[migrateKind].sheets.some(function (s) {
+                                        return s.id === sheetsByKind[migrateKind].activeId;
+                                    })
+                                ) {
+                                    sheetsByKind[migrateKind].activeId = sheetsByKind[migrateKind].sheets[0].id;
+                                }
+                                kind = migrateKind;
+                            }
+                        } catch (e) {
+                            /* fall through */
+                        }
+                    }
+                    KIND_LIST.forEach(function (k) {
+                        ensureKindBucket(k, k === kind ? legacy : "");
+                    });
+                    loadKindIntoMemory(kind);
+                }
+
+                function switchFormatKind(newKind) {
+                    if (!newKind || KIND_LIST.indexOf(newKind) < 0 || newKind === kind) return;
+                    snapshotCurrentKindToStore();
+                    kind = newKind;
+                    loadKindIntoMemory(kind);
+                    syncFmtTabsUi();
+                    applyActiveSheetToEditor();
+                    if (typeof resetFindNavigation === "function") resetFindNavigation();
+                    renderSheetTabs();
+                    if (typeof refreshFindHighlights === "function") refreshFindHighlights();
+                    persistSheetsState();
+                }
+
+                function clearCompareSelect() {
+                    if (!compareSelectedIds.length) return;
+                    compareSelectedIds = [];
+                    renderSheetTabs();
+                }
+
+                function toggleCompareSelect(sheetId) {
+                    var pos = compareSelectedIds.indexOf(sheetId);
+                    if (pos >= 0) {
+                        compareSelectedIds.splice(pos, 1);
+                    } else if (compareSelectedIds.length >= 2) {
+                        toast("最多选择两个工作表，请先取消其中一个");
+                        return;
+                    } else {
+                        compareSelectedIds.push(sheetId);
+                    }
+                    renderSheetTabs();
+                }
+
+                function getSheetContentById(sheetId) {
+                    syncEditorToSheets();
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        if (fmtSheets[i].id === sheetId) {
+                            return String(fmtSheets[i].content == null ? "" : fmtSheets[i].content);
+                        }
+                    }
+                    return "";
+                }
+
+                function getSheetNameById(sheetId) {
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        if (fmtSheets[i].id === sheetId) return fmtSheets[i].name;
+                    }
+                    return "";
+                }
+
+                function switchSheet(sheetId) {
+                    if (!sheetId || sheetId === activeSheetId) return;
+                    syncEditorToSheets();
+                    activeSheetId = sheetId;
+                    applyActiveSheetToEditor();
+                    if (typeof resetFindNavigation === "function") resetFindNavigation();
+                    renderSheetTabs();
+                    if (typeof refreshFindHighlights === "function") refreshFindHighlights();
+                    persistSheetsState();
+                }
+
+                function addSheet() {
+                    syncEditorToSheets();
+                    var sheet = { id: genSheetId(), name: nextSheetName(), content: "" };
+                    fmtSheets.push(sheet);
+                    switchSheet(sheet.id);
+                    toast("已新建 " + sheet.name);
+                }
+
+                function removeSheet(sheetId) {
+                    if (fmtSheets.length <= 1) {
+                        toast("至少保留一个工作表");
+                        return;
+                    }
+                    var idx = -1;
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        if (fmtSheets[i].id === sheetId) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx < 0) return;
+                    compareSelectedIds = compareSelectedIds.filter(function (id) {
+                        return id !== sheetId;
+                    });
+                    var removed = fmtSheets.splice(idx, 1)[0];
+                    if (activeSheetId === sheetId) {
+                        var next = fmtSheets[Math.min(idx, fmtSheets.length - 1)];
+                        activeSheetId = next.id;
+                        applyActiveSheetToEditor();
+                        if (typeof resetFindNavigation === "function") resetFindNavigation();
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    toast("已删除 " + removed.name);
+                }
+
+                function renameSheet(sheetId, newName) {
+                    var name = String(newName || "").trim();
+                    if (!name) {
+                        toast("名称不能为空");
+                        return false;
+                    }
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        if (fmtSheets[i].id !== sheetId && fmtSheets[i].name === name) {
+                            toast("名称已存在");
+                            return false;
+                        }
+                    }
+                    for (var j = 0; j < fmtSheets.length; j++) {
+                        if (fmtSheets[j].id === sheetId) {
+                            fmtSheets[j].name = name;
+                            break;
+                        }
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    return true;
+                }
+
+                function startSheetRename(sheetId) {
+                    sheetRenameId = sheetId;
+                    renderSheetTabs();
+                    var tab = sheetTabsEl.querySelector('[data-sheet-id="' + sheetId + '"]');
+                    if (!tab) return;
+                    var input = tab.querySelector(".sheet-rename-input");
+                    if (input) {
+                        input.focus();
+                        input.select();
+                    }
+                }
+
+                function finishSheetRename(sheetId, value, cancel) {
+                    sheetRenameId = null;
+                    if (!cancel) renameSheet(sheetId, value);
+                    renderSheetTabs();
+                }
+
+                function reorderSheet(fromIndex, toIndex) {
+                    if (fromIndex === toIndex) return;
+                    var item = fmtSheets.splice(fromIndex, 1)[0];
+                    fmtSheets.splice(toIndex, 0, item);
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+
+                function renderSheetTabs() {
+                    if (!sheetTabsEl) return;
+                    sheetTabsEl.innerHTML = "";
+                    for (var i = 0; i < fmtSheets.length; i++) {
+                        (function (sheet) {
+                            var isCompareSel = compareSelectedIds.indexOf(sheet.id) >= 0;
+                            var tab = document.createElement("button");
+                            tab.type = "button";
+                            tab.className =
+                                "json-sheet-tab" +
+                                (sheet.id === activeSheetId ? " active" : "") +
+                                (isCompareSel ? " compare-selected" : "");
+                            tab.setAttribute("data-sheet-id", sheet.id);
+                            tab.setAttribute("role", "tab");
+                            tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
+                            var selMark = isCompareSel
+                                ? " · 对比选中" + (compareSelectedIds.indexOf(sheet.id) + 1)
+                                : "";
+                            tab.title = sheet.name + "（拖拽排序，双击重命名；Ctrl+点击多选对比）" + selMark;
+
+                            if (sheetRenameId === sheet.id) {
+                                var inp = document.createElement("input");
+                                inp.type = "text";
+                                inp.className = "sheet-rename-input";
+                                inp.value = sheet.name;
+                                inp.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                });
+                                inp.addEventListener("keydown", function (e) {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, inp.value, false);
+                                    } else if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, "", true);
+                                    }
+                                });
+                                inp.addEventListener("blur", function () {
+                                    finishSheetRename(sheet.id, inp.value, false);
+                                });
+                                tab.appendChild(inp);
+                            } else {
+                                var span = document.createElement("span");
+                                span.className = "sheet-name";
+                                span.textContent = sheet.name;
+                                tab.appendChild(span);
+                                tab.addEventListener("dblclick", function (e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    startSheetRename(sheet.id);
+                                });
+                            }
+
+                            if (fmtSheets.length > 1) {
+                                var closeBtn = document.createElement("button");
+                                closeBtn.type = "button";
+                                closeBtn.className = "sheet-close";
+                                closeBtn.title = "删除工作表";
+                                closeBtn.textContent = "×";
+                                closeBtn.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                    removeSheet(sheet.id);
+                                });
+                                tab.appendChild(closeBtn);
+                            }
+
+                            tab.addEventListener("click", function (e) {
+                                if (sheetRenameId) return;
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    toggleCompareSelect(sheet.id);
+                                    return;
+                                }
+                                clearCompareSelect();
+                                switchSheet(sheet.id);
+                            });
+
+                            sheetTabsEl.appendChild(tab);
+                        })(fmtSheets[i]);
+                    }
+                }
+
+                function handoffSelectedSheetsToTextDiff() {
+                    syncEditorToSheets();
+                    if (compareSelectedIds.length !== 2) {
+                        toast("请按住 Ctrl 选择两个工作表后再对比");
+                        return;
+                    }
+                    var leftId = compareSelectedIds[0];
+                    var rightId = compareSelectedIds[1];
+                    var payload = {
+                        left: getSheetContentById(leftId),
+                        right: getSheetContentById(rightId),
+                        leftName: getSheetNameById(leftId),
+                        rightName: getSheetNameById(rightId),
+                        language: kindToDiffLanguage(kind),
+                        returnToolId: "tab19",
+                        returnToolName: "格式化工具"
+                    };
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: HANDOFF_TEXT_DIFF_TAB,
+                                    handoff: "sheets-to-text-diff",
+                                    payload: payload
+                                },
+                                "*"
+                            );
+                            toast("已发送到文本对比");
+                            return;
+                        } catch (e1) {
+                            // fall through
+                        }
+                    }
+                    try {
+                        sessionStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e2) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e3) {
+                        // ignore
+                    }
+                    window.location.href = "../index.html#tab=" + HANDOFF_TEXT_DIFF_TAB;
+                }
+
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !ta.value && fmtSheets.length > 0) return;
+                    initSheetsFromStorage();
+                    syncFmtTabsUi();
+                    applyActiveSheetToEditor();
+                    renderSheetTabs();
+                }
+
+
                 var kindLabels = {
                     json: "JSON",
                     xml: "XML",
                     sql: "SQL",
-                    javascript: "JavaScript",
+                    javascript: "JS",
                     css: "CSS",
                     html: "HTML"
                 };
@@ -380,7 +1146,7 @@
                     json: '例如 JSON：{"a":1,"b":[2,3]}',
                     xml: "例如：<root><item>1</item></root>",
                     sql: "例如：SELECT id, name FROM users WHERE status = 1",
-                    javascript: "例如：function hello() { return 1; }",
+                    javascript: "例如：function hello(){return 1}",
                     css: "例如：.box { margin: 8px; color: #333; }",
                     html: "例如：<div class=\"x\"><span>hi</span></div>"
                 };
@@ -458,7 +1224,7 @@
                     var val = cm.getValue();
                     var n = val.length;
                     var lines = val ? val.split(/\r\n|\r|\n/).length : 0;
-                    statHint.textContent = n ? "字符 " + n + " · 行 " + lines : "粘贴内容后在下方选择类型并操作";
+                    statHint.textContent = n ? "字符 " + n + " · 行 " + lines : "多工作表 · Ctrl+F 查找";
                 }
 
                 function syncHeadUi() {
@@ -516,6 +1282,14 @@
                     return str.replace(/>\s+</g, "><").trim();
                 }
 
+                var findBar = document.getElementById("find-bar");
+                var findInput = document.getElementById("find-input");
+                var findReplaceRow = document.getElementById("find-replace-row");
+                var replaceInput = document.getElementById("find-replace-input");
+                var findCase = document.getElementById("find-case");
+                var findCountEl = document.getElementById("find-count");
+                var refreshFindHighlights = function () {};
+
                 cm = CodeMirror.fromTextArea(ta, {
                     lineNumbers: true,
                     lineWrapping: true,
@@ -527,8 +1301,462 @@
                     inputStyle: "textarea",
                     spellcheck: false,
                     autofocus: false,
-                    placeholder: kindPlaceholders.json
+                    placeholder: kindPlaceholders.json,
+                    extraKeys: {
+                        "Ctrl-F": function () {
+                            handleFindShortcut();
+                        },
+                        "Cmd-F": function () {
+                            handleFindShortcut();
+                        },
+                        "Ctrl-H": function () {
+                            openFind(true);
+                        },
+                        "Cmd-Alt-F": function () {
+                            openFind(true);
+                        },
+                        "Shift-Ctrl-F": function () {
+                            openFind(true);
+                        },
+                        "Shift-Cmd-F": function () {
+                            openFind(true);
+                        }
+                    }
                 });
+
+                /* —— 查找 / 替换（与 Json / 文本处理工具一致） —— */
+                var findMarks = [];
+                var findNavMatchIndex = -1;
+
+                function resetFindNavigation() {
+                    findNavMatchIndex = -1;
+                }
+
+                function getFindAnchorOffsetForNext() {
+                    return cmGetSelOffsets().end;
+                }
+
+                function getFindAnchorOffsetForPrev() {
+                    return cmGetSelOffsets().start;
+                }
+
+                function resolveFindMatchIndexFromSelection(positions) {
+                    var o = cmGetSelOffsets();
+                    var s = o.start;
+                    var e = o.end;
+                    for (var i = 0; i < positions.length; i++) {
+                        if (positions[i].start === s && positions[i].end === e) return i;
+                    }
+                    for (var j = 0; j < positions.length; j++) {
+                        if (s >= positions[j].start && s < positions[j].end) return j;
+                    }
+                    return -1;
+                }
+
+                function shouldKeepFindFocus() {
+                    var a = document.activeElement;
+                    return (
+                        a === findInput ||
+                        a === replaceInput ||
+                        (findBar && !findBar.hidden && findBar.contains(a))
+                    );
+                }
+
+                function isFindContentEditorFocused() {
+                    var a = document.activeElement;
+                    if (!a || !cm) return false;
+                    return cm.getWrapperElement().contains(a);
+                }
+
+                function handleFindArrowKey(e) {
+                    if (findBar.hidden || !findInput.value) return false;
+                    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+                    if (isFindContentEditorFocused()) return false;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var keep = shouldKeepFindFocus();
+                    if (e.key === "ArrowUp") findPrev(keep);
+                    else findNext(keep);
+                    return true;
+                }
+
+                function getMatchPositions(textVal, needle, caseSens) {
+                    var res = [];
+                    if (!needle) return res;
+                    if (caseSens) {
+                        var pos = 0;
+                        var step = Math.max(1, needle.length);
+                        while ((pos = textVal.indexOf(needle, pos)) !== -1) {
+                            res.push({ start: pos, end: pos + needle.length });
+                            pos += step;
+                        }
+                    } else {
+                        var lower = textVal.toLowerCase();
+                        var n = needle.toLowerCase();
+                        var pos2 = 0;
+                        var step2 = Math.max(1, n.length);
+                        while ((pos2 = lower.indexOf(n, pos2)) !== -1) {
+                            res.push({ start: pos2, end: pos2 + needle.length });
+                            pos2 += step2;
+                        }
+                    }
+                    return res;
+                }
+
+                function cmGetSelOffsets() {
+                    var a = cm.indexFromPos(cm.getCursor("from"));
+                    var b = cm.indexFromPos(cm.getCursor("to"));
+                    return { start: Math.min(a, b), end: Math.max(a, b) };
+                }
+
+                function cmSetSelOffsets(start, end, focusEditor) {
+                    if (focusEditor !== false) cm.focus();
+                    var a = cm.posFromIndex(start);
+                    var b = cm.posFromIndex(end);
+                    cm.setSelection(a, b);
+                    cm.scrollIntoView({ from: a, to: b });
+                }
+
+                function getFindSelectionText() {
+                    if (cm && cm.somethingSelected()) return cm.getSelection();
+                    return "";
+                }
+
+                function focusFindInput() {
+                    setTimeout(function () {
+                        findInput.focus();
+                        if (findInput.value) findInput.select();
+                    }, 0);
+                }
+
+                function handleFindShortcut() {
+                    var selText = getFindSelectionText();
+                    if (!findBar.hidden) {
+                        if (selText) {
+                            findInput.value = selText;
+                            resetFindNavigation();
+                        }
+                        focusFindInput();
+                        updateFindCount();
+                        refreshFindHighlights();
+                        return;
+                    }
+                    openFind(false);
+                }
+
+                function clearFindMarks() {
+                    while (findMarks.length) {
+                        var m = findMarks.pop();
+                        if (m && m.clear) m.clear();
+                    }
+                }
+
+                refreshFindHighlights = function () {
+                    var on = !findBar.hidden && findInput.value.length > 0;
+                    clearFindMarks();
+                    if (!on) return;
+                    var needle = findInput.value;
+                    var textVal = cm.getValue();
+                    var caseSens = findCase.checked;
+                    var positions = getMatchPositions(textVal, needle, caseSens);
+                    var sel = cmGetSelOffsets();
+                    for (var pi = 0; pi < positions.length; pi++) {
+                        var p = positions[pi];
+                        var isCur =
+                            (p.start === sel.start && p.end === sel.end) ||
+                            (sel.start === sel.end && sel.start >= p.start && sel.start < p.end);
+                        findMarks.push(
+                            cm.markText(cm.posFromIndex(p.start), cm.posFromIndex(p.end), {
+                                className: "cm-find-hl" + (isCur ? " cm-find-hl-current" : "")
+                            })
+                        );
+                    }
+                };
+
+                function replaceAllString(textVal, needle, repl, caseSens) {
+                    if (!needle) return textVal;
+                    var esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    var re = new RegExp(esc, caseSens ? "g" : "gi");
+                    return textVal.replace(re, function () {
+                        return repl;
+                    });
+                }
+
+                function selectionMatchesFind(needle, caseSens) {
+                    if (!needle) return false;
+                    var s = cm.getRange(cm.getCursor("from"), cm.getCursor("to"));
+                    return caseSens ? s === needle : s.toLowerCase() === needle.toLowerCase();
+                }
+
+                function updateFindCount() {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        findCountEl.textContent = "";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var textVal = cm.getValue();
+                    var positions = getMatchPositions(textVal, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var o = cmGetSelOffsets();
+                    var s = o.start;
+                    var e = o.end;
+                    var idx = -1;
+                    if (findNavMatchIndex >= 0 && findNavMatchIndex < positions.length) {
+                        idx = findNavMatchIndex;
+                    } else {
+                        for (var i = 0; i < positions.length; i++) {
+                            if (positions[i].start === s && positions[i].end === e) {
+                                idx = i;
+                                break;
+                            }
+                        }
+                        if (idx < 0) {
+                            for (var j = 0; j < positions.length; j++) {
+                                if (s >= positions[j].start && s < positions[j].end) {
+                                    idx = j;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (idx >= 0) findNavMatchIndex = idx;
+                    findCountEl.textContent = (idx >= 0 ? idx + 1 : "—") + " / " + positions.length;
+                    refreshFindHighlights();
+                }
+
+                function findNext(keepFindFocus) {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        updateFindCount();
+                        return;
+                    }
+                    var textVal = cm.getValue();
+                    var positions = getMatchPositions(textVal, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var i;
+                    if (findNavMatchIndex >= 0) {
+                        i = findNavMatchIndex + 1;
+                        if (i >= positions.length) i = 0;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions);
+                        if (curIdx >= 0) {
+                            i = curIdx + 1;
+                            if (i >= positions.length) i = 0;
+                        } else {
+                            var from = getFindAnchorOffsetForNext();
+                            var qi;
+                            for (qi = 0; qi < positions.length; qi++) {
+                                var pm = positions[qi];
+                                if (from > pm.start && from < pm.end) {
+                                    from = pm.end;
+                                    break;
+                                }
+                            }
+                            i = -1;
+                            for (var qi2 = 0; qi2 < positions.length; qi2++) {
+                                if (positions[qi2].start >= from) {
+                                    i = qi2;
+                                    break;
+                                }
+                            }
+                            if (i === -1) i = 0;
+                        }
+                    }
+                    findNavMatchIndex = i;
+                    var p = positions[i];
+                    cmSetSelOffsets(p.start, p.end, !keepFindFocus);
+                    if (keepFindFocus) findInput.focus();
+                    updateFindCount();
+                }
+
+                function findPrev(keepFindFocus) {
+                    var needle = findInput.value;
+                    if (!needle) {
+                        updateFindCount();
+                        return;
+                    }
+                    var textVal = cm.getValue();
+                    var positions = getMatchPositions(textVal, needle, findCase.checked);
+                    if (!positions.length) {
+                        findCountEl.textContent = "无匹配";
+                        refreshFindHighlights();
+                        return;
+                    }
+                    var i;
+                    if (findNavMatchIndex >= 0) {
+                        i = findNavMatchIndex - 1;
+                        if (i < 0) i = positions.length - 1;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions);
+                        if (curIdx >= 0) {
+                            i = curIdx - 1;
+                            if (i < 0) i = positions.length - 1;
+                        } else {
+                            var from = getFindAnchorOffsetForPrev();
+                            var qj;
+                            for (qj = 0; qj < positions.length; qj++) {
+                                var pn = positions[qj];
+                                if (from > pn.start && from < pn.end) {
+                                    from = pn.start;
+                                    break;
+                                }
+                            }
+                            i = -1;
+                            for (var k = positions.length - 1; k >= 0; k--) {
+                                if (positions[k].start < from) {
+                                    i = k;
+                                    break;
+                                }
+                            }
+                            if (i === -1) i = positions.length - 1;
+                        }
+                    }
+                    findNavMatchIndex = i;
+                    var p = positions[i];
+                    cmSetSelOffsets(p.start, p.end, !keepFindFocus);
+                    if (keepFindFocus) findInput.focus();
+                    updateFindCount();
+                }
+
+                function openFind(withReplace) {
+                    findBar.removeAttribute("hidden");
+                    findReplaceRow.hidden = !withReplace;
+                    resetFindNavigation();
+                    var selText = getFindSelectionText();
+                    if (selText) findInput.value = selText;
+                    focusFindInput();
+                    updateFindCount();
+                }
+
+                function closeFind() {
+                    findBar.setAttribute("hidden", "");
+                    findReplaceRow.hidden = true;
+                    resetFindNavigation();
+                    refreshFindHighlights();
+                    cm.focus();
+                }
+
+                function replaceOne() {
+                    var needle = findInput.value;
+                    if (!needle) return;
+                    if (!selectionMatchesFind(needle, findCase.checked)) {
+                        findNext();
+                        return;
+                    }
+                    cm.replaceSelection(replaceInput.value);
+                    resetFindNavigation();
+                    updateFindCount();
+                }
+
+                function replaceAll() {
+                    var needle = findInput.value;
+                    if (!needle) return;
+                    var rep = replaceInput.value;
+                    cm.setValue(replaceAllString(cm.getValue(), needle, rep, findCase.checked));
+                    ta.value = cm.getValue();
+                    resetFindNavigation();
+                    updateFindCount();
+                    updateStat();
+                    toast("已全部替换");
+                }
+
+                cm.on("cursorActivity", function () {
+                    if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                });
+
+                document.getElementById("find-prev").addEventListener("click", function () {
+                    findPrev(shouldKeepFindFocus());
+                });
+                document.getElementById("find-next").addEventListener("click", function () {
+                    findNext(shouldKeepFindFocus());
+                });
+                document.getElementById("find-close").addEventListener("click", closeFind);
+                findCase.addEventListener("change", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                findInput.addEventListener("input", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                document.getElementById("find-rep-one").addEventListener("click", replaceOne);
+                document.getElementById("find-rep-all").addEventListener("click", replaceAll);
+
+                findInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (e.shiftKey) findPrev(true);
+                        else findNext(true);
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
+                    }
+                });
+                replaceInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        replaceOne();
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
+                    }
+                });
+
+                window.addEventListener(
+                    "keydown",
+                    function (e) {
+                        var mod = e.ctrlKey || e.metaKey;
+                        var k = String(e.key || "").toLowerCase();
+                        if (mod && k === "f") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleFindShortcut();
+                            return;
+                        }
+                        if (mod && k === "h" && !e.shiftKey) {
+                            e.preventDefault();
+                            openFind(true);
+                            return;
+                        }
+                        if (!findBar.hidden && e.key === "Escape") {
+                            e.preventDefault();
+                            closeFind();
+                            return;
+                        }
+                        if (!findBar.hidden && e.key === "F3") {
+                            e.preventDefault();
+                            if (e.shiftKey) findPrev();
+                            else findNext();
+                            return;
+                        }
+                        if (handleFindArrowKey(e)) return;
+                    },
+                    true
+                );
 
                 function getSqlFormatFn() {
                     if (typeof window._sqlFormatFn === "function") {
@@ -570,6 +1798,10 @@
                                         });
                                         cm.setValue(out);
                                         updateStat();
+                                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                                            resetFindNavigation();
+                                            updateFindCount();
+                                        }
                                         toast("已格式化");
                                     } catch (inner) {
                                         toast("SQL 格式化失败：" + (inner.message || String(inner)));
@@ -580,8 +1812,14 @@
                                 });
                             return;
                         } else if (kind === "javascript") {
-                            if (typeof js_beautify !== "function") throw new Error("js-beautify 未加载");
-                            cm.setValue(js_beautify(text, getBeautifyBase()));
+                            var jb = typeof js_beautify === "function"
+                                ? js_beautify
+                                : window.js_beautify;
+                            if (typeof jb !== "function") throw new Error("js-beautify 未加载");
+                            var jbOpts = getBeautifyBase();
+                            jbOpts.brace_style = "collapse";
+                            jbOpts.space_before_conditional = true;
+                            cm.setValue(jb(text, jbOpts));
                         } else if (kind === "css") {
                             if (typeof css_beautify !== "function") throw new Error("css-beautify 未加载");
                             cm.setValue(css_beautify(text, getBeautifyBase()));
@@ -590,6 +1828,10 @@
                             cm.setValue(html_beautify(text, getBeautifyBase()));
                         }
                         updateStat();
+                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                            resetFindNavigation();
+                            updateFindCount();
+                        }
                         toast("已格式化");
                     } catch (e) {
                         toast("格式化失败：" + (e.message || String(e)));
@@ -629,6 +1871,10 @@
                                                 .join(" ")
                                         );
                                         updateStat();
+                                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                                            resetFindNavigation();
+                                            updateFindCount();
+                                        }
                                         toast("已压缩为紧凑单行");
                                     } catch (inner) {
                                         toast("SQL 压缩失败：" + (inner.message || String(inner)));
@@ -639,15 +1885,19 @@
                                 });
                             return;
                         } else if (kind === "javascript") {
-                            if (typeof js_beautify !== "function") throw new Error("js-beautify 未加载");
+                            var jbMin = typeof js_beautify === "function"
+                                ? js_beautify
+                                : window.js_beautify;
+                            if (typeof jbMin !== "function") throw new Error("js-beautify 未加载");
                             cm.setValue(
-                                js_beautify(text, {
+                                jbMin(text, {
                                     indent_size: 0,
                                     indent_char: " ",
                                     preserve_newlines: false,
                                     max_preserve_newlines: 0,
                                     space_in_empty_paren: false,
-                                    end_with_newline: false
+                                    end_with_newline: false,
+                                    brace_style: "collapse"
                                 })
                             );
                         } else if (kind === "css") {
@@ -674,6 +1924,10 @@
                             );
                         }
                         updateStat();
+                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                            resetFindNavigation();
+                            updateFindCount();
+                        }
                         toast("已压缩");
                     } catch (e) {
                         toast("压缩失败：" + (e.message || String(e)));
@@ -725,21 +1979,44 @@
                 document.getElementById("fmt-tabs").addEventListener("click", function (e) {
                     var btn = e.target.closest("button[data-kind]");
                     if (!btn) return;
-                    kind = btn.getAttribute("data-kind") || "json";
-                    document.querySelectorAll("#fmt-tabs button").forEach(function (b) {
-                        b.classList.toggle("active", b === btn);
-                    });
-                    syncHeadUi();
-                    refreshEditorMode();
+                    switchFormatKind(btn.getAttribute("data-kind") || "json");
                 });
 
                 document.getElementById("btn-format").addEventListener("click", doFormat);
                 document.getElementById("btn-minify").addEventListener("click", doMinify);
                 document.getElementById("btn-copy").addEventListener("click", copyText);
+                document.getElementById("btn-qr").addEventListener("click", function () {
+                    var text = cm.getValue();
+                    if (!text.trim()) {
+                        if (typeof ToolCopy !== "undefined") {
+                            ToolCopy.toast("没有可生成二维码的内容");
+                        } else {
+                            toast("没有可生成二维码的内容");
+                        }
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
+                });
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     cm.setValue("");
+                    var sh = getActiveSheet();
+                    if (sh) sh.content = "";
+                    ta.value = "";
                     updateStat();
+                    if (findBar && !findBar.hidden) {
+                        resetFindNavigation();
+                        updateFindCount();
+                    }
+                    persistSheetsState();
+                    if (window.ToolFormPersist && ToolFormPersist.saveNow) {
+                        ToolFormPersist.saveNow();
+                    }
+                    toast("已清空当前工作表");
                 });
+
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
+                window.addEventListener("load", restoreSheetsFromPersist);
 
                 sqlDialect.addEventListener("change", function () {
                     if (kind === "sql") {
@@ -766,11 +2043,33 @@
                 window.addEventListener("resize", resizeCm);
                 setTimeout(resizeCm, 0);
 
-                cm.on("change", updateStat);
-                syncHeadUi();
-                refreshEditorMode();
+                cm.on("change", function () {
+                    syncEditorToSheets();
+                    schedulePersistSheets();
+                    updateStat();
+                    if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                });
+
+                document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
+                sheetAddBtn.addEventListener("click", addSheet);
+                if (sheetTabsEl && window.ToolSheetTabsDrag) {
+                    ToolSheetTabsDrag.attach({
+                        container: sheetTabsEl,
+                        isDragDisabled: function () {
+                            return !!sheetRenameId;
+                        },
+                        onReorder: reorderSheet
+                    });
+                }
+
+                initSheetsFromStorage();
+                syncFmtTabsUi();
+                applyActiveSheetToEditor();
+                renderSheetTabs();
+                persistSheetsState();
                 updateStat();
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

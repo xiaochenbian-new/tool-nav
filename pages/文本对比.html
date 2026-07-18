@@ -57,10 +57,21 @@
                 opacity: 0.45;
                 cursor: not-allowed;
             }
-            .btn.primary {
-                color: #fff;
-                border-color: transparent;
-                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            .btn.back-btn {
+                display: none;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .btn.back-btn.show {
+                display: inline-flex;
+            }
+            .btn.back-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
             }
             .hint {
                 color: var(--muted);
@@ -157,6 +168,7 @@
     <body>
         <div class="page">
             <div class="toolbar">
+                <button id="back-btn" class="btn back-btn" type="button" title="返回来源工具" aria-hidden="true">返回</button>
                 <button id="swap-btn" class="btn" type="button">左右互换</button>
                 <button id="clear-btn" class="btn tool-btn-danger" type="button">清空</button>
                 <span id="summary" class="hint">正在加载对比引擎…</span>
@@ -246,10 +258,148 @@
                 var modifiedModel = null;
                 var changes = 0;
                 var currentChange = 0;
+                var pendingSheetsDiffHandoff = null;
+                var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+                var returnToolId = "";
+                var returnToolName = "";
+                var ALLOWED_RETURN_TOOL_IDS = { tab8: true, tab18: true, tab19: true };
 
                 function $(id) {
                     return document.getElementById(id);
                 }
+
+                function updateBackButton() {
+                    var btn = $("back-btn");
+                    if (!btn) return;
+                    var ok = !!(returnToolId && ALLOWED_RETURN_TOOL_IDS[returnToolId]);
+                    btn.classList.toggle("show", ok);
+                    btn.setAttribute("aria-hidden", ok ? "false" : "true");
+                    if (ok) {
+                        var name =
+                            returnToolName ||
+                            (returnToolId === "tab8"
+                                ? "Json工具"
+                                : returnToolId === "tab19"
+                                  ? "格式化工具"
+                                  : "文本处理");
+                        btn.title = "返回" + name;
+                        btn.textContent = "返回";
+                    }
+                }
+
+                function setReturnToolFromPayload(payload) {
+                    var id = payload && payload.returnToolId ? String(payload.returnToolId) : "";
+                    if (ALLOWED_RETURN_TOOL_IDS[id]) {
+                        returnToolId = id;
+                        returnToolName = payload.returnToolName ? String(payload.returnToolName) : "";
+                    } else {
+                        returnToolId = "";
+                        returnToolName = "";
+                    }
+                    updateBackButton();
+                }
+
+                function goBackToSourceTool() {
+                    if (!returnToolId || !ALLOWED_RETURN_TOOL_IDS[returnToolId]) return;
+                    var toolId = returnToolId;
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: toolId,
+                                },
+                                "*"
+                            );
+                            return;
+                        } catch (e1) {
+                            // fall through
+                        }
+                    }
+                    window.location.href = "../index.html#tab=" + toolId;
+                }
+
+                function clearSheetsDiffHandoffStorage() {
+                    try {
+                        sessionStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.removeItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+
+                function applySheetsDiffHandoff(payload) {
+                    if (!payload) return;
+                    setReturnToolFromPayload(payload);
+                    if (!originalModel || !modifiedModel) {
+                        pendingSheetsDiffHandoff = payload;
+                        return;
+                    }
+                    originalModel.setValue(payload.left == null ? "" : String(payload.left));
+                    modifiedModel.setValue(payload.right == null ? "" : String(payload.right));
+                    var lang = payload.language || "plaintext";
+                    var sel = $("lang-select");
+                    if (sel) {
+                        var hasOpt = false;
+                        for (var i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === lang) {
+                                hasOpt = true;
+                                break;
+                            }
+                        }
+                        if (hasOpt) sel.value = lang;
+                        else {
+                            lang = "plaintext";
+                            sel.value = lang;
+                        }
+                    }
+                    setLanguage(lang);
+                    pendingSheetsDiffHandoff = null;
+                    clearSheetsDiffHandoffStorage();
+                    var leftLabel = payload.leftName ? String(payload.leftName) : "左侧";
+                    var rightLabel = payload.rightName ? String(payload.rightName) : "右侧";
+                    $("summary").textContent = "已载入对比：" + leftLabel + " ↔ " + rightLabel;
+                    requestAnimationFrame(function () {
+                        if (diffEditor) {
+                            applyFoldUnchangedAndRefreshDiff();
+                            layoutEditor();
+                        }
+                    });
+                }
+
+                function tryConsumeSheetsDiffHandoffFromStorage() {
+                    var raw = null;
+                    try {
+                        raw = sessionStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                    } catch (e1) {
+                        // ignore
+                    }
+                    if (!raw) {
+                        try {
+                            raw = localStorage.getItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY);
+                        } catch (e2) {
+                            // ignore
+                        }
+                    }
+                    if (!raw) return;
+                    try {
+                        applySheetsDiffHandoff(JSON.parse(raw));
+                    } catch (e3) {
+                        // ignore invalid json
+                    }
+                }
+
+                window.addEventListener("message", function (e) {
+                    var d = e.data;
+                    if (!d || d.type !== "tool-nav:consume-handoff") return;
+                    if (d.handoff === "sheets-to-text-diff") {
+                        applySheetsDiffHandoff(d.payload || null);
+                    }
+                });
 
                 function fillLangSelect() {
                     var sel = $("lang-select");
@@ -407,6 +557,12 @@
                     updateChangeNav();
                     updateSummary();
 
+                    if (pendingSheetsDiffHandoff) {
+                        applySheetsDiffHandoff(pendingSheetsDiffHandoff);
+                    } else {
+                        tryConsumeSheetsDiffHandoffFromStorage();
+                    }
+
                     window.addEventListener("resize", layoutEditor);
                     setTimeout(layoutEditor, 50);
                     setTimeout(function () {
@@ -416,6 +572,7 @@
                 }
 
                 function bindControls() {
+                    $("back-btn").addEventListener("click", goBackToSourceTool);
                     $("swap-btn").addEventListener("click", function () {
                         if (!originalModel || !modifiedModel) return;
                         var a = originalModel.getValue();
@@ -460,6 +617,8 @@
 
                 fillLangSelect();
                 bindControls();
+                updateBackButton();
+                tryConsumeSheetsDiffHandoffFromStorage();
 
                 require.config({ paths: { vs: MONACO_ROOT } });
                 require(
@@ -483,5 +642,6 @@
                 );
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

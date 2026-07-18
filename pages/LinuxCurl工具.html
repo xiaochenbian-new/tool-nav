@@ -42,17 +42,74 @@
                 box-shadow: var(--shadow);
                 padding: 8px;
             }
+            .panel-left {
+                overflow: hidden;
+            }
+            .panel-left-scroll {
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+            }
             .title {
-                margin: 0 0 8px;
+                margin: 0 0 10px;
                 font-size: 13px;
                 font-weight: 700;
                 color: var(--text);
             }
-            label {
+            .output-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 8px;
+                flex-shrink: 0;
+            }
+            .output-head .title {
+                margin: 0;
+            }
+            .output-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .output-actions .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 4px 10px;
                 font-size: 12px;
-                color: var(--muted);
-                margin-bottom: 6px;
+                font-weight: 600;
+                cursor: pointer;
+                margin: 0;
+                transform: none;
+                box-shadow: none;
+                filter: none;
+            }
+            .output-actions .title-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                transform: none;
+                box-shadow: none;
+                filter: none;
+            }
+            .output-actions .title-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .output-actions .title-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .output-actions .title-btn.qr-btn svg {
                 display: block;
+                flex-shrink: 0;
             }
             input, select, textarea {
                 width: 100%;
@@ -70,25 +127,420 @@
                 resize: vertical;
                 min-height: 90px;
             }
-            .row {
-                display: grid;
-                grid-template-columns: 120px 1fr;
+            .url-bar {
+                display: flex;
                 gap: 8px;
-                margin-bottom: 8px;
+                margin-bottom: 10px;
+            }
+            .url-input-wrap {
+                position: relative;
+                flex: 1;
+                min-width: 0;
+            }
+            .url-input-wrap #url {
+                width: 100%;
+            }
+            .url-suggest {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: calc(100% + 4px);
+                z-index: 100;
+                max-height: 220px;
+                overflow: auto;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.18);
+                padding: 4px;
+            }
+            .url-suggest[hidden] {
+                display: none !important;
+            }
+            .url-suggest-item {
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 8px 10px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--text);
+                font-size: 12px;
+                font-family: Consolas, "Courier New", monospace;
+                word-break: break-all;
+                cursor: pointer;
+                box-shadow: none;
+                filter: none;
+                margin: 0;
+                font-weight: 400;
+            }
+            .url-suggest-item:hover,
+            .url-suggest-item.active {
+                background: #f4f8ff;
+                color: var(--primary);
+                filter: none;
+            }
+            #method {
+                width: 108px;
+                flex-shrink: 0;
+            }
+            #url {
+                flex: 1;
+                min-width: 0;
+            }
+            .section-block {
+                margin-bottom: 10px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+            }
+            .section-head {
+                display: flex;
+                align-items: stretch;
+                background: #f8fbff;
+            }
+            .section-head .section-toggle {
+                flex: 1;
+                width: auto;
+                min-width: 0;
+            }
+            .section-head .kv-view-select {
+                flex-shrink: 0;
+                align-self: center;
+                width: auto;
+                min-width: 72px;
+                margin-right: 8px;
+                padding: 3px 8px;
+                font-size: 11px;
+                border-radius: 6px;
+                background: #fff;
+            }
+            .section-toggle {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 12px;
+                background: #f8fbff;
+                border: 0;
+                color: var(--text);
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                cursor: pointer;
+                text-align: left;
+            }
+            .section-toggle:hover {
+                background: #eef4ff;
+            }
+            .section-chevron {
+                font-size: 10px;
+                color: var(--muted);
+                transition: transform 0.2s;
+            }
+            .section-toggle.expanded .section-chevron {
+                transform: rotate(90deg);
+            }
+            .section-count {
+                margin-left: auto;
+                font-weight: 500;
+                color: var(--muted);
+                letter-spacing: 0;
+                font-size: 11px;
+            }
+            .section-body {
+                padding: 8px 10px 10px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+            }
+            .section-body.collapsed {
+                display: none;
+            }
+            .kv-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .kv-header {
+                display: grid;
+                grid-template-columns: 18px 1fr auto minmax(0, 1.4fr) 28px;
+                gap: 6px;
+                align-items: center;
+                padding: 0 0 2px;
+                font-size: 11px;
+                color: var(--muted);
+                font-weight: 600;
+            }
+            .kv-row {
+                display: grid;
+                grid-template-columns: 18px 1fr auto minmax(0, 1.4fr) 28px;
+                gap: 6px;
                 align-items: center;
             }
+            .kv-row input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+                margin: 0;
+                accent-color: var(--primary);
+            }
+            .kv-row input[type="text"] {
+                min-width: 0;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            .kv-value-wrap {
+                display: flex;
+                justify-content: flex-end;
+                min-width: 0;
+                width: 100%;
+            }
+            .kv-input-group {
+                display: flex;
+                align-items: stretch;
+                min-width: 0;
+                max-width: 100%;
+                width: 100%;
+            }
+            .kv-input-group:focus-within .kv-expand,
+            .kv-input-group:focus-within .kv-value {
+                border-color: var(--primary);
+            }
+            .kv-input-group:focus-within {
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+                border-radius: 8px;
+            }
+            .kv-input-group .kv-value {
+                flex: 1;
+                min-width: 0;
+                border-radius: 8px 0 0 8px;
+                border-right: none;
+            }
+            .kv-input-group .kv-value:focus {
+                box-shadow: none;
+            }
+            .kv-expand {
+                flex-shrink: 0;
+                min-width: 32px;
+                padding: 0 6px;
+                border: 1px solid #cfdcf7;
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                background: #f8fbff;
+                color: var(--muted);
+                font-size: 14px;
+                font-weight: 400;
+                font-family: "Segoe UI Symbol", "Apple Symbols", sans-serif;
+                cursor: pointer;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .kv-expand:hover {
+                background: #eef4ff;
+                color: var(--primary);
+            }
+            .kv-sep {
+                color: var(--muted);
+                font-size: 12px;
+                user-select: none;
+            }
+            .kv-remove {
+                width: 28px;
+                height: 28px;
+                padding: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--muted);
+                font-size: 16px;
+                line-height: 1;
+                font-weight: 400;
+            }
+            .kv-remove:hover {
+                background: #ffe8e8;
+                color: var(--danger);
+            }
+            .kv-toolbar {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 0;
+                flex-wrap: wrap;
+                flex-shrink: 0;
+            }
+            .kv-key-wrap {
+                position: relative;
+                display: flex;
+                min-width: 0;
+            }
+            .kv-key-wrap .kv-key {
+                width: 100%;
+                padding-right: 30px;
+            }
+            .kv-key-hint-btn {
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 28px;
+                border: 0;
+                border-left: 1px solid #dbe6ff;
+                background: linear-gradient(180deg, #f8fbff, #edf3ff);
+                border-radius: 0 6px 6px 0;
+                color: var(--primary);
+                cursor: pointer;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none;
+            }
+            .kv-key-hint-btn:hover {
+                background: #e0ebff;
+                filter: none;
+                color: #1a56e8;
+            }
+            .kv-key-hint-btn svg { display: block; }
+            .kv-preset-menu {
+                position: fixed;
+                z-index: 1000;
+                max-height: 300px;
+                overflow: auto;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: 0 10px 28px rgba(36, 90, 190, 0.18);
+                padding: 4px;
+            }
+            .kv-preset-menu-title {
+                padding: 6px 10px 4px;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .kv-preset-item {
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 8px 10px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--text);
+                box-shadow: none;
+                font-size: 12px;
+                line-height: 1.45;
+            }
+            .kv-preset-item:hover { background: #f4f8ff; filter: none; }
+            .kv-preset-item-top {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .kv-preset-key { font-weight: 700; color: var(--primary); }
+            .kv-preset-val {
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 11px;
+                color: var(--text);
+                word-break: break-all;
+            }
+            .kv-preset-desc { display: block; margin-top: 2px; font-size: 10px; color: var(--muted); }
+            .kv-add-btn,
+            .kv-clear-btn {
+                background: #fff;
+                color: var(--text);
+                border: 1px solid #d5e2ff;
+                border-radius: 8px;
+                padding: 7px 12px;
+                font-size: 12px;
+                min-height: 2rem;
+                font-weight: 600;
+                box-shadow: none;
+            }
+            .kv-add-btn:hover { border-color: var(--primary); color: var(--primary); filter: none; background: #f8fbff; }
+            .kv-clear-btn { color: var(--muted); }
+            .kv-clear-btn:hover { border-color: #f5b4b4; color: var(--danger); filter: none; background: #fff8f8; }
+            .kv-raw-input {
+                display: block;
+                width: 100%;
+                min-height: 88px;
+                max-height: 140px;
+                height: 120px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.5;
+                border-radius: 8px;
+                background: #fafcff;
+                resize: none;
+                overflow: auto;
+                box-sizing: border-box;
+                flex-shrink: 0;
+            }
+            .btn-text {
+                background: transparent;
+                color: var(--primary);
+                padding: 4px 0;
+                font-weight: 600;
+            }
+            .btn-text:hover {
+                color: var(--primary-2);
+            }
+            .btn-text-muted {
+                background: transparent;
+                color: var(--muted);
+                padding: 4px 0;
+                font-weight: 500;
+            }
+            .btn-text-muted:hover {
+                color: var(--danger);
+            }
+            .body-block {
+                margin-bottom: 10px;
+            }
+            .body-block label {
+                display: block;
+                font-size: 12px;
+                color: var(--muted);
+                margin-bottom: 6px;
+            }
+            .body-hint {
+                margin: 0 0 6px;
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+            }
             .actions {
-                margin-top: auto;
+                flex-shrink: 0;
                 display: flex;
                 gap: 8px;
                 padding-top: 8px;
                 border-top: 1px solid #dbe7ff;
             }
+            .actions button {
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                font-size: 12px;
+                padding: 7px 14px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .actions button:hover {
+                filter: brightness(1.05);
+            }
             button {
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
                 color: #fff;
                 border: 0;
-                border-radius: 999px;
+                border-radius: 6px;
                 font-size: 12px;
                 padding: 7px 12px;
                 cursor: pointer;
@@ -97,7 +549,8 @@
             #output {
                 flex: 1;
                 min-height: 0;
-                white-space: pre-wrap;
+                width: 100%;
+                white-space: pre;
                 word-break: break-all;
                 background: #fff;
                 border: 1px solid #dbe7ff;
@@ -107,8 +560,10 @@
                 font-family: Consolas, "Courier New", monospace;
                 font-size: 12px;
                 line-height: 1.5;
+                resize: none;
             }
             .status {
+                flex-shrink: 0;
                 margin-top: 8px;
                 padding: 6px 8px;
                 border-radius: 6px;
@@ -117,18 +572,87 @@
                 font-size: 12px;
                 color: #2f3d5d;
             }
+            dialog.kv-dialog[open] {
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                max-width: 100vw;
+                height: 100%;
+                max-height: 100vh;
+                margin: 0;
+                padding: 16px;
+                border: none;
+                background: rgba(31, 42, 68, 0.4);
+                box-sizing: border-box;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            dialog.kv-dialog[open]::backdrop {
+                background: transparent;
+            }
+            .dlg-panel {
+                width: 100%;
+                max-width: 560px;
+                max-height: min(85vh, 100% - 32px);
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .dlg-h {
+                padding: 10px 12px;
+                font-size: 14px;
+                font-weight: 600;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                color: var(--text);
+            }
+            .dlg-b {
+                padding: 12px;
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+            }
+            .dlg-b textarea {
+                min-height: 200px;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 13px;
+                resize: vertical;
+            }
+            .dlg-f {
+                padding: 10px 12px;
+                border-top: 1px solid #e4edff;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+                background: #fafcff;
+            }
+            .dlg-f button {
+                min-width: 72px;
+                border-radius: 6px;
+            }
+            .dlg-f .btn-cancel {
+                background: #fff;
+                color: var(--muted);
+                border: 1px solid #cfdcf7;
+            }
             @media (max-width: 900px) {
                 .container { flex-direction: column; }
-                .row { grid-template-columns: 1fr; }
+                .url-bar { flex-direction: column; }
+                #method { width: 100%; }
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="panel">
+            <div class="panel panel-left">
+                <div class="panel-left-scroll">
                 <h3 class="title">请求参数</h3>
-                <div class="row">
-                    <label for="method">请求方法</label>
+                <div class="url-bar">
                     <select id="method">
                         <option>GET</option>
                         <option>POST</option>
@@ -136,108 +660,952 @@
                         <option>PATCH</option>
                         <option>DELETE</option>
                     </select>
+                    <div class="url-input-wrap">
+                        <input id="url" type="text" autocomplete="off" spellcheck="false" placeholder="https://api.example.com/v1/orders" />
+                        <div id="url-suggest" class="url-suggest" hidden></div>
+                    </div>
                 </div>
-                <div class="row">
-                    <label for="url">请求 URL</label>
-                    <input id="url" placeholder="https://api.example.com/v1/orders" />
+
+                <div class="section-block">
+                    <div class="section-head">
+                        <button type="button" class="section-toggle" data-target="headers-body" aria-expanded="false">
+                            <span class="section-chevron">&#9654;</span>
+                            <span>Headers 请求头</span>
+                            <span id="headers-count" class="section-count"></span>
+                        </button>
+                        <select id="header-view" class="kv-view-select" title="切换编辑模式">
+                            <option value="form" selected>Form</option>
+                            <option value="raw">Raw</option>
+                        </select>
+                    </div>
+                    <div id="headers-body" class="section-body collapsed">
+                        <div id="header-form-wrap">
+                            <div class="kv-header">
+                                <span></span>
+                                <span>Key</span>
+                                <span></span>
+                                <span>Value</span>
+                                <span></span>
+                            </div>
+                            <div id="header-list" class="kv-list"></div>
+                        </div>
+                        <div id="header-raw-wrap" hidden>
+                            <textarea id="header-raw" class="kv-raw-input" spellcheck="false" placeholder="Content-Type: application/json&#10;Authorization: Bearer your-token"></textarea>
+                        </div>
+                        <div class="kv-toolbar">
+                            <button id="add-header-btn" type="button" class="kv-add-btn">+ Add header</button>
+                            <button id="clear-header-btn" type="button" class="kv-clear-btn">清空</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="row">
-                    <label for="headers">请求头（每行一个）</label>
-                    <textarea id="headers" placeholder="Content-Type: application/json&#10;Authorization: Bearer xxx"></textarea>
+
+                <div class="section-block">
+                    <div class="section-head">
+                        <button type="button" class="section-toggle expanded" data-target="query-body" aria-expanded="true">
+                            <span class="section-chevron">&#9654;</span>
+                            <span>Query Params 查询参数</span>
+                            <span id="query-count" class="section-count"></span>
+                        </button>
+                        <select id="query-view" class="kv-view-select" title="切换编辑模式">
+                            <option value="form" selected>Form</option>
+                            <option value="raw">Raw</option>
+                        </select>
+                    </div>
+                    <div id="query-body" class="section-body">
+                        <div id="query-form-wrap">
+                            <div class="kv-header">
+                                <span></span>
+                                <span>Key</span>
+                                <span></span>
+                                <span>Value</span>
+                                <span></span>
+                            </div>
+                            <div id="query-list" class="kv-list"></div>
+                        </div>
+                        <div id="query-raw-wrap" hidden>
+                            <textarea id="query-raw" class="kv-raw-input" spellcheck="false" placeholder="page=1&#10;name=demo"></textarea>
+                        </div>
+                        <div class="kv-toolbar">
+                            <button id="add-query-btn" type="button" class="kv-add-btn">+ Add param</button>
+                            <button id="clear-query-btn" type="button" class="kv-clear-btn">清空</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="row">
+
+                <div id="body-section" class="body-block" hidden>
                     <label for="body">请求体</label>
+                    <p class="body-hint">POST / PUT / PATCH 等方法可携带请求体；GET 一般不使用请求体，参数请放在 Query 中。</p>
                     <textarea id="body" placeholder='{"id":1,"name":"demo"}'></textarea>
+                </div>
+
                 </div>
                 <div class="actions">
                     <button id="generate-btn" type="button">生成 curl</button>
-                    <button id="copy-btn" type="button">复制命令</button>
                     <button id="clear-btn" class="danger tool-btn-danger" type="button">清空</button>
                 </div>
-                <div id="status" class="status">输入 URL 后可一键生成 Linux curl 命令。</div>
+                <div id="status" class="status">填写参数后点击「生成 curl」生成命令（URL 与参数不带引号）。</div>
             </div>
             <div class="panel">
-                <h3 class="title">命令输出</h3>
-                <div id="output"></div>
+                <div class="output-head">
+                    <h3 class="title">命令输出</h3>
+                    <div class="output-actions">
+                        <button type="button" class="title-btn" id="copy-btn">复制</button>
+                        <button type="button" class="title-btn qr-btn" id="qr-btn" title="生成二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="output" spellcheck="false" placeholder="生成的 curl 命令将显示在此，可直接编辑"></textarea>
             </div>
         </div>
+
+        <dialog id="kv-edit-dialog" class="kv-dialog">
+            <div class="dlg-panel">
+                <div id="kv-edit-title" class="dlg-h">编辑参数值</div>
+                <div class="dlg-b">
+                    <textarea id="kv-edit-textarea" placeholder="在此输入完整内容"></textarea>
+                </div>
+                <div class="dlg-f">
+                    <button type="button" id="kv-edit-cancel" class="btn-cancel">取消</button>
+                    <button type="button" id="kv-edit-save">确定</button>
+                </div>
+            </div>
+        </dialog>
+
+        <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
         <script>
+            var BODY_METHODS = ["POST", "PUT", "PATCH"];
+            var URL_HISTORY_KEY = "linux_curl_url_history_v1";
+            var URL_HISTORY_MAX = 15;
+            var FORM_STORAGE_KEY = "linux_curl_form_v1";
+            var kvEditTarget = null;
+            var headerPresetMenu = null;
+            var outputManuallyEdited = false;
+            var urlSuggestActive = -1;
+            var persistFormTimer = null;
+            var COMMON_HEADERS = [
+                { key: "Content-Type", value: "application/json", desc: "JSON 请求体（最常用）" },
+                { key: "Content-Type", value: "application/x-www-form-urlencoded", desc: "表单格式提交" },
+                { key: "Content-Type", value: "multipart/form-data", desc: "文件 / 表单上传" },
+                { key: "Content-Type", value: "text/plain", desc: "纯文本请求体" },
+                { key: "Accept", value: "application/json", desc: "期望返回 JSON" },
+                { key: "Accept", value: "*/*", desc: "接受任意响应类型" },
+                { key: "Authorization", value: "Bearer your-token", desc: "Bearer 令牌" },
+                { key: "Authorization", value: "Basic dXNlcjpwYXNz", desc: "Basic 认证（Base64）" },
+                { key: "Cookie", value: "session=xxx", desc: "携带会话 Cookie" },
+                { key: "User-Agent", value: "Mozilla/5.0", desc: "浏览器 / 客户端标识" },
+                { key: "X-Request-ID", value: "req-001", desc: "链路追踪 ID" },
+                { key: "X-API-Key", value: "your-api-key", desc: "API 密钥" },
+                { key: "Cache-Control", value: "no-cache", desc: "不使用缓存" },
+                { key: "Origin", value: "https://example.com", desc: "跨域请求来源" },
+                { key: "Referer", value: "https://example.com", desc: "来源页面地址" },
+                { key: "Accept-Language", value: "zh-CN,zh;q=0.9", desc: "语言偏好" },
+                { key: "If-None-Match", value: "etag-value", desc: "条件请求（ETag）" },
+                { key: "X-CSRF-Token", value: "your-csrf-token", desc: "CSRF 防护令牌" }
+            ];
+
+            function getOutputText() {
+                return document.getElementById("output").value;
+            }
+
+            function setOutputText(text) {
+                document.getElementById("output").value = text || "";
+            }
+
+            function readKvRowsFromForm(listId) {
+                return Array.prototype.slice
+                    .call(document.querySelectorAll("#" + listId + " .kv-row"))
+                    .map(function (row) {
+                        return {
+                            enabled: row.querySelector(".kv-enabled").checked,
+                            key: row.querySelector(".kv-key").value,
+                            value: row.querySelector(".kv-value").value
+                        };
+                    });
+            }
+
+            function readFormState() {
+                return {
+                    method: document.getElementById("method").value,
+                    url: document.getElementById("url").value,
+                    body: document.getElementById("body").value,
+                    output: getOutputText(),
+                    outputManuallyEdited: outputManuallyEdited,
+                    headerView: document.getElementById("header-view").value,
+                    queryView: document.getElementById("query-view").value,
+                    headerRaw: document.getElementById("header-raw").value,
+                    queryRaw: document.getElementById("query-raw").value,
+                    headers: readKvRowsFromForm("header-list"),
+                    queryParams: readKvRowsFromForm("query-list")
+                };
+            }
+
+            function persistForm() {
+                try {
+                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(readFormState()));
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            function schedulePersistForm() {
+                if (persistFormTimer) clearTimeout(persistFormTimer);
+                persistFormTimer = setTimeout(persistForm, 300);
+            }
+
+            function applyHeaderViewUi(mode) {
+                document.getElementById("header-view").value = mode;
+                var isRaw = mode === "raw";
+                document.getElementById("header-form-wrap").hidden = isRaw;
+                document.getElementById("header-raw-wrap").hidden = !isRaw;
+                syncKvActions();
+            }
+
+            function applyQueryViewUi(mode) {
+                document.getElementById("query-view").value = mode;
+                var isRaw = mode === "raw";
+                document.getElementById("query-form-wrap").hidden = isRaw;
+                document.getElementById("query-raw-wrap").hidden = !isRaw;
+                syncKvActions();
+            }
+
+            function applyFormState(state) {
+                if (!state || typeof state !== "object") return;
+                document.getElementById("method").value = state.method || "GET";
+                document.getElementById("url").value = state.url || "";
+                document.getElementById("body").value = state.body || "";
+                setOutputText(state.output || "");
+                outputManuallyEdited = !!state.outputManuallyEdited;
+                document.getElementById("header-raw").value = state.headerRaw || "";
+                document.getElementById("query-raw").value = state.queryRaw || "";
+                renderKvList(
+                    "header-list",
+                    ":",
+                    "如 Content-Type",
+                    "如 application/json",
+                    Array.isArray(state.headers) ? state.headers : [],
+                    { presets: "header" }
+                );
+                renderKvList(
+                    "query-list",
+                    "=",
+                    "Key",
+                    "Value",
+                    Array.isArray(state.queryParams) ? state.queryParams : []
+                );
+                applyHeaderViewUi(state.headerView === "raw" ? "raw" : "form");
+                applyQueryViewUi(state.queryView === "raw" ? "raw" : "form");
+            }
+
+            function restoreFormFromStorage() {
+                try {
+                    var raw = localStorage.getItem(FORM_STORAGE_KEY);
+                    if (!raw) return false;
+                    applyFormState(JSON.parse(raw));
+                    updateBodyVisibility();
+                    updateSectionCounts();
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function initFormFromStorage() {
+                var restored = restoreFormFromStorage();
+                if (!restored) {
+                    resetKvList("header-list", ":", "如 Content-Type", "如 application/json", { presets: "header" });
+                    resetKvList("query-list", "=", "Key", "Value");
+                    applyHeaderViewUi("form");
+                    applyQueryViewUi("form");
+                }
+            }
+
+            function loadUrlHistory() {
+                try {
+                    var raw = localStorage.getItem(URL_HISTORY_KEY);
+                    var list = raw ? JSON.parse(raw) : [];
+                    if (!Array.isArray(list)) return [];
+                    return list.filter(function (item) {
+                        return typeof item === "string" && item.trim();
+                    }).slice(0, URL_HISTORY_MAX);
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveUrlHistory(list) {
+                try {
+                    localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(list.slice(0, URL_HISTORY_MAX)));
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            function pushUrlHistory(url) {
+                url = String(url || "").trim();
+                if (!url) return;
+                var list = loadUrlHistory().filter(function (item) {
+                    return item !== url;
+                });
+                list.unshift(url);
+                saveUrlHistory(list);
+            }
+
+            function matchUrlHistory(query) {
+                var list = loadUrlHistory();
+                query = String(query || "").trim().toLowerCase();
+                if (!query) return list;
+                return list.filter(function (url) {
+                    return url.toLowerCase().indexOf(query) >= 0;
+                });
+            }
+
+            function hideUrlSuggest() {
+                var el = document.getElementById("url-suggest");
+                el.hidden = true;
+                el.innerHTML = "";
+                urlSuggestActive = -1;
+            }
+
+            function highlightUrlSuggestItem() {
+                var items = document.querySelectorAll("#url-suggest .url-suggest-item");
+                Array.prototype.forEach.call(items, function (item, idx) {
+                    item.classList.toggle("active", idx === urlSuggestActive);
+                });
+                if (urlSuggestActive >= 0 && items[urlSuggestActive]) {
+                    items[urlSuggestActive].scrollIntoView({ block: "nearest" });
+                }
+            }
+
+            function selectUrlSuggestItem(url) {
+                document.getElementById("url").value = url;
+                hideUrlSuggest();
+                outputManuallyEdited = false;
+                onFormChange();
+            }
+
+            function updateUrlSuggest() {
+                var input = document.getElementById("url");
+                var el = document.getElementById("url-suggest");
+                var matches = matchUrlHistory(input.value);
+                urlSuggestActive = -1;
+                if (!matches.length) {
+                    hideUrlSuggest();
+                    return;
+                }
+                el.hidden = false;
+                el.innerHTML = matches.map(function (url) {
+                    return '<button type="button" class="url-suggest-item" data-url="' + escapeHtmlAttr(url) + '">' + escapeHtml(url) + "</button>";
+                }).join("");
+            }
+
+            function bindUrlSuggest() {
+                var input = document.getElementById("url");
+                var suggest = document.getElementById("url-suggest");
+
+                input.addEventListener("focus", function () {
+                    updateUrlSuggest();
+                });
+                input.addEventListener("blur", function () {
+                    setTimeout(hideUrlSuggest, 150);
+                });
+                input.addEventListener("keydown", function (e) {
+                    var items = suggest.querySelectorAll(".url-suggest-item");
+                    if (suggest.hidden || !items.length) return;
+                    if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        urlSuggestActive = Math.min(urlSuggestActive + 1, items.length - 1);
+                        highlightUrlSuggestItem();
+                    } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        urlSuggestActive = Math.max(urlSuggestActive - 1, 0);
+                        highlightUrlSuggestItem();
+                    } else if (e.key === "Enter" && urlSuggestActive >= 0) {
+                        e.preventDefault();
+                        selectUrlSuggestItem(items[urlSuggestActive].getAttribute("data-url") || items[urlSuggestActive].textContent);
+                    } else if (e.key === "Escape") {
+                        hideUrlSuggest();
+                    }
+                });
+                suggest.addEventListener("mousedown", function (e) {
+                    var item = e.target.closest(".url-suggest-item");
+                    if (!item) return;
+                    e.preventDefault();
+                    selectUrlSuggestItem(item.getAttribute("data-url") || item.textContent);
+                });
+            }
+
             function setStatus(text, isError) {
-                const status = document.getElementById("status");
+                var status = document.getElementById("status");
                 status.textContent = text;
                 status.style.color = isError ? "#c43d3d" : "#2f3d5d";
             }
 
-            function shQuote(text) {
-                return "'" + String(text).replace(/'/g, "'\"'\"'") + "'";
+            function escapeHtmlAttr(text) {
+                return String(text)
+                    .replace(/&/g, "&amp;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/</g, "&lt;");
             }
 
-            function generateCurl() {
-                const method = document.getElementById("method").value.trim().toUpperCase();
-                const url = document.getElementById("url").value.trim();
-                const headersText = document.getElementById("headers").value;
-                const body = document.getElementById("body").value;
-                const output = document.getElementById("output");
+            function escapeHtml(text) {
+                return String(text)
+                    .replace(/&/g, "&amp;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/</g, "&lt;");
+            }
 
-                if (!url) {
-                    output.textContent = "";
-                    setStatus("请先输入请求 URL。", true);
-                    return;
+            function closeHeaderPresetMenu() {
+                if (headerPresetMenu) {
+                    headerPresetMenu.remove();
+                    headerPresetMenu = null;
                 }
+                document.removeEventListener("click", onHeaderPresetOutside, true);
+            }
 
-                const lines = ["curl -X " + method + " \\", "  " + shQuote(url) + " \\"];
-                headersText
-                    .split(/\r?\n/)
-                    .map(function (line) { return line.trim(); })
-                    .filter(function (line) { return !!line; })
-                    .forEach(function (header) {
-                        lines.push("  -H " + shQuote(header) + " \\");
+            function onHeaderPresetOutside(e) {
+                if (!headerPresetMenu) return;
+                if (headerPresetMenu.contains(e.target) || e.target.closest(".kv-key-hint-btn")) return;
+                closeHeaderPresetMenu();
+            }
+
+            function openHeaderPresetMenu(anchorBtn, row) {
+                closeHeaderPresetMenu();
+                var menu = document.createElement("div");
+                menu.className = "kv-preset-menu";
+                menu.innerHTML = '<div class="kv-preset-menu-title">常用请求头</div>';
+                COMMON_HEADERS.forEach(function (preset) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "kv-preset-item";
+                    btn.innerHTML =
+                        '<span class="kv-preset-item-top">' +
+                        '<span class="kv-preset-key">' + escapeHtml(preset.key) + "</span>" +
+                        '<span class="kv-preset-val">' + escapeHtml(preset.value || "(空)") + "</span>" +
+                        "</span>" +
+                        '<span class="kv-preset-desc">' + escapeHtml(preset.desc) + "</span>";
+                    btn.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        row.querySelector(".kv-key").value = preset.key;
+                        row.querySelector(".kv-value").value = preset.value || "";
+                        closeHeaderPresetMenu();
+                        onFormChange();
                     });
-
-                if (body.trim()) {
-                    lines.push("  --data-raw " + shQuote(body));
-                } else {
-                    lines[lines.length - 1] = lines[lines.length - 1].replace(/\\$/, "").trimEnd();
+                    menu.appendChild(btn);
+                });
+                document.body.appendChild(menu);
+                headerPresetMenu = menu;
+                var rect = anchorBtn.getBoundingClientRect();
+                var top = rect.bottom + 4;
+                var left = rect.left;
+                if (top + menu.offsetHeight > window.innerHeight - 8) {
+                    top = Math.max(8, rect.top - menu.offsetHeight - 4);
                 }
-
-                output.textContent = lines.join("\n");
-                setStatus("curl 命令已生成。", false);
+                if (left + menu.offsetWidth > window.innerWidth - 8) {
+                    left = Math.max(8, window.innerWidth - menu.offsetWidth - 8);
+                }
+                menu.style.top = top + "px";
+                menu.style.left = left + "px";
+                menu.style.minWidth = Math.max(280, rect.width + 120) + "px";
+                setTimeout(function () {
+                    document.addEventListener("click", onHeaderPresetOutside, true);
+                }, 0);
             }
 
-            function copyCurl() {
-                const text = document.getElementById("output").textContent.trim();
-                if (!text) {
-                    setStatus("请先生成 curl 命令。", true);
-                    return;
+            function expandSection(bodyId) {
+                var body = document.getElementById(bodyId);
+                if (!body || !body.classList.contains("collapsed")) return;
+                body.classList.remove("collapsed");
+                var btn = document.querySelector('.section-toggle[data-target="' + bodyId + '"]');
+                if (btn) {
+                    btn.classList.add("expanded");
+                    btn.setAttribute("aria-expanded", "true");
                 }
-                navigator.clipboard.writeText(text).then(function () {
-                    setStatus("已复制到剪贴板。", false);
-                }).catch(function () {
-                    setStatus("复制失败，请手动复制。", true);
+            }
+
+            function createKvRow(listId, separator, keyPlaceholder, valuePlaceholder, key, value, enabled, opts) {
+                opts = opts || {};
+                var useHeaderPresets = opts.presets === "header";
+                if (useHeaderPresets) closeHeaderPresetMenu();
+                var row = document.createElement("div");
+                row.className = "kv-row";
+                var keyField = useHeaderPresets
+                    ? '<div class="kv-key-wrap">' +
+                        '<input type="text" class="kv-key" placeholder="' + escapeHtmlAttr(keyPlaceholder) + '" value="' + escapeHtmlAttr(key || "") + '" />' +
+                        '<button type="button" class="kv-key-hint-btn" title="选择常用请求头">' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+                        '<circle cx="12" cy="12" r="9"/>' +
+                        '<path d="M12 10v5M12 7h.01"/>' +
+                        "</svg></button></div>"
+                    : '<input type="text" class="kv-key" placeholder="' + escapeHtmlAttr(keyPlaceholder) + '" value="' + escapeHtmlAttr(key || "") + '" />';
+                row.innerHTML =
+                    '<input type="checkbox" class="kv-enabled"' + (enabled !== false ? " checked" : "") + " />" +
+                    keyField +
+                    '<span class="kv-sep">' + escapeHtmlAttr(separator) + "</span>" +
+                    '<div class="kv-value-wrap">' +
+                    '<div class="kv-input-group">' +
+                    '<input type="text" class="kv-value" placeholder="' + escapeHtmlAttr(valuePlaceholder) + '" value="' + escapeHtmlAttr(value || "") + '" />' +
+                    '<button type="button" class="kv-expand" title="弹框编辑">▤</button>' +
+                    "</div></div>" +
+                    '<button type="button" class="kv-remove" title="删除">&times;</button>';
+                if (useHeaderPresets) {
+                    row.querySelector(".kv-key-hint-btn").addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        openHeaderPresetMenu(this, row);
+                    });
+                }
+                row.querySelector(".kv-expand").addEventListener("click", function () {
+                    openKvEditDialog(row.querySelector(".kv-value"), valuePlaceholder);
+                });
+                row.querySelector(".kv-remove").addEventListener("click", function () {
+                    closeHeaderPresetMenu();
+                    var list = document.getElementById(listId);
+                    if (list.children.length <= 1) {
+                        row.querySelector(".kv-key").value = "";
+                        row.querySelector(".kv-value").value = "";
+                        row.querySelector(".kv-enabled").checked = true;
+                    } else {
+                        row.remove();
+                    }
+                    onFormChange();
+                });
+                return row;
+            }
+
+            function openKvEditDialog(valueInput, label) {
+                kvEditTarget = valueInput;
+                document.getElementById("kv-edit-title").textContent = "编辑 " + (label || "内容");
+                document.getElementById("kv-edit-textarea").value = valueInput.value;
+                document.getElementById("kv-edit-dialog").showModal();
+                document.getElementById("kv-edit-textarea").focus();
+            }
+
+            function closeKvEditDialog() {
+                document.getElementById("kv-edit-dialog").close();
+                kvEditTarget = null;
+            }
+
+            function saveKvEditDialog() {
+                if (kvEditTarget) {
+                    kvEditTarget.value = document.getElementById("kv-edit-textarea").value;
+                    onFormChange();
+                }
+                closeKvEditDialog();
+            }
+
+            function bindKvEditDialog() {
+                document.getElementById("kv-edit-save").addEventListener("click", saveKvEditDialog);
+                document.getElementById("kv-edit-cancel").addEventListener("click", closeKvEditDialog);
+                document.getElementById("kv-edit-dialog").addEventListener("cancel", function (e) {
+                    e.preventDefault();
+                    closeKvEditDialog();
+                });
+                document.getElementById("kv-edit-dialog").addEventListener("click", function (e) {
+                    if (e.target === document.getElementById("kv-edit-dialog")) {
+                        closeKvEditDialog();
+                    }
                 });
             }
 
-            function clearAll() {
-                document.getElementById("method").value = "GET";
-                document.getElementById("url").value = "";
-                document.getElementById("headers").value = "";
-                document.getElementById("body").value = "";
-                document.getElementById("output").textContent = "";
-                setStatus("已清空。", false);
+            function addKvRow(listId, separator, keyPlaceholder, valuePlaceholder, key, value, enabled, opts) {
+                document.getElementById(listId).appendChild(
+                    createKvRow(listId, separator, keyPlaceholder, valuePlaceholder, key, value, enabled, opts)
+                );
             }
 
-            document.getElementById("generate-btn").addEventListener("click", generateCurl);
-            document.getElementById("copy-btn").addEventListener("click", copyCurl);
-            document.getElementById("clear-btn").addEventListener("click", clearAll);
-            document.getElementById("url").addEventListener("input", function () {
-                if (document.getElementById("url").value.trim()) generateCurl();
+            function resetKvList(listId, separator, keyPlaceholder, valuePlaceholder, opts) {
+                closeHeaderPresetMenu();
+                renderKvList(listId, separator, keyPlaceholder, valuePlaceholder, [], opts);
+            }
+
+            function renderKvList(listId, separator, keyPlaceholder, valuePlaceholder, items, opts) {
+                closeHeaderPresetMenu();
+                var list = document.getElementById(listId);
+                list.innerHTML = "";
+                if (!items.length) {
+                    addKvRow(listId, separator, keyPlaceholder, valuePlaceholder, "", "", true, opts);
+                    return;
+                }
+                items.forEach(function (item) {
+                    addKvRow(listId, separator, keyPlaceholder, valuePlaceholder, item.key, item.value, item.enabled !== false, opts);
+                });
+            }
+
+            function collectKvAllFromForm(listId) {
+                return Array.prototype.slice
+                    .call(document.querySelectorAll("#" + listId + " .kv-row"))
+                    .map(function (row) {
+                        return {
+                            enabled: row.querySelector(".kv-enabled").checked,
+                            key: row.querySelector(".kv-key").value.trim(),
+                            value: row.querySelector(".kv-value").value
+                        };
+                    })
+                    .filter(function (item) {
+                        return item.key;
+                    });
+            }
+
+            function collectKvList(listId) {
+                return collectKvAllFromForm(listId).filter(function (item) {
+                    return item.enabled;
+                });
+            }
+
+            function kvToHeaderRaw(items) {
+                return items.filter(function (x) { return x.key; }).map(function (x) {
+                    return x.key + ": " + x.value;
+                }).join("\n");
+            }
+
+            function headerRawToKv(text) {
+                var result = [];
+                String(text || "").split("\n").forEach(function (line) {
+                    line = line.trim();
+                    if (!line || line.indexOf("#") === 0) return;
+                    var idx = line.indexOf(":");
+                    if (idx < 0) {
+                        result.push({ key: line, value: "", enabled: true });
+                        return;
+                    }
+                    result.push({
+                        key: line.slice(0, idx).trim(),
+                        value: line.slice(idx + 1).trim(),
+                        enabled: true
+                    });
+                });
+                return result;
+            }
+
+            function kvToQueryRaw(items) {
+                return items.filter(function (x) { return x.key; }).map(function (x) {
+                    return x.key + "=" + x.value;
+                }).join("\n");
+            }
+
+            function queryRawToKv(text) {
+                var result = [];
+                String(text || "").split("\n").forEach(function (line) {
+                    line = line.trim();
+                    if (!line) return;
+                    var idx = line.indexOf("=");
+                    if (idx < 0) {
+                        result.push({ key: line, value: "", enabled: true });
+                        return;
+                    }
+                    result.push({
+                        key: line.slice(0, idx).trim(),
+                        value: line.slice(idx + 1),
+                        enabled: true
+                    });
+                });
+                return result;
+            }
+
+            function readHeaderList() {
+                if (document.getElementById("header-view").value === "raw") {
+                    return headerRawToKv(document.getElementById("header-raw").value);
+                }
+                return collectKvList("header-list");
+            }
+
+            function readQueryList() {
+                if (document.getElementById("query-view").value === "raw") {
+                    return queryRawToKv(document.getElementById("query-raw").value);
+                }
+                return collectKvList("query-list");
+            }
+
+            function syncKvActions() {
+                document.getElementById("add-header-btn").hidden = document.getElementById("header-view").value === "raw";
+                document.getElementById("add-query-btn").hidden = document.getElementById("query-view").value === "raw";
+            }
+
+            function setHeaderView(mode) {
+                var viewEl = document.getElementById("header-view");
+                var prev = viewEl.value;
+                viewEl.value = mode;
+                if (mode === "raw") {
+                    document.getElementById("header-raw").value = kvToHeaderRaw(collectKvAllFromForm("header-list"));
+                    document.getElementById("header-form-wrap").hidden = true;
+                    document.getElementById("header-raw-wrap").hidden = false;
+                    closeHeaderPresetMenu();
+                } else {
+                    if (prev === "raw") {
+                        renderKvList("header-list", ":", "如 Content-Type", "如 application/json", headerRawToKv(document.getElementById("header-raw").value), { presets: "header" });
+                    }
+                    document.getElementById("header-form-wrap").hidden = false;
+                    document.getElementById("header-raw-wrap").hidden = true;
+                }
+                syncKvActions();
+                onFormChange();
+                schedulePersistForm();
+            }
+
+            function setQueryView(mode) {
+                var viewEl = document.getElementById("query-view");
+                var prev = viewEl.value;
+                viewEl.value = mode;
+                if (mode === "raw") {
+                    document.getElementById("query-raw").value = kvToQueryRaw(collectKvAllFromForm("query-list"));
+                    document.getElementById("query-form-wrap").hidden = true;
+                    document.getElementById("query-raw-wrap").hidden = false;
+                } else {
+                    if (prev === "raw") {
+                        renderKvList("query-list", "=", "Key", "Value", queryRawToKv(document.getElementById("query-raw").value));
+                    }
+                    document.getElementById("query-form-wrap").hidden = false;
+                    document.getElementById("query-raw-wrap").hidden = true;
+                }
+                syncKvActions();
+                onFormChange();
+                schedulePersistForm();
+            }
+
+            function clearHeaders() {
+                document.getElementById("header-raw").value = "";
+                document.getElementById("header-view").value = "form";
+                document.getElementById("header-form-wrap").hidden = false;
+                document.getElementById("header-raw-wrap").hidden = true;
+                resetKvList("header-list", ":", "如 Content-Type", "如 application/json", { presets: "header" });
+                syncKvActions();
+                onFormChange();
+                schedulePersistForm();
+            }
+
+            function clearQueryParams() {
+                document.getElementById("query-raw").value = "";
+                document.getElementById("query-view").value = "form";
+                document.getElementById("query-form-wrap").hidden = false;
+                document.getElementById("query-raw-wrap").hidden = true;
+                resetKvList("query-list", "=", "Key", "Value");
+                syncKvActions();
+                onFormChange();
+                schedulePersistForm();
+            }
+
+            function encodeQueryComponent(text) {
+                return Array.from(String(text)).map(function (ch) {
+                    if (ch === "(") return "\\(";
+                    if (ch === ")") return "\\)";
+                    if (ch === "'") return "\\'";
+                    if (ch === " ") return "%20";
+                    if (/[A-Za-z0-9._~-]/.test(ch)) return ch;
+                    var encoded = encodeURIComponent(ch);
+                    if (encoded.length > 1 && encoded !== ch) return encoded;
+                    return "%" + ch.codePointAt(0).toString(16).toUpperCase().padStart(2, "0");
+                }).join("");
+            }
+
+            function appendQueryParams(url, params) {
+                if (!params.length) return url;
+                var hashIdx = url.indexOf("#");
+                var hash = hashIdx >= 0 ? url.slice(hashIdx) : "";
+                var base = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
+                var qs = params
+                    .map(function (p) {
+                        return encodeQueryComponent(p.key) + "=" + encodeQueryComponent(p.value);
+                    })
+                    .join("&");
+                var sep = base.indexOf("?") >= 0 ? "&" : "?";
+                return base + sep + qs + hash;
+            }
+
+            function updateSectionCounts() {
+                var headerCount = readHeaderList().length;
+                var queryCount = readQueryList().length;
+                document.getElementById("headers-count").textContent = headerCount ? headerCount + " 项" : "";
+                document.getElementById("query-count").textContent = queryCount ? queryCount + " 项" : "";
+            }
+
+            function updateBodyVisibility() {
+                var method = document.getElementById("method").value.trim().toUpperCase();
+                document.getElementById("body-section").hidden = BODY_METHODS.indexOf(method) === -1;
+            }
+
+            function generateCurl() {
+                var method = document.getElementById("method").value.trim().toUpperCase();
+                var url = document.getElementById("url").value.trim();
+                var body = document.getElementById("body").value;
+                var hasBodyMethod = BODY_METHODS.indexOf(method) !== -1;
+
+                if (!url) {
+                    setOutputText("");
+                    setStatus("请先输入请求 URL。", true);
+                    updateSectionCounts();
+                    return;
+                }
+
+                var headers = readHeaderList();
+                var queryParams = readQueryList();
+                var finalUrl = appendQueryParams(url, queryParams);
+                var curlBase = "curl -X " + method + " -i -k";
+                var text;
+
+                if (method === "GET") {
+                    var parts = [curlBase, finalUrl];
+                    headers.forEach(function (header) {
+                        parts.push("-H " + header.key + ": " + header.value);
+                    });
+                    text = parts.join(" ");
+                } else {
+                    var lines = [curlBase + " \\", "  " + finalUrl + " \\"];
+                    headers.forEach(function (header) {
+                        lines.push("  -H " + header.key + ": " + header.value + " \\");
+                    });
+                    if (hasBodyMethod && body.trim()) {
+                        lines.push("  --data-raw " + body);
+                    } else {
+                        lines[lines.length - 1] = lines[lines.length - 1].replace(/\\$/, "").trimEnd();
+                    }
+                    text = lines.join("\n");
+                }
+
+                setOutputText(text);
+                outputManuallyEdited = false;
+                pushUrlHistory(url);
+                setStatus("curl 命令已生成。", false);
+                updateSectionCounts();
+                schedulePersistForm();
+            }
+
+            function onFormChange() {
+                updateBodyVisibility();
+                updateSectionCounts();
+                schedulePersistForm();
+            }
+
+            function onUrlInput() {
+                updateUrlSuggest();
+                onFormChange();
+            }
+
+            function copyCurl() {
+                var text = getOutputText().trim();
+                if (!text) {
+                    if (typeof ToolCopy !== "undefined") {
+                        ToolCopy.copy("", { emptyMsg: "请先生成 curl 命令。" });
+                    } else {
+                        setStatus("请先生成 curl 命令。", true);
+                    }
+                    return;
+                }
+                if (typeof ToolCopy !== "undefined") {
+                    ToolCopy.copy(text, { onLabelEl: document.getElementById("copy-btn"), labelText: "复制" });
+                    setStatus("已复制到剪贴板。", false);
+                } else {
+                    navigator.clipboard.writeText(text).then(function () {
+                        setStatus("已复制到剪贴板。", false);
+                    }).catch(function () {
+                        setStatus("复制失败，请手动复制。", true);
+                    });
+                }
+            }
+
+            function clearAll() {
+                try {
+                    localStorage.removeItem(FORM_STORAGE_KEY);
+                } catch (e) {
+                    // ignore
+                }
+                document.getElementById("method").value = "GET";
+                document.getElementById("url").value = "";
+                hideUrlSuggest();
+                clearHeaders();
+                clearQueryParams();
+                document.getElementById("body").value = "";
+                outputManuallyEdited = false;
+                setOutputText("");
+                updateBodyVisibility();
+                setStatus("已清空。", false);
+                schedulePersistForm();
+            }
+
+            function bindSectionToggle() {
+                document.querySelectorAll(".section-toggle").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        var body = document.getElementById(btn.getAttribute("data-target"));
+                        var expanded = body.classList.toggle("collapsed") === false;
+                        btn.classList.toggle("expanded", expanded);
+                        btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+                    });
+                });
+            }
+
+            function bindKvList(listId, separator, keyPlaceholder, valuePlaceholder, addBtnId, clearBtnId, sectionBodyId, opts) {
+                document.getElementById(addBtnId).addEventListener("click", function () {
+                    if (sectionBodyId) expandSection(sectionBodyId);
+                    addKvRow(listId, separator, keyPlaceholder, valuePlaceholder, "", "", true, opts);
+                    var rows = document.querySelectorAll("#" + listId + " .kv-key");
+                    rows[rows.length - 1].focus();
+                });
+                document.getElementById(listId).addEventListener("input", onFormChange);
+                document.getElementById(listId).addEventListener("change", onFormChange);
+            }
+
+            initFormFromStorage();
+            setTimeout(restoreFormFromStorage, 0);
+            setTimeout(restoreFormFromStorage, 100);
+            setTimeout(restoreFormFromStorage, 260);
+            bindSectionToggle();
+            bindKvEditDialog();
+            bindKvList("header-list", ":", "如 Content-Type", "如 application/json", "add-header-btn", "clear-header-btn", "headers-body", { presets: "header" });
+            bindKvList("query-list", "=", "Key", "Value", "add-query-btn", "clear-query-btn", "query-body");
+            bindUrlSuggest();
+            document.getElementById("clear-header-btn").addEventListener("click", clearHeaders);
+            document.getElementById("clear-query-btn").addEventListener("click", clearQueryParams);
+            document.getElementById("header-view").addEventListener("click", function (e) { e.stopPropagation(); });
+            document.getElementById("query-view").addEventListener("click", function (e) { e.stopPropagation(); });
+            document.getElementById("header-view").addEventListener("change", function () {
+                expandSection("headers-body");
+                setHeaderView(this.value);
             });
-            document.getElementById("headers").addEventListener("input", generateCurl);
-            document.getElementById("body").addEventListener("input", generateCurl);
-            document.getElementById("method").addEventListener("change", generateCurl);
+            document.getElementById("query-view").addEventListener("change", function () {
+                expandSection("query-body");
+                setQueryView(this.value);
+            });
+            document.getElementById("header-raw").addEventListener("input", onFormChange);
+            document.getElementById("query-raw").addEventListener("input", onFormChange);
+            syncKvActions();
+            updateBodyVisibility();
+
+            document.getElementById("generate-btn").addEventListener("click", function () {
+                outputManuallyEdited = false;
+                generateCurl();
+            });
+            document.getElementById("copy-btn").addEventListener("click", copyCurl);
+            document.getElementById("qr-btn").addEventListener("click", function () {
+                var text = getOutputText().trim();
+                if (!text) {
+                    if (typeof ToolCopy !== "undefined") {
+                        ToolCopy.toast("请先生成 curl 命令");
+                    } else {
+                        setStatus("请先生成 curl 命令。", true);
+                    }
+                    return;
+                }
+                ToolQr.toggle(text, this);
+            });
+            document.getElementById("output").addEventListener("input", function () {
+                outputManuallyEdited = true;
+                schedulePersistForm();
+            });
+            document.getElementById("clear-btn").addEventListener("click", clearAll);
+            document.getElementById("url").addEventListener("input", onUrlInput);
+            document.getElementById("body").addEventListener("input", onFormChange);
+            document.getElementById("method").addEventListener("change", onFormChange);
             document.addEventListener("contextmenu", function (event) {
                 event.preventDefault();
             });
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

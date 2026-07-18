@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>VIN码生成</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <script src="libs/tool-copy.js"></script>
+        <style>
+            * { box-sizing: border-box; }
+            :root {
+                --bg: #f3f7ff;
+                --card: #fff;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --danger: #f05656;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --shadow: 0 10px 24px rgba(36, 90, 190, 0.12);
+            }
+            body {
+                margin: 0;
+                padding: 8px;
+                min-height: 100vh;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: var(--bg);
+            }
+            .page {
+                height: calc(100vh - 16px);
+                display: flex;
+                gap: 8px;
+            }
+            .panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                box-shadow: var(--shadow);
+                padding: 8px;
+            }
+            h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); }
+            .row {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+            }
+            label { font-size: 12px; }
+            select, input, textarea {
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                padding: 6px 8px;
+                font-size: 12px;
+                outline: none;
+            }
+            select:focus, input:focus, textarea:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
+            }
+            button {
+                border: 0;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+                color: #fff;
+                cursor: pointer;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            textarea {
+                width: 100%;
+                flex: 1;
+                resize: none;
+                line-height: 1.6;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .hint, .result {
+                border: 1px solid #dbe7ff;
+                background: #f8fbff;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.6;
+            }
+            @media (max-width: 900px) { .page { flex-direction: column; } }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="panel">
+                <h3>批量生成</h3>
+                <div class="row">
+                    <label for="wmi">WMI 厂商码</label>
+                    <select id="wmi"></select>
+                    <label for="modelYear">车型年份</label>
+                    <select id="modelYear"></select>
+                </div>
+                <div class="row">
+                    <label for="count">数量</label>
+                    <input id="count" type="number" min="1" max="100" value="10" />
+                    <button type="button" id="genBtn">生成</button>
+                    <button type="button" id="copyBtn">复制</button>
+                    <button type="button" class="danger tool-btn-danger" id="clearBtn">清空</button>
+                </div>
+                <textarea id="result" readonly></textarea>
+            </div>
+            <div class="panel">
+                <h3>校验与解析</h3>
+                <div class="row">
+                    <label for="checkInput">VIN 码</label>
+                    <input id="checkInput" style="width: 280px;" maxlength="17" placeholder="17 位车架号" />
+                    <button type="button" id="checkBtn">校验</button>
+                </div>
+                <div id="checkResult" class="result">输入 17 位 VIN 后点击校验。</div>
+                <div class="hint" style="margin-top:8px;">
+                    说明：VIN 为 17 位，不含 I/O/Q；第 9 位为校验位。本工具用于测试数据生成与格式校验，不作为官方编码依据。
+                </div>
+            </div>
+        </div>
+        <script>
+            const VALID_CHARS = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ";
+            const WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+            const TRANSLITERATION = {
+                "0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
+                "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7, "H": 8,
+                "J": 1, "K": 2, "L": 3, "M": 4, "N": 5,
+                "P": 7, "R": 9,
+                "S": 2, "T": 3, "U": 4, "V": 5, "W": 6, "X": 7, "Y": 8, "Z": 9
+            };
+            const WMI_LIST = [
+                { code: "RANDOM", name: "随机 WMI" },
+                { code: "LSV", name: "LSV - 上汽大众" },
+                { code: "LFV", name: "LFV - 一汽大众" },
+                { code: "LGB", name: "LGB - 东风日产" },
+                { code: "LHG", name: "LHG - 广汽本田" },
+                { code: "LVH", name: "LVH - 东风本田" },
+                { code: "LDC", name: "LDC - 东风雪铁龙" },
+                { code: "LBE", name: "LBE - 北京奔驰" },
+                { code: "LJD", name: "LJD - 东风悦达起亚" },
+                { code: "LMG", name: "LMG - 广汽传祺" },
+                { code: "LZW", name: "LZW - 上汽通用五菱" },
+                { code: "LSJ", name: "LSJ - 上汽荣威" },
+                { code: "LTN", name: "LTN - 一汽丰田" },
+                { code: "LUC", name: "LUC - 江铃汽车" },
+                { code: "WBA", name: "WBA - 宝马（德国）" },
+                { code: "WDB", name: "WDB - 奔驰（德国）" },
+                { code: "JHM", name: "JHM - 本田（日本）" },
+                { code: "1HG", name: "1HG - 本田（美国）" },
+                { code: "1FA", name: "1FA - 福特（美国）" }
+            ];
+            const MODEL_YEAR_CODES = [
+                { code: "RANDOM", label: "随机年份" },
+                { code: "L", label: "2020 (L)" },
+                { code: "M", label: "2021 (M)" },
+                { code: "N", label: "2022 (N)" },
+                { code: "P", label: "2023 (P)" },
+                { code: "R", label: "2024 (R)" },
+                { code: "S", label: "2025 (S)" },
+                { code: "T", label: "2026 (T)" },
+                { code: "V", label: "2027 (V)" },
+                { code: "W", label: "2028 (W)" },
+                { code: "X", label: "2029 (X)" },
+                { code: "Y", label: "2030 (Y)" }
+            ];
+            const YEAR_CODE_MAP = {
+                A: [1980, 2010], B: [1981, 2011], C: [1982, 2012], D: [1983, 2013],
+                E: [1984, 2014], F: [1985, 2015], G: [1986, 2016], H: [1987, 2017],
+                J: [1988, 2018], K: [1989, 2019], L: [1990, 2020], M: [1991, 2021],
+                N: [1992, 2022], P: [1993, 2023], R: [1994, 2024], S: [1995, 2025],
+                T: [1996, 2026], V: [1997, 2027], W: [1998, 2028], X: [1999, 2029],
+                Y: [2000, 2030],
+                "1": [2001, 2031], "2": [2002, 2032], "3": [2003, 2033], "4": [2004, 2034],
+                "5": [2005, 2035], "6": [2006, 2036], "7": [2007, 2037], "8": [2008, 2038],
+                "9": [2009, 2039]
+            };
+
+            function randomPick(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
+            function randomChar() {
+                return randomPick(VALID_CHARS);
+            }
+
+            function randomWmi() {
+                let wmi = "";
+                for (let i = 0; i < 3; i++) wmi += randomChar();
+                return wmi;
+            }
+
+            function calcCheckDigit(vin17) {
+                let sum = 0;
+                for (let i = 0; i < 17; i++) {
+                    sum += TRANSLITERATION[vin17[i]] * WEIGHTS[i];
+                }
+                const remainder = sum % 11;
+                return remainder === 10 ? "X" : String(remainder);
+            }
+
+            function resolveWmi() {
+                const value = document.getElementById("wmi").value;
+                return value === "RANDOM" ? randomWmi() : value;
+            }
+
+            function resolveYearCode() {
+                const value = document.getElementById("modelYear").value;
+                if (value === "RANDOM") {
+                    const options = MODEL_YEAR_CODES.filter(function (item) { return item.code !== "RANDOM"; });
+                    return randomPick(options).code;
+                }
+                return value;
+            }
+
+            function generateOne() {
+                const wmi = resolveWmi();
+                let vds = "";
+                for (let i = 0; i < 5; i++) vds += randomChar();
+                const yearCode = resolveYearCode();
+                const plant = randomChar();
+                let serial = "";
+                for (let i = 0; i < 6; i++) serial += randomChar();
+                const partial = wmi + vds + "0" + yearCode + plant + serial;
+                const check = calcCheckDigit(partial);
+                return wmi + vds + check + yearCode + plant + serial;
+            }
+
+            function decodeModelYear(code) {
+                const years = YEAR_CODE_MAP[code];
+                if (!years) return "未知";
+                if (years.length === 1) return String(years[0]);
+                return years.join(" / ");
+            }
+
+            function lookupWmi(code) {
+                const item = WMI_LIST.find(function (entry) { return entry.code === code; });
+                return item ? item.name : "未知厂商";
+            }
+
+            function validateVin(raw) {
+                const vin = String(raw || "").trim().toUpperCase();
+                if (vin.length !== 17) return { ok: false, msg: "格式错误：VIN 必须为 17 位" };
+                if (/[^0-9A-HJ-NPR-Z]/.test(vin)) return { ok: false, msg: "包含非法字符（不允许 I/O/Q）" };
+                const expected = calcCheckDigit(vin);
+                if (expected !== vin[8]) {
+                    return { ok: false, msg: "校验位错误，第 9 位应为 " + expected + "，当前为 " + vin[8] };
+                }
+                const wmi = vin.slice(0, 3);
+                const vds = vin.slice(3, 8);
+                const yearCode = vin[9];
+                const plant = vin[10];
+                const serial = vin.slice(11);
+                return {
+                    ok: true,
+                    msg: [
+                        "校验通过",
+                        "WMI（厂商）：" + wmi + "（" + lookupWmi(wmi) + "）",
+                        "VDS（车型描述）：" + vds,
+                        "校验位：第 9 位 " + vin[8],
+                        "车型年份码：第 10 位 " + yearCode + "（可能年份 " + decodeModelYear(yearCode) + "）",
+                        "装配厂：第 11 位 " + plant,
+                        "流水号：第 12-17 位 " + serial
+                    ].join("\n")
+                };
+            }
+
+            function initSelect(id, list, valueKey, labelKey) {
+                const el = document.getElementById(id);
+                el.innerHTML = "";
+                list.forEach(function (item) {
+                    const opt = document.createElement("option");
+                    opt.value = item[valueKey];
+                    opt.textContent = item[labelKey];
+                    el.appendChild(opt);
+                });
+            }
+
+            document.getElementById("genBtn").addEventListener("click", function () {
+                let count = Number(document.getElementById("count").value);
+                if (!count || count < 1) count = 1;
+                if (count > 100) count = 100;
+                const lines = [];
+                for (let i = 0; i < count; i++) lines.push(generateOne());
+                document.getElementById("result").value = lines.join("\n");
+            });
+
+            document.getElementById("copyBtn").addEventListener("click", function () {
+                ToolCopy.copy(document.getElementById("result").value, { onLabelEl: this });
+            });
+
+            document.getElementById("clearBtn").addEventListener("click", function () {
+                document.getElementById("result").value = "";
+            });
+
+            document.getElementById("checkBtn").addEventListener("click", function () {
+                const r = validateVin(document.getElementById("checkInput").value);
+                const out = document.getElementById("checkResult");
+                out.textContent = r.msg;
+                out.style.color = r.ok ? "#1f7a3a" : "#d34848";
+                out.style.whiteSpace = "pre-line";
+            });
+
+            initSelect("wmi", WMI_LIST, "code", "name");
+            initSelect("modelYear", MODEL_YEAR_CODES, "code", "label");
+            document.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+        </script>
+            <script src="libs/tool-form-persist.js"></script>
+    </body>
+</html>

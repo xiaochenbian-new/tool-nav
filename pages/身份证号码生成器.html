@@ -54,7 +54,7 @@
             textarea { width: 100%; flex: 1; resize: none; line-height: 1.6; }
             button {
                 border: 0;
-                border-radius: 999px;
+                border-radius: 6px;
                 padding: 6px 10px;
                 font-size: 12px;
                 color: #fff;
@@ -102,9 +102,9 @@
                 <div class="row">
                     <label for="gender">性别</label>
                     <select id="gender">
-                        <option value="random">随机</option>
-                        <option value="male">男</option>
+                        <option value="male" selected>男</option>
                         <option value="female">女</option>
+                        <option value="random">随机</option>
                     </select>
                     <label for="count">数量</label>
                     <input id="count" type="number" min="1" max="100" value="10" />
@@ -165,6 +165,16 @@
 
             function randomInt(min, max) {
                 return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            /** 默认生日：当前日期往前 19～20 岁范围内随机一天 */
+            function getDefaultBirthday() {
+                const now = new Date();
+                const age = randomInt(19, 20);
+                const year = now.getFullYear() - age;
+                const month = String(now.getMonth() + 1).padStart(2, "0");
+                const day = String(now.getDate()).padStart(2, "0");
+                return year + "-" + month + "-" + day;
             }
 
             function calcCheckCode(id17) {
@@ -250,6 +260,9 @@
 
             fillSelect(provinceSelect, AREA_TREE);
             refreshCities();
+            if (!birthdayInput.value) {
+                birthdayInput.value = getDefaultBirthday();
+            }
             provinceSelect.addEventListener("change", refreshCities);
             citySelect.addEventListener("change", refreshDistricts);
             districtSelect.addEventListener("change", updateCodeHint);
@@ -291,5 +304,6 @@
                 event.preventDefault();
             });
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>二维码生成 / 条形码生成</title>
+        <title>二维码 / 条形码</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -74,8 +74,8 @@
                 align-items: center;
                 flex-shrink: 0;
             }
-            .editor-head .actions .json-tabs {
-                margin-right: 4px;
+            .editor-head-main .mode-seg {
+                flex-shrink: 0;
             }
             .hint {
                 color: var(--muted);
@@ -110,37 +110,117 @@
                 flex-direction: row;
                 align-items: stretch;
                 padding: 0 8px 8px;
-                gap: 10px;
+                gap: 0;
             }
             .editor-main-col {
-                flex: 1;
-                min-width: 0;
+                flex: 1 1 62%;
+                min-width: 200px;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
+            }
+            .pane-resizer {
+                flex: 0 0 8px;
+                cursor: col-resize;
+                position: relative;
+                z-index: 5;
+                margin: 0 2px;
+                align-self: stretch;
+            }
+            .pane-resizer::before {
+                display: none;
+            }
+            body.pane-resizing {
+                cursor: col-resize;
+                user-select: none;
+            }
+            .input-box {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .input-box:focus-within {
+                border-color: #b8ccff;
+                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
+            }
+            .input-editor-wrap {
+                flex: 1;
+                min-height: 0;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+            }
+            #input-chunk-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 2;
+                overflow: hidden;
+                pointer-events: none;
+            }
+            #input-chunk-overlay:empty {
+                display: none;
+            }
+            .chunk-divider-bar {
+                position: absolute;
+                left: 0;
+                right: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                height: 22px;
+                margin: 0;
+                padding: 0 10px;
+                box-sizing: border-box;
+                transform: translateY(-11px);
+                user-select: none;
+            }
+            .chunk-divider-bar::before,
+            .chunk-divider-bar::after {
+                content: "";
+                flex: 1;
+                height: 0;
+                border-top: 2px dashed #8eb0ff;
+            }
+            .chunk-divider-label {
+                flex: 0 0 auto;
+                font-size: 11px;
+                line-height: 1;
+                font-weight: 600;
+                color: #4a66a8;
+                background: #eef4ff;
+                border: 1px solid #c8d8f5;
+                border-radius: 999px;
+                padding: 3px 8px;
+                white-space: nowrap;
             }
             #input-text {
                 flex: 1;
                 width: 100%;
                 min-height: 120px;
                 padding: 10px;
-                border: 1px solid #cfdcf7;
-                border-radius: 8px;
+                border: none;
+                border-radius: 0;
                 font-size: 13px;
                 line-height: 1.6;
                 font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif;
                 resize: none;
                 outline: none;
+                background: transparent;
+                position: relative;
+                z-index: 1;
             }
             #input-text:focus {
-                box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.25);
+                box-shadow: none;
             }
             .preview-wrap {
-                flex: 0 0 auto;
-                width: min(360px, 38vw);
+                flex: 1 1 auto;
                 min-width: 200px;
-                max-width: 100%;
                 min-height: 0;
                 border: 1px solid #cfdcf7;
                 border-radius: 8px;
@@ -151,6 +231,55 @@
                 padding: 10px;
                 overflow: auto;
                 box-sizing: border-box;
+                position: relative;
+            }
+            .preview-loading {
+                position: absolute;
+                inset: 0;
+                z-index: 3;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(248, 251, 255, 0.9);
+                border-radius: 8px;
+            }
+            .preview-loading[hidden] {
+                display: none !important;
+            }
+            .preview-loading-inner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                padding: 14px 18px;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                border-radius: 10px;
+                box-shadow: 0 8px 20px rgba(36, 90, 190, 0.12);
+            }
+            .preview-loading-spinner {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                border: 3px solid #e0e9ff;
+                border-top-color: var(--primary);
+                animation: preview-spin 0.75s linear infinite;
+                flex-shrink: 0;
+            }
+            @keyframes preview-spin {
+                to { transform: rotate(360deg); }
+            }
+            .preview-loading-text {
+                font-size: 13px;
+                color: #3c4f78;
+                font-weight: 600;
+                text-align: center;
+                max-width: 220px;
+                line-height: 1.45;
+            }
+            .preview-wrap.is-generating #qrcode,
+            .preview-wrap.is-generating #barcode {
+                visibility: hidden;
             }
             #qrcode {
                 width: max-content;
@@ -191,29 +320,36 @@
             .hidden {
                 display: none !important;
             }
-            .json-tabs {
-                display: flex;
-                gap: 4px;
-                align-items: center;
+            .mode-seg {
+                display: inline-flex;
                 flex-wrap: wrap;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #edf3ff;
             }
-            .json-tabs button {
-                border: 1px solid #cfdcf7;
-                background: #fff;
-                padding: 6px 12px;
-                font-size: 13px;
-                border-radius: 8px;
+            .mode-seg button {
+                border: none;
+                background: transparent;
+                padding: 6px 10px;
+                font-size: 12px;
                 cursor: pointer;
-                color: var(--text);
+                color: #3c4f78;
+                font-family: inherit;
             }
-            .json-tabs button:hover {
-                border-color: var(--primary);
-                color: var(--primary);
-            }
-            .json-tabs button.active {
-                border-color: var(--primary);
-                color: #fff;
+            .mode-seg button.active {
                 background: linear-gradient(135deg, var(--primary), var(--primary-2));
+                color: #fff;
+            }
+            .qr-chunk-opt {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            .mode-seg.compact button {
+                padding: 5px 8px;
+                font-size: 11px;
             }
             .opt-label {
                 font-size: 13px;
@@ -223,12 +359,21 @@
             #status {
                 font-size: 13px;
                 color: #2f3d5d;
-                padding: 6px 4px 0;
+                padding: 4px 2px 0;
                 line-height: 1.5;
+                flex: 0 0 auto;
             }
             @media (max-width: 720px) {
                 .editor-zone {
                     flex-direction: column;
+                    gap: 10px;
+                }
+                .pane-resizer {
+                    display: none;
+                }
+                .editor-main-col {
+                    flex: 1 1 auto !important;
+                    max-width: none !important;
                 }
                 .preview-wrap {
                     width: 100%;
@@ -259,6 +404,131 @@
                 opacity: 1;
                 transform: translateX(-50%) translateY(0);
             }
+            .json-sheet-bar {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: flex-end;
+                min-height: 30px;
+                padding: 0 10px 2px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .json-sheet-strip {
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 4px;
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+            }
+            .json-sheet-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+            .json-sheet-tabs {
+                display: contents;
+            }
+            .json-sheet-tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                max-width: 148px;
+                height: 26px;
+                padding: 0 10px;
+                margin: 0;
+                border: 1px solid #dbe4f0;
+                border-radius: 4px 4px 0 0;
+                background: #fff;
+                color: #516078;
+                font-size: 12px;
+                font-weight: 400;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+                z-index: 1;
+            }
+            .json-sheet-tab:hover:not(.active) {
+                background: #fafbfd;
+                border-color: #cdd8ea;
+                color: #3c4f78;
+                z-index: 2;
+            }
+            .json-sheet-tab.active {
+                background: #edf3ff;
+                color: var(--primary);
+                font-weight: 600;
+                z-index: 3;
+                border-color: #d8e5ff;
+            }
+            .json-sheet-tab .sheet-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 120px;
+            }
+            .json-sheet-tab .sheet-rename-input {
+                width: 96px;
+                max-width: 120px;
+                height: 22px;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid var(--primary);
+                border-radius: 4px;
+                outline: none;
+                background: #fff;
+            }
+            .json-sheet-tab .sheet-close {
+                flex: 0 0 auto;
+                margin-left: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                border: none;
+                border-radius: 3px;
+                background: transparent;
+                color: #7a879e;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                opacity: 1;
+            }
+            .json-sheet-tab.active .sheet-close {
+                color: #5a7fd4;
+            }
+            .json-sheet-tab .sheet-close:hover {
+                background: rgba(224, 64, 64, 0.15);
+                color: var(--danger);
+            }
+            .json-sheet-add {
+                flex: 0 0 26px;
+                width: 26px;
+                height: 26px;
+                margin: 0;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                font-size: 18px;
+                line-height: 1;
+                color: #8a9bb8;
+                cursor: pointer;
+            }
+            .json-sheet-add:hover {
+                background: #f0f5ff;
+                color: var(--primary);
+            }
+            #qr-sheets-meta {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                border: 0;
+            }
         </style>
     </head>
     <body>
@@ -266,35 +536,63 @@
             <div class="editor-wrap">
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
-                        <span id="head-label">二维码生成</span>
-                        <span class="hint" id="head-hint">UTF-8 最多约 45KB；较长内容仅手动点「生成」预览</span>
+                        <span class="mode-seg" id="mode-tabs" role="tablist">
+                            <button type="button" class="active" data-mode="qrcode">二维码</button>
+                            <button type="button" data-mode="barcode">条形码</button>
+                        </span>
+                        <span class="hint" id="head-hint">UTF-8 最多约 45KB；底部可切换多个输入页，双击标签可重命名</span>
                     </div>
                     <div class="actions">
-                        <div class="json-tabs" id="mode-tabs" role="tablist">
-                            <button type="button" class="active" data-mode="qrcode">二维码生成</button>
-                            <button type="button" data-mode="barcode">条形码生成</button>
-                        </div>
+                        <span class="qr-chunk-opt" id="qr-chunk-opt">
+                            <span class="opt-label">单码上限</span>
+                            <span class="mode-seg compact" id="chunk-max-tabs" role="tablist" title="每张二维码最多编码的字符数，越小越易扫码">
+                                <button type="button" class="active" data-max="0">自动</button>
+                                <button type="button" data-max="1000">1000</button>
+                                <button type="button" data-max="2000">2000</button>
+                                <button type="button" data-max="2500">2500</button>
+                            </span>
+                        </span>
                         <button type="button" class="title-btn primary" id="generate-btn">生成</button>
                         <button type="button" class="title-btn" id="download-btn">下载图片</button>
                         <button type="button" class="title-btn danger" id="clear-btn">清空</button>
                     </div>
                 </div>
-                <div class="editor-zone">
-                    <div class="editor-main-col">
-                        <textarea id="input-text" name="qrInput" spellcheck="false" aria-label="输入要编码的字符串" placeholder="网址、文本、Wi‑Fi 等；超长内容将生成多张二维码，扫码后按顺序拼接字节"></textarea>
+                <div class="editor-zone" id="editor-zone">
+                    <div class="editor-main-col" id="pane-left">
+                        <div class="input-box">
+                            <div class="input-editor-wrap" id="input-editor-wrap">
+                                <textarea id="input-text" name="qrInput" data-persist-key="qr_input" spellcheck="false" aria-label="输入要编码的字符串" placeholder="网址、文本、Wi‑Fi 等；超长内容将生成多张二维码，扫码后按顺序拼接字节"></textarea>
+                                <div id="input-chunk-overlay" aria-hidden="true"></div>
+                            </div>
+                            <div class="json-sheet-bar" id="qr-sheet-bar">
+                                <div class="json-sheet-strip">
+                                    <div class="json-sheet-tabs" id="qr-sheet-tabs" role="tablist" aria-label="输入工作表"></div>
+                                    <button type="button" class="json-sheet-add" id="qr-sheet-add" title="新建输入页">+</button>
+                                </div>
+                            </div>
+                        </div>
                         <div id="status"></div>
                     </div>
+                    <div class="pane-resizer" id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="调整左右区域宽度" tabindex="0"></div>
                     <div class="preview-wrap" id="preview-panel" aria-label="预览区">
+                        <div id="preview-loading" class="preview-loading" hidden aria-hidden="true" role="status">
+                            <div class="preview-loading-inner">
+                                <div class="preview-loading-spinner" aria-hidden="true"></div>
+                                <span id="preview-loading-text" class="preview-loading-text">正在生成…</span>
+                            </div>
+                        </div>
                         <div id="qrcode"></div>
                         <svg id="barcode" class="hidden"></svg>
                     </div>
                 </div>
+                <textarea id="qr-sheets-meta" data-persist-key="qr_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
             </div>
         </div>
         <div id="toast" aria-live="polite"></div>
 
         <script src="./libs/qrcode-lib.bundle.js"></script>
         <script src="./libs/JsBarcode.all.min.js"></script>
+        <script src="libs/tool-sheet-tabs-drag.js"></script>
         <script>
             (function () {
                 /** Version40 字节模式参考容量（与 node-qrcode 一致，仅作状态栏说明） */
@@ -303,6 +601,8 @@
                 var MAX_INPUT_UTF8_BYTES = 45000;
                 /** 超过此 UTF-8 长度不再输入时自动刷新，避免卡顿 */
                 var MAX_AUTO_PREVIEW_UTF8_BYTES = 9600;
+                /** 超过此长度显示加载动画并异步生成，避免界面假死感 */
+                var SHOW_LOADING_UTF8_BYTES = 2048;
                 /** 极端纠错下分片过多时保护主线程 */
                 var MAX_QR_CHUNKS = 120;
                 var teEnc = new TextEncoder();
@@ -313,10 +613,396 @@
                 var DEFAULT_QR_ECC = "L";
                 var DEFAULT_QR_SIZE = 280;
                 var DEFAULT_BAR_HEIGHT = 120;
-                var DEFAULT_CHUNK_MARGIN = 24;
+                var LS_CHUNK_MAX = "qr-tool-chunk-max-chars";
+                var SPLIT_STORAGE_KEY = "qr-tool-split-ratio";
+                var DEFAULT_SPLIT_RATIO = 0.62;
 
                 var mode = "qrcode";
                 var autoGenTimer = null;
+                var genToken = 0;
+                var paneSplitRatio = DEFAULT_SPLIT_RATIO;
+                var resizeGenTimer = null;
+                var previewLoadingEl = document.getElementById("preview-loading");
+                var previewLoadingTextEl = document.getElementById("preview-loading-text");
+                var previewPanelEl = document.getElementById("preview-panel");
+                var paneLeftEl = document.getElementById("pane-left");
+                var paneResizerEl = document.getElementById("pane-resizer");
+                var editorZoneEl = document.getElementById("editor-zone");
+                var generateBtnEl = document.getElementById("generate-btn");
+                var inputEl = document.getElementById("input-text");
+                var sheetsMetaInput = document.getElementById("qr-sheets-meta");
+                var sheetTabsEl = document.getElementById("qr-sheet-tabs");
+                var sheetAddBtn = document.getElementById("qr-sheet-add");
+                var chunkOverlayEl = document.getElementById("input-chunk-overlay");
+                var chunkMirrorEl = null;
+                var lastQrChunks = null;
+                var chunkDividerTimer = null;
+
+                function getPreviewPanelInnerWidth() {
+                    if (!previewPanelEl) return DEFAULT_QR_SIZE;
+                    var style = window.getComputedStyle(previewPanelEl);
+                    var padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+                    return Math.max(80, previewPanelEl.clientWidth - padX);
+                }
+
+                function getPreviewQrSize() {
+                    return Math.max(80, Math.min(1200, getPreviewPanelInnerWidth()));
+                }
+
+                function getPreviewBarHeight() {
+                    var w = getPreviewPanelInnerWidth();
+                    return Math.max(80, Math.min(200, Math.round(w * 0.35)));
+                }
+
+                function isPaneSplitVertical() {
+                    return window.matchMedia("(max-width: 720px)").matches;
+                }
+
+                function applyPaneSplit(ratio) {
+                    if (!editorZoneEl || !paneLeftEl || !previewPanelEl) return;
+                    ratio = Math.max(0.28, Math.min(0.82, ratio));
+                    paneSplitRatio = ratio;
+                    if (isPaneSplitVertical()) {
+                        paneLeftEl.style.flex = "1 1 auto";
+                        paneLeftEl.style.maxWidth = "none";
+                        previewPanelEl.style.flex = "0 0 auto";
+                        return;
+                    }
+                    var totalW = editorZoneEl.clientWidth;
+                    var resizerW = paneResizerEl ? paneResizerEl.offsetWidth : 8;
+                    var leftW = Math.max(200, Math.round(totalW * ratio));
+                    if (leftW + resizerW > totalW - 200) leftW = totalW - resizerW - 200;
+                    paneLeftEl.style.flex = "0 0 " + leftW + "px";
+                    paneLeftEl.style.maxWidth = leftW + "px";
+                    previewPanelEl.style.flex = "1 1 auto";
+                }
+
+                function readSavedPaneSplitRatio() {
+                    try {
+                        var saved = parseFloat(localStorage.getItem(SPLIT_STORAGE_KEY));
+                        if (!isNaN(saved) && saved > 0 && saved < 1) return saved;
+                    } catch (e) {}
+                    return DEFAULT_SPLIT_RATIO;
+                }
+
+                function scheduleRegenerateOnResize() {
+                    if (resizeGenTimer) window.clearTimeout(resizeGenTimer);
+                    resizeGenTimer = window.setTimeout(function () {
+                        if (inputEl.value.trim()) generateCode();
+                    }, 180);
+                }
+
+                function initPaneResizer() {
+                    paneSplitRatio = readSavedPaneSplitRatio();
+                    applyPaneSplit(paneSplitRatio);
+
+                    if (!paneResizerEl || !editorZoneEl) return;
+
+                    var dragging = false;
+
+                    function onPointerMove(clientX) {
+                        var rect = editorZoneEl.getBoundingClientRect();
+                        applyPaneSplit((clientX - rect.left) / rect.width);
+                        scheduleRegenerateOnResize();
+                    }
+
+                    function stopDrag() {
+                        if (!dragging) return;
+                        dragging = false;
+                        document.body.classList.remove("pane-resizing");
+                        try {
+                            localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio));
+                        } catch (e) {}
+                        window.removeEventListener("mousemove", onMouseMove);
+                        window.removeEventListener("mouseup", onMouseUp);
+                        scheduleRegenerateOnResize();
+                    }
+
+                    function onMouseMove(e) { onPointerMove(e.clientX); }
+                    function onMouseUp() { stopDrag(); }
+
+                    paneResizerEl.addEventListener("mousedown", function (e) {
+                        if (isPaneSplitVertical()) return;
+                        e.preventDefault();
+                        dragging = true;
+                        document.body.classList.add("pane-resizing");
+                        window.addEventListener("mousemove", onMouseMove);
+                        window.addEventListener("mouseup", onMouseUp);
+                    });
+
+                    paneResizerEl.addEventListener("keydown", function (e) {
+                        if (isPaneSplitVertical()) return;
+                        var step = 0.02;
+                        if (e.key === "ArrowLeft") {
+                            e.preventDefault();
+                            applyPaneSplit(paneSplitRatio - step);
+                            try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
+                            scheduleRegenerateOnResize();
+                        } else if (e.key === "ArrowRight") {
+                            e.preventDefault();
+                            applyPaneSplit(paneSplitRatio + step);
+                            try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
+                            scheduleRegenerateOnResize();
+                        }
+                    });
+
+                    window.addEventListener("resize", function () {
+                        applyPaneSplit(paneSplitRatio);
+                        scheduleRegenerateOnResize();
+                        layoutChunkDividers();
+                    });
+                }
+
+                /* —— 多输入页（与文本处理工具一致） —— */
+                var docSheets = [];
+                var activeSheetId = null;
+                var sheetRenameId = null;
+                var _sheetPersistTimer = null;
+
+                function genSheetId() {
+                    return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                }
+
+                function getActiveSheet() {
+                    for (var i = 0; i < docSheets.length; i++) {
+                        if (docSheets[i].id === activeSheetId) return docSheets[i];
+                    }
+                    return null;
+                }
+
+                function nextSheetName() {
+                    var used = {};
+                    for (var i = 0; i < docSheets.length; i++) used[docSheets[i].name] = true;
+                    var n = 1;
+                    while (used["Sheet" + n]) n++;
+                    return "Sheet" + n;
+                }
+
+                function syncInputToSheet() {
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = inputEl.value;
+                }
+
+                function persistSheetsState() {
+                    syncInputToSheet();
+                    if (!docSheets.length) return;
+                    var state = { activeId: activeSheetId, sheets: docSheets };
+                    sheetsMetaInput.value = JSON.stringify(state);
+                    sheetsMetaInput.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+
+                function schedulePersistSheets() {
+                    clearTimeout(_sheetPersistTimer);
+                    _sheetPersistTimer = setTimeout(persistSheetsState, 400);
+                }
+
+                function applyActiveSheetToInput() {
+                    var sheet = getActiveSheet();
+                    var content = sheet ? String(sheet.content == null ? "" : sheet.content) : "";
+                    if (sheet) sheet.content = content;
+                    inputEl.value = content;
+                }
+
+                function initSheetsFromStorage() {
+                    var legacy = inputEl.value ? String(inputEl.value) : "";
+                    if (sheetsMetaInput.value) {
+                        try {
+                            var state = JSON.parse(sheetsMetaInput.value);
+                            if (state && state.sheets && state.sheets.length) {
+                                docSheets = state.sheets.map(function (s) {
+                                    return {
+                                        id: s.id || genSheetId(),
+                                        name: String(s.name || "Sheet1"),
+                                        content: s.content == null ? "" : String(s.content),
+                                    };
+                                });
+                                activeSheetId = state.activeId;
+                                if (!getActiveSheet()) activeSheetId = docSheets[0].id;
+                                return;
+                            }
+                        } catch (e) {}
+                    }
+                    docSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy }];
+                    activeSheetId = docSheets[0].id;
+                }
+
+                function switchSheet(sheetId) {
+                    if (!sheetId || sheetId === activeSheetId) return;
+                    syncInputToSheet();
+                    activeSheetId = sheetId;
+                    applyActiveSheetToInput();
+                    renderSheetTabs();
+                    persistSheetsState();
+                    genToken++;
+                    setPreviewLoading(false);
+                    setGenerateBusy(false);
+                    clearPreview();
+                    var t = normalizeInputText(inputEl.value);
+                    if (t.trim()) {
+                        scheduleGenerate(100);
+                    } else {
+                        setStatus("已切换到 " + (getActiveSheet() ? getActiveSheet().name : "工作表") + "。", false);
+                    }
+                }
+
+                function addSheet() {
+                    syncInputToSheet();
+                    var sheet = {
+                        id: genSheetId(),
+                        name: nextSheetName(),
+                        content: "",
+                    };
+                    docSheets.push(sheet);
+                    switchSheet(sheet.id);
+                    toast("已新建 " + sheet.name);
+                }
+
+                function removeSheet(sheetId) {
+                    if (docSheets.length <= 1) {
+                        toast("至少保留一个输入页");
+                        return;
+                    }
+                    var idx = -1;
+                    for (var i = 0; i < docSheets.length; i++) {
+                        if (docSheets[i].id === sheetId) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx < 0) return;
+                    var removed = docSheets.splice(idx, 1)[0];
+                    if (activeSheetId === sheetId) {
+                        var next = docSheets[Math.min(idx, docSheets.length - 1)];
+                        activeSheetId = next.id;
+                        applyActiveSheetToInput();
+                        genToken++;
+                        clearPreview();
+                        if (inputEl.value.trim()) scheduleGenerate(100);
+                        else setStatus("已删除 " + removed.name + "。", false);
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    toast("已删除 " + removed.name);
+                }
+
+                function renameSheet(sheetId, newName) {
+                    var name = String(newName || "").trim();
+                    if (!name) {
+                        toast("名称不能为空");
+                        return false;
+                    }
+                    for (var i = 0; i < docSheets.length; i++) {
+                        if (docSheets[i].id !== sheetId && docSheets[i].name === name) {
+                            toast("名称已存在");
+                            return false;
+                        }
+                    }
+                    for (var j = 0; j < docSheets.length; j++) {
+                        if (docSheets[j].id === sheetId) {
+                            docSheets[j].name = name;
+                            break;
+                        }
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    return true;
+                }
+
+                function startSheetRename(sheetId) {
+                    sheetRenameId = sheetId;
+                    renderSheetTabs();
+                    var tab = sheetTabsEl.querySelector('[data-sheet-id="' + sheetId + '"]');
+                    if (!tab) return;
+                    var inp = tab.querySelector(".sheet-rename-input");
+                    if (inp) {
+                        inp.focus();
+                        inp.select();
+                    }
+                }
+
+                function finishSheetRename(sheetId, value, cancel) {
+                    sheetRenameId = null;
+                    if (!cancel) renameSheet(sheetId, value);
+                    renderSheetTabs();
+                }
+
+                function reorderSheet(fromIndex, toIndex) {
+                    if (fromIndex === toIndex) return;
+                    var item = docSheets.splice(fromIndex, 1)[0];
+                    docSheets.splice(toIndex, 0, item);
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+
+                function renderSheetTabs() {
+                    if (!sheetTabsEl) return;
+                    sheetTabsEl.innerHTML = "";
+                    for (var i = 0; i < docSheets.length; i++) {
+                        (function (sheet) {
+                            var tab = document.createElement("button");
+                            tab.type = "button";
+                            tab.className =
+                                "json-sheet-tab" + (sheet.id === activeSheetId ? " active" : "");
+                            tab.setAttribute("data-sheet-id", sheet.id);
+                            tab.setAttribute("role", "tab");
+                            tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
+                            tab.title = sheet.name + "（拖拽排序，双击重命名）";
+
+                            if (sheetRenameId === sheet.id) {
+                                var inp = document.createElement("input");
+                                inp.type = "text";
+                                inp.className = "sheet-rename-input";
+                                inp.value = sheet.name;
+                                inp.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                });
+                                inp.addEventListener("keydown", function (e) {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, inp.value, false);
+                                    } else if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, "", true);
+                                    }
+                                });
+                                inp.addEventListener("blur", function () {
+                                    finishSheetRename(sheet.id, inp.value, false);
+                                });
+                                tab.appendChild(inp);
+                            } else {
+                                var span = document.createElement("span");
+                                span.className = "sheet-name";
+                                span.textContent = sheet.name;
+                                tab.appendChild(span);
+                                tab.addEventListener("dblclick", function (e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    startSheetRename(sheet.id);
+                                });
+                            }
+
+                            if (docSheets.length > 1) {
+                                var closeBtn = document.createElement("button");
+                                closeBtn.type = "button";
+                                closeBtn.className = "sheet-close";
+                                closeBtn.title = "删除输入页";
+                                closeBtn.textContent = "×";
+                                closeBtn.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                    removeSheet(sheet.id);
+                                });
+                                tab.appendChild(closeBtn);
+                            }
+
+                            tab.addEventListener("click", function () {
+                                if (sheetRenameId) return;
+                                switchSheet(sheet.id);
+                            });
+
+                            sheetTabsEl.appendChild(tab);
+                        })(docSheets[i]);
+                    }
+                }
 
                 function toast(msg) {
                     var el = document.getElementById("toast");
@@ -334,10 +1020,55 @@
                     s.classList.toggle("err", !!isError);
                 }
 
+                function setPreviewLoading(on, msg) {
+                    if (!previewLoadingEl) return;
+                    if (on) {
+                        previewLoadingEl.hidden = false;
+                        previewLoadingEl.setAttribute("aria-hidden", "false");
+                        if (previewPanelEl) previewPanelEl.classList.add("is-generating");
+                        if (previewLoadingTextEl && msg) previewLoadingTextEl.textContent = msg;
+                    } else {
+                        previewLoadingEl.hidden = true;
+                        previewLoadingEl.setAttribute("aria-hidden", "true");
+                        if (previewPanelEl) previewPanelEl.classList.remove("is-generating");
+                    }
+                }
+
+                function setGenerateBusy(busy) {
+                    if (!generateBtnEl) return;
+                    generateBtnEl.disabled = !!busy;
+                    generateBtnEl.setAttribute("aria-busy", busy ? "true" : "false");
+                }
+
+                function shouldUseAsyncLoading(byteLen) {
+                    return byteLen >= SHOW_LOADING_UTF8_BYTES;
+                }
+
+                function yieldToUi(cb) {
+                    window.setTimeout(cb, 0);
+                }
+
                 function normalizeInputText(raw) {
                     return String(raw || "")
                         .replace(/<br\s*\/?>/gi, "\n")
                         .replace(/\r\n/g, "\n");
+                }
+
+                function normalizedIndexToRawIndex(raw, normIndex) {
+                    raw = String(raw || "");
+                    if (normIndex <= 0) return 0;
+                    var ni = 0;
+                    var ri = 0;
+                    while (ri < raw.length && ni < normIndex) {
+                        if (raw.charCodeAt(ri) === 13 && raw.charCodeAt(ri + 1) === 10) {
+                            ri += 2;
+                            ni += 1;
+                        } else {
+                            ri += 1;
+                            ni += 1;
+                        }
+                    }
+                    return ri;
                 }
 
                 function getUtf8ByteLength(text) {
@@ -375,7 +1106,37 @@
                 /**
                  * 按 UTF-8 边界切分：用 QRCodeLib.create 判断是否可进单码（与 Ctool 行为一致，避免旧 davidshimjs 中文 BOM/估长 bug）。
                  */
-                function splitUtf8ByQrCreate(text, ecc) {
+                function getMaxCharsPerQr() {
+                    var active = document.querySelector("#chunk-max-tabs button.active");
+                    if (!active) return 0;
+                    var v = parseInt(active.getAttribute("data-max"), 10);
+                    return v > 0 ? v : 0;
+                }
+
+                var CHUNK_MAX_OPTIONS = [0, 1000, 2000, 2500];
+
+                function setMaxCharsPerQr(value) {
+                    var want = parseInt(value, 10);
+                    if (!(want > 0)) want = 0;
+                    if (CHUNK_MAX_OPTIONS.indexOf(want) < 0) want = 0;
+                    document.querySelectorAll("#chunk-max-tabs button").forEach(function (b) {
+                        var n = parseInt(b.getAttribute("data-max"), 10) || 0;
+                        b.classList.toggle("active", n === want);
+                    });
+                    try {
+                        localStorage.setItem(LS_CHUNK_MAX, String(want));
+                    } catch (e) {}
+                }
+
+                function loadMaxCharsPerQr() {
+                    try {
+                        var saved = localStorage.getItem(LS_CHUNK_MAX);
+                        if (saved != null) setMaxCharsPerQr(saved);
+                    } catch (e) {}
+                }
+
+                function splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk) {
+                    var capChars = maxCharsPerChunk > 0 ? maxCharsPerChunk : 0;
                     var u8 = teEnc.encode(text);
                     if (u8.length === 0) return [];
                     var out = [];
@@ -402,7 +1163,10 @@
                                 hi = mid - 1;
                                 continue;
                             }
-                            if (qrCreateOk(sliceStr, ecc)) {
+                            var fits =
+                                qrCreateOk(sliceStr, ecc) &&
+                                (capChars <= 0 || sliceStr.length <= capChars);
+                            if (fits) {
                                 best = mid;
                                 lo = mid + 1;
                             } else {
@@ -479,16 +1243,143 @@
                     document.getElementById("qrcode").innerHTML = "";
                     var barcode = document.getElementById("barcode");
                     barcode.innerHTML = "";
+                    clearChunkDividers();
                 }
 
-                function generateQrList(text, size, eccName, chunkMargin) {
-                    void chunkMargin;
+                function clearChunkDividers() {
+                    lastQrChunks = null;
+                    if (chunkOverlayEl) chunkOverlayEl.innerHTML = "";
+                }
+
+                function getChunkMirror() {
+                    if (!chunkMirrorEl) {
+                        chunkMirrorEl = document.createElement("div");
+                        chunkMirrorEl.setAttribute("aria-hidden", "true");
+                        chunkMirrorEl.style.position = "absolute";
+                        chunkMirrorEl.style.visibility = "hidden";
+                        chunkMirrorEl.style.pointerEvents = "none";
+                        chunkMirrorEl.style.top = "0";
+                        chunkMirrorEl.style.left = "-9999px";
+                        chunkMirrorEl.style.whiteSpace = "pre-wrap";
+                        chunkMirrorEl.style.wordWrap = "break-word";
+                        chunkMirrorEl.style.overflowWrap = "break-word";
+                        document.body.appendChild(chunkMirrorEl);
+                    }
+                    return chunkMirrorEl;
+                }
+
+                function syncChunkMirrorStyles() {
+                    var mirror = getChunkMirror();
+                    var style = window.getComputedStyle(inputEl);
+                    mirror.style.width = inputEl.clientWidth + "px";
+                    mirror.style.fontFamily = style.fontFamily;
+                    mirror.style.fontSize = style.fontSize;
+                    mirror.style.fontWeight = style.fontWeight;
+                    mirror.style.lineHeight = style.lineHeight;
+                    mirror.style.letterSpacing = style.letterSpacing;
+                    mirror.style.paddingTop = style.paddingTop;
+                    mirror.style.paddingRight = style.paddingRight;
+                    mirror.style.paddingBottom = style.paddingBottom;
+                    mirror.style.paddingLeft = style.paddingLeft;
+                    mirror.style.boxSizing = style.boxSizing;
+                    mirror.style.borderStyle = "solid";
+                    mirror.style.borderWidth = style.borderWidth;
+                }
+
+                function getTextareaOffsetAtIndex(index) {
+                    syncChunkMirrorStyles();
+                    var mirror = getChunkMirror();
+                    var text = inputEl.value.substring(0, index);
+                    mirror.textContent = text;
+                    var marker = document.createElement("span");
+                    marker.textContent = "\u200b";
+                    mirror.appendChild(marker);
+                    var top = marker.offsetTop;
+                    mirror.textContent = "";
+                    return top;
+                }
+
+                function renderChunkDividers(chunks) {
+                    if (!chunkOverlayEl || !inputEl) return;
+                    chunkOverlayEl.innerHTML = "";
+                    if (mode !== "qrcode" || !chunks || chunks.length <= 1) {
+                        lastQrChunks = chunks && chunks.length === 1 ? chunks : null;
+                        return;
+                    }
+                    lastQrChunks = chunks;
+                    var total = chunks.length;
+                    var acc = 0;
+                    var rawText = inputEl.value;
+                    for (var i = 0; i < total - 1; i++) {
+                        acc += chunks[i].length;
+                        var bar = document.createElement("div");
+                        bar.className = "chunk-divider-bar";
+                        bar.setAttribute("data-chunk-index", String(i + 1));
+                        bar.setAttribute("data-char-index", String(normalizedIndexToRawIndex(rawText, acc)));
+                        var label = document.createElement("span");
+                        label.className = "chunk-divider-label";
+                        label.textContent = "第 " + (i + 2) + " / " + total + " 张";
+                        bar.appendChild(label);
+                        chunkOverlayEl.appendChild(bar);
+                    }
+                    layoutChunkDividers();
+                }
+
+                function layoutChunkDividers() {
+                    if (!chunkOverlayEl || !lastQrChunks || lastQrChunks.length <= 1) return;
+                    var bars = chunkOverlayEl.querySelectorAll(".chunk-divider-bar");
+                    if (!bars.length) return;
+                    var scrollTop = inputEl.scrollTop;
+                    for (var i = 0; i < bars.length; i++) {
+                        var bar = bars[i];
+                        var charIndex = parseInt(bar.getAttribute("data-char-index"), 10);
+                        if (isNaN(charIndex)) continue;
+                        var top = getTextareaOffsetAtIndex(charIndex) - scrollTop;
+                        bar.style.top = top + "px";
+                    }
+                }
+
+                function updateChunkDividersFromText(text) {
+                    if (mode !== "qrcode") {
+                        clearChunkDividers();
+                        return;
+                    }
+                    text = normalizeInputText(text);
+                    if (!text.trim()) {
+                        clearChunkDividers();
+                        return;
+                    }
+                    try {
+                        var ecc = DEFAULT_QR_ECC;
+                        var maxChars = getMaxCharsPerQr();
+                        var chunks = splitUtf8ByQrCreate(text, ecc, maxChars);
+                        renderChunkDividers(chunks);
+                    } catch (e) {
+                        clearChunkDividers();
+                    }
+                }
+
+                function scheduleChunkDividerUpdate(delayMs) {
+                    if (chunkDividerTimer) window.clearTimeout(chunkDividerTimer);
+                    chunkDividerTimer = window.setTimeout(function () {
+                        var t = normalizeInputText(inputEl.value);
+                        var bl = getUtf8ByteLength(t);
+                        if (mode !== "qrcode" || !t.trim()) {
+                            clearChunkDividers();
+                            return;
+                        }
+                        if (bl > MAX_AUTO_PREVIEW_UTF8_BYTES) return;
+                        updateChunkDividersFromText(t);
+                    }, delayMs);
+                }
+
+                function generateQrList(text, size, eccName, maxCharsPerChunk) {
                     var ecc = (eccName || "L").toUpperCase();
                     if (!/^[LMQH]$/.test(ecc)) ecc = "L";
                     if (typeof QRCodeLib === "undefined" || !QRCodeLib.create) {
                         throw new Error("二维码引擎未加载，请确认 pages/libs/qrcode-lib.bundle.js 存在且已先于本脚本加载。");
                     }
-                    var chunks = splitUtf8ByQrCreate(text, ecc);
+                    var chunks = splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk || 0);
                     if (chunks.length > MAX_QR_CHUNKS) {
                         throw new Error(
                             "分片数量超过 " +
@@ -515,30 +1406,165 @@
                         var nm = renderChunkWithFallback(codeWrap, chunk, ecc, size);
                         usedLevels.push(nm);
                     });
-                    return { chunks: chunks, levels: usedLevels, cap: cap, ecc: ecc };
+                    return {
+                        chunks: chunks,
+                        levels: usedLevels,
+                        cap: cap,
+                        ecc: ecc,
+                        maxCharsPerChunk: maxCharsPerChunk || 0
+                    };
+                }
+
+                /** 分片较多时逐张渲染并让出主线程，便于加载动画转动 */
+                function generateQrListAsync(text, size, eccName, maxCharsPerChunk, token, onProgress) {
+                    return new Promise(function (resolve, reject) {
+                        yieldToUi(function () {
+                            if (token !== genToken) {
+                                reject(new Error("__cancelled__"));
+                                return;
+                            }
+                            try {
+                                if (onProgress) onProgress("正在分析内容并分片…");
+                                var ecc = (eccName || "L").toUpperCase();
+                                if (!/^[LMQH]$/.test(ecc)) ecc = "L";
+                                if (typeof QRCodeLib === "undefined" || !QRCodeLib.create) {
+                                    throw new Error(
+                                        "二维码引擎未加载，请确认 pages/libs/qrcode-lib.bundle.js 存在且已先于本脚本加载。"
+                                    );
+                                }
+                                var chunks = splitUtf8ByQrCreate(text, ecc, maxCharsPerChunk || 0);
+                                if (chunks.length > MAX_QR_CHUNKS) {
+                                    throw new Error(
+                                        "分片数量超过 " +
+                                            MAX_QR_CHUNKS +
+                                            " 张，请缩短内容或改用纠错 L。当前约 " +
+                                            chunks.length +
+                                            " 张。"
+                                    );
+                                }
+                                var qrcodeEl = document.getElementById("qrcode");
+                                qrcodeEl.innerHTML = "";
+                                var usedLevels = [];
+                                var cap = CAPACITY_V40[ecc] || CAPACITY_V40.L;
+                                var idx = 0;
+
+                                function renderOne() {
+                                    if (token !== genToken) {
+                                        reject(new Error("__cancelled__"));
+                                        return;
+                                    }
+                                    if (idx >= chunks.length) {
+                                        resolve({
+                                            chunks: chunks,
+                                            levels: usedLevels,
+                                            cap: cap,
+                                            ecc: ecc,
+                                            maxCharsPerChunk: maxCharsPerChunk || 0
+                                        });
+                                        return;
+                                    }
+                                    if (onProgress && chunks.length > 1) {
+                                        onProgress(
+                                            "正在生成第 " + (idx + 1) + " / " + chunks.length + " 张二维码…"
+                                        );
+                                    } else if (onProgress) {
+                                        onProgress("正在生成二维码…");
+                                    }
+                                    var chunk = chunks[idx];
+                                    var item = document.createElement("div");
+                                    item.className = "qr-item";
+                                    var label = document.createElement("div");
+                                    label.className = "qr-item-label";
+                                    label.textContent =
+                                        chunks.length > 1
+                                            ? "第 " + (idx + 1) + " / " + chunks.length + " 张"
+                                            : "单张";
+                                    var codeWrap = document.createElement("div");
+                                    item.appendChild(label);
+                                    item.appendChild(codeWrap);
+                                    qrcodeEl.appendChild(item);
+                                    var nm = renderChunkWithFallback(codeWrap, chunk, ecc, size);
+                                    usedLevels.push(nm);
+                                    idx++;
+                                    if (idx < chunks.length) {
+                                        yieldToUi(renderOne);
+                                    } else {
+                                        resolve({
+                                            chunks: chunks,
+                                            levels: usedLevels,
+                                            cap: cap,
+                                            ecc: ecc,
+                                            maxCharsPerChunk: maxCharsPerChunk || 0
+                                        });
+                                    }
+                                }
+
+                                renderOne();
+                            } catch (e) {
+                                reject(e);
+                            }
+                        });
+                    });
                 }
 
                 function syncModeUi() {
                     var qr = mode === "qrcode";
-                    document.getElementById("head-label").textContent = qr ? "二维码生成" : "条形码生成";
                     document.getElementById("head-hint").textContent = qr
                         ? "UTF-8 最多约 " +
                           Math.floor(MAX_INPUT_UTF8_BYTES / 1024) +
-                          "KB；超过 " +
-                          Math.floor(MAX_AUTO_PREVIEW_UTF8_BYTES / 1024) +
-                          "KB 请点「生成」刷新"
-                        : "条形码为 CODE128；中文建议改用二维码";
+                          "KB；可用「单码上限」控制每张码量；多码时左侧显示分片横线（不参与编码）"
+                        : "条形码为 CODE128；中文建议改用二维码；底部可切换多个输入页";
+                    document.getElementById("qr-chunk-opt").classList.toggle("hidden", !qr);
                     document.getElementById("qrcode").classList.toggle("hidden", !qr);
                     document.getElementById("barcode").classList.toggle("hidden", qr);
+                    if (!qr) clearChunkDividers();
+                }
+
+                function applyQrResult(res, charLen, byteLen) {
+                    renderChunkDividers(res.chunks);
+                    var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
+                    var limitNote =
+                        res.maxCharsPerChunk > 0 ? " 单码上限 " + res.maxCharsPerChunk + " 字符。" : "";
+                    var splitNote =
+                        res.chunks.length > 1
+                            ? " 已分为 " +
+                              res.chunks.length +
+                              " 张" +
+                              (res.maxCharsPerChunk > 0
+                                  ? "（每码 ≤ " + res.maxCharsPerChunk + " 字符）"
+                                  : "（按纠错 " +
+                                    res.ecc +
+                                    " 尽量填满；Version40 " +
+                                    res.ecc +
+                                    " 约 " +
+                                    res.cap +
+                                    " 字节）") +
+                              "。"
+                            : " 单张二维码，UTF-8 " + byteLen + " 字节。";
+                    setStatus(
+                        "共 " + charLen + " 字符 / " + byteLen + " 字节。" + limitNote + splitNote + " " + levelNote,
+                        false
+                    );
+                }
+
+                function finishGenerate(token, hadLoading) {
+                    if (token !== genToken) return;
+                    if (hadLoading) {
+                        setPreviewLoading(false);
+                        setGenerateBusy(false);
+                    }
                 }
 
                 function generateCode() {
-                    var inputEl = document.getElementById("input-text");
+                    syncInputToSheet();
                     var normalizedText = normalizeInputText(inputEl.value);
                     var text = normalizedText;
-                    var size = Math.max(80, Math.min(1200, DEFAULT_QR_SIZE));
+                    var size = getPreviewQrSize();
                     var charLen = text.length;
                     var byteLen = getUtf8ByteLength(text);
+                    var token = ++genToken;
+                    setPreviewLoading(false);
+                    setGenerateBusy(false);
 
                     if (!text.trim()) {
                         clearPreview();
@@ -559,87 +1585,106 @@
                         return;
                     }
 
-                    clearPreview();
+                    var asyncLoad = shouldUseAsyncLoading(byteLen);
+                    if (asyncLoad) {
+                        clearPreview();
+                        setPreviewLoading(
+                            true,
+                            mode === "qrcode" ? "正在生成二维码…" : "正在生成条形码…"
+                        );
+                        setGenerateBusy(true);
+                    } else {
+                        clearPreview();
+                    }
 
-                    if (mode === "qrcode") {
-                        var eccName = DEFAULT_QR_ECC;
-                        var marginBytes = DEFAULT_CHUNK_MARGIN;
+                    function runGenerate() {
+                        if (token !== genToken) return;
+
+                        if (mode === "qrcode") {
+                            var eccName = DEFAULT_QR_ECC;
+                            var maxChars = getMaxCharsPerQr();
+
+                            function onQrError(error) {
+                                if (token !== genToken || (error && error.message === "__cancelled__")) return;
+                                clearPreview();
+                                setStatus(
+                                    "生成失败：" +
+                                        (error && error.message ? error.message : String(error)) +
+                                        "（当前 " +
+                                        charLen +
+                                        " 字符 / " +
+                                        byteLen +
+                                        " 字节）",
+                                    true
+                                );
+                                finishGenerate(token, asyncLoad);
+                            }
+
+                            if (asyncLoad) {
+                                generateQrListAsync(text, size, eccName, maxChars, token, function (msg) {
+                                    if (token === genToken) setPreviewLoading(true, msg);
+                                })
+                                    .then(function (res) {
+                                        if (token !== genToken) return;
+                                        applyQrResult(res, charLen, byteLen);
+                                        finishGenerate(token, true);
+                                    })
+                                    .catch(onQrError);
+                                return;
+                            }
+
+                            try {
+                                var resSync = generateQrList(text, size, eccName, maxChars);
+                                applyQrResult(resSync, charLen, byteLen);
+                            } catch (error) {
+                                onQrError(error);
+                            }
+                            return;
+                        }
+
+                        var barcodeEl = document.getElementById("barcode");
+                        if (byteLen > 8000) {
+                            clearPreview();
+                            setStatus("条形码内容过长（>8000 字节），请缩短或改用二维码。", true);
+                            finishGenerate(token, asyncLoad);
+                            return;
+                        }
+                        var bh = getPreviewBarHeight();
                         try {
-                            var res = generateQrList(text, size, eccName, marginBytes);
-                            var levelNote = res.levels.length ? "实际纠错：" + res.levels.join("、") + "。" : "";
-                            var splitNote =
-                                res.chunks.length > 1
-                                    ? " 已分为 " +
-                                      res.chunks.length +
-                                      " 张（node-qrcode 按纠错 " +
-                                      res.ecc +
-                                      " 自动分片；Version40 " +
-                                      res.ecc +
-                                      " 约 " +
-                                      res.cap +
-                                      " 字节）。"
-                                    : " 单张二维码，UTF-8 " + byteLen + " 字节（Version40 " + res.ecc + " 最大约 " + res.cap + " 字节）。";
+                            JsBarcode(barcodeEl, text, {
+                                format: "CODE128",
+                                width: 2,
+                                height: bh,
+                                displayValue: true,
+                                margin: 10
+                            });
                             setStatus(
-                                "共 " +
+                                "条形码已生成。" +
                                     charLen +
                                     " 字符 / " +
                                     byteLen +
-                                    " 字节。" +
-                                    splitNote +
-                                    " " +
-                                    levelNote,
+                                    " 字节。若失败请缩短内容或改用二维码。",
                                 false
                             );
                         } catch (error) {
                             clearPreview();
                             setStatus(
-                                "生成失败：" +
-                                    (error && error.message ? error.message : String(error)) +
-                                    "（当前 " +
-                                    charLen +
-                                    " 字符 / " +
-                                    byteLen +
-                                    " 字节）",
+                                "条形码失败：CODE128 对中文、换行等支持有限，请改用二维码或仅使用 ASCII。",
                                 true
                             );
                         }
-                        return;
+                        finishGenerate(token, asyncLoad);
                     }
 
-                    var barcodeEl = document.getElementById("barcode");
-                    if (byteLen > 8000) {
-                        clearPreview();
-                        setStatus("条形码内容过长（>8000 字节），请缩短或改用二维码。", true);
-                        return;
-                    }
-                    var bh = DEFAULT_BAR_HEIGHT;
-                    try {
-                        JsBarcode(barcodeEl, text, {
-                            format: "CODE128",
-                            width: 2,
-                            height: bh,
-                            displayValue: true,
-                            margin: 10
-                        });
-                        setStatus(
-                            "条形码已生成。" +
-                                charLen +
-                                " 字符 / " +
-                                byteLen +
-                                " 字节。若失败请缩短内容或改用二维码。",
-                            false
-                        );
-                    } catch (error) {
-                        clearPreview();
-                        setStatus(
-                            "条形码失败：CODE128 对中文、换行等支持有限，请改用二维码或仅使用 ASCII。",
-                            true
-                        );
+                    if (asyncLoad) {
+                        yieldToUi(runGenerate);
+                    } else {
+                        runGenerate();
                     }
                 }
 
                 function downloadCode() {
-                    var text = document.getElementById("input-text").value.trim();
+                    var text = inputEl.value.trim();
                     if (!text) {
                         toast("请先生成内容");
                         setStatus("请先输入并生成。", true);
@@ -682,20 +1727,22 @@
                 }
 
                 function clearAll() {
-                    document.getElementById("input-text").value = "";
+                    inputEl.value = "";
+                    syncInputToSheet();
                     mode = "qrcode";
                     document.querySelectorAll("#mode-tabs button").forEach(function (b) {
                         b.classList.toggle("active", b.getAttribute("data-mode") === "qrcode");
                     });
                     syncModeUi();
                     clearPreview();
-                    setStatus("已清空。", false);
+                    persistSheetsState();
+                    setStatus("已清空当前输入页。", false);
                 }
 
                 function scheduleGenerate(delayMs) {
                     if (autoGenTimer) window.clearTimeout(autoGenTimer);
                     autoGenTimer = window.setTimeout(function () {
-                        var t = normalizeInputText(document.getElementById("input-text").value);
+                        var t = normalizeInputText(inputEl.value);
                         var bl = getUtf8ByteLength(t);
                         if (mode === "qrcode" && bl > MAX_AUTO_PREVIEW_UTF8_BYTES) {
                             clearPreview();
@@ -724,26 +1771,74 @@
                     generateCode();
                 });
 
+                document.getElementById("chunk-max-tabs").addEventListener("click", function (e) {
+                    var btn = e.target.closest("button[data-max]");
+                    if (!btn || btn.classList.contains("active")) return;
+                    document.querySelectorAll("#chunk-max-tabs button").forEach(function (b) {
+                        b.classList.toggle("active", b === btn);
+                    });
+                    try {
+                        localStorage.setItem(LS_CHUNK_MAX, btn.getAttribute("data-max") || "0");
+                    } catch (err) {}
+                    if (mode === "qrcode") generateCode();
+                });
+
                 document.getElementById("generate-btn").addEventListener("click", generateCode);
                 document.getElementById("download-btn").addEventListener("click", downloadCode);
                 document.getElementById("clear-btn").addEventListener("click", clearAll);
-                document.getElementById("input-text").addEventListener("input", function () {
+                inputEl.addEventListener("input", function () {
+                    syncInputToSheet();
+                    schedulePersistSheets();
+                    scheduleChunkDividerUpdate(300);
                     scheduleGenerate(400);
                 });
-                document.getElementById("input-text").addEventListener("paste", function () {
+                inputEl.addEventListener("paste", function () {
+                    syncInputToSheet();
+                    schedulePersistSheets();
+                    scheduleChunkDividerUpdate(150);
                     scheduleGenerate(200);
                 });
+                inputEl.addEventListener("scroll", layoutChunkDividers);
 
+                if (sheetAddBtn) sheetAddBtn.addEventListener("click", addSheet);
+
+                if (sheetTabsEl && window.ToolSheetTabsDrag) {
+                    ToolSheetTabsDrag.attach({
+                        container: sheetTabsEl,
+                        isDragDisabled: function () {
+                            return !!sheetRenameId;
+                        },
+                        onReorder: reorderSheet,
+                    });
+                }
+
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !inputEl.value && docSheets.length > 0) return;
+                    initSheetsFromStorage();
+                    applyActiveSheetToInput();
+                    renderSheetTabs();
+                    if (inputEl.value.trim()) scheduleGenerate(100);
+                }
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+
+                restoreSheetsFromPersist();
+                persistSheetsState();
+                window.addEventListener("load", restoreSheetsFromPersist);
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
+
+                loadMaxCharsPerQr();
+                initPaneResizer();
                 syncModeUi();
                 setStatus(
                     "二维码 UTF-8 上限约 " +
                         MAX_INPUT_UTF8_BYTES +
                         " 字节；≤ " +
                         MAX_AUTO_PREVIEW_UTF8_BYTES +
-                        " 字节时输入会自动刷新。",
+                        " 字节时输入会自动刷新。底部 + 可新建输入页。",
                     false
                 );
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>日历</title>
+        <link rel="stylesheet" href="libs/tool-calendar.css" />
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 8px;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+                background: #f3f7ff;
+                color: #1f2a44;
+                font-size: 13px;
+            }
+            .panel {
+                max-width: 360px;
+                padding: 4px 0;
+            }
+            h3 {
+                margin: 0 0 8px;
+                font-size: 14px;
+            }
+            .hint {
+                margin: 0 0 8px;
+                font-size: 12px;
+                color: #6f7d96;
+                line-height: 1.5;
+            }
+        </style>
+        <script src="libs/tool-lunar.js"></script>
+        <script src="libs/tool-holidays-cn.js"></script>
+        <script src="libs/tool-calendar.js"></script>
+    </head>
+    <body>
+        <div class="panel">
+            <h3>日历</h3>
+            <p class="hint">点击日期查看详情；可使用工具栏切换月份或回到今天。</p>
+            <div id="calendar-root"></div>
+        </div>
+        <script>
+            ToolCalendar.mount(document.getElementById("calendar-root"));
+        </script>
+            <script src="libs/tool-form-persist.js"></script>
+    </body>
+</html>

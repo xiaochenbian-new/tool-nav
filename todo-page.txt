@@ -1,0 +1,4 @@
+npm run serve
+http://localhost:8765
+
+npm run pack:utools

@@ -10,6 +10,9 @@
         <script src="../vendor/jsonrepair/jsonrepair.min.js"></script>
         <script src="../vendor/js-yaml/js-yaml.min.js"></script>
         <script src="libs/tool-copy.js"></script>
+        <script src="libs/qrcode-lib.bundle.js"></script>
+        <script src="libs/tool-qr.js"></script>
+        <script src="libs/tool-sheet-tabs-drag.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -101,7 +104,38 @@
                 opacity: 0.45;
                 cursor: not-allowed;
             }
+            .title-btn.handoff-btn,
+            .title-btn.qr-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border-style: dashed;
+                border-color: #7a94c8;
+                background: #f8fbff;
+                color: #3c5a94;
+            }
+            .title-btn.handoff-btn:hover,
+            .title-btn.qr-btn:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            .title-btn.handoff-btn svg,
+            .title-btn.qr-btn svg {
+                display: block;
+                flex-shrink: 0;
+            }
+            .icon-paper-plane {
+                fill: none;
+            }
+            .icon-paper-plane path {
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 1.6;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
             .editor-zone {
+                position: relative;
                 flex: 1;
                 min-height: 120px;
                 display: flex;
@@ -391,15 +425,20 @@
                     grid-template-rows: 1fr 1fr;
                 }
             }
-            /* 与 Ctool Monaco「查找/替换」类似的底部工具条 */
+            /* 悬浮于编辑区右上角的查找/替换面板（类似 Monaco Find Widget） */
             .find-bar {
-                flex: 0 0 auto;
-                border-top: 1px solid #dbe6ff;
-                background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
-                padding: 6px 8px 8px;
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                z-index: 30;
+                width: min(440px, calc(100% - 16px));
+                padding: 8px 10px;
                 font-size: 12px;
-                box-shadow: 0 -4px 14px rgba(36, 90, 190, 0.08);
-                z-index: 5;
+                border: 1px solid #cfdcf7;
+                border-radius: 8px;
+                background: #fff;
+                box-shadow: 0 6px 24px rgba(36, 90, 190, 0.18);
+                pointer-events: auto;
             }
             .find-bar .btn {
                 min-height: 1.75rem;
@@ -422,8 +461,8 @@
                 text-align: right;
             }
             .find-input {
-                flex: 1 1 120px;
-                min-width: 100px;
+                flex: 1 1 80px;
+                min-width: 72px;
                 max-width: 100%;
                 height: 1.75rem;
                 padding: 0 8px;
@@ -454,6 +493,141 @@
                 color: #3c4f78;
                 user-select: none;
             }
+            /* 底部 Sheet 标签：与编辑区同色，无上分隔线，标签轻量悬浮 */
+            .json-sheet-bar {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: flex-end;
+                min-height: 30px;
+                padding: 0 10px 2px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .json-sheet-strip {
+                display: flex;
+                align-items: flex-end;
+                flex-wrap: nowrap;
+                gap: 4px;
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: thin;
+            }
+            .json-sheet-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+            .json-sheet-tabs {
+                display: contents;
+            }
+            .json-sheet-tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                max-width: 148px;
+                height: 26px;
+                padding: 0 10px;
+                margin: 0;
+                border: 1px solid #dbe4f0;
+                border-radius: 4px 4px 0 0;
+                background: #fff;
+                color: #516078;
+                font-size: 12px;
+                font-weight: 400;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+                z-index: 1;
+            }
+            .json-sheet-tab:hover:not(.active) {
+                background: #fafbfd;
+                border-color: #cdd8ea;
+                color: #3c4f78;
+                z-index: 2;
+            }
+            .json-sheet-tab.active {
+                background: #edf3ff;
+                color: var(--primary);
+                font-weight: 600;
+                z-index: 3;
+                border-color: #d8e5ff;
+            }
+            .json-sheet-tab.compare-selected {
+                box-shadow: inset 0 0 0 1px #2f6bff;
+                border-color: #2f6bff;
+                background: #e8f0ff;
+            }
+            .json-sheet-tab.compare-selected:not(.active) {
+                color: #2f6bff;
+                font-weight: 600;
+            }
+            .json-sheet-tab .sheet-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 120px;
+            }
+            .json-sheet-tab .sheet-rename-input {
+                width: 96px;
+                max-width: 120px;
+                height: 22px;
+                padding: 0 6px;
+                font-size: 12px;
+                border: 1px solid var(--primary);
+                border-radius: 4px;
+                outline: none;
+                background: #fff;
+            }
+            .json-sheet-tab .sheet-close {
+                flex: 0 0 auto;
+                margin-left: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0;
+                border: none;
+                border-radius: 3px;
+                background: transparent;
+                color: #7a879e;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                opacity: 1;
+            }
+            .json-sheet-tab.active .sheet-close {
+                color: #5a7fd4;
+            }
+            .json-sheet-tab .sheet-close:hover {
+                background: rgba(224, 64, 64, 0.15);
+                color: var(--danger);
+            }
+            .json-sheet-add {
+                flex: 0 0 26px;
+                width: 26px;
+                height: 26px;
+                margin: 0;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                font-size: 18px;
+                line-height: 1;
+                color: #8a9bb8;
+                cursor: pointer;
+            }
+            .json-sheet-add:hover {
+                background: #f0f5ff;
+                color: var(--primary);
+            }
+            #json-sheets-meta {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                border: 0;
+            }
         </style>
     </head>
     <body>
@@ -462,13 +636,39 @@
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
                         <span id="head-title">JSON 输入</span>
-                        <span class="hint" title="主编辑区为 CodeMirror：JSON 配色、行号、左侧折叠槽；Ctrl+F 查找">JSON 配色与折叠 · Ctrl+F 查找 · Ctrl+H 替换</span>
+                        <span class="hint" title="底部可切换多个 JSON 工作表，双击标签可重命名；Ctrl+点击可选两个工作表后点「对比」">多工作表 · JSON 配色与折叠 · Ctrl+F 查找</span>
                     </div>
                     <div class="actions">
                         <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
                         <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
                         <button type="button" class="title-btn" id="btn-copy-out" style="display:none">复制输出</button>
-                        <button type="button" class="title-btn" id="btn-copy">复制输入</button>
+                        <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        <button type="button" class="title-btn handoff-btn" id="btn-compare-diff" title="按住 Ctrl 选择两个工作表后点击，跳转到文本对比">
+                            <span>对比</span>
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-diff-split">
+                                <path d="M12 4H5V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M12 3V21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="butt"></path>
+                                <path d="M12 4H19V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr-out" style="display:none" title="生成输出二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成输入二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
+                            </svg>
+                        </button>
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
                 </div>
@@ -487,24 +687,31 @@
                             <textarea id="output-convert" class="editor-text-layer" data-persist-key="json_convert_out" readonly placeholder="选择格式后自动转换，或点击「转换」"></textarea>
                         </div>
                     </div>
-                </div>
-                <div id="find-bar" class="find-bar" hidden>
-                    <div class="find-row">
-                        <span class="find-label">查找</span>
-                        <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
-                        <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter)">↑</button>
-                        <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter)">↓</button>
-                        <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
-                        <span id="find-count" class="find-count"></span>
-                        <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
+                    <div id="find-bar" class="find-bar" hidden>
+                        <div class="find-row">
+                            <span class="find-label">查找</span>
+                            <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
+                            <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter / ↑)">↑</button>
+                            <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter / ↓)">↓</button>
+                            <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
+                            <span id="find-count" class="find-count"></span>
+                            <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
+                        </div>
+                        <div class="find-row" id="find-replace-row" hidden>
+                            <span class="find-label">替换</span>
+                            <input type="text" id="find-replace-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="替换为" />
+                            <button type="button" class="btn" id="find-rep-one">替换</button>
+                            <button type="button" class="btn" id="find-rep-all">全部替换</button>
+                        </div>
                     </div>
-                    <div class="find-row" id="find-replace-row" hidden>
-                        <span class="find-label">替换</span>
-                        <input type="text" id="find-replace-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="替换为" />
-                        <button type="button" class="btn" id="find-rep-one">替换</button>
-                        <button type="button" class="btn" id="find-rep-all">全部替换</button>
+                </div>
+                <div class="json-sheet-bar" id="json-sheet-bar">
+                    <div class="json-sheet-strip">
+                        <div class="json-sheet-tabs" id="json-sheet-tabs" role="tablist" aria-label="JSON 工作表"></div>
+                        <button type="button" class="json-sheet-add" id="json-sheet-add" title="新建工作表">+</button>
                     </div>
                 </div>
+                <textarea id="json-sheets-meta" data-persist-key="json_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
             </div>
 
             <div class="ctool-page-option">
@@ -593,6 +800,9 @@
                 }
 
                 var mainInput = document.getElementById("main-input");
+                var sheetsMetaInput = document.getElementById("json-sheets-meta");
+                var sheetTabsEl = document.getElementById("json-sheet-tabs");
+                var sheetAddBtn = document.getElementById("json-sheet-add");
                 var outputConvert = document.getElementById("output-convert");
                 var outBackdrop = document.getElementById("output-convert-backdrop");
                 var btnJsonExpandAll = document.getElementById("btn-json-expand-all");
@@ -601,11 +811,11 @@
                 var mainCm = null;
                 var findMarksMain = [];
                 var lastFindTargetIsOutput = false;
-                /** 查找导航：null 表示尚未开始；否则记录上次是否在输出框 */
-                var findNavWasOutput = null;
+                var findSearchInOutput = false;
                 var editorZone = document.getElementById("editor-zone");
                 var headTitle = document.getElementById("head-title");
                 var btnCopyOut = document.getElementById("btn-copy-out");
+                var btnQrOut = document.getElementById("btn-qr-out");
                 var labelIn = document.getElementById("label-in");
                 var wrapOut = document.getElementById("wrap-out");
                 var tabCommon = document.getElementById("tab-common");
@@ -624,6 +834,46 @@
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
                 var tomlStringifyCache = null;
+                /** 超过该体积启用大文本模式（关闭折行/折叠/语法高亮，降低输入卡顿） */
+                var LARGE_CONTENT_BYTES = 128 * 1024;
+                var NORMAL_PERSIST_MS = 400;
+                var LARGE_PERSIST_MS = 1800;
+                /** 序列化后超过该体积不再写入浏览器 localStorage */
+                var LARGE_LOCAL_STORAGE_SKIP = 1536 * 1024;
+                var editorPerfLarge = null;
+                var _largeStorageWarned = false;
+                var _editorSideFxTimer = null;
+                var _convertDebounceTimer = null;
+
+                function getContentByteSize(text) {
+                    var s = String(text == null ? "" : text);
+                    if (typeof TextEncoder !== "undefined") {
+                        return new TextEncoder().encode(s).length;
+                    }
+                    return s.length * 2;
+                }
+
+                function isLargeContent(text) {
+                    return getContentByteSize(text) >= LARGE_CONTENT_BYTES;
+                }
+
+                function applyEditorPerformanceMode(text) {
+                    var large = isLargeContent(text);
+                    if (large === editorPerfLarge) return;
+                    editorPerfLarge = large;
+                    if (!mainCm) return;
+                    mainCm.setOption("lineWrapping", !large);
+                    mainCm.setOption("foldGutter", !large);
+                    mainCm.setOption(
+                        "gutters",
+                        large ? ["CodeMirror-linenumbers"] : ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+                    );
+                    mainCm.setOption("mode", large ? "text/plain" : { name: "javascript", json: true });
+                    mainCm.setOption("workTime", large ? 50 : 200);
+                    mainCm.setOption("workDelay", large ? 400 : 300);
+                    mainCm.refresh();
+                    if (large) toast("大文本模式：已关闭折行与语法高亮以提升流畅度");
+                }
 
                 function toast(msg) {
                     toastEl.textContent = msg;
@@ -645,8 +895,18 @@
                     pair(outputConvert, outBackdrop);
                 })();
 
+                var PLACEHOLDER_JSON = '{"name":"示例","items":[1,2]}';
+
+                function isPlaceholderContent(text) {
+                    return String(text || "").trim() === PLACEHOLDER_JSON;
+                }
+
+                function normalizeEditorText(text) {
+                    return isPlaceholderContent(text) ? "" : String(text == null ? "" : text);
+                }
+
                 mainCm = CodeMirror(document.getElementById("cm-json-mount"), {
-                    value: mainInput.value || "",
+                    value: "",
                     mode: { name: "javascript", json: true },
                     lineNumbers: true,
                     lineWrapping: true,
@@ -658,20 +918,413 @@
                     inputStyle: "textarea",
                     spellcheck: false,
                     autofocus: false,
-                    placeholder: '{"name":"示例","items":[1,2]}',
+                    placeholder: PLACEHOLDER_JSON,
                     extraKeys: {
                         "Ctrl-Q": function (cm) {
                             cm.foldCode(cm.getCursor());
+                        },
+                        "Ctrl-F": function () {
+                            handleFindShortcut();
+                        },
+                        "Cmd-F": function () {
+                            handleFindShortcut();
+                        },
+                        "Ctrl-H": function () {
+                            openFind(true);
+                        },
+                        "Shift-Ctrl-F": function () {
+                            openFind(true);
+                        },
+                        "Cmd-Alt-F": function () {
+                            openFind(true);
                         },
                     },
                 });
 
                 function syncMainInputFromCm() {
-                    mainInput.value = mainCm.getValue();
+                    var v = mainCm.getValue();
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = v;
+                    /* 内容以 json_sheets_state 为准，避免与隐藏域重复写入 localStorage */
+                    mainInput.value = "";
                 }
 
                 function setMainInputContent(text) {
-                    mainCm.setValue(text == null ? "" : String(text));
+                    var next = text == null ? "" : String(text);
+                    mainCm.setValue(next);
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = next;
+                    mainInput.value = "";
+                    applyEditorPerformanceMode(next);
+                }
+
+                /* —— 多 Sheet（类似 Excel 工作表） —— */
+                var jsonSheets = [];
+                var activeSheetId = null;
+                var sheetRenameId = null;
+                var compareSelectedIds = [];
+                var HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+                var HANDOFF_TEXT_DIFF_TAB = "tab10";
+
+                function genSheetId() {
+                    return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                }
+
+                function getActiveSheet() {
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        if (jsonSheets[i].id === activeSheetId) return jsonSheets[i];
+                    }
+                    return null;
+                }
+
+                function nextSheetName() {
+                    var used = {};
+                    for (var i = 0; i < jsonSheets.length; i++) used[jsonSheets[i].name] = true;
+                    var n = 1;
+                    while (used["Sheet" + n]) n++;
+                    return "Sheet" + n;
+                }
+
+                function persistSheetsState() {
+                    syncMainInputFromCm();
+                    if (!jsonSheets.length) return;
+                    var state = { activeId: activeSheetId, sheets: jsonSheets };
+                    var serialized = JSON.stringify(state);
+                    sheetsMetaInput.value = serialized;
+                    if (getContentByteSize(serialized) >= LARGE_LOCAL_STORAGE_SKIP) {
+                        if (!_largeStorageWarned) {
+                            _largeStorageWarned = true;
+                            toast("内容过大，已跳过自动保存到浏览器");
+                        }
+                        return;
+                    }
+                    _largeStorageWarned = false;
+                    sheetsMetaInput.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+
+                function sanitizeAllSheetsContent() {
+                    var changed = false;
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        var c = normalizeEditorText(jsonSheets[i].content);
+                        if (c !== jsonSheets[i].content) {
+                            jsonSheets[i].content = c;
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+
+                function applyActiveSheetToEditor() {
+                    var sheet = getActiveSheet();
+                    var content = sheet ? normalizeEditorText(sheet.content) : "";
+                    if (sheet) sheet.content = content;
+                    mainCm.setValue(content);
+                    mainInput.value = "";
+                    applyEditorPerformanceMode(content);
+                }
+
+                function initSheetsFromStorage() {
+                    var legacy = normalizeEditorText(mainInput.value);
+                    if (sheetsMetaInput.value) {
+                        try {
+                            var state = JSON.parse(sheetsMetaInput.value);
+                            if (state && state.sheets && state.sheets.length) {
+                                jsonSheets = state.sheets.map(function (s) {
+                                    return {
+                                        id: s.id || genSheetId(),
+                                        name: String(s.name || "Sheet1"),
+                                        content: normalizeEditorText(s.content),
+                                    };
+                                });
+                                activeSheetId = state.activeId;
+                                if (!getActiveSheet()) activeSheetId = jsonSheets[0].id;
+                                return;
+                            }
+                        } catch (e) {
+                            /* 损坏的存储，回退为单表 */
+                        }
+                    }
+                    jsonSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy }];
+                    activeSheetId = jsonSheets[0].id;
+                }
+
+                function switchSheet(sheetId) {
+                    if (!sheetId || sheetId === activeSheetId) return;
+                    syncMainInputFromCm();
+                    activeSheetId = sheetId;
+                    applyActiveSheetToEditor();
+                    resetFindNavigation();
+                    renderSheetTabs();
+                    refreshFindHighlights();
+                    persistSheetsState();
+                    resizeMainCm();
+                }
+
+                function addSheet() {
+                    syncMainInputFromCm();
+                    var sheet = {
+                        id: genSheetId(),
+                        name: nextSheetName(),
+                        content: "",
+                    };
+                    jsonSheets.push(sheet);
+                    switchSheet(sheet.id);
+                    toast("已新建 " + sheet.name);
+                }
+
+                function clearCompareSelect() {
+                    if (!compareSelectedIds.length) return;
+                    compareSelectedIds = [];
+                    renderSheetTabs();
+                }
+
+                function toggleCompareSelect(sheetId) {
+                    var pos = compareSelectedIds.indexOf(sheetId);
+                    if (pos >= 0) {
+                        compareSelectedIds.splice(pos, 1);
+                    } else if (compareSelectedIds.length >= 2) {
+                        toast("最多选择两个工作表，请先取消其中一个");
+                        return;
+                    } else {
+                        compareSelectedIds.push(sheetId);
+                    }
+                    renderSheetTabs();
+                }
+
+                function getSheetContentById(sheetId) {
+                    syncMainInputFromCm();
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        if (jsonSheets[i].id === sheetId) {
+                            return String(jsonSheets[i].content == null ? "" : jsonSheets[i].content);
+                        }
+                    }
+                    return "";
+                }
+
+                function getSheetNameById(sheetId) {
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        if (jsonSheets[i].id === sheetId) return jsonSheets[i].name;
+                    }
+                    return "";
+                }
+
+                function handoffSelectedSheetsToTextDiff() {
+                    syncMainInputFromCm();
+                    if (compareSelectedIds.length !== 2) {
+                        toast("请按住 Ctrl 选择两个工作表后再对比");
+                        return;
+                    }
+                    var leftId = compareSelectedIds[0];
+                    var rightId = compareSelectedIds[1];
+                    var payload = {
+                        left: getSheetContentById(leftId),
+                        right: getSheetContentById(rightId),
+                        leftName: getSheetNameById(leftId),
+                        rightName: getSheetNameById(rightId),
+                        language: "json",
+                        returnToolId: "tab8",
+                        returnToolName: "Json工具",
+                    };
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage(
+                                {
+                                    type: "tool-nav:open-tool",
+                                    toolId: HANDOFF_TEXT_DIFF_TAB,
+                                    handoff: "sheets-to-text-diff",
+                                    payload: payload,
+                                },
+                                "*"
+                            );
+                            toast("已发送到文本对比");
+                            return;
+                        } catch (e1) {
+                            // fall through
+                        }
+                    }
+                    try {
+                        sessionStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e2) {
+                        // ignore
+                    }
+                    try {
+                        localStorage.setItem(HANDOFF_SHEETS_TO_TEXT_DIFF_KEY, JSON.stringify(payload));
+                    } catch (e3) {
+                        // ignore
+                    }
+                    window.location.href = "../index.html#tab=" + HANDOFF_TEXT_DIFF_TAB;
+                }
+
+                function removeSheet(sheetId) {
+                    if (jsonSheets.length <= 1) {
+                        toast("至少保留一个工作表");
+                        return;
+                    }
+                    var idx = -1;
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        if (jsonSheets[i].id === sheetId) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx < 0) return;
+                    compareSelectedIds = compareSelectedIds.filter(function (id) {
+                        return id !== sheetId;
+                    });
+                    var removed = jsonSheets.splice(idx, 1)[0];
+                    if (activeSheetId === sheetId) {
+                        var next = jsonSheets[Math.min(idx, jsonSheets.length - 1)];
+                        activeSheetId = next.id;
+                        applyActiveSheetToEditor();
+                        resetFindNavigation();
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    toast("已删除 " + removed.name);
+                }
+
+                function renameSheet(sheetId, newName) {
+                    var name = String(newName || "").trim();
+                    if (!name) {
+                        toast("名称不能为空");
+                        return false;
+                    }
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        if (jsonSheets[i].id !== sheetId && jsonSheets[i].name === name) {
+                            toast("名称已存在");
+                            return false;
+                        }
+                    }
+                    for (var j = 0; j < jsonSheets.length; j++) {
+                        if (jsonSheets[j].id === sheetId) {
+                            jsonSheets[j].name = name;
+                            break;
+                        }
+                    }
+                    renderSheetTabs();
+                    persistSheetsState();
+                    return true;
+                }
+
+                function startSheetRename(sheetId) {
+                    sheetRenameId = sheetId;
+                    renderSheetTabs();
+                    var tab = sheetTabsEl.querySelector('[data-sheet-id="' + sheetId + '"]');
+                    if (!tab) return;
+                    var input = tab.querySelector(".sheet-rename-input");
+                    if (input) {
+                        input.focus();
+                        input.select();
+                    }
+                }
+
+                function finishSheetRename(sheetId, value, cancel) {
+                    sheetRenameId = null;
+                    if (!cancel) renameSheet(sheetId, value);
+                    renderSheetTabs();
+                }
+
+                function reorderSheet(fromIndex, toIndex) {
+                    if (fromIndex === toIndex) return;
+                    var item = jsonSheets.splice(fromIndex, 1)[0];
+                    jsonSheets.splice(toIndex, 0, item);
+                    renderSheetTabs();
+                    persistSheetsState();
+                }
+
+                function renderSheetTabs() {
+                    if (!sheetTabsEl) return;
+                    sheetTabsEl.innerHTML = "";
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        (function (sheet) {
+                            var isCompareSel = compareSelectedIds.indexOf(sheet.id) >= 0;
+                            var tab = document.createElement("button");
+                            tab.type = "button";
+                            tab.className =
+                                "json-sheet-tab" +
+                                (sheet.id === activeSheetId ? " active" : "") +
+                                (isCompareSel ? " compare-selected" : "");
+                            tab.setAttribute("data-sheet-id", sheet.id);
+                            tab.setAttribute("role", "tab");
+                            tab.setAttribute("aria-selected", sheet.id === activeSheetId ? "true" : "false");
+                            var selMark = isCompareSel
+                                ? " · 对比选中" + (compareSelectedIds.indexOf(sheet.id) + 1)
+                                : "";
+                            tab.title = sheet.name + "（拖拽排序，双击重命名；Ctrl+点击多选对比）" + selMark;
+
+                            if (sheetRenameId === sheet.id) {
+                                var inp = document.createElement("input");
+                                inp.type = "text";
+                                inp.className = "sheet-rename-input";
+                                inp.value = sheet.name;
+                                inp.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                });
+                                inp.addEventListener("keydown", function (e) {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, inp.value, false);
+                                    } else if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        finishSheetRename(sheet.id, "", true);
+                                    }
+                                });
+                                inp.addEventListener("blur", function () {
+                                    finishSheetRename(sheet.id, inp.value, false);
+                                });
+                                tab.appendChild(inp);
+                            } else {
+                                var span = document.createElement("span");
+                                span.className = "sheet-name";
+                                span.textContent = sheet.name;
+                                tab.appendChild(span);
+                                tab.addEventListener("dblclick", function (e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    startSheetRename(sheet.id);
+                                });
+                            }
+
+                            if (jsonSheets.length > 1) {
+                                var closeBtn = document.createElement("button");
+                                closeBtn.type = "button";
+                                closeBtn.className = "sheet-close";
+                                closeBtn.title = "删除工作表";
+                                closeBtn.textContent = "×";
+                                closeBtn.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                    removeSheet(sheet.id);
+                                });
+                                tab.appendChild(closeBtn);
+                            }
+
+                            tab.addEventListener("click", function (e) {
+                                if (sheetRenameId) return;
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    toggleCompareSelect(sheet.id);
+                                    return;
+                                }
+                                clearCompareSelect();
+                                switchSheet(sheet.id);
+                            });
+
+                            sheetTabsEl.appendChild(tab);
+                        })(jsonSheets[i]);
+                    }
+                }
+
+                document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
+                sheetAddBtn.addEventListener("click", addSheet);
+
+                if (sheetTabsEl && window.ToolSheetTabsDrag) {
+                    ToolSheetTabsDrag.attach({
+                        container: sheetTabsEl,
+                        isDragDisabled: function () {
+                            return !!sheetRenameId;
+                        },
+                        onReorder: reorderSheet,
+                    });
                 }
 
                 function resizeMainCm() {
@@ -691,21 +1344,70 @@
                         }).observe(cmResizeEl);
                     }
                 }
-                window.addEventListener("load", function () {
-                    if (mainInput.value && mainInput.value !== mainCm.getValue()) {
-                        mainCm.setValue(mainInput.value);
-                    }
+                initSheetsFromStorage();
+                sanitizeAllSheetsContent();
+                applyActiveSheetToEditor();
+                renderSheetTabs();
+                if (isLargeContent(mainCm.getValue())) {
+                    setTimeout(persistSheetsState, 800);
+                } else {
+                    persistSheetsState();
+                }
+
+                function restoreSheetsFromPersist() {
+                    if (!sheetsMetaInput.value && !mainInput.value && docSheets.length > 0) return;
+                    initSheetsFromStorage();
+                    sanitizeAllSheetsContent();
+                    applyActiveSheetToEditor();
+                    renderSheetTabs();
                     resizeMainCm();
-                });
+                }
+                window.toolNavRestoreForm = restoreSheetsFromPersist;
+
+                window.addEventListener("load", restoreSheetsFromPersist);
+                document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
+
+                var _sheetPersistTimer = null;
+                function schedulePersistSheets() {
+                    clearTimeout(_sheetPersistTimer);
+                    var delay = isLargeContent(mainCm.getValue()) ? LARGE_PERSIST_MS : NORMAL_PERSIST_MS;
+                    _sheetPersistTimer = setTimeout(persistSheetsState, delay);
+                }
+
+                function scheduleEditorSideEffects() {
+                    var text = mainCm.getValue();
+                    var large = isLargeContent(text);
+                    clearTimeout(_editorSideFxTimer);
+                    if (large) {
+                        _editorSideFxTimer = setTimeout(function () {
+                            _editorSideFxTimer = null;
+                            applyEditorPerformanceMode(text);
+                            refreshFindHighlights();
+                        }, 200);
+                    } else {
+                        applyEditorPerformanceMode(text);
+                        refreshFindHighlights();
+                    }
+                    if (currentTab === "convert") {
+                        clearTimeout(_convertDebounceTimer);
+                        _convertDebounceTimer = setTimeout(function () {
+                            _convertDebounceTimer = null;
+                            doConvert(true);
+                        }, large ? 900 : 0);
+                    }
+                }
 
                 mainCm.on("change", function (_cm, change) {
-                    syncMainInputFromCm();
-                    if (currentTab === "convert") doConvert(true);
-                    refreshFindHighlights();
+                    var v = mainCm.getValue();
+                    var sheet = getActiveSheet();
+                    if (sheet) sheet.content = v;
+                    schedulePersistSheets();
+                    scheduleEditorSideEffects();
                     if (change && change.origin === "paste") scheduleAutoBeautifyAfterPaste();
                 });
                 mainCm.on("focus", function () {
                     lastFindTargetIsOutput = false;
+                    if (findBar && !findBar.hidden) findSearchInOutput = false;
                 });
                 mainCm.on("cursorActivity", function () {
                     if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
@@ -727,12 +1429,47 @@
                     return { start: Math.min(a, b), end: Math.max(a, b) };
                 }
 
-                function cmSetSelOffsets(start, end) {
-                    mainCm.focus();
+                function cmSetSelOffsets(start, end, focusEditor) {
+                    if (focusEditor !== false) mainCm.focus();
                     var a = mainCm.posFromIndex(start);
                     var b = mainCm.posFromIndex(end);
                     mainCm.setSelection(a, b);
                     mainCm.scrollIntoView({ from: a, to: b });
+                }
+
+                function getFindSelectionText() {
+                    if (mainCm && mainCm.somethingSelected()) {
+                        return mainCm.getSelection();
+                    }
+                    var s = outputConvert.selectionStart;
+                    var e = outputConvert.selectionEnd;
+                    if (s !== e) return outputConvert.value.slice(s, e);
+                    return "";
+                }
+
+                function focusFindInput() {
+                    setTimeout(function () {
+                        findInput.focus();
+                        if (findInput.value) {
+                            findInput.select();
+                        }
+                    }, 0);
+                }
+
+                /** 查找栏已打开时：有编辑器选区则更新查询；否则聚焦并全选查询框内容 */
+                function handleFindShortcut() {
+                    var selText = getFindSelectionText();
+                    if (!findBar.hidden) {
+                        if (selText) {
+                            findInput.value = selText;
+                            resetFindNavigation();
+                        }
+                        focusFindInput();
+                        updateFindCount();
+                        refreshFindHighlights();
+                        return;
+                    }
+                    openFind(false);
                 }
 
                 function clearMainFindMarks() {
@@ -742,11 +1479,53 @@
                     }
                 }
 
+                function pinFindSearchTarget() {
+                    var a = document.activeElement;
+                    if (mainCm && mainCm.getWrapperElement().contains(a)) {
+                        findSearchInOutput = false;
+                    } else if (a === outputConvert) {
+                        findSearchInOutput = true;
+                    } else {
+                        findSearchInOutput = lastFindTargetIsOutput;
+                    }
+                }
+
                 function getFindTargetIsOutput() {
                     var a = document.activeElement;
                     if (mainCm && mainCm.getWrapperElement().contains(a)) return false;
                     if (a === outputConvert) return true;
+                    if (findBar && !findBar.hidden) return findSearchInOutput;
                     return lastFindTargetIsOutput;
+                }
+
+                function shouldKeepFindFocus() {
+                    var a = document.activeElement;
+                    return (
+                        a === findInput ||
+                        a === replaceInput ||
+                        (findBar && !findBar.hidden && findBar.contains(a))
+                    );
+                }
+
+                function isFindContentEditorFocused() {
+                    var a = document.activeElement;
+                    if (!a) return false;
+                    if (mainCm && mainCm.getWrapperElement().contains(a)) return true;
+                    if (a === outputConvert) return true;
+                    return false;
+                }
+
+                function handleFindArrowKey(e) {
+                    if (findBar.hidden || !findInput.value) return false;
+                    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+                    if (isFindContentEditorFocused()) return false;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var keep = shouldKeepFindFocus();
+                    if (e.key === "ArrowUp") findPrev(keep);
+                    else findNext(keep);
+                    return true;
                 }
 
                 // UMD 包导出为 JSONRepair.jsonrepair，未必有全局 jsonrepair
@@ -1197,6 +1976,7 @@
 
                 var autoBeautifyPasteTimer = null;
                 function scheduleAutoBeautifyAfterPaste() {
+                    if (isLargeContent(mainCm.getValue())) return;
                     clearTimeout(autoBeautifyPasteTimer);
                     autoBeautifyPasteTimer = setTimeout(function () {
                         autoBeautifyPasteTimer = null;
@@ -1219,6 +1999,7 @@
                     editorZone.classList.toggle("convert-mode", isConvert);
                     headTitle.textContent = isConvert ? "JSON · 双栏" : "JSON 输入";
                     btnCopyOut.style.display = isConvert ? "inline-flex" : "none";
+                    btnQrOut.style.display = isConvert ? "inline-flex" : "none";
                     labelIn.style.display = isConvert ? "block" : "none";
                     wrapOut.style.display = isConvert ? "flex" : "none";
                     if (isConvert) doConvert(true);
@@ -1645,11 +2426,29 @@
                 });
 
                 document.getElementById("btn-copy").addEventListener("click", function () {
-                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制输入", onLabelEl: this, labelText: "复制" });
+                    ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制", onLabelEl: this, labelText: "复制" });
                 });
 
                 document.getElementById("btn-copy-out").addEventListener("click", function () {
                     ToolCopy.copy(outputConvert.value, { successMsg: "已复制输出", onLabelEl: this, labelText: "复制" });
+                });
+
+                document.getElementById("btn-qr").addEventListener("click", function () {
+                    var text = mainCm.getValue();
+                    if (!text.trim()) {
+                        ToolCopy.toast("没有可生成二维码的内容");
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
+                });
+
+                document.getElementById("btn-qr-out").addEventListener("click", function () {
+                    var text = outputConvert.value;
+                    if (!text.trim()) {
+                        ToolCopy.toast("没有可生成二维码的内容");
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
                 });
 
                 /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
@@ -1657,18 +2456,51 @@
 
                 function resetFindNavigation() {
                     findNavMatchIndex = -1;
-                    findNavWasOutput = null;
                 }
 
                 outputConvert.addEventListener("focus", function () {
                     lastFindTargetIsOutput = true;
+                    if (findBar && !findBar.hidden) findSearchInOutput = true;
                 });
-                outputConvert.addEventListener("mousedown", function () {
-                    resetFindNavigation();
+                outputConvert.addEventListener("keydown", function (e) {
+                    var mod = e.ctrlKey || e.metaKey;
+                    var k = String(e.key || "").toLowerCase();
+                    if (mod && k === "f") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleFindShortcut();
+                    }
                 });
-                mainCm.getWrapperElement().addEventListener("mousedown", function () {
-                    resetFindNavigation();
-                });
+
+                function getFindAnchorOffsetForNext(out) {
+                    if (out) return outputConvert.selectionEnd;
+                    return cmGetSelOffsets().end;
+                }
+
+                function getFindAnchorOffsetForPrev(out) {
+                    if (out) return outputConvert.selectionStart;
+                    return cmGetSelOffsets().start;
+                }
+
+                function resolveFindMatchIndexFromSelection(positions, out) {
+                    var s;
+                    var e;
+                    if (out) {
+                        s = outputConvert.selectionStart;
+                        e = outputConvert.selectionEnd;
+                    } else {
+                        var o = cmGetSelOffsets();
+                        s = o.start;
+                        e = o.end;
+                    }
+                    for (var i = 0; i < positions.length; i++) {
+                        if (positions[i].start === s && positions[i].end === e) return i;
+                    }
+                    for (var j = 0; j < positions.length; j++) {
+                        if (s >= positions[j].start && s < positions[j].end) return j;
+                    }
+                    return -1;
+                }
 
                 function getMatchPositions(text, needle, caseSens) {
                     var res = [];
@@ -1826,20 +2658,25 @@
                         e = o.end;
                     }
                     var idx = -1;
-                    for (var i = 0; i < positions.length; i++) {
-                        if (positions[i].start === s && positions[i].end === e) {
-                            idx = i;
-                            break;
-                        }
-                    }
-                    if (idx < 0) {
-                        for (var j = 0; j < positions.length; j++) {
-                            if (s >= positions[j].start && s < positions[j].end) {
-                                idx = j;
+                    if (findNavMatchIndex >= 0 && findNavMatchIndex < positions.length) {
+                        idx = findNavMatchIndex;
+                    } else {
+                        for (var i = 0; i < positions.length; i++) {
+                            if (positions[i].start === s && positions[i].end === e) {
+                                idx = i;
                                 break;
                             }
                         }
+                        if (idx < 0) {
+                            for (var j = 0; j < positions.length; j++) {
+                                if (s >= positions[j].start && s < positions[j].end) {
+                                    idx = j;
+                                    break;
+                                }
+                            }
+                        }
                     }
+                    if (idx >= 0) findNavMatchIndex = idx;
                     findCountEl.textContent = (idx >= 0 ? idx + 1 : "—") + " / " + positions.length;
                     refreshFindHighlights();
                 }
@@ -1906,7 +2743,7 @@
                     }
                 }
 
-                function findNext() {
+                function findNext(keepFindFocus) {
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
@@ -1920,50 +2757,45 @@
                         refreshFindHighlights();
                         return;
                     }
-                    if (findNavWasOutput !== null && findNavWasOutput !== out) {
-                        resetFindNavigation();
-                    }
-                    findNavWasOutput = out;
                     var i;
-                    if (findNavMatchIndex < 0) {
-                        var from;
-                        if (out) {
-                            from = document.activeElement === outputConvert ? outputConvert.selectionEnd : 0;
-                        } else {
-                            var wrap = mainCm.getWrapperElement();
-                            from = wrap.contains(document.activeElement)
-                                ? mainCm.indexFromPos(mainCm.getCursor("head"))
-                                : 0;
-                        }
-                        var qi;
-                        for (qi = 0; qi < positions.length; qi++) {
-                            var pm = positions[qi];
-                            if (from > pm.start && from < pm.end) {
-                                from = pm.end;
-                                break;
-                            }
-                        }
-                        i = positions.findIndex(function (p) {
-                            return p.start >= from;
-                        });
-                        if (i === -1) i = 0;
-                    } else {
+                    if (findNavMatchIndex >= 0) {
                         i = findNavMatchIndex + 1;
                         if (i >= positions.length) i = 0;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions, out);
+                        if (curIdx >= 0) {
+                            i = curIdx + 1;
+                            if (i >= positions.length) i = 0;
+                        } else {
+                            var from = getFindAnchorOffsetForNext(out);
+                            var qi;
+                            for (qi = 0; qi < positions.length; qi++) {
+                                var pm = positions[qi];
+                                if (from > pm.start && from < pm.end) {
+                                    from = pm.end;
+                                    break;
+                                }
+                            }
+                            i = positions.findIndex(function (p) {
+                                return p.start >= from;
+                            });
+                            if (i === -1) i = 0;
+                        }
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
                     if (out) {
-                        outputConvert.focus();
                         outputConvert.setSelectionRange(p.start, p.end);
                         scrollTextareaMatchIntoView(outputConvert);
+                        if (!keepFindFocus) outputConvert.focus();
                     } else {
-                        cmSetSelOffsets(p.start, p.end);
+                        cmSetSelOffsets(p.start, p.end, !keepFindFocus);
                     }
+                    if (keepFindFocus) findInput.focus();
                     updateFindCount();
                 }
 
-                function findPrev() {
+                function findPrev(keepFindFocus) {
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
@@ -1977,53 +2809,45 @@
                         refreshFindHighlights();
                         return;
                     }
-                    if (findNavWasOutput !== null && findNavWasOutput !== out) {
-                        resetFindNavigation();
-                    }
-                    findNavWasOutput = out;
                     var i;
-                    if (findNavMatchIndex < 0) {
-                        var from;
-                        if (out) {
-                            from =
-                                document.activeElement === outputConvert
-                                    ? outputConvert.selectionStart
-                                    : outputConvert.value.length;
-                        } else {
-                            var wrap2 = mainCm.getWrapperElement();
-                            from = wrap2.contains(document.activeElement)
-                                ? mainCm.indexFromPos(mainCm.getCursor("head"))
-                                : mainCm.getValue().length;
-                        }
-                        var qj;
-                        for (qj = 0; qj < positions.length; qj++) {
-                            var pn = positions[qj];
-                            if (from > pn.start && from < pn.end) {
-                                from = pn.start;
-                                break;
-                            }
-                        }
-                        i = -1;
-                        for (var k = positions.length - 1; k >= 0; k--) {
-                            if (positions[k].start < from) {
-                                i = k;
-                                break;
-                            }
-                        }
-                        if (i === -1) i = positions.length - 1;
-                    } else {
+                    if (findNavMatchIndex >= 0) {
                         i = findNavMatchIndex - 1;
                         if (i < 0) i = positions.length - 1;
+                    } else {
+                        var curIdx = resolveFindMatchIndexFromSelection(positions, out);
+                        if (curIdx >= 0) {
+                            i = curIdx - 1;
+                            if (i < 0) i = positions.length - 1;
+                        } else {
+                            var from = getFindAnchorOffsetForPrev(out);
+                            var qj;
+                            for (qj = 0; qj < positions.length; qj++) {
+                                var pn = positions[qj];
+                                if (from > pn.start && from < pn.end) {
+                                    from = pn.start;
+                                    break;
+                                }
+                            }
+                            i = -1;
+                            for (var k = positions.length - 1; k >= 0; k--) {
+                                if (positions[k].start < from) {
+                                    i = k;
+                                    break;
+                                }
+                            }
+                            if (i === -1) i = positions.length - 1;
+                        }
                     }
                     findNavMatchIndex = i;
                     var p = positions[i];
                     if (out) {
-                        outputConvert.focus();
                         outputConvert.setSelectionRange(p.start, p.end);
                         scrollTextareaMatchIntoView(outputConvert);
+                        if (!keepFindFocus) outputConvert.focus();
                     } else {
-                        cmSetSelOffsets(p.start, p.end);
+                        cmSetSelOffsets(p.start, p.end, !keepFindFocus);
                     }
+                    if (keepFindFocus) findInput.focus();
                     updateFindCount();
                 }
 
@@ -2031,18 +2855,12 @@
                     findBar.removeAttribute("hidden");
                     findReplaceRow.hidden = !withReplace;
                     resetFindNavigation();
-                    if (getFindTargetIsOutput()) {
-                        if (outputConvert.selectionStart !== outputConvert.selectionEnd) {
-                            findInput.value = outputConvert.value.slice(
-                                outputConvert.selectionStart,
-                                outputConvert.selectionEnd
-                            );
-                        }
-                    } else if (mainCm.somethingSelected()) {
-                        findInput.value = mainCm.getSelection();
+                    pinFindSearchTarget();
+                    var selText = getFindSelectionText();
+                    if (selText) {
+                        findInput.value = selText;
                     }
-                    findInput.focus();
-                    findInput.select();
+                    focusFindInput();
                     updateFindCount();
                 }
 
@@ -2115,8 +2933,12 @@
                     toast("已全部替换");
                 }
 
-                document.getElementById("find-prev").addEventListener("click", findPrev);
-                document.getElementById("find-next").addEventListener("click", findNext);
+                document.getElementById("find-prev").addEventListener("click", function () {
+                    findPrev(shouldKeepFindFocus());
+                });
+                document.getElementById("find-next").addEventListener("click", function () {
+                    findNext(shouldKeepFindFocus());
+                });
                 document.getElementById("find-close").addEventListener("click", closeFind);
                 findCase.addEventListener("change", function () {
                     resetFindNavigation();
@@ -2132,14 +2954,34 @@
                 findInput.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        if (e.shiftKey) findPrev();
-                        else findNext();
+                        if (e.shiftKey) findPrev(true);
+                        else findNext(true);
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
                     }
                 });
                 replaceInput.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();
                         replaceOne();
+                    } else if (
+                        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                        findInput.value &&
+                        !e.ctrlKey &&
+                        !e.metaKey &&
+                        !e.altKey
+                    ) {
+                        e.preventDefault();
+                        if (e.key === "ArrowUp") findPrev(true);
+                        else findNext(true);
                     }
                 });
 
@@ -2159,8 +3001,9 @@
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     setMainInputContent("");
                     outputConvert.value = "";
+                    persistSheetsState();
                     refreshFindHighlights();
-                    toast("已清空");
+                    toast("已清空当前工作表");
                 });
 
                 window.addEventListener(
@@ -2170,7 +3013,8 @@
                         var k = String(e.key || "").toLowerCase();
                         if (mod && k === "f") {
                             e.preventDefault();
-                            openFind(false);
+                            e.stopPropagation();
+                            handleFindShortcut();
                             return;
                         }
                         if (mod && k === "h" && !e.shiftKey) {
@@ -2187,7 +3031,9 @@
                             e.preventDefault();
                             if (e.shiftKey) findPrev();
                             else findNext();
+                            return;
                         }
+                        if (handleFindArrowKey(e)) return;
                     },
                     true
                 );
@@ -2200,5 +3046,6 @@
                 resizeMainCm();
             })();
         </script>
+            <script src="libs/tool-form-persist.js"></script>
     </body>
 </html>
