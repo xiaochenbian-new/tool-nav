@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>Markdown 转 Word</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/theme/eclipse.css" />
+        <link rel="stylesheet" href="../vendor/katex/katex.min.css" />
+        <script src="libs/tool-copy.js"></script>
+        <script src="../vendor/katex/katex.min.js"></script>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            html, body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+                overflow: hidden;
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+            }
+            .toolbar {
+                flex-shrink: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px 10px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+            }
+            .toolbar-title {
+                font-weight: 600;
+                color: #324a76;
+                margin-right: 4px;
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 12px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: inherit;
+            }
+            .title-btn:hover { border-color: var(--primary); color: var(--primary); }
+            .title-btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .title-btn.primary:hover { filter: brightness(1.05); color: #fff; }
+            .title-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+            .opt {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                color: #3c4f78;
+                font-size: 13px;
+                user-select: none;
+            }
+            .opt input { accent-color: var(--primary); }
+            .split-wrap {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                align-items: stretch;
+                gap: 0;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+                min-height: 0;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .panel-code { flex: 0 0 50%; }
+            .panel-preview { flex: 1 1 auto; }
+            .panel-title {
+                padding: 8px 10px;
+                font-size: 14px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .panel-title-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+            .panel-body {
+                flex: 1;
+                min-height: 0;
+                position: relative;
+                background: #fff;
+            }
+            .cm-wrap { position: absolute; inset: 0; }
+            .cm-wrap .CodeMirror {
+                position: absolute;
+                inset: 0;
+                height: auto;
+                font-size: 13px;
+                line-height: 1.55;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .cm-wrap .CodeMirror-scroll { min-height: 120px; }
+            #preview-body {
+                position: absolute;
+                inset: 0;
+                overflow: auto;
+                padding: 16px 20px;
+                font-size: 14px;
+                line-height: 1.7;
+            }
+            #preview-body h1, #preview-body h2, #preview-body h3,
+            #preview-body h4, #preview-body h5, #preview-body h6 {
+                margin: 0.9em 0 0.45em;
+                color: #1f2a44;
+                line-height: 1.35;
+            }
+            #preview-body h1 { font-size: 1.6em; border-bottom: 1px solid #e4edff; padding-bottom: 0.25em; }
+            #preview-body h2 { font-size: 1.35em; }
+            #preview-body p { margin: 0.45em 0; }
+            #preview-body ul, #preview-body ol { padding-left: 1.6em; margin: 0.5em 0; }
+            #preview-body li { margin: 0.28em 0; line-height: 1.65; }
+            #preview-body blockquote {
+                margin: 0.6em 0;
+                padding: 0.2em 0.9em;
+                border-left: 4px solid var(--primary);
+                color: #4a5a78;
+                background: #f8fbff;
+            }
+            #preview-body code {
+                font-family: Consolas, "Courier New", monospace;
+                background: #f3f5f9;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+                font-size: 0.92em;
+                color: #c7254e;
+            }
+            #preview-body pre {
+                background: #f5f7fa;
+                border: 1px solid #e8eef8;
+                border-radius: 8px;
+                padding: 12px;
+                overflow: auto;
+                margin: 0.7em 0;
+            }
+            #preview-body pre code {
+                background: none;
+                color: inherit;
+                padding: 0;
+            }
+            #preview-body table {
+                border-collapse: collapse;
+                margin: 0.7em 0;
+                width: 100%;
+            }
+            #preview-body th, #preview-body td {
+                border: 1px solid #d8e5ff;
+                padding: 6px 10px;
+            }
+            #preview-body th { background: #eaf1ff; }
+            #preview-body img { max-width: 100%; height: auto; border-radius: 4px; }
+            #preview-body .md-math-block { margin: 0.8em 0; text-align: center; overflow-x: auto; }
+            #preview-body .task-list-item { list-style: none; }
+            #preview-body .task-list-item input { margin-right: 6px; }
+            #preview-body hr { border: none; border-top: 1px solid #dbe6ff; margin: 1.2em 0; }
+            #preview-body .footnotes { margin-top: 1.5em; padding-top: 0.8em; border-top: 1px solid #e4edff; font-size: 0.92em; color: #4a5a78; }
+            .img-import-bar {
+                display: none;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                padding: 10px 14px;
+                margin: 0 0 8px;
+                background: #eef5ff;
+                border: 1px solid #c9dcff;
+                border-radius: 8px;
+                font-size: 13px;
+                color: #1f2a44;
+            }
+            .img-import-bar.is-on { display: flex; }
+            .img-import-bar.is-warn {
+                background: #fff1f0;
+                border: 1px solid #f5a8a0;
+                border-left: 4px solid #d32f2f;
+                color: #b71c1c;
+                font-weight: 600;
+            }
+            .img-import-bar.is-warn .msg {
+                color: #c62828;
+            }
+            .img-import-bar .msg { flex: 1 1 220px; line-height: 1.45; }
+            .img-import-bar .title-btn { margin: 0; }
+            .img-import-bar.is-warn .title-btn.primary {
+                background: #d32f2f;
+                border-color: #c62828;
+                color: #fff;
+            }
+            .img-import-bar.is-warn .title-btn.primary:hover {
+                background: #b71c1c;
+            }
+            .pane-resizer {
+                flex: 0 0 8px;
+                cursor: col-resize;
+                position: relative;
+                z-index: 5;
+                margin: 0 -2px;
+                align-self: stretch;
+                touch-action: none;
+            }
+            body.pane-resizing { cursor: col-resize; user-select: none; }
+            body.pane-resizing .CodeMirror,
+            body.pane-resizing #preview-body { pointer-events: none; }
+            .status-ok { color: #1a7f37; font-weight: 600; }
+            .status-err {
+                color: #c62828;
+                font-weight: 700;
+                background: #ffebee;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            .status-warn {
+                color: #c62828;
+                font-weight: 700;
+                background: #ffebee;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            @media (max-width: 900px) {
+                .split-wrap { flex-direction: column; }
+                .pane-resizer { display: none; }
+                .panel-code, .panel-preview { flex: 1 1 50%; }
+            }
+        </style>
+    </head>
+    <body>
+            <div class="page">
+            <div class="toolbar">
+                <span class="toolbar-title">Markdown → Word</span>
+                <button type="button" class="title-btn" id="btn-open" title="打开指定 .md；会自动尝试读取已授权工作区中的 img，匹配不到再提示选文件夹">打开 .md</button>
+                <button type="button" class="title-btn" id="btn-image">插入图片</button>
+                <button type="button" class="title-btn primary" id="btn-export">导出 Word</button>
+                <button type="button" class="title-btn" id="btn-batch">批量转换</button>
+                <button type="button" class="title-btn danger" id="btn-clear">清空</button>
+                <label class="opt" title="在文档开头生成可点击的目录列表；正文标题使用「标题」样式，WPS/Word 左侧导航可识别"><input type="checkbox" id="opt-toc" checked /> 生成目录</label>
+                <span class="hint" id="status-hint">离线转换 · 打开指定 .md 后导入文中本地图片</span>
+                <input type="file" id="file-md" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden />
+                <input type="file" id="file-md-dir" webkitdirectory multiple hidden />
+                <input type="file" id="file-img" accept="image/*" hidden />
+                <input type="file" id="file-batch" accept=".md,.markdown,.txt,text/markdown" multiple hidden />
+            </div>
+            <div class="img-import-bar" id="img-import-bar" role="status">
+                <span class="msg" id="img-import-msg">文档含本地图片引用</span>
+                <button type="button" class="title-btn primary" id="btn-import-imgs">选择文件夹并导入缺失图片</button>
+                <button type="button" class="title-btn" id="btn-import-skip">暂不导入</button>
+            </div>
+            <div class="split-wrap" id="split-wrap">
+                <div class="panel panel-code" id="panel-code">
+                    <div class="panel-title">
+                        <span>Markdown</span>
+                        <div class="panel-title-actions">
+                            <span class="hint" id="stat-hint">实时预览</span>
+                            <button type="button" class="title-btn" id="btn-copy">复制</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="cm-wrap">
+                            <textarea id="md-input" data-persist-key="md_to_word_input" spellcheck="false" aria-hidden="true" tabindex="-1"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="pane-resizer" id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="调整左右宽度" tabindex="0"></div>
+                <div class="panel panel-preview" id="panel-preview">
+                    <div class="panel-title">
+                        <span>预览</span>
+                        <div class="panel-title-actions">
+                            <span class="hint">与 Word 版式会有差异</span>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="preview-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="../vendor/codemirror/lib/codemirror.js"></script>
+        <script src="../vendor/codemirror/mode/markdown/markdown.js"></script>
+        <script src="../vendor/codemirror/mode/xml/xml.js"></script>
+        <script src="../vendor/codemirror/addon/display/placeholder.js"></script>
+        <!-- file:// 下不可用 ESM import()，改用 IIFE 离线包 -->
+        <script src="../vendor/md-docx/md-docx-offline.js"></script>
+        <script>
+            (function () {
+                var DEFAULT_MD =
+                    "# Markdown 转 Word 示例\n\n" +
+                    "在左侧编辑 **Markdown**，右侧实时预览，点击「导出 Word」下载 `.docx`。\n\n" +
+                    "## 功能一览\n\n" +
+                    "- 标题、段落、**粗体**、*斜体*、~~删除线~~\n" +
+                    "- [链接](https://example.com)\n" +
+                    "- 任务列表：\n" +
+                    "  - [x] 已完成项\n" +
+                    "  - [ ] 待办项\n\n" +
+                    "> 引用：适合会议纪要与说明文字。\n\n" +
+                    "### 表格\n\n" +
+                    "| 列 A | 列 B |\n" +
+                    "| --- | --- |\n" +
+                    "| 文本 | 数值 |\n" +
+                    "| 中文 | 100 |\n\n" +
+                    "### 代码\n\n" +
+                    "```js\n" +
+                    "function hello() {\n" +
+                    "  console.log('Hello Word');\n" +
+                    "}\n" +
+                    "```\n\n" +
+                    "### 公式\n\n" +
+                    "行内公式 $E=mc^2$，块级公式：\n\n" +
+                    "$$\n" +
+                    "\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n" +
+                    "$$\n\n" +
+                    "脚注示例[^1]\n\n" +
+                    "[^1]: 这是脚注内容，会导出到 Word 文末。\n";
+
+                var ta = document.getElementById("md-input");
+                var previewBody = document.getElementById("preview-body");
+                var statusHint = document.getElementById("status-hint");
+                var statHint = document.getElementById("stat-hint");
+                var splitWrap = document.getElementById("split-wrap");
+                var panelCode = document.getElementById("panel-code");
+                var panelPreview = document.getElementById("panel-preview");
+                var paneResizer = document.getElementById("pane-resizer");
+                var optToc = document.getElementById("opt-toc");
+                var fileMd = document.getElementById("file-md");
+                var fileImg = document.getElementById("file-img");
+                var fileMdDir = document.getElementById("file-md-dir");
+                var fileBatch = document.getElementById("file-batch");
+
+                var cm = null;
+                var api = null;
+                var previewTimer = null;
+                var paneSplitRatio = 0.5;
+                var SPLIT_KEY = "md_to_word_pane_split";
+                var imageMap = {};
+                var exportName = "markdown.docx";
+                var IMG_STORE_KEY = "md_to_word_image_map";
+                /** 已打开的 md，等待从其所在文件夹导入图片 */
+                var pendingMdForImages = null;
+                /** 本会话已授权/选择过的工作区文件（下次打开 md 可自动匹配 img） */
+                var sessionWorkspaceFiles = [];
+                var imgImportBar = document.getElementById("img-import-bar");
+                var imgImportMsg = document.getElementById("img-import-msg");
+                var btnImportImgs = document.getElementById("btn-import-imgs");
+                var btnImportSkip = document.getElementById("btn-import-skip");
+                var FS_DB_NAME = "md_to_word_fs_v1";
+                var FS_STORE = "handles";
+                var FS_KEY = "workspace";
+
+                function loadImageMap() {
+                    try {
+                        var raw = localStorage.getItem(IMG_STORE_KEY);
+                        if (raw) {
+                            var parsed = JSON.parse(raw);
+                            if (parsed && typeof parsed === "object") imageMap = parsed;
+                        }
+                    } catch (e) {}
+                }
+
+                function saveImageMap() {
+                    try {
+                        localStorage.setItem(IMG_STORE_KEY, JSON.stringify(imageMap));
+                    } catch (e) {
+                        // quota exceeded：仍可本会话使用
+                    }
+                }
+
+                function newImageId() {
+                    return "img" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                }
+
+                function isRemoteOrEmbeddedSrc(src) {
+                    return /^(https?:|data:|mdimg:|blob:|#|\/\/)/i.test(String(src || "").trim());
+                }
+
+                function stripMdImageSrc(raw) {
+                    var s = String(raw || "").trim();
+                    if (s.charAt(0) === "<") {
+                        var end = s.indexOf(">");
+                        if (end > 0) s = s.slice(1, end);
+                    } else {
+                        // 兼容带空格的本地路径：优先取到最后一个常见图片后缀
+                        var extHit = s.match(/^(.+?\.(?:png|jpe?g|gif|webp|bmp|svg))(?:\s+.*)?$/i);
+                        if (extHit) {
+                            s = extHit[1];
+                        } else {
+                            var m = /^(\S+)/.exec(s);
+                            s = m ? m[1] : s;
+                        }
+                    }
+                    try {
+                        s = decodeURIComponent(s);
+                    } catch (e) {}
+                    return s.replace(/^<|>$/g, "").trim();
+                }
+
+                function normalizeLocalPath(p) {
+                    var s = String(p || "").trim();
+                    s = s.replace(/^file:\/\//i, "");
+                    // Windows file URL: /C:/path → C:/path
+                    if (/^\/[A-Za-z]:\//.test(s)) s = s.slice(1);
+                    return s
+                        .replace(/\\/g, "/")
+                        .replace(/^\.\//, "")
+                        .replace(/\/{2,}/g, "/");
+                }
+
+                function basenamePath(p) {
+                    var n = normalizeLocalPath(p);
+                    var i = n.lastIndexOf("/");
+                    return i >= 0 ? n.slice(i + 1) : n;
+                }
+
+                function stemName(name) {
+                    var n = basenamePath(name);
+                    var i = n.lastIndexOf(".");
+                    if (i > 0) return n.slice(0, i).toLowerCase();
+                    return n.toLowerCase();
+                }
+
+                function dirnamePath(p) {
+                    var n = normalizeLocalPath(p);
+                    var i = n.lastIndexOf("/");
+                    return i >= 0 ? n.slice(0, i) : "";
+                }
+
+                function resolveRelativeTo(baseDir, rel) {
+                    var relNorm = normalizeLocalPath(rel);
+                    // 绝对路径（含盘符）不再拼 baseDir
+                    if (/^[A-Za-z]:\//.test(relNorm) || relNorm.charAt(0) === "/") {
+                        return relNorm.replace(/^\//, "");
+                    }
+                    var base = baseDir ? normalizeLocalPath(baseDir).split("/").filter(Boolean) : [];
+                    var parts = relNorm.split("/");
+                    for (var i = 0; i < parts.length; i++) {
+                        var part = parts[i];
+                        if (!part || part === ".") continue;
+                        if (part === "..") {
+                            if (base.length) base.pop();
+                        } else {
+                            base.push(part);
+                        }
+                    }
+                    return base.join("/");
+                }
+
+                function collectLocalImageRefs(md) {
+                    var re = /!\[[^\]]*\]\(([^)]+)\)/g;
+                    var found = [];
+                    var seen = {};
+                    var m;
+                    while ((m = re.exec(String(md || "")))) {
+                        var src = stripMdImageSrc(m[1]);
+                        if (!src || isRemoteOrEmbeddedSrc(src)) continue;
+                        var key = normalizeLocalPath(src);
+                        if (seen[key]) continue;
+                        seen[key] = true;
+                        found.push(key);
+                    }
+                    return found;
+                }
+
+                function isImageFile(file) {
+                    if (!file) return false;
+                    if (file.type && file.type.indexOf("image/") === 0) return true;
+                    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || "");
+                }
+
+                function isMarkdownFile(file) {
+                    return !!(file && /\.(md|markdown|txt)$/i.test(file.name || ""));
+                }
+
+                function buildFileLookup(files) {
+                    var byExact = {};
+                    var byBase = {};
+                    var byBaseInImg = {};
+                    var byStem = {};
+                    var byStemInImg = {};
+                    function putExact(path, f) {
+                        if (!path) return;
+                        byExact[path] = f;
+                        byExact[path.toLowerCase()] = f;
+                    }
+                    function isUnderImg(path) {
+                        return (
+                            /(^|\/)img\//i.test(path) ||
+                            /(^|\/)images\//i.test(path) ||
+                            /\.assets\//i.test(path) ||
+                            /(^|\/)assets\//i.test(path)
+                        );
+                    }
+                    (files || []).forEach(function (f) {
+                        if (!isImageFile(f)) return;
+                        var rel = normalizeLocalPath(f.webkitRelativePath || f.name);
+                        putExact(rel, f);
+                        var parts = rel.split("/").filter(Boolean);
+                        for (var i = 1; i < parts.length; i++) {
+                            putExact(parts.slice(i).join("/"), f);
+                        }
+                        var base = basenamePath(rel);
+                        var stem = stemName(base);
+                        if (!byBase[base]) byBase[base] = f;
+                        if (!byBase[base.toLowerCase()]) byBase[base.toLowerCase()] = f;
+                        if (!byStem[stem]) byStem[stem] = f;
+                        if (isUnderImg(rel)) {
+                            if (!byBaseInImg[base]) byBaseInImg[base] = f;
+                            if (!byBaseInImg[base.toLowerCase()]) byBaseInImg[base.toLowerCase()] = f;
+                            if (!byStemInImg[stem]) byStemInImg[stem] = f;
+                        }
+                    });
+                    return {
+                        byExact: byExact,
+                        byBase: byBase,
+                        byBaseInImg: byBaseInImg,
+                        byStem: byStem,
+                        byStemInImg: byStemInImg,
+                    };
+                }
+
+                function matchFileForSrc(src, lookup, baseDir) {
+                    var key = normalizeLocalPath(src);
+                    var base = basenamePath(key);
+                    var stem = stemName(base);
+                    var candidates = [];
+
+                    // 默认优先：md 同目录下的 img/、images/、*.assets/
+                    if (baseDir) {
+                        candidates.push(resolveRelativeTo(baseDir, "img/" + base));
+                        candidates.push(resolveRelativeTo(baseDir, "images/" + base));
+                        candidates.push(resolveRelativeTo(baseDir, "assets/" + base));
+                        candidates.push(resolveRelativeTo(baseDir, base));
+                        if (key !== base && !/^[A-Za-z]:\//.test(key)) {
+                            candidates.push(resolveRelativeTo(baseDir, "img/" + key));
+                            candidates.push(resolveRelativeTo(baseDir, "images/" + key));
+                            candidates.push(resolveRelativeTo(baseDir, key));
+                        }
+                    } else {
+                        candidates.push("img/" + base);
+                        candidates.push("images/" + base);
+                        candidates.push("assets/" + base);
+                        candidates.push(base);
+                    }
+                    // 其次：按 md 中写的路径（含绝对路径的文件名）
+                    candidates.push(key);
+                    candidates.push(base);
+
+                    var seen = {};
+                    for (var c = 0; c < candidates.length; c++) {
+                        var cand = candidates[c];
+                        if (!cand || seen[cand]) continue;
+                        seen[cand] = true;
+                        if (lookup.byExact[cand]) return lookup.byExact[cand];
+                        if (lookup.byExact[cand.toLowerCase()]) return lookup.byExact[cand.toLowerCase()];
+                        var keys = Object.keys(lookup.byExact);
+                        for (var i = 0; i < keys.length; i++) {
+                            var k = keys[i];
+                            if (k === cand || k.endsWith("/" + cand)) return lookup.byExact[k];
+                        }
+                    }
+                    // 文件名 / 无后缀名兜底：优先 img、assets
+                    return (
+                        lookup.byBaseInImg[base] ||
+                        lookup.byBaseInImg[base.toLowerCase()] ||
+                        lookup.byStemInImg[stem] ||
+                        lookup.byBase[base] ||
+                        lookup.byBase[base.toLowerCase()] ||
+                        lookup.byStem[stem] ||
+                        null
+                    );
+                }
+
+                /** 把 Markdown 中的本地相对路径图片绑定为 mdimg 短引用 */
+                async function ingestLocalImages(mdText, files, baseDir) {
+                    var refs = collectLocalImageRefs(mdText);
+                    if (!refs.length) return { md: mdText, bound: 0, missing: [] };
+                    var lookup = buildFileLookup(files || []);
+                    var pathToData = {};
+                    var missing = [];
+                    for (var i = 0; i < refs.length; i++) {
+                        var src = refs[i];
+                        var file = matchFileForSrc(src, lookup, baseDir);
+                        if (!file) {
+                            missing.push(src);
+                            continue;
+                        }
+                        try {
+                            pathToData[src] = await readFileAsDataUrl(file);
+                        } catch (e) {
+                            missing.push(src);
+                        }
+                    }
+                    var bound = 0;
+                    var next = String(mdText || "").replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function (full, alt, rawSrc) {
+                        var src = stripMdImageSrc(rawSrc);
+                        if (!src || isRemoteOrEmbeddedSrc(src)) return full;
+                        var key = normalizeLocalPath(src);
+                        var dataUrl = pathToData[key];
+                        if (!dataUrl) return full;
+                        var id = newImageId();
+                        imageMap[id] = dataUrl;
+                        bound++;
+                        return "![" + (alt || "image") + "](mdimg:" + id + ")";
+                    });
+                    if (bound) saveImageMap();
+                    return { md: next, bound: bound, missing: missing };
+                }
+
+                /** 在文件夹文件列表中定位指定 md，得到相对 baseDir */
+                function findBaseDirForMdName(files, mdFileName) {
+                    var want = String(mdFileName || "").toLowerCase();
+                    if (!want) return "";
+                    var matches = (files || []).filter(function (f) {
+                        return String(f.name || "").toLowerCase() === want;
+                    });
+                    if (!matches.length) return "";
+                    matches.sort(function (a, b) {
+                        var da = normalizeLocalPath(a.webkitRelativePath || a.name).split("/").filter(Boolean).length;
+                        var db = normalizeLocalPath(b.webkitRelativePath || b.name).split("/").filter(Boolean).length;
+                        return da - db;
+                    });
+                    return dirnamePath(matches[0].webkitRelativePath || matches[0].name);
+                }
+
+                function isRelUnderImgDir(rel) {
+                    return (
+                        /(^|\/)img\//i.test(rel) ||
+                        /(^|\/)images\//i.test(rel) ||
+                        /\.assets\//i.test(rel) ||
+                        /(^|\/)assets\//i.test(rel)
+                    );
+                }
+
+                /** 先只在 img/assets 中匹配，不够再扩大到整个工作区 */
+                async function ingestPreferImg(mdText, files, baseDir) {
+                    var list = files || [];
+                    var imgFiles = list.filter(function (f) {
+                        return isRelUnderImgDir(normalizeLocalPath(f.webkitRelativePath || f.name));
+                    });
+                    if (imgFiles.length) {
+                        var first = await ingestLocalImages(mdText, imgFiles, baseDir);
+                        if (!first.missing.length) return first;
+                        var second = await ingestLocalImages(first.md, list, baseDir);
+                        return {
+                            md: second.md,
+                            bound: first.bound + second.bound,
+                            missing: second.missing,
+                        };
+                    }
+                    return ingestLocalImages(mdText, list, baseDir);
+                }
+
+                function openFsDb() {
+                    return new Promise(function (resolve, reject) {
+                        try {
+                            var req = indexedDB.open(FS_DB_NAME, 1);
+                            req.onupgradeneeded = function () {
+                                var db = req.result;
+                                if (!db.objectStoreNames.contains(FS_STORE)) db.createObjectStore(FS_STORE);
+                            };
+                            req.onsuccess = function () {
+                                resolve(req.result);
+                            };
+                            req.onerror = function () {
+                                reject(req.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                }
+
+                async function saveWorkspaceDirHandle(handle) {
+                    if (!handle) return;
+                    try {
+                        var db = await openFsDb();
+                        await new Promise(function (resolve, reject) {
+                            var tx = db.transaction(FS_STORE, "readwrite");
+                            tx.objectStore(FS_STORE).put(handle, FS_KEY);
+                            tx.oncomplete = function () {
+                                resolve();
+                            };
+                            tx.onerror = function () {
+                                reject(tx.error);
+                            };
+                        });
+                    } catch (e) {}
+                }
+
+                async function loadWorkspaceDirHandle() {
+                    try {
+                        var db = await openFsDb();
+                        return await new Promise(function (resolve, reject) {
+                            var tx = db.transaction(FS_STORE, "readonly");
+                            var req = tx.objectStore(FS_STORE).get(FS_KEY);
+                            req.onsuccess = function () {
+                                resolve(req.result || null);
+                            };
+                            req.onerror = function () {
+                                reject(req.error);
+                            };
+                        });
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                async function ensureDirPermission(dirHandle) {
+                    if (!dirHandle || !dirHandle.queryPermission) return false;
+                    var opts = { mode: "read" };
+                    try {
+                        if ((await dirHandle.queryPermission(opts)) === "granted") return true;
+                        if (dirHandle.requestPermission && (await dirHandle.requestPermission(opts)) === "granted") {
+                            return true;
+                        }
+                    } catch (e) {}
+                    return false;
+                }
+
+                async function collectFilesFromDirHandle(dirHandle, prefix, out) {
+                    out = out || [];
+                    if (!dirHandle || !dirHandle.entries) return out;
+                    var it = dirHandle.entries();
+                    while (true) {
+                        var step = await it.next();
+                        if (step.done) break;
+                        var name = step.value[0];
+                        var handle = step.value[1];
+                        var path = prefix ? prefix + "/" + name : name;
+                        if (handle.kind === "file") {
+                            var file = await handle.getFile();
+                            try {
+                                Object.defineProperty(file, "webkitRelativePath", {
+                                    value: path,
+                                    configurable: true,
+                                });
+                            } catch (err) {
+                                file = new File([file], file.name, {
+                                    type: file.type,
+                                    lastModified: file.lastModified,
+                                });
+                                Object.defineProperty(file, "webkitRelativePath", {
+                                    value: path,
+                                    configurable: true,
+                                });
+                            }
+                            out.push(file);
+                        } else if (handle.kind === "directory") {
+                            await collectFilesFromDirHandle(handle, path, out);
+                        }
+                    }
+                    return out;
+                }
+
+                async function importFromWorkspaceFiles(mdText, mdFileName, files) {
+                    if (!files || !files.length) return null;
+                    var baseDir = findBaseDirForMdName(files, mdFileName);
+                    return ingestPreferImg(mdText, files, baseDir);
+                }
+
+                /** 静默自动导入：会话缓存 → 已授权工作区（优先 img） */
+                async function tryAutoImportImages(mdText, mdFileName) {
+                    if (sessionWorkspaceFiles.length) {
+                        var fromSession = await importFromWorkspaceFiles(
+                            mdText,
+                            mdFileName,
+                            sessionWorkspaceFiles
+                        );
+                        if (fromSession && !fromSession.missing.length) return fromSession;
+                        if (fromSession && fromSession.bound) return fromSession;
+                    }
+
+                    if (typeof window.showDirectoryPicker === "function") {
+                        var handle = await loadWorkspaceDirHandle();
+                        if (handle && (await ensureDirPermission(handle))) {
+                            var files = await collectFilesFromDirHandle(handle, "", []);
+                            if (files.length) {
+                                sessionWorkspaceFiles = files;
+                                return importFromWorkspaceFiles(mdText, mdFileName, files);
+                            }
+                        }
+                    }
+                    return null;
+                }
+
+                function showImportBar(fileName, missingCount, opts) {
+                    opts = opts || {};
+                    if (!imgImportBar) return;
+                    if (imgImportMsg) {
+                        imgImportMsg.textContent = opts.retry
+                            ? "缺少图片 " +
+                              missingCount +
+                              " 张：未能自动匹配。请手动选择包含 img 的文档文件夹。"
+                            : "缺少图片 " +
+                              missingCount +
+                              " 张：请选择文档所在文件夹（优先读取 img）；授权后下次可自动导入。";
+                    }
+                    if (btnImportImgs) {
+                        btnImportImgs.textContent = "选择文件夹并导入缺失图片";
+                    }
+                    imgImportBar.classList.add("is-on", "is-warn");
+                }
+
+                function hideImportBar() {
+                    if (imgImportBar) {
+                        imgImportBar.classList.remove("is-on", "is-warn");
+                    }
+                    pendingMdForImages = null;
+                }
+
+                async function finishImportFromDirectory(dirFiles) {
+                    var pending = pendingMdForImages;
+                    if (!pending || !dirFiles || !dirFiles.length) return null;
+                    sessionWorkspaceFiles = dirFiles.slice();
+                    var text = (cm && cm.getValue()) || pending.text;
+                    var result = await importFromWorkspaceFiles(text, pending.name, dirFiles);
+                    if (!result) return null;
+                    if (!result.missing.length) {
+                        hideImportBar();
+                        applyOpenedMarkdown(result.md, pending.name, result.bound, result.missing);
+                        return result;
+                    }
+                    pendingMdForImages = {
+                        text: result.md,
+                        name: pending.name,
+                        refs: result.missing,
+                    };
+                    applyOpenedMarkdown(result.md, pending.name, result.bound, result.missing);
+                    showImportBar(pending.name, result.missing.length, { retry: true });
+                    return result;
+                }
+
+                function applyOpenedMarkdown(mdText, fileName, bound, missing) {
+                    exportName =
+                        String(fileName || "markdown")
+                            .replace(/\.md$/i, "")
+                            .replace(/\.markdown$/i, "")
+                            .replace(/\.txt$/i, "") + ".docx";
+                    cm.setValue(mdText || "");
+                    collapseDataUrlsInEditor();
+                    schedulePreview();
+                    var missN = (missing && missing.length) || 0;
+                    if (bound && !missN) {
+                        setStatus("已打开 " + fileName + "，已导入图片 " + bound + " 张", true);
+                    } else if (bound && missN) {
+                        setStatus(
+                            "缺少图片 " + missN + " 张（已导入 " + bound + " 张）· " + fileName,
+                            false
+                        );
+                    } else if (missN) {
+                        setStatus("缺少图片 " + missN + " 张 · " + fileName, false);
+                    } else {
+                        setStatus("已打开 " + fileName, true);
+                    }
+                }
+
+                /**
+                 * 选择文件夹。
+                 * 只在 input change 时 resolve；绝不用 window focus 判断取消
+                 *（focus 常在 change 写入 files 之前触发，导致第一次选中被当成空）。
+                 */
+                var pendingDirPickResolve = null;
+
+                function pickContainingDirectory() {
+                    return new Promise(function (resolve) {
+                        if (!fileMdDir || !fileMdDir.parentNode) {
+                            resolve([]);
+                            return;
+                        }
+
+                        // 再次点击时作废上一次等待，避免误报「未选择」
+                        if (pendingDirPickResolve) {
+                            var prev = pendingDirPickResolve;
+                            pendingDirPickResolve = null;
+                            try {
+                                prev(null);
+                            } catch (e) {}
+                        }
+                        pendingDirPickResolve = resolve;
+
+                        var fresh = fileMdDir.cloneNode(true);
+                        fileMdDir.parentNode.replaceChild(fresh, fileMdDir);
+                        fileMdDir = fresh;
+
+                        fileMdDir.addEventListener(
+                            "change",
+                            function () {
+                                var files = Array.prototype.slice.call(fileMdDir.files || []);
+                                var cb = pendingDirPickResolve;
+                                pendingDirPickResolve = null;
+                                if (cb) cb(files);
+                            },
+                            { once: true }
+                        );
+
+                        fileMdDir.click();
+                    });
+                }
+
+                async function pickWorkspaceAndImport() {
+                    // 优先 File System Access：可选中文件夹并记住，下次自动读 img
+                    if (typeof window.showDirectoryPicker === "function") {
+                        try {
+                            var handle = await window.showDirectoryPicker({
+                                id: "md-to-word-workspace",
+                                mode: "read",
+                            });
+                            await saveWorkspaceDirHandle(handle);
+                            var files = await collectFilesFromDirHandle(handle, "", []);
+                            if (!files.length) {
+                                setStatus("所选文件夹为空或其中没有可读文件", false);
+                                return null;
+                            }
+                            sessionWorkspaceFiles = files;
+                            return finishImportFromDirectory(files);
+                        } catch (e) {
+                            if (e && e.name === "AbortError") {
+                                setStatus("已取消选择文件夹", false);
+                                return null;
+                            }
+                            // 回退 webkitdirectory
+                        }
+                    }
+                    var dirFiles = await pickContainingDirectory();
+                    // null = 被新的选择操作取代，不提示错误
+                    if (dirFiles == null) return null;
+                    if (!dirFiles.length) {
+                        setStatus("未选中文件夹", false);
+                        return null;
+                    }
+                    sessionWorkspaceFiles = dirFiles;
+                    return finishImportFromDirectory(dirFiles);
+                }
+
+                async function openMarkdownFile(file) {
+                    if (!file || !cm) return;
+                    hideImportBar();
+                    var text = await readFileAsText(file);
+                    var refs = collectLocalImageRefs(text);
+                    applyOpenedMarkdown(text, file.name, 0, []);
+                    if (!refs.length) return;
+
+                    pendingMdForImages = { text: text, name: file.name, refs: refs };
+                    setStatus("正在自动匹配同目录 img …");
+
+                    var result = await tryAutoImportImages(text, file.name);
+                    if (result && !result.missing.length) {
+                        hideImportBar();
+                        applyOpenedMarkdown(result.md, file.name, result.bound, []);
+                        setStatus(
+                            "已打开 " + file.name + "，已自动导入图片 " + result.bound + " 张",
+                            true
+                        );
+                        return;
+                    }
+                    if (result && result.bound) {
+                        pendingMdForImages = {
+                            text: result.md,
+                            name: file.name,
+                            refs: result.missing,
+                        };
+                        applyOpenedMarkdown(result.md, file.name, result.bound, result.missing);
+                        showImportBar(file.name, result.missing.length, { retry: true });
+                        return;
+                    }
+
+                    // 无缓存/未授权：仅此时提示手动选择（授权一次后下次自动）
+                    showImportBar(file.name, refs.length, { retry: false });
+                    setStatus("缺少图片 " + refs.length + " 张，请选择文件夹导入 · " + file.name, false);
+                }
+
+                /** 预览/导出前：把 mdimg:id 还原为真实 dataURL */
+                function expandImageRefs(md) {
+                    return String(md || "").replace(/!\[([^\]]*)\]\(mdimg:([A-Za-z0-9_-]+)\)/g, function (m, alt, id) {
+                        var url = imageMap[id];
+                        if (!url || typeof url !== "string") return m;
+                        return "![" + alt + "](" + url + ")";
+                    });
+                }
+
+                /** 若粘贴/打开的内容里已有超长 dataURL，自动收成短引用 */
+                function collapseDataUrlsInEditor() {
+                    if (!cm) return;
+                    var src = cm.getValue();
+                    var re = /!\[([^\]]*)\]\((data:image\/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=\s]+)\)/g;
+                    var changed = false;
+                    var next = src.replace(re, function (m, alt, dataUrl) {
+                        var compact = String(dataUrl).replace(/\s+/g, "");
+                        // 已是短引用则跳过；太短也跳过
+                        if (compact.length < 80) return m;
+                        var id = newImageId();
+                        imageMap[id] = compact;
+                        changed = true;
+                        return "![" + (alt || "image") + "](mdimg:" + id + ")";
+                    });
+                    if (changed) {
+                        var cursor = cm.getCursor();
+                        cm.setValue(next);
+                        try { cm.setCursor(cursor); } catch (e) {}
+                        saveImageMap();
+                    }
+                }
+
+                function setStatus(msg, ok) {
+                    statusHint.textContent = msg;
+                    statusHint.className = "hint " + (ok === true ? "status-ok" : ok === false ? "status-err" : "");
+                }
+
+                function updateStat() {
+                    if (!cm) return;
+                    var v = cm.getValue();
+                    var n = v.length;
+                    var lines = v ? v.split(/\r\n|\r|\n/).length : 0;
+                    var imgN = Object.keys(imageMap).length;
+                    statHint.textContent = n
+                        ? "字符 " + n + " · 行 " + lines + (imgN ? " · 图 " + imgN : "")
+                        : "实时预览";
+                }
+
+                function syncToTextarea() {
+                    if (cm && ta) ta.value = cm.getValue();
+                }
+
+                function updatePreview() {
+                    if (!cm || !api) return;
+                    try {
+                        var html = api.renderMarkdownHtml(expandImageRefs(cm.getValue()), window.katex);
+                        previewBody.innerHTML = html || '<p class="hint">（空文档）</p>';
+                    } catch (e) {
+                        previewBody.innerHTML = '<p class="status-err">预览失败：' + String(e.message || e) + "</p>";
+                    }
+                }
+
+                function schedulePreview() {
+                    clearTimeout(previewTimer);
+                    previewTimer = setTimeout(function () {
+                        updatePreview();
+                        updateStat();
+                        syncToTextarea();
+                    }, 140);
+                }
+
+                function downloadBlob(blob, filename) {
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+                }
+
+                function readFileAsText(file) {
+                    return new Promise(function (resolve, reject) {
+                        var reader = new FileReader();
+                        reader.onload = function () { resolve(String(reader.result || "")); };
+                        reader.onerror = function () { reject(reader.error || new Error("读取失败")); };
+                        reader.readAsText(file, "UTF-8");
+                    });
+                }
+
+                function readFileAsDataUrl(file) {
+                    return new Promise(function (resolve, reject) {
+                        var reader = new FileReader();
+                        reader.onload = function () { resolve(String(reader.result || "")); };
+                        reader.onerror = function () { reject(reader.error || new Error("读取失败")); };
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                async function exportWord() {
+                    if (!cm || !api) return;
+                    var md = cm.getValue();
+                    if (!md.trim()) {
+                        setStatus("没有可导出的内容", false);
+                        return;
+                    }
+                    var btn = document.getElementById("btn-export");
+                    btn.disabled = true;
+                    setStatus("正在生成 Word…");
+                    try {
+                        var blob = await api.convertMarkdownToDocxBlob(md, {
+                            toc: optToc.checked,
+                            imageMap: imageMap,
+                            katex: window.katex,
+                        });
+                        downloadBlob(blob, exportName);
+                        setStatus("已导出 " + exportName, true);
+                    } catch (e) {
+                        setStatus("导出失败：" + (e.message || e), false);
+                        console.error(e);
+                    } finally {
+                        btn.disabled = false;
+                    }
+                }
+
+                async function batchConvert(fileList) {
+                    if (!api || !fileList || !fileList.length) return;
+                    setStatus("批量转换中（" + fileList.length + " 个）…");
+                    var files = [];
+                    for (var i = 0; i < fileList.length; i++) {
+                        var f = fileList[i];
+                        var content = await readFileAsText(f);
+                        files.push({ name: f.name, content: content });
+                    }
+                    try {
+                        if (files.length === 1) {
+                            var blob = await api.convertMarkdownToDocxBlob(files[0].content, {
+                                toc: optToc.checked,
+                                imageMap: {},
+                                katex: window.katex,
+                            });
+                            var name = files[0].name.replace(/\.md$/i, "").replace(/\.markdown$/i, "") + ".docx";
+                            downloadBlob(blob, name);
+                            setStatus("已导出 " + name, true);
+                        } else {
+                            var zipBlob = await api.convertManyToZip(files, { toc: optToc.checked, imageMap: {}, katex: window.katex });
+                            downloadBlob(zipBlob, "markdown-to-word.zip");
+                            setStatus("已导出压缩包（" + files.length + " 个）", true);
+                        }
+                    } catch (e) {
+                        setStatus("批量转换失败：" + (e.message || e), false);
+                        console.error(e);
+                    }
+                }
+
+                async function insertImage(file) {
+                    if (!cm || !file) return;
+                    try {
+                        var dataUrl = await readFileAsDataUrl(file);
+                        var id = newImageId();
+                        imageMap[id] = dataUrl;
+                        saveImageMap();
+                        var alt = (file.name || "image").replace(/\.[^.]+$/, "") || "image";
+                        // 短引用：编辑器只占一行，预览/导出时再还原
+                        var snippet = "![" + alt + "](mdimg:" + id + ")";
+                        var cur = cm.getCursor();
+                        var line = cm.getLine(cur.line) || "";
+                        var needLead = cur.ch > 0 && line.slice(0, cur.ch).trim() !== "";
+                        var needTrail = cur.ch < line.length && line.slice(cur.ch).trim() !== "";
+                        if (needLead) snippet = "\n" + snippet;
+                        if (needTrail) snippet = snippet + "\n";
+                        cm.replaceRange(snippet, cur);
+                        cm.focus();
+                        setStatus("已插入图片短引用（不占多行）", true);
+                        schedulePreview();
+                    } catch (e) {
+                        setStatus("插入图片失败：" + (e.message || e), false);
+                    }
+                }
+
+                function applyPaneSplit(ratio) {
+                    ratio = Math.max(0.2, Math.min(0.8, ratio));
+                    paneSplitRatio = ratio;
+                    if (window.matchMedia("(max-width: 900px)").matches) {
+                        panelCode.style.flex = "1 1 50%";
+                        panelCode.style.maxWidth = "none";
+                        panelPreview.style.flex = "1 1 50%";
+                        return;
+                    }
+                    var totalW = splitWrap.clientWidth;
+                    var resizerW = paneResizer ? paneResizer.offsetWidth : 8;
+                    var leftW = Math.max(220, Math.round(totalW * ratio));
+                    if (leftW + resizerW > totalW - 200) leftW = totalW - resizerW - 200;
+                    panelCode.style.flex = "0 0 " + leftW + "px";
+                    panelCode.style.maxWidth = leftW + "px";
+                    panelPreview.style.flex = "1 1 auto";
+                }
+
+                function initPaneResizer() {
+                    try {
+                        var saved = parseFloat(localStorage.getItem(SPLIT_KEY));
+                        if (!isNaN(saved) && saved > 0.2 && saved < 0.8) paneSplitRatio = saved;
+                    } catch (e) {}
+                    applyPaneSplit(paneSplitRatio);
+                    if (!paneResizer) return;
+                    var dragging = false;
+                    paneResizer.addEventListener("pointerdown", function (e) {
+                        if (window.matchMedia("(max-width: 900px)").matches || e.button !== 0) return;
+                        e.preventDefault();
+                        dragging = true;
+                        document.body.classList.add("pane-resizing");
+                        try { paneResizer.setPointerCapture(e.pointerId); } catch (err) {}
+                    });
+                    paneResizer.addEventListener("pointermove", function (e) {
+                        if (!dragging) return;
+                        var rect = splitWrap.getBoundingClientRect();
+                        applyPaneSplit((e.clientX - rect.left) / rect.width);
+                        if (cm) cm.refresh();
+                    });
+                    function stop() {
+                        if (!dragging) return;
+                        dragging = false;
+                        document.body.classList.remove("pane-resizing");
+                        try { localStorage.setItem(SPLIT_KEY, String(paneSplitRatio)); } catch (e) {}
+                        if (cm) cm.refresh();
+                    }
+                    paneResizer.addEventListener("pointerup", stop);
+                    paneResizer.addEventListener("pointercancel", stop);
+                    window.addEventListener("resize", function () {
+                        applyPaneSplit(paneSplitRatio);
+                        if (cm) cm.refresh();
+                    });
+                }
+
+                function restoreFromPersist() {
+                    if (!cm || !ta) return;
+                    var v = ta.value;
+                    if (v != null && String(v) !== cm.getValue()) {
+                        cm.setValue(String(v));
+                        collapseDataUrlsInEditor();
+                        schedulePreview();
+                    } else {
+                        collapseDataUrlsInEditor();
+                    }
+                }
+
+                function bootEditor(mod) {
+                    api = mod;
+                    loadImageMap();
+                    var initial = ta.value.trim() ? ta.value : DEFAULT_MD;
+                    ta.value = initial;
+
+                    if (typeof CodeMirror === "undefined") {
+                        setStatus("CodeMirror 未加载，请执行 npm install", false);
+                        return;
+                    }
+
+                    cm = CodeMirror.fromTextArea(ta, {
+                        mode: "markdown",
+                        lineNumbers: true,
+                        lineWrapping: true,
+                        theme: "eclipse",
+                        tabSize: 2,
+                        indentWithTabs: false,
+                        placeholder: "在此输入 Markdown…",
+                        spellcheck: false,
+                    });
+                    cm.setValue(initial);
+                    collapseDataUrlsInEditor();
+                    cm.on("change", schedulePreview);
+
+                    window.toolNavRestoreForm = restoreFromPersist;
+                    document.addEventListener("tool-nav:form-restored", restoreFromPersist);
+
+                    document.getElementById("btn-open").addEventListener("click", function () {
+                        if (fileMd) fileMd.click();
+                    });
+                    document.getElementById("btn-image").addEventListener("click", function () { fileImg.click(); });
+                    document.getElementById("btn-batch").addEventListener("click", function () { fileBatch.click(); });
+                    document.getElementById("btn-export").addEventListener("click", exportWord);
+                    document.getElementById("btn-copy").addEventListener("click", function () {
+                        if (window.ToolCopy) ToolCopy.copy(cm.getValue());
+                    });
+                    document.getElementById("btn-clear").addEventListener("click", function () {
+                        if (!cm.getValue().trim()) return;
+                        if (confirm("确定清空 Markdown？")) {
+                            cm.setValue("");
+                            imageMap = {};
+                            saveImageMap();
+                            exportName = "markdown.docx";
+                            hideImportBar();
+                            schedulePreview();
+                        }
+                    });
+
+                    if (btnImportImgs) {
+                        btnImportImgs.addEventListener("click", function () {
+                            if (!pendingMdForImages) {
+                                setStatus("没有待导入的本地图片", false);
+                                return;
+                            }
+                            setStatus("请选择文档所在文件夹（将优先自动读取 img）…");
+                            pickWorkspaceAndImport().catch(function (e) {
+                                setStatus("导入图片失败：" + (e.message || e), false);
+                            });
+                        });
+                    }
+                    if (btnImportSkip) {
+                        btnImportSkip.addEventListener("click", function () {
+                            hideImportBar();
+                            setStatus("已跳过本地图片导入", true);
+                        });
+                    }
+
+                    fileMd.addEventListener("change", function () {
+                        var f = fileMd.files && fileMd.files[0];
+                        fileMd.value = "";
+                        if (!f) return;
+                        openMarkdownFile(f).catch(function (e) {
+                            setStatus("打开失败：" + (e.message || e), false);
+                        });
+                    });
+
+                    fileImg.addEventListener("change", function () {
+                        var f = fileImg.files && fileImg.files[0];
+                        fileImg.value = "";
+                        if (f) insertImage(f);
+                    });
+
+                    fileBatch.addEventListener("change", function () {
+                        var list = fileBatch.files ? Array.prototype.slice.call(fileBatch.files) : [];
+                        fileBatch.value = "";
+                        if (list.length) batchConvert(list);
+                    });
+
+                    // paste image
+                    cm.getWrapperElement().addEventListener("paste", function (e) {
+                        var items = e.clipboardData && e.clipboardData.items;
+                        if (!items) return;
+                        for (var i = 0; i < items.length; i++) {
+                            if (items[i].type && items[i].type.indexOf("image/") === 0) {
+                                var file = items[i].getAsFile();
+                                if (file) {
+                                    e.preventDefault();
+                                    insertImage(file);
+                                }
+                                break;
+                            }
+                        }
+                    });
+
+                    initPaneResizer();
+                    updatePreview();
+                    updateStat();
+                    syncToTextarea();
+                    setTimeout(function () { if (cm) cm.refresh(); }, 80);
+                    setStatus("就绪：打开 .md 后自动匹配 img；仅首次或匹配失败时需选文件夹", true);
+                }
+
+                if (window.MdDocx && typeof window.MdDocx.convertMarkdownToDocxBlob === "function") {
+                    bootEditor(window.MdDocx);
+                } else {
+                    setStatus("模块加载失败：缺少 vendor/md-docx/md-docx-offline.js，请执行 npm install", false);
+                    previewBody.innerHTML =
+                        '<p class="status-err">无法加载转换引擎。请在 tool-nav 目录执行 <code>npm install</code>（会生成 <code>vendor/md-docx/md-docx-offline.js</code>）。</p>';
+                }
+            })();
+        </script>
+        <script src="libs/tool-form-persist.js"></script>
+    </body>
+</html>
