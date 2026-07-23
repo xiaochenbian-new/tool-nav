@@ -13,6 +13,7 @@
         <script src="libs/qrcode-lib.bundle.js"></script>
         <script src="libs/tool-qr.js"></script>
         <script src="libs/tool-sheet-tabs-drag.js"></script>
+        <script src="libs/tool-find.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             :root {
@@ -2503,29 +2504,12 @@
                 }
 
                 function getMatchPositions(text, needle, caseSens) {
-                    var res = [];
-                    if (!needle) return res;
-                    if (caseSens) {
-                        var pos = 0;
-                        var step = Math.max(1, needle.length);
-                        while ((pos = text.indexOf(needle, pos)) !== -1) {
-                            res.push({ start: pos, end: pos + needle.length });
-                            pos += step;
-                        }
-                    } else {
-                        var lower = text.toLowerCase();
-                        var n = needle.toLowerCase();
-                        var pos2 = 0;
-                        var step2 = Math.max(1, n.length);
-                        while ((pos2 = lower.indexOf(n, pos2)) !== -1) {
-                            res.push({ start: pos2, end: pos2 + needle.length });
-                            pos2 += step2;
-                        }
-                    }
-                    return res;
+                    var TF = window.ToolFind;
+                    if (!TF) return [];
+                    return TF.collectHighlights(text, needle, caseSens, 0, TF.MAX_HIGHLIGHT);
                 }
 
-                function escapeHtmlPlain(s) {
+                                function escapeHtmlPlain(s) {
                     return String(s)
                         .replace(/&/g, "&amp;")
                         .replace(/</g, "&lt;")
@@ -2534,12 +2518,30 @@
 
                 function buildFindHighlightHtml(text, needle, caseSens, curStart, curEnd) {
                     if (!needle) return escapeHtmlPlain(text);
-                    var positions = getMatchPositions(text, needle, caseSens);
+                    var TF = window.ToolFind;
+                    if (!TF || TF.shouldSkipFullHighlights(text)) return escapeHtmlPlain(text);
+                    var around = typeof curStart === "number" ? curStart : 0;
+                    var positions = TF.collectHighlights(text, needle, caseSens, around, TF.MAX_HIGHLIGHT);
                     if (!positions.length) return escapeHtmlPlain(text);
+                    // Ensure current selection match is represented
+                    var hasCur = false;
+                    for (var hi = 0; hi < positions.length; hi++) {
+                        if (positions[hi].start === curStart && positions[hi].end === curEnd) {
+                            hasCur = true;
+                            break;
+                        }
+                    }
+                    if (!hasCur && curEnd > curStart) {
+                        var snippet = text.slice(curStart, curEnd);
+                        var ok = caseSens ? snippet === needle : snippet.toLowerCase() === needle.toLowerCase();
+                        if (ok) positions.push({ start: curStart, end: curEnd });
+                    }
+                    positions.sort(function (a, b) { return a.start - b.start; });
                     var parts = [];
                     var last = 0;
                     for (var mi = 0; mi < positions.length; mi++) {
                         var p = positions[mi];
+                        if (p.start < last) continue;
                         parts.push(escapeHtmlPlain(text.slice(last, p.start)));
                         var isCur =
                             (p.start === curStart && p.end === curEnd) ||
@@ -2557,36 +2559,64 @@
                     return parts.join("");
                 }
 
-                function renderOutputFindBackdrop(highlightActive) {
+                                function renderOutputFindBackdrop(highlightActive) {
                     if (!outputConvert || !outBackdrop) return;
+                    var val = outputConvert.value;
+                    var TF = window.ToolFind;
                     if (!highlightActive || !findInput.value) {
-                        outBackdrop.innerHTML = escapeHtmlPlain(outputConvert.value);
+                        if (TF && TF.isHugeText(val)) outBackdrop.textContent = val;
+                        else outBackdrop.innerHTML = escapeHtmlPlain(val);
                         return;
                     }
                     if (getFindTargetIsOutput()) {
-                        outBackdrop.innerHTML = buildFindHighlightHtml(
-                            outputConvert.value,
-                            findInput.value,
-                            findCase.checked,
-                            outputConvert.selectionStart,
-                            outputConvert.selectionEnd
-                        );
+                        if (TF && TF.isHugeText(val)) {
+                            // Mega docs: skip HTML mark injection (would freeze); keep plain text.
+                            outBackdrop.textContent = val;
+                        } else {
+                            outBackdrop.innerHTML = buildFindHighlightHtml(
+                                val,
+                                findInput.value,
+                                findCase.checked,
+                                outputConvert.selectionStart,
+                                outputConvert.selectionEnd
+                            );
+                        }
+                    } else if (TF && TF.isHugeText(val)) {
+                        outBackdrop.textContent = val;
                     } else {
-                        outBackdrop.innerHTML = escapeHtmlPlain(outputConvert.value);
+                        outBackdrop.innerHTML = escapeHtmlPlain(val);
                     }
                 }
 
-                refreshFindHighlights = function () {
+                                refreshFindHighlights = function () {
                     var on = !findBar.hidden && findInput.value.length > 0;
                     clearMainFindMarks();
                     var st1 = outputConvert.scrollTop;
                     var sl1 = outputConvert.scrollLeft;
+                    var TF = window.ToolFind;
                     if (on && mainCm && !getFindTargetIsOutput()) {
                         var needle = findInput.value;
                         var text = mainCm.getValue();
                         var caseSens = findCase.checked;
-                        var positions = getMatchPositions(text, needle, caseSens);
                         var sel = cmGetSelOffsets();
+                        var positions = TF
+                            ? TF.collectHighlights(text, needle, caseSens, sel.start, TF.MAX_HIGHLIGHT)
+                            : [];
+                        // Always try to include the active selection match
+                        if (sel.end > sel.start) {
+                            var has = false;
+                            for (var hx = 0; hx < positions.length; hx++) {
+                                if (positions[hx].start === sel.start && positions[hx].end === sel.end) {
+                                    has = true;
+                                    break;
+                                }
+                            }
+                            if (!has) {
+                                var sn = text.slice(sel.start, sel.end);
+                                var ok = caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase();
+                                if (ok) positions.push({ start: sel.start, end: sel.end });
+                            }
+                        }
                         for (var pi = 0; pi < positions.length; pi++) {
                             var p = positions[pi];
                             var isCur =
@@ -2608,7 +2638,7 @@
                     outBackdrop.scrollLeft = sl1;
                 };
 
-                function replaceAllString(text, needle, repl, caseSens) {
+                                function replaceAllString(text, needle, repl, caseSens) {
                     if (!needle) return text;
                     var esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                     var re = new RegExp(esc, caseSens ? "g" : "gi");
@@ -2639,10 +2669,14 @@
                         refreshFindHighlights();
                         return;
                     }
+                    var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var positions = getMatchPositions(text, needle, findCase.checked);
-                    if (!positions.length) {
+                    var caseSens = findCase.checked;
+                    var total = TF
+                        ? TF.countMatches(text, needle, caseSens, TF.MAX_COUNT)
+                        : { count: 0, truncated: false };
+                    if (!total.count && !total.truncated) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
@@ -2658,41 +2692,34 @@
                         e = o.end;
                     }
                     var idx = -1;
-                    if (findNavMatchIndex >= 0 && findNavMatchIndex < positions.length) {
+                    if (findNavMatchIndex >= 0 && !(total.truncated && findNavMatchIndex >= total.count)) {
                         idx = findNavMatchIndex;
-                    } else {
-                        for (var i = 0; i < positions.length; i++) {
-                            if (positions[i].start === s && positions[i].end === e) {
-                                idx = i;
-                                break;
-                            }
-                        }
-                        if (idx < 0) {
-                            for (var j = 0; j < positions.length; j++) {
-                                if (s >= positions[j].start && s < positions[j].end) {
-                                    idx = j;
-                                    break;
-                                }
-                            }
+                    } else if (TF) {
+                        var sn = text.slice(s, e);
+                        var isMatch = caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase();
+                        if (isMatch || (s < e && e - s === needle.length)) {
+                            var before = TF.countMatchesBefore(text, needle, caseSens, s, TF.MAX_COUNT);
+                            if (!before.truncated) idx = before.count;
                         }
                     }
                     if (idx >= 0) findNavMatchIndex = idx;
-                    findCountEl.textContent = (idx >= 0 ? idx + 1 : "—") + " / " + positions.length;
+                    findCountEl.textContent = TF
+                        ? TF.formatCountLabel(idx >= 0 ? idx + 1 : "—", total.count, total.truncated)
+                        : (idx >= 0 ? idx + 1 : "—") + " / " + total.count;
                     refreshFindHighlights();
                 }
 
                 /** 将当前选区滚入可视区域（大文件查找 ↑↓ 时滚动条跟随，接近 Monaco 行为） */
                 function scrollTextareaMatchIntoView(ta) {
                     if (!ta) return;
+                    var TF = window.ToolFind;
                     var start = Math.min(ta.selectionStart, ta.selectionEnd);
                     var end = Math.max(ta.selectionStart, ta.selectionEnd);
                     var val = ta.value;
                     var before = val.slice(0, start);
                     var lineStart = before.lastIndexOf("\n") + 1;
                     var nextNl = val.indexOf("\n", start);
-                    if (nextNl === -1) {
-                        nextNl = val.length;
-                    }
+                    if (nextNl === -1) nextNl = val.length;
                     var lineText = val.slice(lineStart, nextNl);
                     var col = start - lineStart;
 
@@ -2704,7 +2731,11 @@
                     var paddingTop = parseFloat(cs.paddingTop) || 0;
                     var paddingLeft = parseFloat(cs.paddingLeft) || 0;
                     var paddingRight = parseFloat(cs.paddingRight) || 0;
-                    var lineNum = (before.match(/\n/g) || []).length;
+                    // Avoid before.match(/\n/g) on multi-MB prefixes
+                    var lineNum = 0;
+                    for (var li = 0; li < before.length; li++) {
+                        if (before.charCodeAt(li) === 10) lineNum++;
+                    }
 
                     var targetY = lineNum * lineHeight + paddingTop;
                     var vh = ta.clientHeight;
@@ -2723,12 +2754,16 @@
                     }
                     var ctx = canvas.getContext("2d");
                     ctx.font = font;
-                    var prefixW = col > 0 ? ctx.measureText(lineText.slice(0, col)).width : 0;
-                    var selText = val.slice(start, end);
-                    var selW =
-                        selText.length > 0
-                            ? ctx.measureText(selText).width
-                            : ctx.measureText("M").width * 0.4;
+                    var prefixW = TF
+                        ? TF.estimateColumnPixelX(ctx, lineText, col)
+                        : col > 0
+                          ? ctx.measureText(lineText.slice(0, Math.min(col, 2500))).width
+                          : 0;
+                    var selLen = end - start;
+                    var selW;
+                    if (selLen <= 0) selW = ctx.measureText("M").width * 0.4;
+                    else if (selLen <= 2500) selW = ctx.measureText(val.slice(start, end)).width;
+                    else selW = (prefixW / Math.max(col, 1)) * selLen;
                     var vw = ta.clientWidth - paddingLeft - paddingRight;
                     var targetX = prefixW + paddingLeft;
                     ta.scrollLeft = Math.max(
@@ -2743,47 +2778,34 @@
                     }
                 }
 
-                function findNext(keepFindFocus) {
+                                function findNext(keepFindFocus) {
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
                         return;
                     }
+                    var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var positions = getMatchPositions(text, needle, findCase.checked);
-                    if (!positions.length) {
+                    var caseSens = findCase.checked;
+                    var from = getFindAnchorOffsetForNext(out);
+                    if (TF) {
+                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), caseSens);
+                        if (around && from > around.start && from <= around.end) from = around.end;
+                    }
+                    var p = TF ? TF.findNext(text, needle, from, caseSens) : null;
+                    if (!p && TF) p = TF.findNext(text, needle, 0, caseSens);
+                    if (!p) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
-                    var i;
-                    if (findNavMatchIndex >= 0) {
-                        i = findNavMatchIndex + 1;
-                        if (i >= positions.length) i = 0;
+                    if (TF) {
+                        var before = TF.countMatchesBefore(text, needle, caseSens, p.start, TF.MAX_COUNT);
+                        findNavMatchIndex = before.truncated ? -1 : before.count;
                     } else {
-                        var curIdx = resolveFindMatchIndexFromSelection(positions, out);
-                        if (curIdx >= 0) {
-                            i = curIdx + 1;
-                            if (i >= positions.length) i = 0;
-                        } else {
-                            var from = getFindAnchorOffsetForNext(out);
-                            var qi;
-                            for (qi = 0; qi < positions.length; qi++) {
-                                var pm = positions[qi];
-                                if (from > pm.start && from < pm.end) {
-                                    from = pm.end;
-                                    break;
-                                }
-                            }
-                            i = positions.findIndex(function (p) {
-                                return p.start >= from;
-                            });
-                            if (i === -1) i = 0;
-                        }
+                        findNavMatchIndex = -1;
                     }
-                    findNavMatchIndex = i;
-                    var p = positions[i];
                     if (out) {
                         outputConvert.setSelectionRange(p.start, p.end);
                         scrollTextareaMatchIntoView(outputConvert);
@@ -2795,51 +2817,34 @@
                     updateFindCount();
                 }
 
-                function findPrev(keepFindFocus) {
+                                function findPrev(keepFindFocus) {
                     var needle = findInput.value;
                     if (!needle) {
                         updateFindCount();
                         return;
                     }
+                    var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var positions = getMatchPositions(text, needle, findCase.checked);
-                    if (!positions.length) {
+                    var caseSens = findCase.checked;
+                    var from = getFindAnchorOffsetForPrev(out);
+                    if (TF) {
+                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), caseSens);
+                        if (around && from > around.start && from < around.end) from = around.start;
+                    }
+                    var p = TF ? TF.findPrev(text, needle, from, caseSens) : null;
+                    if (!p && TF) p = TF.findPrev(text, needle, text.length, caseSens);
+                    if (!p) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
-                    var i;
-                    if (findNavMatchIndex >= 0) {
-                        i = findNavMatchIndex - 1;
-                        if (i < 0) i = positions.length - 1;
+                    if (TF) {
+                        var before = TF.countMatchesBefore(text, needle, caseSens, p.start, TF.MAX_COUNT);
+                        findNavMatchIndex = before.truncated ? -1 : before.count;
                     } else {
-                        var curIdx = resolveFindMatchIndexFromSelection(positions, out);
-                        if (curIdx >= 0) {
-                            i = curIdx - 1;
-                            if (i < 0) i = positions.length - 1;
-                        } else {
-                            var from = getFindAnchorOffsetForPrev(out);
-                            var qj;
-                            for (qj = 0; qj < positions.length; qj++) {
-                                var pn = positions[qj];
-                                if (from > pn.start && from < pn.end) {
-                                    from = pn.start;
-                                    break;
-                                }
-                            }
-                            i = -1;
-                            for (var k = positions.length - 1; k >= 0; k--) {
-                                if (positions[k].start < from) {
-                                    i = k;
-                                    break;
-                                }
-                            }
-                            if (i === -1) i = positions.length - 1;
-                        }
+                        findNavMatchIndex = -1;
                     }
-                    findNavMatchIndex = i;
-                    var p = positions[i];
                     if (out) {
                         outputConvert.setSelectionRange(p.start, p.end);
                         scrollTextareaMatchIntoView(outputConvert);
@@ -2851,7 +2856,7 @@
                     updateFindCount();
                 }
 
-                function openFind(withReplace) {
+                                function openFind(withReplace) {
                     findBar.removeAttribute("hidden");
                     findReplaceRow.hidden = !withReplace;
                     resetFindNavigation();
@@ -2944,9 +2949,14 @@
                     resetFindNavigation();
                     updateFindCount();
                 });
+                var _findInputTimer = null;
                 findInput.addEventListener("input", function () {
                     resetFindNavigation();
-                    updateFindCount();
+                    if (_findInputTimer) clearTimeout(_findInputTimer);
+                    _findInputTimer = setTimeout(function () {
+                        _findInputTimer = null;
+                        updateFindCount();
+                    }, 120);
                 });
                 document.getElementById("find-rep-one").addEventListener("click", replaceOne);
                 document.getElementById("find-rep-all").addEventListener("click", replaceAll);
