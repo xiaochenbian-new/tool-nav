@@ -720,10 +720,11 @@
                 background: #edf3ff;
             }
             table {
-                width: 100%;
                 border-collapse: collapse;
                 font-size: 13px;
                 table-layout: fixed;
+                width: auto;
+                min-width: 0;
                 -webkit-user-select: none;
                 user-select: none;
             }
@@ -732,6 +733,9 @@
                 padding: 6px 8px;
                 text-align: left;
                 white-space: nowrap;
+                overflow: hidden;
+                box-sizing: border-box;
+                min-width: 0;
             }
             tbody tr:nth-child(even) td {
                 background: #f5f7fb;
@@ -867,10 +871,11 @@
                 vertical-align: top;
             }
             .th-name {
-                flex: 0 0 auto;
+                flex: 1 1 auto;
+                min-width: 0;
                 white-space: nowrap;
-                overflow: visible;
-                text-overflow: unset;
+                overflow: hidden;
+                text-overflow: ellipsis;
                 cursor: pointer;
             }
             .result-wrap.head-expanded .th-name {
@@ -891,7 +896,8 @@
                 user-select: none;
                 z-index: 8;
             }
-            .resize-handle:hover {
+            .resize-handle:hover,
+            .resize-handle.is-resizing {
                 background: rgba(47, 107, 255, 0.18);
             }
             .filter-pop {
@@ -1321,6 +1327,7 @@
                         <span id="copy-hint" class="copy-hint"></span>
                     </div>
                     <div class="result-tools">
+                        <button id="copy-all-result-btn" class="result-tool-btn" type="button" title="复制全部查询结果（可直接粘贴到 Excel）">复制全部</button>
                         <button id="export-xlsx-btn" class="result-tool-btn" type="button">导出 Excel</button>
                         <button id="export-csv-btn" class="result-tool-btn" type="button">导出 CSV</button>
                         <button id="preview-csv-btn" class="result-tool-btn" type="button">预览 CSV</button>
@@ -2744,8 +2751,143 @@
                 return /[A-Za-z0-9_\u4e00-\u9fa5]/.test(ch || "");
             }
 
+            /** AlaSQL / SQL 保留字：用于关键字大小写归一，并避免把关键字误当成列名自动加 []。 */
+            var SQL_RESERVED_WORDS = null;
+            function getSqlReservedWords() {
+                if (SQL_RESERVED_WORDS) return SQL_RESERVED_WORDS;
+                SQL_RESERVED_WORDS = new Set([
+                    "ADD", "ALL", "ALTER", "AND", "ANY", "AS", "ASC", "ATTACH", "AVG",
+                    "BEGIN", "BETWEEN", "BREAK", "BY",
+                    "CALL", "CASE", "CAST", "CHECK", "CLASS", "CLOSE", "COLLATE", "COLUMN", "COMMIT",
+                    "CONSTRAINT", "CONTINUE", "CONVERT", "COUNT", "CREATE", "CROSS", "CUBE",
+                    "CURRENT", "CURRENT_DATE", "CURRENT_TIMESTAMP", "CURRENT_TIME",
+                    "DATABASE", "DECLARE", "DEFAULT", "DELETE", "DESC", "DETACH", "DISTINCT",
+                    "DROP", "ELSE", "END", "ESCAPE", "EXCEPT", "EXISTS", "EXPLAIN",
+                    "FALSE", "FIRST", "FOR", "FOREIGN", "FROM", "FULL",
+                    "GLIMIT", "GLOBAL", "GOFFSET", "GRANT", "GROUP", "GROUPING",
+                    "HAVING", "HELP", "IF", "IGNORE", "IN", "INDEX", "INNER", "INSERT",
+                    "INTERSECT", "INTO", "IS", "JOIN",
+                    "KEY", "LEFT", "LIKE", "LIMIT", "MATCH", "MAX", "MERGE", "MIN",
+                    "NATURAL", "NOCASE", "NOT", "NULL", "OFFSET", "ON", "ONLY", "OR",
+                    "ORDER", "OUTER", "OVER",
+                    "PERCENT", "PIVOT", "PLAN", "PRIMARY", "PRINT", "QUERY",
+                    "REFERENCES", "REGEXP", "REINDEX", "RELEASE", "RENAME", "REPLACE",
+                    "REQUIRE", "RIGHT", "ROLLBACK", "ROLLUP", "ROW", "ROWS",
+                    "SAVEPOINT", "SEARCH", "SELECT", "SET", "SHARE", "SHOW", "SOME",
+                    "SOURCE", "SUM", "TABLE", "TEMP", "TEMPORARY", "TEXT", "THEN",
+                    "TO", "TOP", "TOTAL", "TRANSACTION", "TRIGGER", "TRUE", "TRUNCATE",
+                    "UNION", "UNIQUE", "UNPIVOT", "UPDATE", "USE", "USING",
+                    "VALUE", "VALUES", "VERTEX", "VIEW", "WHEN", "WHERE", "WHILE", "WITH"
+                ]);
+                return SQL_RESERVED_WORDS;
+            }
+
+            function isSqlReservedWord(token) {
+                var t = String(token || "").toUpperCase();
+                return !!t && getSqlReservedWords().has(t);
+            }
+
+            /**
+             * 将 SQL 关键字统一为大写（不影响字符串 / [] / `` 内内容）。
+             * 避免列名与小写关键字撞名时被 autoQuote 误包成 [distinct] 等。
+             */
+            function uppercaseSqlKeywords(sql) {
+                var text = String(sql || "");
+                var out = "";
+                var i = 0;
+                var n = text.length;
+                var state = "normal";
+                while (i < n) {
+                    var ch = text.charAt(i);
+                    if (state === "normal") {
+                        if (ch === "'") {
+                            state = "single";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            state = "double";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "[") {
+                            state = "bracket";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "`") {
+                            state = "backtick";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "-" && text.charAt(i + 1) === "-") {
+                            out += ch;
+                            i++;
+                            while (i < n && text.charAt(i) !== "\n" && text.charAt(i) !== "\r") {
+                                out += text.charAt(i);
+                                i++;
+                            }
+                            continue;
+                        }
+                        if (ch === "/" && text.charAt(i + 1) === "*") {
+                            out += ch;
+                            i++;
+                            out += text.charAt(i);
+                            i++;
+                            while (i < n) {
+                                out += text.charAt(i);
+                                if (text.charAt(i) === "*" && text.charAt(i + 1) === "/") {
+                                    i++;
+                                    out += text.charAt(i);
+                                    i++;
+                                    break;
+                                }
+                                i++;
+                            }
+                            continue;
+                        }
+                        if (/[A-Za-z_]/.test(ch)) {
+                            var start = i;
+                            i++;
+                            while (i < n && /[A-Za-z0-9_]/.test(text.charAt(i))) i++;
+                            var token = text.slice(start, i);
+                            out += isSqlReservedWord(token) ? token.toUpperCase() : token;
+                            continue;
+                        }
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    out += ch;
+                    if (state === "single" && ch === "'") {
+                        if (text.charAt(i + 1) === "'") {
+                            out += text.charAt(i + 1);
+                            i += 2;
+                            continue;
+                        }
+                        state = "normal";
+                    } else if (state === "double" && ch === '"') {
+                        if (text.charAt(i + 1) === '"') {
+                            out += text.charAt(i + 1);
+                            i += 2;
+                            continue;
+                        }
+                        state = "normal";
+                    } else if (state === "bracket" && ch === "]") state = "normal";
+                    else if (state === "backtick" && ch === "`") state = "normal";
+                    i++;
+                }
+                return out;
+            }
+
             function autoQuoteOneIdentifier(sql, identifier) {
                 if (!identifier) return sql;
+                // 保留字列名需用户手写 [col]，避免把 SELECT/DISTINCT/FROM 等关键字包进 []
+                if (isSqlReservedWord(identifier)) return sql;
                 var out = "";
                 var i = 0;
                 var n = sql.length;
@@ -2904,6 +3046,7 @@
                 if (sqlMode === "mysql") {
                     sql = transformMysqlSql(sql);
                 }
+                sql = uppercaseSqlKeywords(sql);
                 sql = autoQuoteIdentifiers(sql, cols);
                 sql = expandNumericEqualityInSql(sql);
                 sql = normalizeDateLiteralsInSql(sql);
@@ -3030,12 +3173,76 @@
                 var ctx = measureHeaderColWidth._canvas.getContext("2d");
                 ctx.font = '600 13px "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
                 var textW = ctx.measureText(name).width;
-                return Math.max(88, Math.ceil(textW) + 52);
+                // 表头文字 + 排序/筛选按钮区域
+                return Math.max(72, Math.ceil(textW) + 56);
+            }
+
+            /** 按列内容测量宽度。mode=typical：以大部分单元格长度为准（默认列宽）；mode=full：按最长内容（双击自适应）。 */
+            function measureColContentWidth(colName, mode) {
+                var name = String(colName || "");
+                var full = mode === "full";
+                if (!measureHeaderColWidth._canvas) {
+                    measureHeaderColWidth._canvas = document.createElement("canvas");
+                }
+                var ctx = measureHeaderColWidth._canvas.getContext("2d");
+                var headerW = measureHeaderColWidth(name);
+                ctx.font = '13px "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
+                var rows = currentViewRows || [];
+                var limit = Math.min(rows.length, 5000);
+                var cellPad = 36;
+                var widths = [];
+                for (var i = 0; i < limit; i++) {
+                    var text = String(formatCellForDisplay(rows[i][name]));
+                    if (!text) continue;
+                    widths.push(Math.ceil(ctx.measureText(text).width) + cellPad);
+                }
+                var contentW = headerW;
+                if (widths.length) {
+                    widths.sort(function (a, b) { return a - b; });
+                    if (full) {
+                        contentW = widths[widths.length - 1];
+                    } else {
+                        // 约 80 分位：覆盖大部分行，极端长文本不撑开整列
+                        var idx = Math.min(
+                            widths.length - 1,
+                            Math.max(0, Math.ceil(widths.length * 0.8) - 1)
+                        );
+                        contentW = widths[idx];
+                        // 样本很少时略放宽，避免短列过窄
+                        if (widths.length <= 3) {
+                            contentW = widths[widths.length - 1];
+                        }
+                    }
+                }
+                contentW = Math.max(headerW, contentW);
+                var maxCap = full ? 1200 : 360;
+                return Math.min(Math.max(56, contentW), maxCap);
+            }
+
+            function initAutoFitColWidths() {
+                var cols = currentCols || [];
+                cols.forEach(function (c) {
+                    if (currentColWidths[c] == null) {
+                        currentColWidths[c] = measureColContentWidth(c, "typical");
+                    }
+                });
             }
 
             function getResultColWidth(colName) {
-                if (currentColWidths[colName]) return currentColWidths[colName];
-                return measureHeaderColWidth(colName);
+                if (currentColWidths[colName] != null) return currentColWidths[colName];
+                var w = measureColContentWidth(colName, "typical");
+                currentColWidths[colName] = w;
+                return w;
+            }
+
+            /** 表格总宽 = 各列宽之和，避免内容把列撑死导致无法向左拖窄。 */
+            function syncTableWidth(table) {
+                if (!table) return;
+                var total = 72;
+                (currentCols || []).forEach(function (c) {
+                    total += getResultColWidth(c);
+                });
+                table.style.width = total + "px";
             }
 
             function renderResultTable() {
@@ -3044,10 +3251,15 @@
                     wrap.innerHTML = '<div class="empty">查询成功，但无结果。</div>';
                     return;
                 }
+                initAutoFitColWidths();
                 const cols = currentCols;
                 const startIdx = (currentPage - 1) * currentPageSize;
                 const pageRows = currentViewRows.slice(startIdx, startIdx + currentPageSize);
-                let html = "<table><colgroup>";
+                var tableWidth = 72;
+                cols.forEach(function (c) {
+                    tableWidth += getResultColWidth(c);
+                });
+                let html = "<table style=\"width:" + tableWidth + "px\"><colgroup>";
                 html += "<col style=\"width:72px\" />";
                 cols.forEach(function (c) {
                     const width = getResultColWidth(c);
@@ -3094,7 +3306,7 @@
                         + "<button class=\"sort-btn" + active + priorityClass + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"" + escapeHtml(sortTitle) + "\">" + renderSortBtnContent(c) + "</button>"
                         + "<button class=\"filter-btn" + filterActive + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"筛选\">"
                         + "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3 5h18l-7 8v5l-4 2v-7L3 5z\" fill=\"currentColor\"></path></svg>"
-                        + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\"></span></th>";
+                        + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\" title=\"拖动调整列宽，双击按内容自适应\"></span></th>";
                 });
                 html += "</tr></thead><tbody>";
                 pageRows.forEach(function (r, idx) {
@@ -3121,20 +3333,50 @@
                 bindResizeEvents();
             }
 
-            /** 按列宽估算是否截断，避免大表逐格 scrollWidth 测量卡顿。 */
+            function isCellContentOverflowing(el) {
+                if (!el) return false;
+                return el.scrollWidth > el.clientWidth + 1;
+            }
+
+            function openCellTextPopup(text) {
+                var mask = document.getElementById("text-popup-mask");
+                var box = document.getElementById("text-popup");
+                box.textContent = text || "";
+                mask.classList.add("show");
+            }
+
+            /** 按真实溢出标记截断：仅放不下内容的单元格可点击弹框。 */
             function markTruncatedCells() {
                 const wrap = document.getElementById("result-wrap");
+                if (!wrap) return;
                 wrap.querySelectorAll("td.data-cell").forEach(function (td) {
-                    var col = td.getAttribute("data-col") || "";
-                    var colW = getResultColWidth(col);
-                    var approxChars = Math.max(4, Math.floor((colW - 34) / 7.5));
                     var el = td.querySelector(".cell-content");
                     if (!el) return;
-                    var truncated = (el.textContent || "").length > approxChars;
+                    var truncated = isCellContentOverflowing(el);
                     el.classList.toggle("is-truncated", truncated);
                     el.setAttribute("data-truncated", truncated ? "1" : "0");
                     td.classList.toggle("has-overflow", truncated);
                 });
+            }
+
+            function applyColWidthToTable(table, colName, width) {
+                if (!table) return;
+                var cols = currentCols || [];
+                var idx = cols.indexOf(colName);
+                if (idx < 0) return;
+                var colEls = table.querySelectorAll("col");
+                var targetCol = colEls[idx + 1];
+                if (!targetCol) return;
+                var next = Math.max(40, Math.round(width));
+                targetCol.style.width = next + "px";
+                currentColWidths[colName] = next;
+                syncTableWidth(table);
+            }
+
+            function autoFitColumnWidth(colName, table) {
+                var width = measureColContentWidth(colName, "full");
+                applyColWidthToTable(table, colName, width);
+                markTruncatedCells();
             }
 
             function bindResizeEvents() {
@@ -3142,27 +3384,58 @@
                 const table = wrap.querySelector("table");
                 if (!table) return;
                 const handles = wrap.querySelectorAll(".resize-handle");
-                handles.forEach(function (handle, idx) {
+                handles.forEach(function (handle) {
                     handle.addEventListener("mousedown", function (e) {
+                        if (e.button !== 0) return;
                         e.preventDefault();
                         e.stopPropagation();
                         const colName = handle.getAttribute("data-col");
+                        if (!colName) return;
+                        const cols = currentCols || [];
+                        const idx = cols.indexOf(colName);
+                        if (idx < 0) return;
                         const colEls = table.querySelectorAll("col");
                         const targetCol = colEls[idx + 1];
                         if (!targetCol) return;
                         const startX = e.clientX;
                         const startW = parseInt(targetCol.style.width || String(getResultColWidth(colName)), 10);
+                        handle.classList.add("is-resizing");
+                        document.body.style.cursor = "col-resize";
+                        document.body.style.userSelect = "none";
+                        var rafId = 0;
                         function onMove(ev) {
-                            const next = Math.max(100, startW + (ev.clientX - startX));
+                            const next = Math.max(40, startW + (ev.clientX - startX));
                             targetCol.style.width = next + "px";
                             currentColWidths[colName] = next;
+                            syncTableWidth(table);
+                            if (!rafId) {
+                                rafId = requestAnimationFrame(function () {
+                                    rafId = 0;
+                                    markTruncatedCells();
+                                });
+                            }
                         }
                         function onUp() {
+                            handle.classList.remove("is-resizing");
+                            document.body.style.cursor = "";
+                            document.body.style.userSelect = "";
                             document.removeEventListener("mousemove", onMove);
                             document.removeEventListener("mouseup", onUp);
+                            if (rafId) {
+                                cancelAnimationFrame(rafId);
+                                rafId = 0;
+                            }
+                            markTruncatedCells();
                         }
                         document.addEventListener("mousemove", onMove);
                         document.addEventListener("mouseup", onUp);
+                    });
+                    handle.addEventListener("dblclick", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const colName = handle.getAttribute("data-col");
+                        if (!colName) return;
+                        autoFitColumnWidth(colName, table);
                     });
                 });
             }
@@ -3675,6 +3948,53 @@
             function buildCopyTextHeadersOnly() {
                 if (!currentCols.length) return "";
                 return currentCols.join("\t");
+            }
+
+            /** 全部查询结果（含表头），Tab 分隔，便于直接粘贴到 Excel。 */
+            function buildCopyTextAllResults() {
+                if (!currentViewRows.length || !currentCols.length) return "";
+                var lines = [currentCols.join("\t")];
+                currentViewRows.forEach(function (row) {
+                    lines.push(currentCols.map(function (c) {
+                        return String(formatCellForDisplay(row[c]));
+                    }).join("\t"));
+                });
+                return lines.join("\n");
+            }
+
+            function sanitizeExportFileBase(name) {
+                var s = String(name || "")
+                    .replace(/[\\/:*?"<>|]+/g, "_")
+                    .replace(/\s+/g, "_")
+                    .replace(/^_+|_+$/g, "");
+                return s.slice(0, 80) || "query_result";
+            }
+
+            function formatExportTimestamp() {
+                var d = new Date();
+                function p(n) { return (n < 10 ? "0" : "") + n; }
+                return d.getFullYear()
+                    + p(d.getMonth() + 1)
+                    + p(d.getDate())
+                    + "_"
+                    + p(d.getHours())
+                    + p(d.getMinutes())
+                    + p(d.getSeconds());
+            }
+
+            /** 导出文件名前缀：优先取 SQL 中 FROM 的主表，其次默认表。 */
+            function getExportTableBaseName() {
+                var sql = String(lastExecutedSql || "");
+                var m = sql.match(/\bFROM\s+\[([^\]]+)\]/i);
+                if (!m) m = sql.match(/\bFROM\s+([A-Za-z0-9_\u4e00-\u9fa5]+)/i);
+                if (m && m[1]) return sanitizeExportFileBase(m[1]);
+                var sel = document.getElementById("table-select");
+                if (sel && sel.value) return sanitizeExportFileBase(sel.value);
+                return "query_result";
+            }
+
+            function buildExportFileName(ext) {
+                return getExportTableBaseName() + "_" + formatExportTimestamp() + "." + ext;
             }
 
             function refreshSelectionHighlight() {
@@ -4692,28 +5012,42 @@
                     setStatus("没有可导出的查询结果。", true);
                     return;
                 }
+                const fileName = buildExportFileName("xlsx");
                 const ws = XLSX.utils.json_to_sheet(rowsWithDisplayStrings(currentViewRows));
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "result");
-                XLSX.writeFile(wb, "query_result.xlsx");
-                setStatus("已导出 Excel（query_result.xlsx）。", false);
+                XLSX.writeFile(wb, fileName);
+                setStatus("已导出 Excel（" + fileName + "）。", false);
             });
             document.getElementById("export-csv-btn").addEventListener("click", function () {
                 if (!currentViewRows.length) {
                     setStatus("没有可导出的查询结果。", true);
                     return;
                 }
+                const fileName = buildExportFileName("csv");
                 const csv = buildResultCsvText();
                 const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "query_result.csv";
+                a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 URL.revokeObjectURL(url);
-                setStatus("已导出 CSV（query_result.csv）。", false);
+                setStatus("已导出 CSV（" + fileName + "）。", false);
+            });
+            document.getElementById("copy-all-result-btn").addEventListener("click", function () {
+                if (!currentViewRows.length) {
+                    setStatus("没有可复制的查询结果。", true);
+                    return;
+                }
+                var text = buildCopyTextAllResults();
+                if (!text) {
+                    setStatus("没有可复制的查询结果。", true);
+                    return;
+                }
+                writeClipboardText(text, "已复制全部结果（可粘贴到 Excel）");
             });
             document.getElementById("preview-csv-btn").addEventListener("click", openCsvPreviewModal);
             document.getElementById("csv-preview-close").addEventListener("click", closeCsvPreviewModal);
@@ -4788,12 +5122,16 @@
                     return;
                 }
                 const truncContent = e.target.closest(".cell-content.is-truncated");
-                if (truncContent && truncContent.getAttribute("data-truncated") === "1") {
+                if (truncContent) {
+                    if (!isCellContentOverflowing(truncContent)) {
+                        truncContent.classList.remove("is-truncated");
+                        truncContent.setAttribute("data-truncated", "0");
+                        const host = truncContent.closest("td.data-cell");
+                        if (host) host.classList.remove("has-overflow");
+                        return;
+                    }
                     e.stopPropagation();
-                    const mask = document.getElementById("text-popup-mask");
-                    const box = document.getElementById("text-popup");
-                    box.textContent = truncContent.textContent || "";
-                    mask.classList.add("show");
+                    openCellTextPopup(truncContent.textContent || "");
                     return;
                 }
                 const viewBtn = e.target.closest(".cell-view-btn");
@@ -4802,11 +5140,8 @@
                     const hostCell = viewBtn.closest("td.data-cell");
                     if (!hostCell) return;
                     const cell = hostCell.querySelector(".cell-content");
-                    if (!cell || cell.getAttribute("data-truncated") !== "1") return;
-                    const mask = document.getElementById("text-popup-mask");
-                    const box = document.getElementById("text-popup");
-                    box.textContent = cell.textContent || "";
-                    mask.classList.add("show");
+                    if (!cell || !isCellContentOverflowing(cell)) return;
+                    openCellTextPopup(cell.textContent || "");
                     return;
                 }
                 const rowNoCell = e.target.closest("td.rowno-col");
