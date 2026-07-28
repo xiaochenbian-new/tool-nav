@@ -741,7 +741,7 @@
                 background: #f5f7fb;
             }
             tbody tr:hover td {
-                background: #eaf1ff;
+                background: #d6e4ff;
             }
             thead th {
                 position: sticky;
@@ -755,6 +755,7 @@
                 top: 0;
                 z-index: 4;
                 box-shadow: 1px 0 0 #e7efff;
+                cursor: pointer;
             }
             .rowno-col {
                 position: sticky;
@@ -800,10 +801,10 @@
                 background: #f5f7fb;
             }
             tbody tr:hover td.rowno-col {
-                background: #eaf1ff;
+                background: #d6e4ff;
             }
             tbody tr.row-selected td.rowno-col {
-                background: #eef4ff !important;
+                background: #fff0e0 !important;
             }
             .th-cell {
                 display: flex;
@@ -1238,10 +1239,23 @@
                 font-size: 13px;
             }
             .row-selected td {
-                background: #eef4ff !important;
+                background: #fff0e0 !important;
             }
             .cell-selected {
-                background: #e8f0ff !important;
+                background: #ffe4c4 !important;
+            }
+            thead th.col-selected {
+                background: #ffe4c4 !important;
+            }
+            td.col-selected {
+                background: #fff0e0 !important;
+            }
+            tbody td.rowno-col.col-selected {
+                background: #fff0e0 !important;
+            }
+            tbody tr:nth-child(even) td.rowno-col.col-selected,
+            tbody tr:hover td.rowno-col.col-selected {
+                background: #fff0e0 !important;
             }
             .sql-help-content {
                 line-height: 1.5;
@@ -1442,7 +1456,8 @@
             const ZH_COLLATOR = new Intl.Collator("zh-CN", { numeric: true, sensitivity: "base" });
             let currentSumText = "";
             let leftCollapsed = false;
-            let rangeSelection = null; // { mode:'row'|'col', col?:string, start:number, end:number }
+            let rangeSelection = null; // { mode:'row'|'col'|'headerCol', col?:string, start?:number, end?:number, indices?:number[] }
+            let headerColAnchor = null; // Shift 连选锚点（列下标）
             let activeFilterAnchor = null;
             let rowDisplayCache = new WeakMap();
             let copyMenuState = { type: "selection", col: "" };
@@ -3118,6 +3133,7 @@
                 currentPage = 1;
                 currentSumText = "";
                 rangeSelection = null;
+                headerColAnchor = null;
                 applyResultView();
             }
 
@@ -3173,11 +3189,11 @@
                 var ctx = measureHeaderColWidth._canvas.getContext("2d");
                 ctx.font = '600 13px "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
                 var textW = ctx.measureText(name).width;
-                // 表头文字 + 排序/筛选按钮区域
-                return Math.max(72, Math.ceil(textW) + 56);
+                // 表头文字 + 排序/筛选按钮区域（需足够宽，避免双击自适应后列名仍被省略）
+                return Math.max(72, Math.ceil(textW) + 72);
             }
 
-            /** 按列内容测量宽度。mode=typical：以大部分单元格长度为准（默认列宽）；mode=full：按最长内容（双击自适应）。 */
+            /** 按列内容测量宽度。mode=typical：以大部分单元格长度为准（默认列宽）；mode=full：按最长内容与列名取较大值（双击自适应）。 */
             function measureColContentWidth(colName, mode) {
                 var name = String(colName || "");
                 var full = mode === "full";
@@ -3196,7 +3212,7 @@
                     if (!text) continue;
                     widths.push(Math.ceil(ctx.measureText(text).width) + cellPad);
                 }
-                var contentW = headerW;
+                var contentW = 0;
                 if (widths.length) {
                     widths.sort(function (a, b) { return a - b; });
                     if (full) {
@@ -3214,9 +3230,13 @@
                         }
                     }
                 }
+                // 双击自适应：内容短于列名时，至少把列名展示全
+                if (full) {
+                    contentW = Math.max(headerW, contentW);
+                    return Math.min(Math.max(headerW, contentW), 1200);
+                }
                 contentW = Math.max(headerW, contentW);
-                var maxCap = full ? 1200 : 360;
-                return Math.min(Math.max(56, contentW), maxCap);
+                return Math.min(Math.max(56, contentW), 360);
             }
 
             function initAutoFitColWidths() {
@@ -3282,7 +3302,7 @@
                     + "<path d=\"M12 12L8 16M6 15L8 16L9 18\"/>"
                     + "<path d=\"M12 12L16 16M18 15L16 16L15 18\"/>"
                     + "</svg>";
-                html += "<th class=\"rowno-col\"><div class=\"rowno-head\">"
+                html += "<th class=\"rowno-col\" title=\"点击选中全部列\"><div class=\"rowno-head\">"
                     + "<span>行号</span>"
                     + "<button class=\"head-expand-btn" + expandClass + "\" type=\"button\" title=\"" + expandTitle + "\">" + expandIcon + "</button>"
                     + "</div></th>";
@@ -3300,13 +3320,13 @@
                         || !!String(filterRule.dateTo || "").trim();
                     const filterActive = hasFilter ? " active" : "";
                     const thTitle = resultHeadExpanded ? "" : (" title=\"" + escapeHtml(c) + "\"");
-                    html += "<th><div class=\"th-cell\">"
+                    html += "<th data-col=\"" + escapeHtml(c) + "\"><div class=\"th-cell\">"
                         + "<span class=\"th-name\"" + thTitle + ">" + escapeHtml(c) + "</span>"
                         + "<span class=\"th-actions\">"
                         + "<button class=\"sort-btn" + active + priorityClass + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"" + escapeHtml(sortTitle) + "\">" + renderSortBtnContent(c) + "</button>"
                         + "<button class=\"filter-btn" + filterActive + "\" data-col=\"" + escapeHtml(c) + "\" type=\"button\" title=\"筛选\">"
                         + "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3 5h18l-7 8v5l-4 2v-7L3 5z\" fill=\"currentColor\"></path></svg>"
-                        + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\" title=\"拖动调整列宽，双击按内容自适应\"></span></th>";
+                        + "</button></span></div><span class=\"resize-handle\" data-col=\"" + escapeHtml(c) + "\" title=\"拖动调整列宽；双击按内容展示全（已选多列则一并自适应）\"></span></th>";
                 });
                 html += "</tr></thead><tbody>";
                 pageRows.forEach(function (r, idx) {
@@ -3331,6 +3351,7 @@
             function bindResultTableEvents() {
                 markTruncatedCells();
                 bindResizeEvents();
+                bindCellBorderDblClick();
             }
 
             function isCellContentOverflowing(el) {
@@ -3374,9 +3395,27 @@
             }
 
             function autoFitColumnWidth(colName, table) {
-                var width = measureColContentWidth(colName, "full");
-                applyColWidthToTable(table, colName, width);
-                markTruncatedCells();
+                autofitFromBorder(colName, table);
+            }
+
+            /** 双击单元格右边框：按内容展示全（已选表头列则一并处理）。 */
+            function bindCellBorderDblClick() {
+                const wrap = document.getElementById("result-wrap");
+                const table = wrap.querySelector("table");
+                if (!table) return;
+                wrap.querySelectorAll("td.data-cell").forEach(function (td) {
+                    td.addEventListener("dblclick", function (e) {
+                        if (e.target.closest(".cell-view-btn")) return;
+                        var rect = td.getBoundingClientRect();
+                        // 仅右边框附近（约 8px）视为列宽边框操作
+                        if (rect.right - e.clientX > 8) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var colName = td.getAttribute("data-col");
+                        if (!colName) return;
+                        autofitFromBorder(colName, table);
+                    });
+                });
             }
 
             function bindResizeEvents() {
@@ -3435,7 +3474,7 @@
                         e.stopPropagation();
                         const colName = handle.getAttribute("data-col");
                         if (!colName) return;
-                        autoFitColumnWidth(colName, table);
+                        autofitFromBorder(colName, table);
                     });
                 });
             }
@@ -3906,12 +3945,135 @@
                 refreshSelectionHighlight();
             }
 
+            /** 点击表头选中整列；Shift 连选；Ctrl/⌘ 单击多选（类 Excel）。 */
+            function selectHeaderColumn(colName, shiftKey, ctrlKey) {
+                var col = String(colName || "").trim();
+                var idx = currentCols.indexOf(col);
+                if (idx < 0) return;
+                if (ctrlKey) {
+                    var indices = [];
+                    if (rangeSelection && rangeSelection.mode === "headerCol") {
+                        indices = getSelectedHeaderIndices().slice();
+                    }
+                    var pos = indices.indexOf(idx);
+                    if (pos >= 0) indices.splice(pos, 1);
+                    else indices.push(idx);
+                    indices.sort(function (a, b) { return a - b; });
+                    rangeSelection = indices.length
+                        ? { mode: "headerCol", col: col, indices: indices }
+                        : null;
+                    headerColAnchor = idx;
+                } else if (shiftKey && headerColAnchor != null && headerColAnchor >= 0) {
+                    var a = Math.min(headerColAnchor, idx);
+                    var b = Math.max(headerColAnchor, idx);
+                    var rangeIdx = [];
+                    for (var i = a; i <= b; i++) rangeIdx.push(i);
+                    rangeSelection = { mode: "headerCol", col: col, indices: rangeIdx };
+                } else {
+                    rangeSelection = { mode: "headerCol", col: col, indices: [idx] };
+                    headerColAnchor = idx;
+                }
+                refreshSelectionHighlight();
+            }
+
+            /** 点击行号表头：选中全部列。 */
+            function selectAllHeaderColumns() {
+                if (!currentCols.length) {
+                    rangeSelection = null;
+                    headerColAnchor = null;
+                    refreshSelectionHighlight();
+                    return;
+                }
+                var indices = currentCols.map(function (_, i) { return i; });
+                rangeSelection = { mode: "headerCol", col: currentCols[0], indices: indices };
+                headerColAnchor = 0;
+                refreshSelectionHighlight();
+            }
+
+            function getSelectedHeaderIndices() {
+                if (!rangeSelection || rangeSelection.mode !== "headerCol") return [];
+                if (Array.isArray(rangeSelection.indices)) {
+                    return rangeSelection.indices.filter(function (i) {
+                        return i >= 0 && i < currentCols.length;
+                    });
+                }
+                if (rangeSelection.start == null || rangeSelection.end == null) return [];
+                var a = Math.min(rangeSelection.start, rangeSelection.end);
+                var b = Math.max(rangeSelection.start, rangeSelection.end);
+                var out = [];
+                for (var i = a; i <= b; i++) out.push(i);
+                return out;
+            }
+
+            function getSelectedHeaderColNames() {
+                return getSelectedHeaderIndices().map(function (i) {
+                    return currentCols[i];
+                }).filter(Boolean);
+            }
+
+            function autofitColumnsByNames(colNames, table) {
+                if (!table || !colNames || !colNames.length) return;
+                colNames.forEach(function (c) {
+                    applyColWidthToTable(table, c, measureColContentWidth(c, "full"));
+                });
+                // 二次校正：若列名仍被省略，继续加宽直到表头完整显示
+                colNames.forEach(function (c) {
+                    ensureHeaderNameFullyVisible(c, table);
+                });
+                markTruncatedCells();
+            }
+
+            function findHeaderThByCol(colName) {
+                var wrap = document.getElementById("result-wrap");
+                if (!wrap) return null;
+                var ths = wrap.querySelectorAll("thead th[data-col]");
+                for (var i = 0; i < ths.length; i++) {
+                    if (ths[i].getAttribute("data-col") === colName) return ths[i];
+                }
+                return null;
+            }
+
+            /** 保证双击自适应后列名完整可见（内容短于列名时尤为重要）。 */
+            function ensureHeaderNameFullyVisible(colName, table) {
+                var th = findHeaderThByCol(colName);
+                if (!th) return;
+                var nameEl = th.querySelector(".th-name");
+                if (!nameEl) return;
+                var guard = 0;
+                while (nameEl.scrollWidth > nameEl.clientWidth + 1 && guard < 8) {
+                    var delta = nameEl.scrollWidth - nameEl.clientWidth + 8;
+                    applyColWidthToTable(table, colName, getResultColWidth(colName) + delta);
+                    guard++;
+                }
+            }
+
+            /** 双击列右边框：有表头多选则一并展示全，否则只自适应当前列。 */
+            function autofitFromBorder(colName, table) {
+                var selected = getSelectedHeaderColNames();
+                var colsToFit = selected.length ? selected : [colName];
+                if (selected.length && selected.indexOf(colName) < 0) {
+                    colsToFit = [colName];
+                }
+                autofitColumnsByNames(colsToFit, table);
+            }
+
             function buildCopyTextBySelection(includeHeader) {
                 if (!rangeSelection || !currentViewRows.length) return "";
                 var withHeader = !!includeHeader;
                 var start = Math.min(rangeSelection.start, rangeSelection.end);
                 var end = Math.max(rangeSelection.start, rangeSelection.end);
                 var lines = [];
+                if (rangeSelection.mode === "headerCol") {
+                    var cols = getSelectedHeaderColNames();
+                    if (!cols.length) return "";
+                    if (withHeader) lines.push(cols.join("\t"));
+                    currentViewRows.forEach(function (row) {
+                        lines.push(cols.map(function (c) {
+                            return String(formatCellForDisplay(row[c]));
+                        }).join("\t"));
+                    });
+                    return lines.join("\n");
+                }
                 if (rangeSelection.mode === "row") {
                     if (withHeader) lines.push(currentCols.join("\t"));
                     for (var i = start; i <= end; i++) {
@@ -4000,8 +4162,30 @@
             function refreshSelectionHighlight() {
                 var wrap = document.getElementById("result-wrap");
                 if (!wrap) return;
-                var start = rangeSelection ? Math.min(rangeSelection.start, rangeSelection.end) : 0;
-                var end = rangeSelection ? Math.max(rangeSelection.start, rangeSelection.end) : -1;
+                var start = 0;
+                var end = -1;
+                if (rangeSelection && rangeSelection.mode !== "headerCol"
+                    && rangeSelection.start != null && rangeSelection.end != null) {
+                    start = Math.min(rangeSelection.start, rangeSelection.end);
+                    end = Math.max(rangeSelection.start, rangeSelection.end);
+                }
+                var headerCols = rangeSelection && rangeSelection.mode === "headerCol"
+                    ? getSelectedHeaderColNames()
+                    : [];
+                var headerColSet = {};
+                headerCols.forEach(function (c) { headerColSet[c] = true; });
+                var allColsSelected = headerCols.length > 0 && headerCols.length === (currentCols || []).length;
+
+                var rownoHead = wrap.querySelector("thead th.rowno-col");
+                if (rownoHead) rownoHead.classList.toggle("col-selected", allColsSelected);
+                wrap.querySelectorAll("td.rowno-col").forEach(function (td) {
+                    td.classList.toggle("col-selected", allColsSelected);
+                });
+
+                wrap.querySelectorAll("thead th[data-col]").forEach(function (th) {
+                    var col = th.getAttribute("data-col") || "";
+                    th.classList.toggle("col-selected", !!headerColSet[col]);
+                });
                 wrap.querySelectorAll("tr[data-row-index]").forEach(function (tr) {
                     var idx = Number(tr.getAttribute("data-row-index") || 0);
                     var on = !!rangeSelection && rangeSelection.mode === "row" && idx >= start && idx <= end;
@@ -4010,12 +4194,14 @@
                 wrap.querySelectorAll("td.data-cell").forEach(function (td) {
                     var idx = Number(td.getAttribute("data-row-index") || 0);
                     var col = td.getAttribute("data-col") || "";
-                    var on = !!rangeSelection
+                    var onColRange = !!rangeSelection
                         && rangeSelection.mode === "col"
                         && col === rangeSelection.col
                         && idx >= start
                         && idx <= end;
-                    td.classList.toggle("cell-selected", on);
+                    var onHeaderCol = !!headerColSet[col];
+                    td.classList.toggle("cell-selected", onColRange);
+                    td.classList.toggle("col-selected", onHeaderCol);
                 });
             }
 
@@ -4858,6 +5044,7 @@
                 currentPage = 1;
                 currentSumText = "";
                 rangeSelection = null;
+                headerColAnchor = null;
                 document.getElementById("pager").classList.remove("visible");
                 Object.keys(dbStore).forEach(function (k) { delete dbStore[k]; });
                 currentDb = "";
@@ -4970,6 +5157,7 @@
                 currentPage = 1;
                 currentSumText = "";
                 rangeSelection = null;
+                headerColAnchor = null;
                 applyResultView();
             });
             document.getElementById("pager-first").addEventListener("click", function () {
@@ -5118,16 +5306,42 @@
                 const thNameHead = e.target.closest(".th-name");
                 if (thNameHead) {
                     e.stopPropagation();
-                    showColumnSum(thNameHead.textContent || "");
+                    var thCol = resolveColumnNameFromHeaderTarget(thNameHead)
+                        || String(thNameHead.textContent || "").trim();
+                    if (thCol) {
+                        selectHeaderColumn(thCol, e.shiftKey, e.ctrlKey || e.metaKey);
+                        if (!(e.ctrlKey || e.metaKey)) showColumnSum(thCol);
+                    }
+                    return;
+                }
+                const rownoHeadTh = e.target.closest("thead th.rowno-col");
+                if (rownoHeadTh && !e.target.closest(".head-expand-btn")) {
+                    e.stopPropagation();
+                    selectAllHeaderColumns();
+                    return;
+                }
+                const headerTh = e.target.closest("thead th[data-col]");
+                if (headerTh && !e.target.closest(".sort-btn, .filter-btn, .resize-handle, .head-expand-btn")) {
+                    e.stopPropagation();
+                    var headerCol = headerTh.getAttribute("data-col") || resolveColumnNameFromHeaderTarget(headerTh);
+                    if (headerCol) {
+                        selectHeaderColumn(headerCol, e.shiftKey, e.ctrlKey || e.metaKey);
+                        if (!(e.ctrlKey || e.metaKey)) showColumnSum(headerCol);
+                    }
                     return;
                 }
                 const truncContent = e.target.closest(".cell-content.is-truncated");
                 if (truncContent) {
+                    const hostTd = truncContent.closest("td.data-cell");
+                    if (hostTd) {
+                        var borderRect = hostTd.getBoundingClientRect();
+                        // 右边框留给双击自适应，避免误开弹框
+                        if (borderRect.right - e.clientX <= 8) return;
+                    }
                     if (!isCellContentOverflowing(truncContent)) {
                         truncContent.classList.remove("is-truncated");
                         truncContent.setAttribute("data-truncated", "0");
-                        const host = truncContent.closest("td.data-cell");
-                        if (host) host.classList.remove("has-overflow");
+                        if (hostTd) hostTd.classList.remove("has-overflow");
                         return;
                     }
                     e.stopPropagation();
@@ -5160,6 +5374,12 @@
                 const dataCell = e.target.closest("td.data-cell");
                 if (!theadTh && !rowNoCell && !dataCell) return;
                 e.preventDefault();
+                // 点击行号全选列，或 Ctrl/Shift 多选列后：右键提供「复制」「复制（含表头）」
+                if (rangeSelection && rangeSelection.mode === "headerCol" && getSelectedHeaderColNames().length) {
+                    copyMenuState = { type: "selection", col: "" };
+                    showCopyMenu(e.clientX, e.clientY, { includeHeaderAction: true });
+                    return;
+                }
                 const colName = resolveColumnNameFromHeaderTarget(e.target);
                 if (colName) {
                     copyMenuState = { type: "column", col: colName };
@@ -5174,7 +5394,7 @@
                 copyMenuState = { type: "selection", col: "" };
                 if (!rangeSelection) return;
                 showCopyMenu(e.clientX, e.clientY, {
-                    includeHeaderAction: rangeSelection.mode === "row"
+                    includeHeaderAction: rangeSelection.mode === "row" || rangeSelection.mode === "headerCol"
                 });
             });
             document.getElementById("copy-menu").addEventListener("click", function (e) {
