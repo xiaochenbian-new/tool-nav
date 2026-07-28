@@ -1065,6 +1065,7 @@
                                 "*"
                             );
                             showToast("已发送到文本对比");
+                            clearCompareSelect();
                             return;
                         } catch (e1) {
                             // fall through
@@ -1080,6 +1081,7 @@
                     } catch (e3) {
                         // ignore
                     }
+                    clearCompareSelect();
                     window.location.href = "../index.html#tab=" + HANDOFF_TEXT_DIFF_TAB;
                 }
 
@@ -1243,6 +1245,12 @@
                 }
 
                 document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
+                document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === "visible") clearCompareSelect();
+                });
+                window.addEventListener("pageshow", function () {
+                    clearCompareSelect();
+                });
                 sheetAddBtn.addEventListener("click", addSheet);
 
                 if (sheetTabsEl && window.ToolSheetTabsDrag) {

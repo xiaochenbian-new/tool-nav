@@ -400,6 +400,32 @@
                 user-select: none;
                 padding: 0 2px;
             }
+            .convert-fmt-row {
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .convert-fmt-row .fmt-label {
+                color: var(--muted);
+                font-size: 12px;
+                white-space: nowrap;
+            }
+            .convert-fmt-row select {
+                height: 28px;
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                padding: 0 8px;
+                background: #fff;
+                color: var(--text);
+                font-size: 12px;
+                max-width: 148px;
+            }
+            .convert-fmt-row #btn-convert-swap {
+                min-width: 36px;
+                padding: 0 8px;
+                font-size: 16px;
+                line-height: 1;
+            }
             #toast {
                 position: fixed;
                 bottom: 28px;
@@ -675,17 +701,17 @@
                 </div>
                 <div id="editor-zone" class="editor-zone">
                     <div class="ta-wrap" style="flex:1;min-height:0;display:flex;flex-direction:column;">
-                        <span class="ta-label" id="label-in" style="display:none;padding:8px 10px 0;">JSON</span>
+                        <span class="ta-label" id="label-in" style="display:none;padding:8px 10px 0;">输入（源格式）</span>
                         <div class="editor-stack editor-stack-main">
                             <textarea id="main-input" data-persist-key="json_input" aria-hidden="true" tabindex="-1"></textarea>
                             <div id="cm-json-mount"></div>
                         </div>
                     </div>
                     <div class="ta-wrap" id="wrap-out" style="display:none;flex:1;min-height:0;flex-direction:column;">
-                        <span class="ta-label">转换成</span>
+                        <span class="ta-label">输出（目标格式）</span>
                         <div class="editor-stack editor-stack-out">
                             <pre class="editor-highlight-backdrop" id="output-convert-backdrop"></pre>
-                            <textarea id="output-convert" class="editor-text-layer" data-persist-key="json_convert_out" readonly placeholder="选择格式后自动转换，或点击「转换」"></textarea>
+                            <textarea id="output-convert" class="editor-text-layer" data-persist-key="json_convert_out" readonly placeholder="选择源/目标格式后自动转换，或点击「转换」"></textarea>
                         </div>
                     </div>
                     <div id="find-bar" class="find-bar" hidden>
@@ -719,7 +745,7 @@
                 <div class="json-tabs-row">
                     <div class="json-tabs">
                         <button type="button" class="active" id="tab-common" data-tab="common">常用</button>
-                        <button type="button" id="tab-convert" data-tab="convert">转换成</button>
+                        <button type="button" id="tab-convert" data-tab="convert">格式互转</button>
                     </div>
                     <button type="button" class="btn primary" id="btn-repair" title="修复常见错误：缺逗号、缺 } 或 ]、引号与转义等，再经 jsonrepair 校正">修复</button>
                 </div>
@@ -767,7 +793,23 @@
                 </div>
 
                 <div id="panel-convert" class="tab-panel">
-                    <div class="align-row" id="convert-buttons">
+                    <div class="align-row convert-fmt-row" id="convert-buttons">
+                        <span class="fmt-label">源</span>
+                        <select id="convert-src-fmt" title="输入数据的格式">
+                            <option value="auto">自动识别</option>
+                            <option value="json" selected>JSON</option>
+                            <option value="yaml">YAML</option>
+                            <option value="xml">XML</option>
+                            <option value="toml">TOML</option>
+                            <option value="properties">Properties</option>
+                            <option value="csv">CSV</option>
+                            <option value="html_table">HTML 表格</option>
+                            <option value="http_query_string">HTTP 查询串</option>
+                            <option value="text">纯文本</option>
+                        </select>
+                        <button type="button" class="btn" id="btn-convert-swap" title="交换输入与输出（及源/目标格式）">⇄</button>
+                        <span class="fmt-label">目标</span>
+                        <button type="button" class="btn" data-fmt="json">JSON</button>
                         <button type="button" class="btn format-active" data-fmt="xml">XML</button>
                         <button type="button" class="btn" data-fmt="yaml">YAML</button>
                         <button type="button" class="btn" data-fmt="toml">TOML</button>
@@ -775,7 +817,7 @@
                         <button type="button" class="btn" data-fmt="csv">CSV</button>
                         <button type="button" class="btn" data-fmt="html_table">HTML 表格</button>
                         <button type="button" class="btn" data-fmt="http_query_string">HTTP 查询串</button>
-                        <button type="button" class="btn" data-fmt="php_array">PHP 数组</button>
+                        <button type="button" class="btn" data-fmt="php_array" title="仅支持作为输出">PHP 数组</button>
                         <button type="button" class="btn" data-fmt="text">纯文本</button>
                         <span class="sep">|</span>
                         <button type="button" class="btn primary" id="btn-do-convert">转换</button>
@@ -834,7 +876,9 @@
                 var currentTab = "common";
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
+                var qsParseCache = null;
                 var tomlStringifyCache = null;
+                var tomlParseCache = null;
                 /** 超过该体积启用大文本模式（关闭折行/折叠/语法高亮，降低输入卡顿） */
                 var LARGE_CONTENT_BYTES = 128 * 1024;
                 var NORMAL_PERSIST_MS = 400;
@@ -1138,6 +1182,7 @@
                                 "*"
                             );
                             toast("已发送到文本对比");
+                            clearCompareSelect();
                             return;
                         } catch (e1) {
                             // fall through
@@ -1153,6 +1198,7 @@
                     } catch (e3) {
                         // ignore
                     }
+                    clearCompareSelect();
                     window.location.href = "../index.html#tab=" + HANDOFF_TEXT_DIFF_TAB;
                 }
 
@@ -1316,6 +1362,13 @@
                 }
 
                 document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
+                // 从文本对比返回本工具时，去掉 Ctrl 多选高亮
+                document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === "visible") clearCompareSelect();
+                });
+                window.addEventListener("pageshow", function () {
+                    clearCompareSelect();
+                });
                 sheetAddBtn.addEventListener("click", addSheet);
 
                 if (sheetTabsEl && window.ToolSheetTabsDrag) {
@@ -1998,7 +2051,7 @@
                     panelCommon.classList.toggle("active", !isConvert);
                     panelConvert.classList.toggle("active", isConvert);
                     editorZone.classList.toggle("convert-mode", isConvert);
-                    headTitle.textContent = isConvert ? "JSON · 双栏" : "JSON 输入";
+                    headTitle.textContent = isConvert ? "数据互转 · 双栏" : "JSON 输入";
                     btnCopyOut.style.display = isConvert ? "inline-flex" : "none";
                     btnQrOut.style.display = isConvert ? "inline-flex" : "none";
                     labelIn.style.display = isConvert ? "block" : "none";
@@ -2299,34 +2352,339 @@
                         .join("\n");
                 }
 
-                function ensureQsStringify(callback) {
-                    if (qsStringifyCache) return callback(null, qsStringifyCache);
+                function ensureQs(callback) {
+                    if (qsStringifyCache && qsParseCache) return callback(null, qsStringifyCache, qsParseCache);
                     import("../vendor/bundles/qs.mjs")
                         .then(function (m) {
-                            if (typeof m.stringify === "function") {
-                                qsStringifyCache = m.stringify;
-                            } else if (m.default && typeof m.default.stringify === "function") {
-                                qsStringifyCache = m.default.stringify.bind(m.default);
-                            } else {
-                                throw new Error("qs 模块缺少 stringify");
-                            }
-                            callback(null, qsStringifyCache);
+                            qsStringifyCache = typeof m.stringify === "function" ? m.stringify : (m.default && m.default.stringify);
+                            qsParseCache = typeof m.parse === "function" ? m.parse : (m.default && m.default.parse);
+                            if (!qsStringifyCache) throw new Error("qs 模块缺少 stringify");
+                            if (!qsParseCache) throw new Error("qs 模块缺少 parse");
+                            callback(null, qsStringifyCache, qsParseCache);
                         })
                         .catch(function (e) {
                             callback(e);
                         });
                 }
 
-                function ensureTomlStringify(callback) {
-                    if (tomlStringifyCache) return callback(null, tomlStringifyCache);
+                function ensureToml(callback) {
+                    if (tomlStringifyCache && tomlParseCache) return callback(null, tomlStringifyCache, tomlParseCache);
                     import("../vendor/bundles/toml.mjs")
                         .then(function (m) {
                             tomlStringifyCache = m.stringify || (m.default && m.default.stringify);
-                            callback(null, tomlStringifyCache);
+                            tomlParseCache = m.parse || (m.default && m.default.parse);
+                            if (!tomlStringifyCache) throw new Error("TOML 模块缺少 stringify");
+                            if (!tomlParseCache) throw new Error("TOML 模块缺少 parse");
+                            callback(null, tomlStringifyCache, tomlParseCache);
                         })
                         .catch(function (e) {
                             callback(e);
                         });
+                }
+
+                function parseXmlToObject(xmlText) {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(String(xmlText || ""), "application/xml");
+                    var err = doc.querySelector("parsererror");
+                    if (err) throw new Error("XML 解析失败");
+                    function nodeToValue(node) {
+                        if (!node) return null;
+                        if (node.nodeType === 3 || node.nodeType === 4) {
+                            var t = String(node.nodeValue || "").trim();
+                            return t === "" ? null : t;
+                        }
+                        if (node.nodeType !== 1) return null;
+                        var kids = Array.prototype.filter.call(node.childNodes || [], function (n) {
+                            return n.nodeType === 1 || ((n.nodeType === 3 || n.nodeType === 4) && String(n.nodeValue || "").trim());
+                        });
+                        if (!kids.length) return "";
+                        var onlyText = kids.every(function (n) { return n.nodeType === 3 || n.nodeType === 4; });
+                        if (onlyText) return kids.map(function (n) { return String(n.nodeValue || ""); }).join("").trim();
+                        var obj = {};
+                        kids.forEach(function (n) {
+                            if (n.nodeType !== 1) return;
+                            var key = n.nodeName;
+                            var val = nodeToValue(n);
+                            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                                if (!Array.isArray(obj[key])) obj[key] = [obj[key]];
+                                obj[key].push(val);
+                            } else {
+                                obj[key] = val;
+                            }
+                        });
+                        return obj;
+                    }
+                    var root = doc.documentElement;
+                    if (!root) throw new Error("XML 无根节点");
+                    var body = nodeToValue(root);
+                    if (root.nodeName === "root" && isPlainObject(body) && Object.keys(body).length === 1 && body.item !== undefined) {
+                        return body.item;
+                    }
+                    if (root.nodeName === "root") return body;
+                    var wrap = {};
+                    wrap[root.nodeName] = body;
+                    return wrap;
+                }
+
+                function parsePropertiesText(text) {
+                    var out = {};
+                    String(text || "").split(/\r?\n/).forEach(function (line) {
+                        var s = line.trim();
+                        if (!s || s.charAt(0) === "#" || s.charAt(0) === "!") return;
+                        var eq = s.indexOf("=");
+                        var sep = s.indexOf(":");
+                        var idx = eq < 0 ? sep : sep < 0 ? eq : Math.min(eq, sep);
+                        if (idx < 0) {
+                            out[s] = "";
+                            return;
+                        }
+                        var key = s.slice(0, idx).trim();
+                        var val = s.slice(idx + 1).trim();
+                        if (!key) return;
+                        var parts = key.split(".");
+                        var cur = out;
+                        for (var i = 0; i < parts.length - 1; i++) {
+                            var p = parts[i];
+                            if (!isPlainObject(cur[p])) cur[p] = {};
+                            cur = cur[p];
+                        }
+                        cur[parts[parts.length - 1]] = val;
+                    });
+                    return out;
+                }
+
+                function parseCsvText(text) {
+                    var rows = [];
+                    var row = [];
+                    var cell = "";
+                    var inQuotes = false;
+                    var s = String(text || "");
+                    for (var i = 0; i < s.length; i++) {
+                        var ch = s.charAt(i);
+                        if (inQuotes) {
+                            if (ch === '"') {
+                                if (s.charAt(i + 1) === '"') {
+                                    cell += '"';
+                                    i++;
+                                } else inQuotes = false;
+                            } else cell += ch;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            inQuotes = true;
+                            continue;
+                        }
+                        if (ch === ",") {
+                            row.push(cell);
+                            cell = "";
+                            continue;
+                        }
+                        if (ch === "\n") {
+                            row.push(cell);
+                            rows.push(row);
+                            row = [];
+                            cell = "";
+                            continue;
+                        }
+                        if (ch === "\r") continue;
+                        cell += ch;
+                    }
+                    if (cell.length || row.length) {
+                        row.push(cell);
+                        rows.push(row);
+                    }
+                    if (!rows.length) return [];
+                    var headers = rows[0].map(function (h) { return String(h || "").trim() || "col"; });
+                    var list = [];
+                    for (var r = 1; r < rows.length; r++) {
+                        if (rows[r].every(function (c) { return String(c || "").trim() === ""; })) continue;
+                        var obj = {};
+                        headers.forEach(function (h, hi) {
+                            obj[h] = rows[r][hi] == null ? "" : rows[r][hi];
+                        });
+                        list.push(obj);
+                    }
+                    return list;
+                }
+
+                function parseHtmlTableText(html) {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(String(html || ""), "text/html");
+                    var table = doc.querySelector("table");
+                    if (!table) throw new Error("未找到 HTML table");
+                    var headers = [];
+                    var ths = table.querySelectorAll("thead th");
+                    if (ths.length) {
+                        ths.forEach(function (th) { headers.push(String(th.textContent || "").trim() || "col"); });
+                    } else {
+                        var first = table.querySelector("tr");
+                        if (first) {
+                            Array.prototype.forEach.call(first.children, function (cell) {
+                                headers.push(String(cell.textContent || "").trim() || "col");
+                            });
+                        }
+                    }
+                    if (!headers.length) throw new Error("HTML 表格无表头");
+                    var rows = [];
+                    var trs = table.querySelectorAll("tbody tr");
+                    if (!trs.length) trs = table.querySelectorAll("tr");
+                    Array.prototype.forEach.call(trs, function (tr, idx) {
+                        if (!table.querySelector("thead") && idx === 0 && tr.querySelector("th")) return;
+                        var cells = tr.querySelectorAll("td,th");
+                        if (!cells.length) return;
+                        var obj = {};
+                        headers.forEach(function (h, hi) {
+                            obj[h] = cells[hi] ? String(cells[hi].textContent || "").trim() : "";
+                        });
+                        rows.push(obj);
+                    });
+                    return rows;
+                }
+
+                function parseTextLines(text) {
+                    return String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+                }
+
+                function detectConvertFormat(text) {
+                    var s = String(text || "").trim();
+                    if (!s) return "json";
+                    if (/^[\[{]/.test(s)) {
+                        try {
+                            parseJsonStrict(s);
+                            return "json";
+                        } catch (e) { /* fallthrough */ }
+                    }
+                    if (/^</.test(s) && /<table[\s>]/i.test(s)) return "html_table";
+                    if (/^</.test(s) || /^<\?xml/i.test(s)) return "xml";
+                    if (/^[^=&#\n]+=[^&\n]*(&[^=&#\n]+=[^&\n]*)*$/.test(s) && s.indexOf("=") > 0 && s.indexOf("\n") < 0) {
+                        return "http_query_string";
+                    }
+                    if (/^[\w.-]+\s*[=:]\s*.+/m.test(s) && !/^\s*-\s+/m.test(s) && s.indexOf("---") < 0) {
+                        if (/^\s*[A-Za-z0-9_.-]+\s*=\s*/m.test(s) && !/,/.test(s.split("\n")[0] || "")) {
+                            // could be properties or toml; prefer toml if has [section] or typed values
+                            if (/^\s*\[[^\]]+\]\s*$/m.test(s) || /\btrue\b|\bfalse\b|\d{4}-\d{2}-\d{2}/.test(s)) return "toml";
+                            return "properties";
+                        }
+                    }
+                    if (/^\s*[\[{]/.test(s) === false && /,/.test(s.split(/\r?\n/)[0] || "") && s.split(/\r?\n/).length >= 2) {
+                        return "csv";
+                    }
+                    if (typeof jsyaml !== "undefined") {
+                        try {
+                            var y = jsyaml.load(s);
+                            if (y !== undefined) return "yaml";
+                        } catch (e2) { /* fallthrough */ }
+                    }
+                    return "text";
+                }
+
+                function parseConvertInput(text, fmt, done) {
+                    var code = String(text || "").trim();
+                    if (!code) return done(new Error("请输入内容"));
+                    var useFmt = fmt === "auto" ? detectConvertFormat(code) : fmt;
+                    function finish(err, obj, detected) {
+                        done(err, obj, detected || useFmt);
+                    }
+                    try {
+                        if (useFmt === "json") return finish(null, parseJsonStrict(code), "json");
+                        if (useFmt === "yaml") {
+                            if (typeof jsyaml === "undefined") throw new Error("js-yaml 未加载");
+                            return finish(null, jsyaml.load(code), "yaml");
+                        }
+                        if (useFmt === "xml") return finish(null, parseXmlToObject(code), "xml");
+                        if (useFmt === "properties") return finish(null, parsePropertiesText(code), "properties");
+                        if (useFmt === "csv") return finish(null, parseCsvText(code), "csv");
+                        if (useFmt === "html_table") return finish(null, parseHtmlTableText(code), "html_table");
+                        if (useFmt === "text") return finish(null, parseTextLines(code), "text");
+                        if (useFmt === "toml") {
+                            return ensureToml(function (err, stringify, parse) {
+                                if (err || !parse) return finish(new Error("TOML 模块加载失败"));
+                                try {
+                                    finish(null, parse(code), "toml");
+                                } catch (e2) {
+                                    finish(e2);
+                                }
+                            });
+                        }
+                        if (useFmt === "http_query_string") {
+                            return ensureQs(function (err, stringify, parse) {
+                                if (err || !parse) return finish(new Error("查询串模块加载失败"));
+                                try {
+                                    var q = code.replace(/^\?/, "");
+                                    finish(null, parse(q), "http_query_string");
+                                } catch (e2) {
+                                    finish(e2);
+                                }
+                            });
+                        }
+                        if (useFmt === "php_array") {
+                            return finish(new Error("PHP 数组暂不支持作为输入，请改为 JSON/YAML 等格式"));
+                        }
+                        return finish(new Error("不支持的源格式：" + useFmt));
+                    } catch (e) {
+                        finish(e);
+                    }
+                }
+
+                function serializeConvertOutput(obj, fmt, done) {
+                    try {
+                        if (fmt === "json") {
+                            done(null, JSON.stringify(obj, null, 2));
+                            return;
+                        }
+                        if (fmt === "xml") {
+                            done(null, jsonToXml(obj));
+                            return;
+                        }
+                        if (fmt === "yaml") {
+                            if (typeof jsyaml === "undefined") throw new Error("js-yaml 未加载");
+                            done(null, jsyaml.dump(obj, { lineWidth: 120 }));
+                            return;
+                        }
+                        if (fmt === "properties") {
+                            done(null, jsonToProperties(obj));
+                            return;
+                        }
+                        if (fmt === "csv") {
+                            done(null, jsonToCsv(obj));
+                            return;
+                        }
+                        if (fmt === "html_table") {
+                            done(null, jsonToHtmlTable(obj));
+                            return;
+                        }
+                        if (fmt === "php_array") {
+                            done(null, stringifyPhpArray(obj));
+                            return;
+                        }
+                        if (fmt === "text") {
+                            done(null, jsonToText(obj));
+                            return;
+                        }
+                        if (fmt === "toml") {
+                            return ensureToml(function (err, stringify) {
+                                if (err || !stringify) return done(new Error("TOML 模块加载失败"));
+                                try {
+                                    done(null, stringify(obj));
+                                } catch (e2) {
+                                    done(e2);
+                                }
+                            });
+                        }
+                        if (fmt === "http_query_string") {
+                            return ensureQs(function (err, stringify) {
+                                if (err || !stringify) return done(new Error("查询串模块加载失败"));
+                                try {
+                                    done(null, stringify(obj));
+                                } catch (e2) {
+                                    done(e2);
+                                }
+                            });
+                        }
+                        done(new Error("不支持的目标格式：" + fmt));
+                    } catch (e) {
+                        done(e);
+                    }
                 }
 
                 function doConvert(silent) {
@@ -2338,77 +2696,30 @@
                         refreshFindHighlights();
                         return;
                     }
-                    var obj;
-                    try {
-                        obj = parseJsonStrict(code);
-                    } catch (e) {
-                        outputConvert.value = "";
-                        toast("JSON 无效：" + e.message);
-                        refreshFindHighlights();
-                        return;
-                    }
+                    var srcFmtEl = document.getElementById("convert-src-fmt");
+                    var srcFmt = srcFmtEl ? srcFmtEl.value : "json";
                     var fmt = currentFmt;
                     function fail(msg) {
                         outputConvert.value = "";
                         toast(msg);
                         refreshFindHighlights();
                     }
-                    function ok() {
-                        if (!silent) toast("已转换");
+                    function ok(detected) {
+                        if (!silent) {
+                            toast(detected && srcFmt === "auto" ? "已转换（识别为 " + detected + "）" : "已转换");
+                        } else if (detected && srcFmt === "auto" && srcFmtEl && srcFmtEl.dataset.lastDetected !== detected) {
+                            srcFmtEl.dataset.lastDetected = detected;
+                        }
                         refreshFindHighlights();
                     }
-                    try {
-                        if (fmt === "xml") {
-                            outputConvert.value = jsonToXml(obj);
-                            ok();
-                        } else if (fmt === "yaml") {
-                            if (typeof jsyaml === "undefined") throw new Error("js-yaml 未加载");
-                            outputConvert.value = jsyaml.dump(obj, { lineWidth: 120 });
-                            ok();
-                        } else if (fmt === "toml") {
-                            ensureTomlStringify(function (err, stringify) {
-                                if (err || !stringify) return fail("TOML 模块加载失败（需联网）");
-                                try {
-                                    outputConvert.value = stringify(obj);
-                                    ok();
-                                } catch (e2) {
-                                    fail("TOML：" + e2.message);
-                                }
-                            });
-                            return;
-                        } else if (fmt === "properties") {
-                            outputConvert.value = jsonToProperties(obj);
-                            ok();
-                        } else if (fmt === "csv") {
-                            outputConvert.value = jsonToCsv(obj);
-                            ok();
-                        } else if (fmt === "html_table") {
-                            outputConvert.value = jsonToHtmlTable(obj);
-                            ok();
-                        } else if (fmt === "http_query_string") {
-                            ensureQsStringify(function (err, stringify) {
-                                if (err || !stringify) return fail("查询串模块加载失败（需联网）");
-                                try {
-                                    outputConvert.value = stringify(obj);
-                                    ok();
-                                } catch (e2) {
-                                    fail("HTTP 查询串：" + e2.message);
-                                }
-                            });
-                            return;
-                        } else if (fmt === "php_array") {
-                            outputConvert.value = stringifyPhpArray(obj);
-                            ok();
-                        } else if (fmt === "text") {
-                            outputConvert.value = jsonToText(obj);
-                            ok();
-                        } else {
-                            outputConvert.value = JSON.stringify(obj, null, 2);
-                            ok();
-                        }
-                    } catch (e) {
-                        fail("转换失败：" + e.message);
-                    }
+                    parseConvertInput(code, srcFmt, function (err, obj, detected) {
+                        if (err) return fail("解析失败：" + (err.message || err));
+                        serializeConvertOutput(obj, fmt, function (err2, text) {
+                            if (err2) return fail("转换失败：" + (err2.message || err2));
+                            outputConvert.value = text == null ? "" : String(text);
+                            ok(detected);
+                        });
+                    });
                 }
 
                 document.querySelectorAll("#convert-buttons .btn[data-fmt]").forEach(function (btn) {
@@ -2420,6 +2731,38 @@
                         currentFmt = btn.getAttribute("data-fmt");
                         doConvert(true);
                     });
+                });
+
+                var convertSrcFmt = document.getElementById("convert-src-fmt");
+                if (convertSrcFmt) {
+                    convertSrcFmt.addEventListener("change", function () {
+                        doConvert(true);
+                    });
+                }
+
+                document.getElementById("btn-convert-swap").addEventListener("click", function () {
+                    var out = outputConvert.value || "";
+                    if (!String(out).trim()) {
+                        toast("右侧输出为空，无法交换");
+                        return;
+                    }
+                    var srcEl = document.getElementById("convert-src-fmt");
+                    var oldSrc = srcEl ? srcEl.value : "json";
+                    var oldTarget = currentFmt;
+                    if (oldTarget === "php_array") {
+                        toast("PHP 数组不能作为输入，请先选其他目标格式再交换");
+                        return;
+                    }
+                    setMainInputContent(out);
+                    outputConvert.value = "";
+                    if (srcEl) {
+                        srcEl.value = oldTarget === "auto" ? "json" : oldTarget;
+                    }
+                    currentFmt = oldSrc === "auto" ? "json" : oldSrc;
+                    document.querySelectorAll("#convert-buttons .btn[data-fmt]").forEach(function (b) {
+                        b.classList.toggle("format-active", b.getAttribute("data-fmt") === currentFmt);
+                    });
+                    doConvert(false);
                 });
 
                 document.getElementById("btn-do-convert").addEventListener("click", function () {
