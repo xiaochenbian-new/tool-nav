@@ -737,6 +737,21 @@
                 box-sizing: border-box;
                 min-width: 0;
             }
+            td.data-cell,
+            td.data-cell .cell-content,
+            thead th[data-col],
+            thead th[data-col] .th-name {
+                -webkit-user-select: text;
+                user-select: text;
+                cursor: text;
+            }
+            thead th[data-col] .sort-btn,
+            thead th[data-col] .filter-btn,
+            thead th[data-col] .resize-handle,
+            thead th.rowno-col {
+                -webkit-user-select: none;
+                user-select: none;
+            }
             tbody tr:nth-child(even) td {
                 background: #f5f7fb;
             }
@@ -877,7 +892,7 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                cursor: pointer;
+                cursor: text;
             }
             .result-wrap.head-expanded .th-name {
                 flex: none;
@@ -963,12 +978,36 @@
                 accent-color: #2f6bff;
                 flex: 0 0 14px;
             }
-            .filter-check span {
+            .filter-check span,
+            .filter-check-text {
                 flex: 1;
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+            .filter-check.has-overflow .filter-check-text {
+                cursor: help;
+                border-bottom: 1px dotted rgba(47, 107, 255, 0.35);
+            }
+            .filter-view-btn {
+                flex: 0 0 auto;
+                border: 0;
+                background: transparent;
+                color: #5a739b;
+                font-size: 12px;
+                line-height: 1;
+                padding: 0 2px;
+                display: none;
+                cursor: pointer;
+            }
+            .filter-check.has-overflow .filter-view-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .filter-view-btn:hover {
+                color: #1f4d8c;
             }
             .filter-values::-webkit-scrollbar {
                 width: 8px;
@@ -1139,10 +1178,10 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 vertical-align: top;
-                cursor: default;
+                cursor: text;
             }
             .cell-content.is-truncated {
-                cursor: pointer;
+                cursor: text;
                 border-bottom: 1px dotted rgba(47, 107, 255, 0.35);
             }
             td.data-cell {
@@ -1176,7 +1215,7 @@
                 display: none;
                 align-items: center;
                 justify-content: center;
-                z-index: 80;
+                z-index: 5100;
                 padding: 16px;
             }
             .text-popup-mask.show {
@@ -1459,6 +1498,8 @@
             let rangeSelection = null; // { mode:'row'|'col'|'headerCol', col?:string, start?:number, end?:number, indices?:number[] }
             let headerColAnchor = null; // Shift 连选锚点（列下标）
             let activeFilterAnchor = null;
+            /** 用于区分「拖选文字」与「单击」：拖选结束不打断选区，单击行号等仍要响应。 */
+            let resultTextDragGesture = { active: false, moved: false, x: 0, y: 0 };
             let rowDisplayCache = new WeakMap();
             let copyMenuState = { type: "selection", col: "" };
             let lastSqlHistoryList = [];
@@ -3354,6 +3395,29 @@
                 bindCellBorderDblClick();
             }
 
+            function hasTextDragSelection() {
+                var sel = window.getSelection ? window.getSelection() : null;
+                if (!sel || sel.isCollapsed || sel.rangeCount < 1) return false;
+                return String(sel.toString() || "").length > 0;
+            }
+
+            function clearWindowTextSelection() {
+                var sel = window.getSelection ? window.getSelection() : null;
+                if (sel && sel.removeAllRanges) sel.removeAllRanges();
+            }
+
+            function resetResultTextDragGesture() {
+                resultTextDragGesture.active = false;
+                resultTextDragGesture.moved = false;
+            }
+
+            /** 仅当本次是拖选文字手势时，才忽略单击选中逻辑。 */
+            function shouldIgnoreClickForTextDrag() {
+                var ignore = !!resultTextDragGesture.moved && hasTextDragSelection();
+                resetResultTextDragGesture();
+                return ignore;
+            }
+
             function isCellContentOverflowing(el) {
                 if (!el) return false;
                 return el.scrollWidth > el.clientWidth + 1;
@@ -3647,11 +3711,28 @@
                     for (var i = renderedCount; i < end; i++) {
                         var v = filteredValues[i];
                         var checked = selectedSet.has(v) ? " checked" : "";
+                        var displayText = v || "(空值)";
+                        var titleAttr = escapeHtml(displayText);
                         html += "<label class=\"filter-check\"><input type=\"checkbox\" value=\"" + escapeHtml(v) + "\"" + checked + " />"
-                            + "<span>" + escapeHtml(v || "(空值)") + "</span></label>";
+                            + "<span class=\"filter-check-text\" title=\"" + titleAttr + "\">" + escapeHtml(displayText) + "</span>"
+                            + "<button type=\"button\" class=\"filter-view-btn\" title=\"查看全部\" aria-label=\"查看全部\">👁</button>"
+                            + "</label>";
                     }
                     if (html) valueWrap.insertAdjacentHTML("beforeend", html);
                     renderedCount = end;
+                    markFilterValueOverflow();
+                }
+
+                function markFilterValueOverflow() {
+                    valueWrap.querySelectorAll(".filter-check").forEach(function (lab) {
+                        var textEl = lab.querySelector(".filter-check-text");
+                        if (!textEl) return;
+                        var truncated = textEl.scrollWidth > textEl.clientWidth + 1;
+                        lab.classList.toggle("has-overflow", truncated);
+                        if (truncated) {
+                            textEl.setAttribute("title", textEl.textContent || "");
+                        }
+                    });
                 }
                 renderNextValueChunk(true);
                 panel.querySelectorAll(".quarter-btn").forEach(function (qb) {
@@ -3706,6 +3787,20 @@
 
                 panel.addEventListener("click", function (e) {
                     e.stopPropagation();
+                    var viewBtn = e.target.closest(".filter-view-btn");
+                    if (viewBtn) {
+                        e.preventDefault();
+                        var lab = viewBtn.closest(".filter-check");
+                        var textEl = lab && lab.querySelector(".filter-check-text");
+                        if (textEl) openCellTextPopup(textEl.textContent || "");
+                        return;
+                    }
+                    var truncText = e.target.closest(".filter-check.has-overflow .filter-check-text");
+                    if (truncText) {
+                        // 点击被省略的文字查看全部，不切换勾选
+                        e.preventDefault();
+                        openCellTextPopup(truncText.textContent || "");
+                    }
                 });
                 panel.querySelector(".filter-input").addEventListener("input", function () {
                     syncValueListByKeyword();
@@ -5282,10 +5377,25 @@
                 }
                 renderSqlHistoryPop();
             });
+            document.getElementById("result-wrap").addEventListener("mousedown", function (e) {
+                if (e.button !== 0) return;
+                resultTextDragGesture = { active: true, moved: false, x: e.clientX, y: e.clientY };
+            });
+            document.addEventListener("mousemove", function (e) {
+                if (!resultTextDragGesture.active || resultTextDragGesture.moved) return;
+                if (Math.abs(e.clientX - resultTextDragGesture.x) > 4
+                    || Math.abs(e.clientY - resultTextDragGesture.y) > 4) {
+                    resultTextDragGesture.moved = true;
+                }
+            });
+            document.addEventListener("mouseup", function () {
+                resultTextDragGesture.active = false;
+            });
             document.getElementById("result-wrap").addEventListener("click", function (e) {
                 const expandBtn = e.target.closest(".head-expand-btn");
                 if (expandBtn) {
                     e.stopPropagation();
+                    resetResultTextDragGesture();
                     resultHeadExpanded = !resultHeadExpanded;
                     renderResultTable();
                     return;
@@ -5293,6 +5403,7 @@
                 const sortBtn = e.target.closest(".sort-btn");
                 if (sortBtn) {
                     e.stopPropagation();
+                    resetResultTextDragGesture();
                     toggleSortColumn(sortBtn.getAttribute("data-col"));
                     applyResultView();
                     return;
@@ -5300,12 +5411,15 @@
                 const filterBtn = e.target.closest(".filter-btn");
                 if (filterBtn) {
                     e.stopPropagation();
+                    resetResultTextDragGesture();
                     toggleFilterPopup(filterBtn.getAttribute("data-col"), filterBtn);
                     return;
                 }
                 const thNameHead = e.target.closest(".th-name");
                 if (thNameHead) {
                     e.stopPropagation();
+                    // 拖选表头文字复制时，不触发表头选中
+                    if (shouldIgnoreClickForTextDrag()) return;
                     var thCol = resolveColumnNameFromHeaderTarget(thNameHead)
                         || String(thNameHead.textContent || "").trim();
                     if (thCol) {
@@ -5317,12 +5431,15 @@
                 const rownoHeadTh = e.target.closest("thead th.rowno-col");
                 if (rownoHeadTh && !e.target.closest(".head-expand-btn")) {
                     e.stopPropagation();
+                    resetResultTextDragGesture();
+                    clearWindowTextSelection();
                     selectAllHeaderColumns();
                     return;
                 }
                 const headerTh = e.target.closest("thead th[data-col]");
                 if (headerTh && !e.target.closest(".sort-btn, .filter-btn, .resize-handle, .head-expand-btn")) {
                     e.stopPropagation();
+                    if (shouldIgnoreClickForTextDrag()) return;
                     var headerCol = headerTh.getAttribute("data-col") || resolveColumnNameFromHeaderTarget(headerTh);
                     if (headerCol) {
                         selectHeaderColumn(headerCol, e.shiftKey, e.ctrlKey || e.metaKey);
@@ -5332,6 +5449,7 @@
                 }
                 const truncContent = e.target.closest(".cell-content.is-truncated");
                 if (truncContent) {
+                    if (shouldIgnoreClickForTextDrag()) return;
                     const hostTd = truncContent.closest("td.data-cell");
                     if (hostTd) {
                         var borderRect = hostTd.getBoundingClientRect();
@@ -5351,6 +5469,7 @@
                 const viewBtn = e.target.closest(".cell-view-btn");
                 if (viewBtn) {
                     e.stopPropagation();
+                    resetResultTextDragGesture();
                     const hostCell = viewBtn.closest("td.data-cell");
                     if (!hostCell) return;
                     const cell = hostCell.querySelector(".cell-content");
@@ -5360,12 +5479,18 @@
                 }
                 const rowNoCell = e.target.closest("td.rowno-col");
                 if (rowNoCell) {
+                    resetResultTextDragGesture();
+                    clearWindowTextSelection();
                     updateRangeSelectionFromClick("row", rowNoCell.getAttribute("data-row-index"), "", e.shiftKey);
                     return;
                 }
                 const dataCell = e.target.closest("td.data-cell");
                 if (dataCell) {
+                    // 拖选文本复制时，不触发单元格选中逻辑，避免打断选区
+                    if (shouldIgnoreClickForTextDrag()) return;
                     updateRangeSelectionFromClick("col", dataCell.getAttribute("data-row-index"), dataCell.getAttribute("data-col"), e.shiftKey);
+                } else {
+                    resetResultTextDragGesture();
                 }
             });
             document.getElementById("result-wrap").addEventListener("contextmenu", function (e) {
@@ -5434,6 +5559,7 @@
             });
             document.getElementById("text-popup-mask").addEventListener("click", function (e) {
                 if (e.target.id === "text-popup-mask") {
+                    e.stopPropagation();
                     e.currentTarget.classList.remove("show");
                     document.getElementById("text-popup").textContent = "";
                 }
