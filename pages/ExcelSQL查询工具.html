@@ -1182,7 +1182,6 @@
             }
             .cell-content.is-truncated {
                 cursor: text;
-                border-bottom: 1px dotted rgba(47, 107, 255, 0.35);
             }
             td.data-cell {
                 position: relative;
@@ -1202,7 +1201,7 @@
                 display: none;
                 cursor: pointer;
             }
-            td.data-cell.has-overflow:hover .cell-view-btn {
+            td.data-cell.has-overflow .cell-view-btn {
                 display: inline-block;
             }
             .cell-view-btn:hover {
@@ -1518,12 +1517,23 @@
             let activeCsvPasteId = 1;
             let nextCsvPasteId = 2;
             let csvPasteRenameId = null;
-            /** 大批量导入时每 N 行让出一次主线程，便于 1s 后显示等待层 */
+            /** 大批量导入时每 N 行让出一次主线程，便于等待层及时显示 */
             const IMPORT_YIELD_ROWS = 8000;
+            /** 导入等异步操作：超过该时间才显示等待层，避免极短操作闪烁 */
+            const BUSY_SHOW_DELAY_MS = 200;
 
             function yieldToBrowser() {
                 return new Promise(function (resolve) {
                     window.setTimeout(resolve, 0);
+                });
+            }
+
+            /** 双 rAF，确保 overlay 已绘制后再跑同步重活 */
+            function waitForPaint() {
+                return new Promise(function (resolve) {
+                    window.requestAnimationFrame(function () {
+                        window.requestAnimationFrame(resolve);
+                    });
                 });
             }
 
@@ -1545,15 +1555,22 @@
                 }
             }
 
-            /** 操作超过 1s 才显示全屏等待，避免闪烁 */
-            function startDelayedBusy(message) {
+            /** 延迟显示全屏等待；delayMs 默认 BUSY_SHOW_DELAY_MS，传 0 表示立即显示 */
+            function startDelayedBusy(message, delayMs) {
+                var delay = delayMs == null ? BUSY_SHOW_DELAY_MS : delayMs;
                 var shown = false;
-                var id = window.setTimeout(function () {
+                var id = null;
+                if (delay <= 0) {
                     showBusyOverlay(message);
                     shown = true;
-                }, 1000);
+                } else {
+                    id = window.setTimeout(function () {
+                        showBusyOverlay(message);
+                        shown = true;
+                    }, delay);
+                }
                 return function stopDelayedBusy() {
-                    window.clearTimeout(id);
+                    if (id != null) window.clearTimeout(id);
                     if (shown) hideBusyOverlay();
                 };
             }
@@ -5081,14 +5098,14 @@
                     setStatus("请先上传 Excel 或载入 CSV。", true);
                     return;
                 }
-                var stopBusy = startDelayedBusy("正在执行 SQL…");
+                // SQL 为同步阻塞，需立即显示等待层并先完成绘制，否则长时间查询会像卡住
+                var stopBusy = startDelayedBusy("正在执行 SQL…", 0);
                 try {
-                    await yieldToBrowser();
+                    await waitForPaint();
                     ensureAlasqlEngineReady();
-                    await yieldToBrowser();
                     const sql = normalizeSql(rawSql, sqlMode);
                     lastExecutedSql = sql;
-                    await yieldToBrowser();
+                    await waitForPaint();
                     const rows = alasql(sql);
                     await yieldToBrowser();
                     if (Array.isArray(rows)) {
@@ -5445,25 +5462,6 @@
                         selectHeaderColumn(headerCol, e.shiftKey, e.ctrlKey || e.metaKey);
                         if (!(e.ctrlKey || e.metaKey)) showColumnSum(headerCol);
                     }
-                    return;
-                }
-                const truncContent = e.target.closest(".cell-content.is-truncated");
-                if (truncContent) {
-                    if (shouldIgnoreClickForTextDrag()) return;
-                    const hostTd = truncContent.closest("td.data-cell");
-                    if (hostTd) {
-                        var borderRect = hostTd.getBoundingClientRect();
-                        // 右边框留给双击自适应，避免误开弹框
-                        if (borderRect.right - e.clientX <= 8) return;
-                    }
-                    if (!isCellContentOverflowing(truncContent)) {
-                        truncContent.classList.remove("is-truncated");
-                        truncContent.setAttribute("data-truncated", "0");
-                        if (hostTd) hostTd.classList.remove("has-overflow");
-                        return;
-                    }
-                    e.stopPropagation();
-                    openCellTextPopup(truncContent.textContent || "");
                     return;
                 }
                 const viewBtn = e.target.closest(".cell-view-btn");

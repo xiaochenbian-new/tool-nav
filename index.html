@@ -1137,7 +1137,8 @@
             const FORM_CACHE = {};
             const FRAME_CACHE = {};
             const TOOLS = [
-                { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", keywords: ["json", "format", "yaml", "xml", "toml", "csv", "转换", "互转", "properties"] },
+                { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", keywords: ["json", "format", "格式化", "压缩", "修复"] },
+                { id: "tab48", name: "格式互转", category: "解析与转换", path: "pages/格式互转工具.html", keywords: ["格式互转", "转换", "互转", "json", "yaml", "xml", "toml", "csv", "properties", "php", "query"] },
                 { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", keywords: ["format", "json", "xml", "sql", "css", "js", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
                 { id: "tab44", name: "HTML 预览", category: "解析与转换", path: "pages/HTML预览工具.html", keywords: ["html", "preview", "预览", "实时", "编辑", "iframe", "网页", "渲染"] },
                 { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", keywords: ["ddl", "mysql", "pgsql", "oracle"] },
@@ -1198,12 +1199,15 @@
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
             const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
             const HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
+            const HANDOFF_JSON_TO_FMT_KEY = "tool-nav:handoff:json-to-fmt-convert";
+            const HANDOFF_FMT_CONVERT_TAB = "tab48";
             /** 换底色 ↔ 冲印排版：经父页中转（file:// 下 iframe 无法共享 sessionStorage） */
             let pendingPhotoPrintHandoff = null;
             let pendingPrintToPhotoHandoff = null;
             let pendingTextToExcelSqlHandoff = null;
             let pendingExcelSqlToTextHandoff = null;
             let pendingSheetsToTextDiffHandoff = null;
+            let pendingJsonToFmtHandoff = null;
             let currentId = "";
             let overviewVisible = false;
             /** 首次根据 hash 打开工具时不写入最近槽位，保证刷新后头部仍为常用前五个 */
@@ -1900,6 +1904,9 @@
                     if (tool.id === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
                         notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
                     }
+                    if (tool.id === HANDOFF_FMT_CONVERT_TAB && pendingJsonToFmtHandoff) {
+                        notifyFmtConvertToolHandoff("json-to-fmt-convert", 0);
+                    }
                 };
                 frame.src = toolFrameSrc(tool);
                 FRAME_CACHE[tool.id] = frame;
@@ -2552,6 +2559,69 @@
                 }
             }
 
+            function stashJsonToFmtHandoff(payload) {
+                if (!payload || typeof payload.text !== "string") return;
+                pendingJsonToFmtHandoff = payload;
+                try {
+                    sessionStorage.setItem(HANDOFF_JSON_TO_FMT_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            function takeJsonToFmtHandoffPayload() {
+                const payload = pendingJsonToFmtHandoff;
+                pendingJsonToFmtHandoff = null;
+                return payload;
+            }
+
+            function bridgeJsonToFmtHandoffFromStorage() {
+                if (pendingJsonToFmtHandoff) return;
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_JSON_TO_FMT_KEY);
+                } catch (e1) {}
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_JSON_TO_FMT_KEY);
+                    } catch (e2) {}
+                }
+                if (!raw) return;
+                try {
+                    stashJsonToFmtHandoff(JSON.parse(raw));
+                    try {
+                        sessionStorage.removeItem(HANDOFF_JSON_TO_FMT_KEY);
+                    } catch (e3) {}
+                    try {
+                        localStorage.removeItem(HANDOFF_JSON_TO_FMT_KEY);
+                    } catch (e4) {}
+                } catch (e5) {}
+            }
+
+            function notifyFmtConvertToolHandoff(kind, attempt) {
+                if (kind !== "json-to-fmt-convert") return;
+                const n = attempt || 0;
+                const frame = FRAME_CACHE[HANDOFF_FMT_CONVERT_TAB];
+                if (!frame || frame.getAttribute("data-loaded") !== "1") {
+                    if (n < 40) {
+                        setTimeout(function () {
+                            notifyFmtConvertToolHandoff(kind, n + 1);
+                        }, 150);
+                    }
+                    return;
+                }
+                const payload = takeJsonToFmtHandoffPayload();
+                if (!payload) return;
+                try {
+                    frame.contentWindow.postMessage(
+                        { type: "tool-nav:consume-handoff", handoff: kind, payload: payload },
+                        "*"
+                    );
+                } catch (e) {
+                    pendingJsonToFmtHandoff = payload;
+                }
+            }
+
             window.addEventListener("message", function (e) {
                 const d = e.data;
                 if (!d || d.type !== "tool-nav:open-tool") return;
@@ -2575,6 +2645,9 @@
                 if (d.handoff === "sheets-to-text-diff" && d.payload) {
                     stashSheetsToTextDiffHandoff(d.payload);
                 }
+                if (d.handoff === "json-to-fmt-convert" && d.payload) {
+                    stashJsonToFmtHandoff(d.payload);
+                }
                 openTool(d.toolId, true);
                 if (d.handoff === "photo-to-print") {
                     notifyPrintToolHandoff("photo-to-print", 0);
@@ -2590,6 +2663,9 @@
                 }
                 if (d.handoff === "sheets-to-text-diff") {
                     notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                }
+                if (d.handoff === "json-to-fmt-convert") {
+                    notifyFmtConvertToolHandoff("json-to-fmt-convert", 0);
                 }
             });
 
@@ -3109,6 +3185,7 @@
                 bridgeTextToExcelSqlHandoffFromStorage();
                 bridgeExcelSqlToTextHandoffFromStorage();
                 bridgeSheetsToTextDiffHandoffFromStorage();
+                bridgeJsonToFmtHandoffFromStorage();
                 const initialTab = resolveStartupTab();
                 openTool(initialTab, false);
                 if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
@@ -3125,6 +3202,9 @@
                 }
                 if (initialTab === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
                     notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                }
+                if (initialTab === HANDOFF_FMT_CONVERT_TAB && pendingJsonToFmtHandoff) {
+                    notifyFmtConvertToolHandoff("json-to-fmt-convert", 0);
                 }
                 isInitialPageLoad = false;
                 window.addEventListener("pagehide", function () {

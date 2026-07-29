@@ -3,11 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>Json工具</title>
+        <title>格式互转</title>
         <link rel="stylesheet" href="libs/tool-danger-btn.css" />
         <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
         <link rel="stylesheet" href="../vendor/codemirror/addon/fold/foldgutter.css" />
-        <script src="../vendor/jsonrepair/jsonrepair.min.js"></script>
         <script src="../vendor/js-yaml/js-yaml.min.js"></script>
         <script src="libs/tool-copy.js"></script>
         <script src="libs/qrcode-lib.bundle.js"></script>
@@ -662,26 +661,19 @@
             <div class="editor-wrap">
                 <div class="editor-head panel-title">
                     <div class="editor-head-main">
-                        <span id="head-title">JSON 输入</span>
-                        <span class="hint" title="底部可切换多个 JSON 工作表，双击标签可重命名；Ctrl+点击可选两个工作表后点「对比」">多工作表 · JSON 配色与折叠 · Ctrl+F 查找</span>
+                        <span id="head-title">格式互转 · 双栏</span>
+                        <span class="hint" title="JSON / YAML / XML / TOML / Properties / CSV / HTML / Query / Text / PHP(out)">源格式 ↔ 目标格式 · Ctrl+F 查找</span>
                     </div>
                     <div class="actions">
-                        <button type="button" class="title-btn" id="btn-json-expand-all" title="编辑器内：展开全部折叠">展开全部</button>
-                        <button type="button" class="title-btn" id="btn-json-collapse-all" title="编辑器内：收起全部折叠">收起全部</button>
+                        <button type="button" class="title-btn" id="btn-copy-out">复制输出</button>
                         <button type="button" class="title-btn" id="btn-copy">复制</button>
-                        <button type="button" class="title-btn handoff-btn" id="btn-fmt-convert" title="跳转到格式互转工具（携带当前工作表内容）">
-                            <span>格式互转</span>
-                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-paper-plane">
-                                <path d="M22 2L11 13"></path>
-                                <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
-                            </svg>
-                        </button>
-                        <button type="button" class="title-btn handoff-btn" id="btn-compare-diff" title="按住 Ctrl 选择两个工作表后点击，跳转到文本对比">
-                            <span>对比</span>
-                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-diff-split">
-                                <path d="M12 4H5V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M12 3V21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="butt"></path>
-                                <path d="M12 4H19V20H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <button type="button" class="title-btn qr-btn" id="btn-qr-out" title="生成输出二维码">
+                            <span>二维码</span>
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zM14 13h2v3h-2v-3zm3 3h2v2h-2v-2zm-3 3h3v2h-3v-2zm3-3h2v2h-2v-2z"
+                                ></path>
                             </svg>
                         </button>
                         <button type="button" class="title-btn qr-btn" id="btn-qr" title="生成输入二维码">
@@ -696,11 +688,19 @@
                         <button type="button" class="title-btn danger" id="btn-clear">清空</button>
                     </div>
                 </div>
-                <div id="editor-zone" class="editor-zone">
+                <div id="editor-zone" class="editor-zone convert-mode">
                     <div class="ta-wrap" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+                        <span class="ta-label" id="label-in" style="padding:8px 10px 0;">输入（源格式）</span>
                         <div class="editor-stack editor-stack-main">
-                            <textarea id="main-input" data-persist-key="json_input" aria-hidden="true" tabindex="-1"></textarea>
+                            <textarea id="main-input" data-persist-key="fmt_convert_input" aria-hidden="true" tabindex="-1"></textarea>
                             <div id="cm-json-mount"></div>
+                        </div>
+                    </div>
+                    <div class="ta-wrap" id="wrap-out" style="display:flex;flex:1;min-height:0;flex-direction:column;">
+                        <span class="ta-label">输出（目标格式）</span>
+                        <div class="editor-stack editor-stack-out">
+                            <pre class="editor-highlight-backdrop" id="output-convert-backdrop"></pre>
+                            <textarea id="output-convert" class="editor-text-layer" data-persist-key="fmt_convert_out" readonly placeholder="选择源/目标格式后自动转换，或点击「转换」"></textarea>
                         </div>
                     </div>
                     <div id="find-bar" class="find-bar" hidden>
@@ -723,63 +723,47 @@
                 </div>
                 <div class="json-sheet-bar" id="json-sheet-bar">
                     <div class="json-sheet-strip">
-                        <div class="json-sheet-tabs" id="json-sheet-tabs" role="tablist" aria-label="JSON 工作表"></div>
+                        <div class="json-sheet-tabs" id="json-sheet-tabs" role="tablist" aria-label="工作表"></div>
                         <button type="button" class="json-sheet-add" id="json-sheet-add" title="新建工作表">+</button>
                     </div>
                 </div>
-                <textarea id="json-sheets-meta" data-persist-key="json_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
+                <textarea id="json-sheets-meta" data-persist-key="fmt_convert_sheets_state" aria-hidden="true" tabindex="-1"></textarea>
             </div>
 
             <div class="ctool-page-option">
-                <div class="json-tabs-row">
-                    <button type="button" class="btn primary" id="btn-repair" title="修复常见错误：缺逗号、缺 } 或 ]、引号与转义等，再经 jsonrepair 校正">修复</button>
-                </div>
-
-                <div id="panel-common" class="tab-panel active">
-                    <div class="align-row">
-                        <button type="button" class="btn" id="btn-beautify">格式化</button>
-                        <select id="sel-indent" class="dd" title="缩进宽度">
-                            <option value="0">不换行</option>
-                            <option value="2" selected>缩进 2</option>
-                            <option value="4">缩进 4</option>
-                            <option value="6">缩进 6</option>
-                            <option value="8">缩进 8</option>
-                            <option value="tab">Tab</option>
+                <div id="panel-convert" class="tab-panel active">
+                    <div class="align-row convert-fmt-row" id="convert-buttons">
+                        <span class="fmt-label">源</span>
+                        <select id="convert-src-fmt" title="输入数据的格式">
+                            <option value="auto">自动识别</option>
+                            <option value="json" selected>JSON</option>
+                            <option value="yaml">YAML</option>
+                            <option value="xml">XML</option>
+                            <option value="toml">TOML</option>
+                            <option value="properties">Properties</option>
+                            <option value="csv">CSV</option>
+                            <option value="html_table">HTML 表格</option>
+                            <option value="http_query_string">HTTP 查询串</option>
+                            <option value="text">纯文本</option>
                         </select>
-                        <button type="button" class="btn" id="btn-compress">压缩</button>
+                        <button type="button" class="btn" id="btn-convert-swap" title="交换输入与输出（及源/目标格式）">⇄</button>
+                        <span class="fmt-label">目标</span>
+                        <button type="button" class="btn" data-fmt="json">JSON</button>
+                        <button type="button" class="btn format-active" data-fmt="xml">XML</button>
+                        <button type="button" class="btn" data-fmt="yaml">YAML</button>
+                        <button type="button" class="btn" data-fmt="toml">TOML</button>
+                        <button type="button" class="btn" data-fmt="properties">Properties</button>
+                        <button type="button" class="btn" data-fmt="csv">CSV</button>
+                        <button type="button" class="btn" data-fmt="html_table">HTML 表格</button>
+                        <button type="button" class="btn" data-fmt="http_query_string">HTTP 查询串</button>
+                        <button type="button" class="btn" data-fmt="php_array" title="仅支持作为输出">PHP 数组</button>
+                        <button type="button" class="btn" data-fmt="text">纯文本</button>
                         <span class="sep">|</span>
-                        <select id="dd-escape" class="dd" title="转义">
-                            <option value="">转义</option>
-                            <option value="escape">添加转义</option>
-                            <option value="clearEscape">去除转义</option>
-                        </select>
-                        <select id="dd-unicode" class="dd" title="Unicode">
-                            <option value="">Unicode</option>
-                            <option value="unicode2zh">Unicode → 中文</option>
-                            <option value="zh2unicode">中文 → Unicode</option>
-                        </select>
-                        <span class="sep">|</span>
-                        <select id="dd-sort" class="dd" title="键名排序（需为合法 JSON 对象/数组）">
-                            <option value="">键排序</option>
-                            <option value="asc">升序</option>
-                            <option value="desc">降序</option>
-                        </select>
-                        <select id="dd-rename" class="dd" title="键名风格（递归）">
-                            <option value="">键名风格</option>
-                            <option value="spaceCase">space case</option>
-                            <option value="pascalCaseSpace">Camel Case</option>
-                            <option value="kebabCase">kebab-case</option>
-                            <option value="upperSnakeCase">SNAKE_CASE</option>
-                            <option value="pascalCase">CamelCase</option>
-                            <option value="camelCase">camelCase</option>
-                            <option value="lowerSnakeCase">snake_case</option>
-                        </select>
+                        <button type="button" class="btn primary" id="btn-do-convert">转换</button>
                     </div>
                 </div>
-                </div>
+            </div>
         </div>
-        <textarea id="output-convert" class="sr-only" aria-hidden="true" tabindex="-1" style="display:none"></textarea>
-        <pre id="output-convert-backdrop" aria-hidden="true" style="display:none"></pre>
         <div id="toast" role="status"></div>
 
         <script src="../vendor/codemirror/lib/codemirror.js"></script>
@@ -803,8 +787,6 @@
                 var sheetAddBtn = document.getElementById("json-sheet-add");
                 var outputConvert = document.getElementById("output-convert");
                 var outBackdrop = document.getElementById("output-convert-backdrop");
-                var btnJsonExpandAll = document.getElementById("btn-json-expand-all");
-                var btnJsonCollapseAll = document.getElementById("btn-json-collapse-all");
                 var refreshFindHighlights = function () {};
                 var mainCm = null;
                 var findMarksMain = [];
@@ -816,9 +798,6 @@
                 var btnQrOut = document.getElementById("btn-qr-out");
                 var labelIn = document.getElementById("label-in");
                 var wrapOut = document.getElementById("wrap-out");
-                var tabCommon = document.getElementById("tab-common");
-                var tabConvert = document.getElementById("tab-convert");
-                var panelCommon = document.getElementById("panel-common");
                 var panelConvert = document.getElementById("panel-convert");
                 var toastEl = document.getElementById("toast");
                 var selIndent = document.getElementById("sel-indent");
@@ -828,7 +807,7 @@
                 var replaceInput = document.getElementById("find-replace-input");
                 var findCountEl = document.getElementById("find-count");
                 var findCase = document.getElementById("find-case");
-                var currentTab = "common";
+                var currentTab = "convert";
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
                 var qsParseCache = null;
@@ -1315,46 +1294,6 @@
                         })(jsonSheets[i]);
                     }
                 }
-
-                
-                var HANDOFF_FMT_CONVERT_TAB = "tab48";
-                var HANDOFF_JSON_TO_FMT_KEY = "tool-nav:handoff:json-to-fmt-convert";
-                function handoffToFmtConvert() {
-                    syncMainInputFromCm();
-                    var text = mainCm.getValue();
-                    var payload = {
-                        text: text,
-                        returnToolId: "tab8",
-                        returnToolName: "Json工具",
-                    };
-                    if (window.parent && window.parent !== window) {
-                        try {
-                            window.parent.postMessage(
-                                {
-                                    type: "tool-nav:open-tool",
-                                    toolId: HANDOFF_FMT_CONVERT_TAB,
-                                    handoff: "json-to-fmt-convert",
-                                    payload: payload,
-                                },
-                                "*"
-                            );
-                            toast("已发送到格式互转");
-                            return;
-                        } catch (e1) {
-                            // fall through
-                        }
-                    }
-                    try {
-                        sessionStorage.setItem(HANDOFF_JSON_TO_FMT_KEY, JSON.stringify(payload));
-                    } catch (e2) {}
-                    try {
-                        localStorage.setItem(HANDOFF_JSON_TO_FMT_KEY, JSON.stringify(payload));
-                    } catch (e3) {}
-                    window.location.href = "../index.html#tab=" + HANDOFF_FMT_CONVERT_TAB;
-                }
-
-                document.getElementById("btn-fmt-convert").addEventListener("click", handoffToFmtConvert);
-                document.getElementById("btn-compare-diff").addEventListener("click", handoffSelectedSheetsToTextDiff);
                 // 从文本对比返回本工具时，去掉 Ctrl 多选高亮
                 document.addEventListener("visibilitychange", function () {
                     if (document.visibilityState === "visible") clearCompareSelect();
@@ -1435,6 +1374,13 @@
                         applyEditorPerformanceMode(text);
                         refreshFindHighlights();
                     }
+                    if (currentTab === "convert") {
+                        clearTimeout(_convertDebounceTimer);
+                        _convertDebounceTimer = setTimeout(function () {
+                            _convertDebounceTimer = null;
+                            doConvert(true);
+                        }, large ? 900 : 0);
+                    }
                 }
 
                 mainCm.on("change", function (_cm, change) {
@@ -1443,7 +1389,7 @@
                     if (sheet) sheet.content = v;
                     schedulePersistSheets();
                     scheduleEditorSideEffects();
-                    if (change && change.origin === "paste") scheduleAutoBeautifyAfterPaste();
+                    
                 });
                 mainCm.on("focus", function () {
                     lastFindTargetIsOutput = false;
@@ -2030,142 +1976,18 @@
                 }
 
                 function applyTabMode(tab) {
-                    currentTab = "common";
-                    if (tabCommon) tabCommon.classList.add("active");
-                    if (panelCommon) panelCommon.classList.add("active");
-                    if (editorZone) editorZone.classList.remove("convert-mode");
-                    if (headTitle) headTitle.textContent = "JSON 输入";
-                    if (btnCopyOut) btnCopyOut.style.display = "none";
-                    if (btnQrOut) btnQrOut.style.display = "none";
-                    if (labelIn) labelIn.style.display = "none";
-                    if (wrapOut) wrapOut.style.display = "none";
+                    currentTab = "convert";
+                    if (editorZone) editorZone.classList.add("convert-mode");
+                    if (headTitle) headTitle.textContent = "格式互转 · 双栏";
+                    if (btnCopyOut) btnCopyOut.style.display = "inline-flex";
+                    if (btnQrOut) btnQrOut.style.display = "inline-flex";
+                    if (labelIn) labelIn.style.display = "block";
+                    if (wrapOut) wrapOut.style.display = "flex";
+                    doConvert(true);
                     refreshFindHighlights();
                     resizeMainCm();
                 }
 
-                if (tabCommon) {
-                    tabCommon.addEventListener("click", function () {
-                        applyTabMode("common");
-                    });
-                }
-
-
-                document.getElementById("btn-beautify").addEventListener("click", function () {
-                    try {
-                        beautifyToInput(selIndent.value === "tab" ? "tab" : selIndent.value);
-                    } catch (e) {
-                        toast("格式化失败：" + e.message);
-                    }
-                });
-
-                selIndent.addEventListener("change", function () {
-                    if (getTrimInput()) {
-                        try {
-                            beautifyToInput(selIndent.value === "tab" ? "tab" : selIndent.value);
-                        } catch (e) {
-                            toast("缩进调整失败：" + e.message);
-                        }
-                    }
-                });
-
-                document.getElementById("btn-compress").addEventListener("click", function () {
-                    try {
-                        var code = getTrimInput();
-                        if (!code) return;
-                        setMainInputContent(JSON.stringify(parseJsonLenient(code)));
-                        toast("已压缩");
-                    } catch (e) {
-                        toast("压缩失败：" + e.message);
-                    }
-                });
-
-                document.getElementById("btn-repair").addEventListener("click", function () {
-                    try {
-                        var code = getTrimInput();
-                        if (!code) return;
-                        var jr = getJsonRepair();
-                        if (!jr) throw new Error("jsonrepair 未加载");
-                        var pre = preprocessJsonForRepair(code);
-                        setMainInputContent(JSON.stringify(JSON.parse(jr(pre)), null, 2));
-                        toast("已修复并格式化");
-                    } catch (e) {
-                        toast("修复失败：" + e.message);
-                    }
-                });
-
-                document.getElementById("dd-escape").addEventListener("change", function () {
-                    var v = this.value;
-                    if (!v) return;
-                    var code = getTrimInput();
-                    if (!code) {
-                        this.value = "";
-                        return;
-                    }
-                    try {
-                        if (v === "escape") {
-                            setMainInputContent(code.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"'));
-                        } else {
-                            setMainInputContent(code.trim().replace(/\\\\/g, "\\").replace(/\\"/g, '"'));
-                        }
-                        toast(v === "escape" ? "已添加转义" : "已去除转义");
-                    } catch (e) {
-                        toast(e.message);
-                    }
-                    this.value = "";
-                });
-
-                document.getElementById("dd-unicode").addEventListener("change", function () {
-                    var v = this.value;
-                    if (!v) return;
-                    var code = mainCm.getValue();
-                    if (!code.trim()) {
-                        this.value = "";
-                        return;
-                    }
-                    setMainInputContent(v === "unicode2zh" ? unicode2zh(code) : zh2unicode(code));
-                    toast("已转换 Unicode");
-                    this.value = "";
-                });
-
-                function currentStringifyIndent() {
-                    if (selIndent.value === "tab") return "\t";
-                    if (selIndent.value === "0") return null;
-                    return Number(selIndent.value);
-                }
-
-                document.getElementById("dd-sort").addEventListener("change", function () {
-                    var v = this.value;
-                    if (!v) return;
-                    try {
-                        var code = getTrimInput();
-                        if (!code) return;
-                        var obj = parseJsonLenient(code);
-                        var sorted = sortKeysDeep(obj, v === "asc");
-                        var ind = currentStringifyIndent();
-                        setMainInputContent(ind === null ? JSON.stringify(sorted) : JSON.stringify(sorted, null, ind));
-                        toast("键已排序");
-                    } catch (e) {
-                        toast("排序失败：" + e.message);
-                    }
-                    this.value = "";
-                });
-
-                document.getElementById("dd-rename").addEventListener("change", function () {
-                    var v = this.value;
-                    if (!v) return;
-                    try {
-                        var code = getTrimInput();
-                        if (!code) return;
-                        var obj = parseJsonLenient(code);
-                        renameKeysDeep(obj, v);
-                        var ind = currentStringifyIndent();
-                        setMainInputContent(ind === null ? JSON.stringify(obj) : JSON.stringify(obj, null, ind));
-                        toast("键名已转换");
-                    } catch (e) {
-                        toast("键名转换失败：" + e.message);
-                    }
-                    this.value = "";
-                });
 
                 function escapeXml(s) {
                     return String(s)
@@ -2704,12 +2526,72 @@
                     });
                 }
 
+                document.querySelectorAll("#convert-buttons .btn[data-fmt]").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll("#convert-buttons .btn[data-fmt]").forEach(function (b) {
+                            b.classList.remove("format-active");
+                        });
+                        btn.classList.add("format-active");
+                        currentFmt = btn.getAttribute("data-fmt");
+                        doConvert(true);
+                    });
+                });
+
+                var convertSrcFmt = document.getElementById("convert-src-fmt");
+                if (convertSrcFmt) {
+                    convertSrcFmt.addEventListener("change", function () {
+                        doConvert(true);
+                    });
+                }
+
+                document.getElementById("btn-convert-swap").addEventListener("click", function () {
+                    var out = outputConvert.value || "";
+                    if (!String(out).trim()) {
+                        toast("右侧输出为空，无法交换");
+                        return;
+                    }
+                    var srcEl = document.getElementById("convert-src-fmt");
+                    var oldSrc = srcEl ? srcEl.value : "json";
+                    var oldTarget = currentFmt;
+                    if (oldTarget === "php_array") {
+                        toast("PHP 数组不能作为输入，请先选其他目标格式再交换");
+                        return;
+                    }
+                    setMainInputContent(out);
+                    outputConvert.value = "";
+                    if (srcEl) {
+                        srcEl.value = oldTarget === "auto" ? "json" : oldTarget;
+                    }
+                    currentFmt = oldSrc === "auto" ? "json" : oldSrc;
+                    document.querySelectorAll("#convert-buttons .btn[data-fmt]").forEach(function (b) {
+                        b.classList.toggle("format-active", b.getAttribute("data-fmt") === currentFmt);
+                    });
+                    doConvert(false);
+                });
+
+                document.getElementById("btn-do-convert").addEventListener("click", function () {
+                    doConvert(false);
+                });
+
                 document.getElementById("btn-copy").addEventListener("click", function () {
                     ToolCopy.copy(mainCm.getValue(), { successMsg: "已复制", onLabelEl: this, labelText: "复制" });
                 });
 
+                document.getElementById("btn-copy-out").addEventListener("click", function () {
+                    ToolCopy.copy(outputConvert.value, { successMsg: "已复制输出", onLabelEl: this, labelText: "复制" });
+                });
+
                 document.getElementById("btn-qr").addEventListener("click", function () {
                     var text = mainCm.getValue();
+                    if (!text.trim()) {
+                        ToolCopy.toast("没有可生成二维码的内容");
+                        return;
+                    }
+                    ToolQr.toggle(text, this);
+                });
+
+                document.getElementById("btn-qr-out").addEventListener("click", function () {
+                    var text = outputConvert.value;
                     if (!text.trim()) {
                         ToolCopy.toast("没有可生成二维码的内容");
                         return;
@@ -3265,17 +3147,9 @@
                     if (document.activeElement === outputConvert) refreshFindHighlights();
                 });
 
-                btnJsonExpandAll.addEventListener("click", function () {
-                    if (mainCm && CodeMirror.commands.unfoldAll) CodeMirror.commands.unfoldAll(mainCm);
-                });
-
-                btnJsonCollapseAll.addEventListener("click", function () {
-                    if (mainCm && CodeMirror.commands.foldAll) CodeMirror.commands.foldAll(mainCm);
-                });
-
                 document.getElementById("btn-clear").addEventListener("click", function () {
                     setMainInputContent("");
-                    if (outputConvert) outputConvert.value = "";
+                    outputConvert.value = "";
                     persistSheetsState();
                     refreshFindHighlights();
                     toast("已清空当前工作表");
@@ -3316,6 +3190,45 @@
                 document.addEventListener("contextmenu", function (e) {
                     e.preventDefault();
                 });
+
+                refreshFindHighlights();
+                resizeMainCm();
+
+                // 始终双栏互转
+                applyTabMode("convert");
+
+                var HANDOFF_JSON_TO_FMT_KEY = "tool-nav:handoff:json-to-fmt-convert";
+                function consumeJsonToFmtHandoff(payload) {
+                    if (!payload || typeof payload.text !== "string") return false;
+                    setMainInputContent(payload.text);
+                    persistSheetsState();
+                    doConvert(true);
+                    toast("已从 Json 工具载入");
+                    return true;
+                }
+                function tryConsumeJsonToFmtHandoffFromStorage() {
+                    var raw = null;
+                    try { raw = sessionStorage.getItem(HANDOFF_JSON_TO_FMT_KEY); } catch (e0) {}
+                    if (!raw) {
+                        try { raw = localStorage.getItem(HANDOFF_JSON_TO_FMT_KEY); } catch (e1) {}
+                    }
+                    if (!raw) return;
+                    try {
+                        sessionStorage.removeItem(HANDOFF_JSON_TO_FMT_KEY);
+                        localStorage.removeItem(HANDOFF_JSON_TO_FMT_KEY);
+                    } catch (e2) {}
+                    try {
+                        consumeJsonToFmtHandoff(JSON.parse(raw));
+                    } catch (e3) {}
+                }
+                window.addEventListener("message", function (e) {
+                    var d = e.data;
+                    if (!d || d.type !== "tool-nav:consume-handoff") return;
+                    if (d.handoff === "json-to-fmt-convert") {
+                        consumeJsonToFmtHandoff(d.payload || {});
+                    }
+                });
+                tryConsumeJsonToFmtHandoffFromStorage();
 
                 refreshFindHighlights();
                 resizeMainCm();
