@@ -2337,11 +2337,11 @@ var require_lib = __commonJS({
   "node_modules/qs/lib/index.js"(exports, module) {
     "use strict";
     var stringify2 = require_stringify();
-    var parse = require_parse();
+    var parse2 = require_parse();
     var formats = require_formats();
     module.exports = {
       formats,
-      parse,
+      parse: parse2,
       stringify: stringify2
     };
   }
@@ -2352,6 +2352,10 @@ var import_qs = __toESM(require_lib(), 1);
 function stringify(obj, options) {
   return import_qs.default.stringify(obj, options);
 }
+function parse(str, options) {
+  return import_qs.default.parse(str, options);
+}
 export {
+  parse,
   stringify
 };
