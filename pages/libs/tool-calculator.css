@@ -1,0 +1,166 @@
+/* Standard calculator panel (header overlay) */
+.tool-calc {
+    position: relative;
+    width: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #1f2a44;
+}
+
+/* 透明输入层叠在显示区：保证可聚焦，稳定接收数字键（含中文输入法） */
+.tool-calc-keytrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 78px;
+    z-index: 2;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    color: transparent;
+    caret-color: transparent;
+    background: transparent;
+    outline: none;
+}
+
+.tool-calc-display {
+    background: #f4f8ff;
+    border: 1px solid #d8e5ff;
+    border-radius: 8px;
+    padding: 10px 12px 8px;
+    margin-bottom: 10px;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 2px;
+    box-sizing: border-box;
+}
+
+.tool-calc-expr {
+    min-height: 18px;
+    font-size: 13px;
+    line-height: 18px;
+    color: #6f7d96;
+    width: 100%;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: keep-all;
+}
+
+.tool-calc-value {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    width: 100%;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #1f2a44;
+}
+
+.tool-calc-value.is-error {
+    font-size: 22px;
+    color: #c0392b;
+}
+
+.tool-calc-pad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.tool-calc-btn {
+    appearance: none;
+    border: 1px solid #d8e5ff;
+    border-radius: 8px;
+    background: #edf3ff;
+    color: #1f2a44;
+    font-size: 16px;
+    font-weight: 600;
+    height: 44px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.tool-calc-btn:hover {
+    background: #e0ebff;
+    border-color: #c5d7ff;
+}
+
+.tool-calc-btn:active,
+.tool-calc-btn.is-pressed {
+    background: #d0e0ff;
+    border-color: #a8c4ff;
+}
+
+.tool-calc-btn:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 1px;
+}
+
+.tool-calc-btn.fn {
+    background: #f7f9fc;
+    color: #3c4f78;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tool-calc-btn.fn:hover {
+    background: #eef3fb;
+}
+
+.tool-calc-btn.op {
+    background: #e8f0ff;
+    color: #2f6bff;
+    font-size: 18px;
+}
+
+.tool-calc-btn.op:hover,
+.tool-calc-btn.op.is-active {
+    background: #d9e7ff;
+    border-color: #a8c4ff;
+    color: #1f5ae6;
+}
+
+.tool-calc-btn.eq {
+    background: linear-gradient(135deg, #2f6bff, #5b8dff);
+    border-color: transparent;
+    color: #fff;
+    font-size: 20px;
+}
+
+.tool-calc-btn.eq:hover {
+    background: linear-gradient(135deg, #2860e8, #4f82f0);
+    border-color: transparent;
+    color: #fff;
+}
+
+.tool-calc-btn.digit {
+    background: #fff;
+    font-size: 18px;
+}
+
+.tool-calc-btn.digit:hover {
+    background: #f4f8ff;
+}
+
+.tool-calc-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #8a97b0;
+    text-align: center;
+    line-height: 1.4;
+}
