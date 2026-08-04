@@ -457,7 +457,7 @@
                 top: 8px;
                 right: 8px;
                 z-index: 30;
-                width: min(440px, calc(100% - 16px));
+                width: min(480px, calc(100% - 16px));
                 padding: 8px 10px;
                 font-size: 12px;
                 border: 1px solid #cfdcf7;
@@ -470,6 +470,7 @@
                 min-height: 1.75rem;
                 padding: 0 10px;
                 font-size: 12px;
+                flex: 0 0 auto;
             }
             .find-bar[hidden] { display: none !important; }
             .find-row {
@@ -477,9 +478,17 @@
                 flex-wrap: wrap;
                 align-items: center;
                 gap: 6px;
-                margin-top: 4px;
+                margin-top: 6px;
             }
             .find-row:first-child { margin-top: 0; }
+            .find-row-main {
+                flex-wrap: nowrap;
+                gap: 6px;
+            }
+            .find-row-opts {
+                padding-left: calc(2.5rem + 6px);
+                gap: 10px 12px;
+            }
             .find-label {
                 flex: 0 0 auto;
                 width: 2.5rem;
@@ -487,9 +496,10 @@
                 text-align: right;
             }
             .find-input {
-                flex: 1 1 80px;
-                min-width: 72px;
-                max-width: 100%;
+                flex: 1 1 auto;
+                min-width: 0;
+                width: auto;
+                max-width: none;
                 height: 1.75rem;
                 padding: 0 8px;
                 border: 1px solid #cfdcf7;
@@ -505,11 +515,19 @@
             .find-bar .btn-icon {
                 min-width: 1.75rem;
                 padding: 0 8px;
+                flex: 0 0 auto;
+            }
+            .find-bar #find-close {
+                flex: 0 0 auto;
+                margin-left: 2px;
             }
             .find-count {
                 color: var(--muted);
                 font-size: 11px;
-                min-width: 3.5rem;
+                min-width: 3.25rem;
+                flex: 0 0 auto;
+                white-space: nowrap;
+                text-align: right;
             }
             .find-bar label.chk {
                 display: inline-flex;
@@ -518,6 +536,12 @@
                 cursor: pointer;
                 color: #3c4f78;
                 user-select: none;
+                flex: 0 0 auto;
+                white-space: nowrap;
+                font-size: 12px;
+            }
+            .find-bar label.chk input {
+                margin: 0;
             }
             /* 底部 Sheet 标签：与编辑区同色，无上分隔线，标签轻量悬浮 */
             .json-sheet-bar {
@@ -704,14 +728,18 @@
                         </div>
                     </div>
                     <div id="find-bar" class="find-bar" hidden>
-                        <div class="find-row">
+                        <div class="find-row find-row-main">
                             <span class="find-label">查找</span>
                             <input type="text" id="find-input" class="find-input" autocomplete="off" spellcheck="false" placeholder="查找内容" />
                             <button type="button" class="btn find-icon btn-icon" id="find-prev" title="上一个 (Shift+Enter / ↑)">↑</button>
                             <button type="button" class="btn find-icon btn-icon" id="find-next" title="下一个 (Enter / ↓)">↓</button>
-                            <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
                             <span id="find-count" class="find-count"></span>
                             <button type="button" class="btn btn-icon" id="find-close" title="关闭 (Esc)">×</button>
+                        </div>
+                        <div class="find-row find-row-opts">
+                            <label class="chk"><input type="checkbox" id="find-case" />区分大小写</label>
+                            <label class="chk" title="按词边界匹配（英文/数字/下划线/中文）"><input type="checkbox" id="find-word" />精准匹配</label>
+                            <label class="chk" title="将查找内容作为正则表达式"><input type="checkbox" id="find-regex" />正则</label>
                         </div>
                         <div class="find-row" id="find-replace-row" hidden>
                             <span class="find-label">替换</span>
@@ -807,6 +835,8 @@
                 var replaceInput = document.getElementById("find-replace-input");
                 var findCountEl = document.getElementById("find-count");
                 var findCase = document.getElementById("find-case");
+                var findWord = document.getElementById("find-word");
+                var findRegex = document.getElementById("find-regex");
                 var currentTab = "convert";
                 var currentFmt = "xml";
                 var qsStringifyCache = null;
@@ -2600,6 +2630,14 @@
                 });
 
                 /* —— 查找 / 替换（主编辑 CodeMirror + 输出 textarea） —— */
+                function getFindOpts() {
+                    return {
+                        caseSens: !!(findCase && findCase.checked),
+                        wholeWord: !!(findWord && findWord.checked),
+                        regex: !!(findRegex && findRegex.checked),
+                    };
+                }
+
                 var findNavMatchIndex = -1;
 
                 function resetFindNavigation() {
@@ -2650,10 +2688,10 @@
                     return -1;
                 }
 
-                function getMatchPositions(text, needle, caseSens) {
+                function getMatchPositions(text, needle, findOpts) {
                     var TF = window.ToolFind;
                     if (!TF) return [];
-                    return TF.collectHighlights(text, needle, caseSens, 0, TF.MAX_HIGHLIGHT);
+                    return TF.collectHighlights(text, needle, findOpts, 0, TF.MAX_HIGHLIGHT);
                 }
 
                                 function escapeHtmlPlain(s) {
@@ -2663,12 +2701,12 @@
                         .replace(/>/g, "&gt;");
                 }
 
-                function buildFindHighlightHtml(text, needle, caseSens, curStart, curEnd) {
+                function buildFindHighlightHtml(text, needle, findOpts, curStart, curEnd) {
                     if (!needle) return escapeHtmlPlain(text);
                     var TF = window.ToolFind;
                     if (!TF || TF.shouldSkipFullHighlights(text)) return escapeHtmlPlain(text);
                     var around = typeof curStart === "number" ? curStart : 0;
-                    var positions = TF.collectHighlights(text, needle, caseSens, around, TF.MAX_HIGHLIGHT);
+                    var positions = TF.collectHighlights(text, needle, findOpts, around, TF.MAX_HIGHLIGHT);
                     if (!positions.length) return escapeHtmlPlain(text);
                     // Ensure current selection match is represented
                     var hasCur = false;
@@ -2680,7 +2718,9 @@
                     }
                     if (!hasCur && curEnd > curStart) {
                         var snippet = text.slice(curStart, curEnd);
-                        var ok = caseSens ? snippet === needle : snippet.toLowerCase() === needle.toLowerCase();
+                        var ok = (TF && TF.selectionMatches)
+                            ? TF.selectionMatches(snippet, needle, findOpts)
+                            : (findOpts.caseSens ? snippet === needle : snippet.toLowerCase() === needle.toLowerCase());
                         if (ok) positions.push({ start: curStart, end: curEnd });
                     }
                     positions.sort(function (a, b) { return a.start - b.start; });
@@ -2723,7 +2763,7 @@
                             outBackdrop.innerHTML = buildFindHighlightHtml(
                                 val,
                                 findInput.value,
-                                findCase.checked,
+                                getFindOpts(),
                                 outputConvert.selectionStart,
                                 outputConvert.selectionEnd
                             );
@@ -2744,10 +2784,10 @@
                     if (on && mainCm && !getFindTargetIsOutput()) {
                         var needle = findInput.value;
                         var text = mainCm.getValue();
-                        var caseSens = findCase.checked;
+                        var findOpts = getFindOpts();
                         var sel = cmGetSelOffsets();
                         var positions = TF
-                            ? TF.collectHighlights(text, needle, caseSens, sel.start, TF.MAX_HIGHLIGHT)
+                            ? TF.collectHighlights(text, needle, findOpts, sel.start, TF.MAX_HIGHLIGHT)
                             : [];
                         // Always try to include the active selection match
                         if (sel.end > sel.start) {
@@ -2760,7 +2800,9 @@
                             }
                             if (!has) {
                                 var sn = text.slice(sel.start, sel.end);
-                                var ok = caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase();
+                                var ok = (TF && TF.selectionMatches)
+                            ? TF.selectionMatches(sn, needle, findOpts)
+                            : (findOpts.caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase());
                                 if (ok) positions.push({ start: sel.start, end: sel.end });
                             }
                         }
@@ -2785,26 +2827,35 @@
                     outBackdrop.scrollLeft = sl1;
                 };
 
-                                function replaceAllString(text, needle, repl, caseSens) {
+                function replaceAllString(text, needle, repl, opts) {
+                    var TF = window.ToolFind;
+                    if (TF && TF.replaceAll) return TF.replaceAll(text, needle, repl, opts);
                     if (!needle) return text;
                     var esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    var caseSens = opts && typeof opts === "object" ? !!opts.caseSens : !!opts;
                     var re = new RegExp(esc, caseSens ? "g" : "gi");
                     return text.replace(re, function () {
                         return repl;
                     });
                 }
 
-                function selectionMatchesFindMainCm(needle, caseSens) {
+                function selectionMatchesFindMainCm(needle, opts) {
                     if (!needle) return false;
                     var fr = mainCm.getCursor("from");
                     var to = mainCm.getCursor("to");
                     var s = mainCm.getRange(fr, to);
+                    var TF = window.ToolFind;
+                    if (TF && TF.selectionMatches) return TF.selectionMatches(s, needle, opts);
+                    var caseSens = opts && typeof opts === "object" ? !!opts.caseSens : !!opts;
                     return caseSens ? s === needle : s.toLowerCase() === needle.toLowerCase();
                 }
 
-                function selectionMatchesFind(ta, needle, caseSens) {
+                function selectionMatchesFind(ta, needle, opts) {
                     if (!needle) return false;
                     var sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+                    var TF = window.ToolFind;
+                    if (TF && TF.selectionMatches) return TF.selectionMatches(sel, needle, opts);
+                    var caseSens = opts && typeof opts === "object" ? !!opts.caseSens : !!opts;
                     if (caseSens) return sel === needle;
                     return sel.toLowerCase() === needle.toLowerCase();
                 }
@@ -2819,9 +2870,9 @@
                     var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var caseSens = findCase.checked;
+                    var findOpts = getFindOpts();
                     var total = TF
-                        ? TF.countMatches(text, needle, caseSens, TF.MAX_COUNT)
+                        ? TF.countMatches(text, needle, findOpts, TF.MAX_COUNT)
                         : { count: 0, truncated: false };
                     if (!total.count && !total.truncated) {
                         findCountEl.textContent = "无匹配";
@@ -2843,9 +2894,11 @@
                         idx = findNavMatchIndex;
                     } else if (TF) {
                         var sn = text.slice(s, e);
-                        var isMatch = caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase();
+                        var isMatch = (TF && TF.selectionMatches)
+                            ? TF.selectionMatches(sn, needle, findOpts)
+                            : (findOpts.caseSens ? sn === needle : sn.toLowerCase() === needle.toLowerCase());
                         if (isMatch || (s < e && e - s === needle.length)) {
-                            var before = TF.countMatchesBefore(text, needle, caseSens, s, TF.MAX_COUNT);
+                            var before = TF.countMatchesBefore(text, needle, findOpts, s, TF.MAX_COUNT);
                             if (!before.truncated) idx = before.count;
                         }
                     }
@@ -2934,21 +2987,21 @@
                     var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var caseSens = findCase.checked;
+                    var findOpts = getFindOpts();
                     var from = getFindAnchorOffsetForNext(out);
                     if (TF) {
-                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), caseSens);
+                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), findOpts);
                         if (around && from > around.start && from <= around.end) from = around.end;
                     }
-                    var p = TF ? TF.findNext(text, needle, from, caseSens) : null;
-                    if (!p && TF) p = TF.findNext(text, needle, 0, caseSens);
+                    var p = TF ? TF.findNext(text, needle, from, findOpts) : null;
+                    if (!p && TF) p = TF.findNext(text, needle, 0, findOpts);
                     if (!p) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
                     if (TF) {
-                        var before = TF.countMatchesBefore(text, needle, caseSens, p.start, TF.MAX_COUNT);
+                        var before = TF.countMatchesBefore(text, needle, findOpts, p.start, TF.MAX_COUNT);
                         findNavMatchIndex = before.truncated ? -1 : before.count;
                     } else {
                         findNavMatchIndex = -1;
@@ -2973,21 +3026,21 @@
                     var TF = window.ToolFind;
                     var out = getFindTargetIsOutput();
                     var text = out ? outputConvert.value : mainCm.getValue();
-                    var caseSens = findCase.checked;
+                    var findOpts = getFindOpts();
                     var from = getFindAnchorOffsetForPrev(out);
                     if (TF) {
-                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), caseSens);
+                        var around = TF.findNext(text, needle, Math.max(0, from - needle.length), findOpts);
                         if (around && from > around.start && from < around.end) from = around.start;
                     }
-                    var p = TF ? TF.findPrev(text, needle, from, caseSens) : null;
-                    if (!p && TF) p = TF.findPrev(text, needle, text.length, caseSens);
+                    var p = TF ? TF.findPrev(text, needle, from, findOpts) : null;
+                    if (!p && TF) p = TF.findPrev(text, needle, text.length, findOpts);
                     if (!p) {
                         findCountEl.textContent = "无匹配";
                         refreshFindHighlights();
                         return;
                     }
                     if (TF) {
-                        var before = TF.countMatchesBefore(text, needle, caseSens, p.start, TF.MAX_COUNT);
+                        var before = TF.countMatchesBefore(text, needle, findOpts, p.start, TF.MAX_COUNT);
                         findNavMatchIndex = before.truncated ? -1 : before.count;
                     } else {
                         findNavMatchIndex = -1;
@@ -3033,7 +3086,7 @@
                             toast("输出区为只读，无法替换");
                             return;
                         }
-                        if (selectionMatchesFind(outputConvert, needle, findCase.checked)) {
+                        if (selectionMatchesFind(outputConvert, needle, getFindOpts())) {
                             var rep = replaceInput.value;
                             var s = outputConvert.selectionStart;
                             outputConvert.value =
@@ -3049,7 +3102,7 @@
                             findNext();
                         }
                     } else {
-                        if (!selectionMatchesFindMainCm(needle, findCase.checked)) {
+                        if (!selectionMatchesFindMainCm(needle, getFindOpts())) {
                             findNext();
                             return;
                         }
@@ -3072,12 +3125,12 @@
                             outputConvert.value,
                             needle,
                             rep,
-                            findCase.checked
+                            getFindOpts()
                         );
                         outputConvert.dispatchEvent(new Event("input", { bubbles: true }));
                     } else {
                         setMainInputContent(
-                            replaceAllString(mainCm.getValue(), needle, rep, findCase.checked)
+                            replaceAllString(mainCm.getValue(), needle, rep, getFindOpts())
                         );
                     }
                     resetFindNavigation();
@@ -3093,6 +3146,14 @@
                 });
                 document.getElementById("find-close").addEventListener("click", closeFind);
                 findCase.addEventListener("change", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                if (findWord) findWord.addEventListener("change", function () {
+                    resetFindNavigation();
+                    updateFindCount();
+                });
+                if (findRegex) findRegex.addEventListener("change", function () {
                     resetFindNavigation();
                     updateFindCount();
                 });

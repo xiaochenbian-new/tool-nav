@@ -98,6 +98,14 @@
                 padding: 0;
                 cursor: pointer;
             }
+            .help-icon-btn.sql-beautify-btn {
+                width: auto;
+                min-width: 36px;
+                padding: 0 8px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+            }
             .sql-history-pop {
                 display: none;
                 position: fixed;
@@ -312,6 +320,11 @@
                 box-shadow: 0 14px 36px rgba(36, 90, 190, 0.2);
                 overflow: hidden;
             }
+            #csv-modal-mask .csv-modal {
+                width: min(1360px, 98vw);
+                height: min(92vh, 960px);
+                max-height: min(96vh, 1040px);
+            }
             .csv-modal-head {
                 display: flex;
                 align-items: center;
@@ -418,12 +431,21 @@
                 color: var(--muted);
                 line-height: 1.45;
             }
-            .csv-editor-wrap {
+            .csv-split {
                 flex: 1;
                 min-height: 0;
                 display: flex;
+                flex-direction: row;
+                align-items: stretch;
+                padding: 8px 0 12px;
+            }
+            .csv-editor-wrap {
+                flex: 1 1 auto;
+                min-width: 0;
+                min-height: 0;
+                display: flex;
                 flex-direction: column;
-                padding: 8px 14px 0;
+                padding: 0 0 0 14px;
             }
             #csv-paste-input {
                 flex: 1;
@@ -435,7 +457,7 @@
                 line-height: 1.45;
                 resize: none;
                 border: 1px solid #e4eaf4;
-                border-radius: 8px 8px 0 0;
+                border-radius: 8px;
                 padding: 10px 12px;
             }
             #csv-paste-input:focus {
@@ -458,73 +480,108 @@
                 background: #fafcff;
                 color: #2f3d5d;
             }
+            .csv-split-resizer {
+                flex: 0 0 6px;
+                width: 6px;
+                margin: 0 2px;
+                cursor: col-resize;
+                position: relative;
+                background: transparent;
+                align-self: stretch;
+            }
+            .csv-split-resizer::before {
+                content: "";
+                position: absolute;
+                top: 8px;
+                bottom: 8px;
+                left: 2px;
+                width: 2px;
+                border-radius: 1px;
+                background: #d4e0f5;
+            }
+            .csv-split-resizer:hover::before,
+            .csv-split.is-resizing .csv-split-resizer::before {
+                background: var(--primary);
+            }
             .csv-sheet-bar {
-                flex: 0 0 auto;
+                flex: 0 0 160px;
+                width: 160px;
+                min-width: 120px;
+                max-width: 360px;
                 display: flex;
-                align-items: flex-end;
-                min-height: 30px;
-                padding: 0 10px 2px;
+                flex-direction: column;
+                align-items: stretch;
+                margin: 0 12px 0 0;
+                padding: 0 8px 0 4px;
                 background: #fff;
                 overflow: hidden;
-                border-top: 1px solid #e8f0ff;
             }
             .csv-sheet-strip {
                 display: flex;
-                align-items: flex-end;
+                flex-direction: column;
+                align-items: stretch;
                 flex-wrap: nowrap;
                 gap: 2px;
                 min-width: 0;
+                min-height: 0;
+                flex: 1;
                 max-width: 100%;
-                overflow-x: auto;
-                overflow-y: hidden;
+                overflow-x: hidden;
+                overflow-y: auto;
                 scrollbar-width: thin;
+                padding: 0;
             }
             .csv-sheet-strip::-webkit-scrollbar {
-                height: 4px;
+                width: 4px;
             }
             .csv-sheet-tabs {
-                display: contents;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                width: 100%;
+                min-width: 0;
             }
             .csv-sheet-tab {
                 flex: 0 0 auto;
                 display: inline-flex;
                 align-items: center;
-                max-width: 148px;
-                height: 26px;
-                padding: 0 12px;
+                width: 100%;
+                max-width: none;
+                min-height: 28px;
+                height: auto;
+                padding: 4px 8px;
                 margin: 0;
                 border: 1px solid transparent;
-                border-radius: 4px 4px 0 0;
+                border-radius: 4px;
                 background: transparent;
                 color: #5a6d8f;
                 font-size: 12px;
                 cursor: pointer;
                 user-select: none;
-                position: relative;
-                z-index: 1;
-                box-shadow: none;
+                text-align: left;
+                box-sizing: border-box;
             }
             .csv-sheet-tab:hover {
                 background: #f4f8ff;
                 color: #3c4f78;
-                z-index: 2;
             }
             .csv-sheet-tab.active {
                 background: #edf3ff;
                 color: var(--primary);
                 font-weight: 600;
-                z-index: 3;
                 border-color: #d8e5ff;
             }
             .csv-sheet-tab .sheet-name {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                max-width: 120px;
+                flex: 1 1 auto;
+                min-width: 0;
             }
             .csv-sheet-tab .sheet-rename-input {
-                width: 96px;
-                max-width: 120px;
+                width: 100%;
+                flex: 1 1 auto;
+                min-width: 0;
                 height: 22px;
                 padding: 0 6px;
                 font-size: 12px;
@@ -532,6 +589,7 @@
                 border-radius: 4px;
                 outline: none;
                 background: #fff;
+                box-sizing: border-box;
             }
             .csv-sheet-tab .sheet-close {
                 flex: 0 0 auto;
@@ -547,7 +605,6 @@
                 line-height: 1;
                 cursor: pointer;
                 opacity: 0;
-                box-shadow: none;
             }
             .csv-sheet-tab:hover .sheet-close,
             .csv-sheet-tab.active .sheet-close {
@@ -559,22 +616,29 @@
             }
             .csv-sheet-add {
                 flex: 0 0 26px;
-                width: 26px;
+                width: 100%;
                 height: 26px;
-                margin: 0;
+                margin: 4px 0 0;
                 padding: 0;
-                border: none;
+                border: 1px dashed #c9d8f5;
                 border-radius: 4px;
                 background: transparent;
-                font-size: 18px;
+                font-size: 16px;
                 line-height: 1;
                 color: #8a9bb8;
                 cursor: pointer;
-                box-shadow: none;
             }
             .csv-sheet-add:hover {
                 background: #f0f5ff;
                 color: var(--primary);
+                border-color: #9eb6e8;
+            }
+            #csv-preview-mask .csv-editor-wrap {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 8px 14px 12px;
             }
             .compact-grid {
                 display: grid;
@@ -1357,6 +1421,7 @@
                         <button id="sql-history-btn" class="help-icon-btn" type="button" title="最近执行的 SQL（最多 30 条）" aria-label="最近执行的 SQL">
                             <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a6 6 0 1 1 6 6v-2h2v2a8 8 0 1 0-2.343-5.657L13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
                         </button>
+                        <button id="sql-beautify-btn" class="help-icon-btn sql-beautify-btn" type="button" title="美化 SQL 语句">美化</button>
                     </label>
                     <div id="sql-history-pop" class="sql-history-pop" aria-hidden="true"></div>
                     <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1];"></textarea>
@@ -1448,14 +1513,17 @@
                     <button id="csv-modal-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
                 </div>
                 <div class="csv-modal-body">
-                    <p class="csv-modal-hint">通过文件上传的 Excel / .txt 会在此显示为标准 CSV 文本；手动新建并粘贴时仍支持逗号（CSV）、制表符（Excel 复制）或竖线（|）分隔。底部可切换多个工作表，双击标签可重命名。</p>
-                    <div class="csv-editor-wrap">
-                        <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
-                    </div>
-                    <div class="csv-sheet-bar" id="csv-sheet-bar">
-                        <div class="csv-sheet-strip">
-                            <div class="csv-sheet-tabs" id="csv-tab-bar" role="tablist" aria-label="CSV 工作表"></div>
-                            <button type="button" class="csv-sheet-add" id="csv-sheet-add" title="新建工作表">+</button>
+                    <p class="csv-modal-hint">通过文件上传的 Excel / .txt 会在此显示为标准 CSV 文本；手动新建并粘贴时仍支持逗号（CSV）、制表符（Excel 复制）或竖线（|）分隔。右侧切换工作表，双击可重命名；中间分隔条可拖动调整宽度。</p>
+                    <div class="csv-split" id="csv-split">
+                        <div class="csv-editor-wrap">
+                            <textarea id="csv-paste-input" placeholder="粘贴表头与数据行，例如：&#10;姓名,年龄,城市&#10;张三,28,北京"></textarea>
+                        </div>
+                        <div class="csv-split-resizer" id="csv-split-resizer" title="拖动调整左右宽度" role="separator" aria-orientation="vertical" aria-label="调整工作表栏宽度"></div>
+                        <div class="csv-sheet-bar" id="csv-sheet-bar">
+                            <div class="csv-sheet-strip">
+                                <div class="csv-sheet-tabs" id="csv-tab-bar" role="tablist" aria-label="CSV 工作表" aria-orientation="vertical"></div>
+                                <button type="button" class="csv-sheet-add" id="csv-sheet-add" title="新建工作表">+</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1470,6 +1538,7 @@
         </div>
 
         <script src="libs/tool-copy.js"></script>
+        <script src="../vendor/sql-formatter/sql-formatter.min.js"></script>
         <script src="../vendor/codepage/cpexcel.full.js"></script>
         <script src="../vendor/codepage/cputils.js"></script>
         <script src="../vendor/xlsx/xlsx.full.min.js"></script>
@@ -5204,6 +5273,44 @@
             document.getElementById("csv-modal-mask").addEventListener("click", function (e) {
                 if (e.target.id === "csv-modal-mask") closeCsvModal();
             });
+            (function bindCsvSplitResize() {
+                var split = document.getElementById("csv-split");
+                var resizer = document.getElementById("csv-split-resizer");
+                var sheetBar = document.getElementById("csv-sheet-bar");
+                if (!split || !resizer || !sheetBar) return;
+                var dragging = false;
+                function onMove(e) {
+                    if (!dragging) return;
+                    var rect = split.getBoundingClientRect();
+                    var next = Math.round(rect.right - e.clientX);
+                    next = Math.max(120, Math.min(360, next));
+                    sheetBar.style.flex = "0 0 " + next + "px";
+                    sheetBar.style.width = next + "px";
+                }
+                function onUp() {
+                    if (!dragging) return;
+                    dragging = false;
+                    split.classList.remove("is-resizing");
+                    document.body.style.cursor = "";
+                    document.body.style.userSelect = "";
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                }
+                resizer.addEventListener("mousedown", function (e) {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    dragging = true;
+                    split.classList.add("is-resizing");
+                    document.body.style.cursor = "col-resize";
+                    document.body.style.userSelect = "none";
+                    document.addEventListener("mousemove", onMove);
+                    document.addEventListener("mouseup", onUp);
+                });
+                resizer.addEventListener("dblclick", function () {
+                    sheetBar.style.flex = "";
+                    sheetBar.style.width = "";
+                });
+            })();
             document.getElementById("csv-sheet-add").addEventListener("click", function (e) {
                 e.preventDefault();
                 addCsvPasteEntry();
@@ -5254,6 +5361,39 @@
                 e.stopPropagation();
                 closeSqlHistoryPop();
                 openSqlHelp();
+            });
+            document.getElementById("sql-beautify-btn").addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeSqlHistoryPop();
+                var ta = document.getElementById("sql-input");
+                var text = ta ? String(ta.value || "") : "";
+                if (!text.trim()) {
+                    setStatus("请先输入 SQL 语句。", true);
+                    return;
+                }
+                var fmt = window.sqlFormatter;
+                if (!fmt || typeof fmt.format !== "function") {
+                    setStatus("SQL 美化组件未加载，请刷新页面后重试。", true);
+                    return;
+                }
+                try {
+                    // Excel SQL 常用 [表名]；mysql 方言无法解析方括号，改用 tsql
+                    var hasBracketId = /\[[^\]]*\]/.test(text);
+                    var mode = (document.getElementById("sql-mode").value || "mysql");
+                    var language = hasBracketId
+                        ? "tsql"
+                        : (mode === "mysql" ? "mysql" : "sql");
+                    var out = fmt.format(text, {
+                        language: language,
+                        tabWidth: 2,
+                        keywordCase: "upper",
+                    });
+                    ta.value = out;
+                    setStatus("SQL 已美化。", false);
+                } catch (err) {
+                    setStatus("SQL 美化失败：" + (err && err.message ? err.message : "未知错误"), true);
+                }
             });
             document.getElementById("sql-history-btn").addEventListener("click", function (e) {
                 e.preventDefault();
