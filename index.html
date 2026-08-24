@@ -372,6 +372,39 @@
                 width: 100%;
                 max-width: 980px;
             }
+            .calendar-panel.expanded.year-view #calendar-panel-root {
+                overflow-x: hidden;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                min-height: 0;
+                flex: 1;
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .calendar-panel.expanded.year-view #calendar-panel-root .tool-cal {
+                flex: 0 0 auto;
+                min-height: 0;
+                height: auto;
+                max-height: none;
+                width: 100%;
+                max-width: 980px;
+                display: flex;
+                flex-direction: column;
+            }
+            .calendar-panel.expanded.year-view #calendar-panel-root .tool-cal-year-view {
+                flex: 0 0 auto;
+                overflow: visible;
+                min-height: auto;
+            }
+            .calendar-panel.expanded.year-view #calendar-panel-root .tool-cal-year-grid {
+                min-width: 0;
+            }
+            .calendar-panel:not(.expanded) #calendar-print-btn,
+            .calendar-panel:not(.year-view) #calendar-print-btn {
+                display: none !important;
+            }
             .calendar-panel-head {
                 display: flex;
                 align-items: center;
@@ -1038,7 +1071,12 @@
             <div class="calendar-panel-head">
                 <span class="calendar-panel-title">日历</span>
                 <div class="calendar-panel-actions">
-                    <button type="button" id="calendar-expand-btn" class="calendar-panel-action" title="展开" aria-label="展开日历">
+                    <button type="button" id="calendar-print-btn" class="calendar-panel-action" title="打印年历" aria-label="打印年历" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-1 9h-2v-2h-6v2H8v-4h8v4zm1-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-2-5H7v3h10V5z"/>
+                        </svg>
+                    </button>
+                    <button type="button" id="calendar-expand-btn" class="calendar-panel-action" title="查看全年" aria-label="查看全年">
                         <svg id="calendar-expand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
                             <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
                         </svg>
@@ -1065,6 +1103,7 @@
             <div id="calculator-panel-root"></div>
         </div>
         <script src="pages/libs/tool-lunar.js"></script>
+        <script src="pages/libs/tool-zodiac-icons.js"></script>
         <script src="pages/libs/tool-holidays-cn.js"></script>
         <script src="pages/libs/tool-calendar.js"></script>
         <script src="pages/libs/tool-calculator.js"></script>
@@ -1182,6 +1221,11 @@
                             shouldTick: function () {
                                 var p = document.getElementById("calendar-panel");
                                 return !!(p && p.classList.contains("visible"));
+                            },
+                            onViewModeChange: function (mode) {
+                                if (typeof window.setCalendarPanelExpanded === "function") {
+                                    window.setCalendarPanelExpanded(mode === "year", { skipCalSync: true });
+                                }
                             }
                         });
                         if (root.querySelector(".tool-cal-grid button")) {
@@ -1851,30 +1895,47 @@
                 const collapseIcon = document.getElementById("calendar-collapse-icon");
                 if (!expandBtn) return;
                 if (calendarPanelExpanded) {
-                    expandBtn.title = "收起";
-                    expandBtn.setAttribute("aria-label", "收起日历");
+                    expandBtn.title = "返回月历";
+                    expandBtn.setAttribute("aria-label", "返回月历");
                     if (expandIcon) expandIcon.hidden = true;
                     if (collapseIcon) collapseIcon.hidden = false;
                 } else {
-                    expandBtn.title = "展开";
-                    expandBtn.setAttribute("aria-label", "展开日历");
+                    expandBtn.title = "查看全年";
+                    expandBtn.setAttribute("aria-label", "查看全年");
                     if (expandIcon) expandIcon.hidden = false;
                     if (collapseIcon) collapseIcon.hidden = true;
                 }
             }
 
-            function setCalendarPanelExpanded(expanded) {
+            function updateCalendarPrintButton() {
+                const printBtn = document.getElementById("calendar-print-btn");
+                if (!printBtn) return;
+                const panel = document.getElementById("calendar-panel");
+                const show =
+                    calendarPanelExpanded &&
+                    panel &&
+                    panel.classList.contains("visible") &&
+                    panel.classList.contains("expanded") &&
+                    panel.classList.contains("year-view");
+                printBtn.hidden = !show;
+            }
+
+            function setCalendarPanelExpanded(expanded, opts) {
+                opts = opts || {};
                 calendarPanelExpanded = !!expanded;
                 const panel = document.getElementById("calendar-panel");
                 if (panel) {
                     panel.classList.toggle("expanded", calendarPanelExpanded);
+                    panel.classList.toggle("year-view", calendarPanelExpanded);
                 }
-                const calEl = panel && panel.querySelector(".tool-cal");
-                if (calEl) {
-                    calEl.classList.toggle("tool-cal-compact", !calendarPanelExpanded);
-                    calEl.classList.toggle("tool-cal-fullscreen", calendarPanelExpanded);
+                if (!opts.skipCalSync) {
+                    const cal = window.__calInstance;
+                    if (cal && typeof cal.setViewMode === "function") {
+                        cal.setViewMode(calendarPanelExpanded ? "year" : "month");
+                    }
                 }
                 updateCalendarExpandButton();
+                updateCalendarPrintButton();
                 if (
                     panel &&
                     panel.classList.contains("visible") &&
@@ -1883,7 +1944,11 @@
                     window.__positionCalendarPanel();
                 }
                 if (panel && panel.classList.contains("visible")) {
-                    startCalendarPanelTick();
+                    if (calendarPanelExpanded) {
+                        stopCalendarPanelTick();
+                    } else {
+                        startCalendarPanelTick();
+                    }
                 }
             }
             window.setCalendarPanelExpanded = setCalendarPanelExpanded;
@@ -2033,6 +2098,20 @@
                 }
                 if (!isCalendarPanelVisible()) return;
                 setCalendarPanelExpanded(!calendarPanelExpanded);
+            }
+
+            function printCalendarYear(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (!isCalendarPanelVisible()) return;
+                const cal = window.__calInstance;
+                if (cal && typeof cal.printYearView === "function") {
+                    cal.printYearView();
+                } else {
+                    window.print();
+                }
             }
 
             function toggleCalendarPanel(e) {
@@ -3581,6 +3660,11 @@
                 if (calendarExpandBtn && !calendarExpandBtn.getAttribute("data-cal-bound")) {
                     calendarExpandBtn.setAttribute("data-cal-bound", "1");
                     calendarExpandBtn.addEventListener("click", toggleCalendarPanelExpand);
+                }
+                var calendarPrintBtn = document.getElementById("calendar-print-btn");
+                if (calendarPrintBtn && !calendarPrintBtn.getAttribute("data-cal-bound")) {
+                    calendarPrintBtn.setAttribute("data-cal-bound", "1");
+                    calendarPrintBtn.addEventListener("click", printCalendarYear);
                 }
                 var testBd = document.getElementById("test-data-modal-backdrop");
                 var testClose = document.getElementById("test-data-modal-close");

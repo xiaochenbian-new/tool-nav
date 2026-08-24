@@ -452,3 +452,521 @@
 .tool-cal-fullscreen .tool-cal-footer-text em {
     font-size: 18px;
 }
+
+/* —— 顶栏扩展按钮 —— */
+.tool-cal-month-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+.tool-cal-year-toggle,
+.tool-cal-print-btn {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    font-size: 12px;
+    margin-left: 2px;
+    border: 1px solid #d0dcf0;
+    border-radius: 6px;
+    background: #fff;
+    color: #3c4f78;
+    cursor: pointer;
+    font-weight: 600;
+}
+.tool-cal-year-toggle:hover,
+.tool-cal-print-btn:hover {
+    border-color: #2f6bff;
+    color: #2f6bff;
+    background: #f5f8ff;
+}
+.tool-cal-print-btn {
+    color: #2f6bff;
+    border-color: #c8d8ff;
+    background: #f5f8ff;
+}
+.tool-cal-print-btn[hidden],
+.tool-cal-year-toggle[hidden] {
+    display: none !important;
+}
+.tool-cal-compact .tool-cal-print-btn {
+    display: none !important;
+}
+
+/* —— 年历视图（参考传统年历排版） —— */
+.tool-cal-year-mode .tool-cal-head {
+    flex-wrap: wrap;
+}
+.tool-cal-year-mode {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.tool-cal-year-mode .tool-cal-year-view {
+    flex: 0 0 auto;
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+.tool-cal-year-mode .tool-cal-year-view[hidden] {
+    display: none !important;
+}
+.tool-cal-year-view {
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+}
+.tool-cal-year-print-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    flex: 0 0 auto;
+    width: 100%;
+}
+.tool-cal-year-print-zodiac {
+    width: 66.67%;
+    max-width: 100%;
+    margin: 0 auto;
+    line-height: 0;
+}
+.tool-cal-year-print-zodiac[hidden] {
+    display: none !important;
+}
+.tool-cal-year-print-zodiac-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3.6 / 1;
+    object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(198, 40, 40, 0.12);
+}
+.tool-cal-year-print-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #d32f2f;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-align: center;
+}
+.tool-cal-year-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    align-content: start;
+    flex: 0 0 auto;
+    gap: 8px 10px;
+    width: 100%;
+    padding-bottom: 4px;
+}
+.tool-cal-year-month {
+    border: 1px solid #d9d9d9;
+    border-radius: 0;
+    padding: 0;
+    background: #fff;
+    min-width: 0;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+}
+.tool-cal-year-month-title {
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+}
+.tool-cal-year-month-title:hover {
+    filter: brightness(1.06);
+}
+.tool-cal-year-month--c0 .tool-cal-year-month-title { background: #e85098; }
+.tool-cal-year-month--c1 .tool-cal-year-month-title { background: #42a5f5; }
+.tool-cal-year-month--c2 .tool-cal-year-month-title { background: #66bb6a; }
+.tool-cal-year-month--c3 .tool-cal-year-month-title { background: #ffb300; }
+.tool-cal-year-month--c4 .tool-cal-year-month-title { background: #3949ab; }
+.tool-cal-year-month--c5 .tool-cal-year-month-title { background: #8e24aa; }
+.tool-cal-year-table-wrap {
+    width: 100%;
+    overflow: visible;
+    display: block;
+}
+.tool-cal-year-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.tool-cal-year-table th,
+.tool-cal-year-table td {
+    border: 1px solid #e6e6e6;
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+}
+.tool-cal-year-wk,
+.tool-cal-year-wd {
+    font-size: 9px;
+    font-weight: 600;
+    color: #888;
+    background: #fafafa;
+    padding: 2px 0;
+    line-height: 1.2;
+}
+.tool-cal-year-wk {
+    width: 16px;
+}
+.tool-cal-year-wd.weekend {
+    color: #d32f2f;
+}
+.tool-cal-year-wk-num {
+    font-size: 9px;
+    font-weight: 600;
+    color: #aaa;
+    background: #fafafa;
+    padding: 0;
+    line-height: 1;
+}
+.tool-cal-year-day {
+    padding: 0 !important;
+    height: 1px;
+}
+.tool-cal-year-day-empty {
+    background: #fff;
+}
+.tool-cal-year-table tbody tr {
+    height: auto;
+}
+.tool-cal-year-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 34px;
+    padding: 2px 1px 1px;
+    border: 1.5px solid transparent;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    line-height: 1.15;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.tool-cal-year-cell-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: #2f6bff;
+    box-shadow: 0 1px 2px rgba(47, 107, 255, 0.35);
+}
+.tool-cal-year-cell:hover:not(.muted) {
+    background: #f5f8ff;
+}
+.tool-cal-year-cell-num {
+    font-size: 11px;
+    font-weight: 600;
+    color: #222;
+}
+.tool-cal-year-cell-sub {
+    font-size: 8px;
+    color: #999;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.1;
+    margin-top: 1px;
+}
+.tool-cal-year-cell.sun-col:not(.muted):not(.holiday) .tool-cal-year-cell-num,
+.tool-cal-year-cell.sun-col:not(.muted):not(.holiday) .tool-cal-year-cell-sub {
+    color: #d32f2f;
+}
+.tool-cal-year-cell.sat-col:not(.muted):not(.holiday) .tool-cal-year-cell-num,
+.tool-cal-year-cell.sat-col:not(.muted):not(.holiday) .tool-cal-year-cell-sub {
+    color: #1565c0;
+}
+.tool-cal-year-cell.holiday .tool-cal-year-cell-num,
+.tool-cal-year-cell.holiday .tool-cal-year-cell-sub,
+.tool-cal-year-cell.holiday .tool-cal-year-cell-sub.holiday-tag {
+    color: #d32f2f;
+    font-weight: 700;
+}
+.tool-cal-year-cell.workday .tool-cal-year-cell-sub.workday-tag {
+    color: #546e7a;
+    font-weight: 600;
+}
+.tool-cal-year-cell.muted .tool-cal-year-cell-num,
+.tool-cal-year-cell.muted .tool-cal-year-cell-sub {
+    color: #ccc;
+    font-weight: 400;
+}
+.tool-cal-year-cell.today:not(.muted) {
+    background: #2f6bff;
+    border-color: #1a56e8;
+    box-shadow: 0 1px 4px rgba(47, 107, 255, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.tool-cal-year-cell.today:not(.muted) .tool-cal-year-cell-badge {
+    background: #fff;
+    color: #2f6bff;
+    box-shadow: none;
+}
+.tool-cal-year-cell.today:not(.muted) .tool-cal-year-cell-num,
+.tool-cal-year-cell.today:not(.muted) .tool-cal-year-cell-sub {
+    color: #fff;
+    font-weight: 800;
+}
+.tool-cal-year-cell.today:not(.muted).holiday .tool-cal-year-cell-num,
+.tool-cal-year-cell.today:not(.muted).holiday .tool-cal-year-cell-sub {
+    color: #fff;
+}
+.tool-cal-compact.tool-cal-year-mode .tool-cal-year-grid {
+    gap: 6px 8px;
+}
+.tool-cal-compact .tool-cal-year-cell {
+    min-height: 30px;
+    padding: 1px 0;
+}
+.tool-cal-compact .tool-cal-year-cell-num {
+    font-size: 10px;
+}
+.tool-cal-compact .tool-cal-year-cell-sub {
+    font-size: 7px;
+}
+.tool-cal-compact .tool-cal-year-print-head {
+    margin-bottom: 8px;
+    gap: 6px;
+    padding-bottom: 8px;
+}
+.tool-cal-compact .tool-cal-year-print-zodiac {
+    width: 66.67%;
+}
+.tool-cal-compact .tool-cal-year-print-title {
+    font-size: 18px;
+}
+
+/* —— A4 打印年历 —— */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 4mm;
+    }
+    html,
+    body {
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    body * {
+        visibility: hidden !important;
+    }
+    body .tool-cal-year-view,
+    body .tool-cal-year-view * {
+        visibility: visible !important;
+    }
+    .tool-cal-year-view {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 202mm !important;
+        height: 289mm !important;
+        padding: 2mm 3mm 3mm !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-sizing: border-box !important;
+        background: #fff !important;
+        overflow: hidden !important;
+    }
+    .tool-cal-year-print-head {
+        flex: 0 0 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 2mm !important;
+        margin: 0 0 1.5mm !important;
+        padding: 0 0 2mm !important;
+        border-bottom: 0.3pt solid #ddd !important;
+        width: 100% !important;
+    }
+    .tool-cal-year-print-zodiac {
+        width: 66.67% !important;
+        max-width: 66.67% !important;
+        margin: 0 auto !important;
+    }
+    .tool-cal-year-print-zodiac-img {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 36mm !important;
+        aspect-ratio: 3.6 / 1 !important;
+        object-fit: contain !important;
+        border-radius: 2mm !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .tool-cal-year-print-title {
+        font-size: 14pt !important;
+        color: #d32f2f !important;
+        margin: 0 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.1em !important;
+    }
+    .tool-cal-year-grid {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-rows: repeat(4, 1fr) !important;
+        align-content: stretch !important;
+        align-items: stretch !important;
+        gap: 0.8mm 1mm !important;
+        width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+    }
+    .tool-cal-year-month {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        border: 0.25pt solid #999 !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+    .tool-cal-year-month-title {
+        flex: 0 0 auto !important;
+        font-size: 7pt !important;
+        padding: 0.45mm 1.2mm !important;
+        line-height: 1.1 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .tool-cal-year-month--c0 .tool-cal-year-month-title { background: #e85098 !important; }
+    .tool-cal-year-month--c1 .tool-cal-year-month-title { background: #42a5f5 !important; }
+    .tool-cal-year-month--c2 .tool-cal-year-month-title { background: #66bb6a !important; }
+    .tool-cal-year-month--c3 .tool-cal-year-month-title { background: #ffb300 !important; }
+    .tool-cal-year-month--c4 .tool-cal-year-month-title { background: #3949ab !important; }
+    .tool-cal-year-month--c5 .tool-cal-year-month-title { background: #8e24aa !important; }
+    .tool-cal-year-table-wrap {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .tool-cal-year-table {
+        height: 100% !important;
+        flex: 1 1 0 !important;
+    }
+    .tool-cal-year-table thead tr {
+        height: 3.2mm !important;
+    }
+    .tool-cal-year-table tbody {
+        height: calc(100% - 3.2mm) !important;
+    }
+    .tool-cal-year-table tbody tr {
+        height: 16.666% !important;
+    }
+    .tool-cal-year-table th,
+    .tool-cal-year-table td {
+        border: 0.12pt solid #ccc !important;
+    }
+    .tool-cal-year-wk,
+    .tool-cal-year-wd,
+    .tool-cal-year-wk-num {
+        font-size: 5pt !important;
+        padding: 0.1mm 0 !important;
+        line-height: 1 !important;
+    }
+    .tool-cal-year-wk {
+        width: 4mm !important;
+    }
+    .tool-cal-year-day {
+        height: auto !important;
+        vertical-align: middle !important;
+    }
+    .tool-cal-year-cell {
+        min-height: 0 !important;
+        height: 100% !important;
+        padding: 0.05mm 0 !important;
+        background: transparent !important;
+        justify-content: center !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+    .tool-cal-year-cell-badge {
+        display: none !important;
+    }
+    .tool-cal-year-cell-num {
+        font-size: 6pt !important;
+        line-height: 1 !important;
+        color: #000 !important;
+    }
+    .tool-cal-year-cell-sub {
+        font-size: 4pt !important;
+        line-height: 0.95 !important;
+        color: #888 !important;
+        margin-top: 0 !important;
+    }
+    .tool-cal-year-cell.muted .tool-cal-year-cell-num,
+    .tool-cal-year-cell.muted .tool-cal-year-cell-sub {
+        color: #ccc !important;
+    }
+    .tool-cal-year-cell.sun-col:not(.muted):not(.holiday) .tool-cal-year-cell-num,
+    .tool-cal-year-cell.sun-col:not(.muted):not(.holiday) .tool-cal-year-cell-sub {
+        color: #d32f2f !important;
+    }
+    .tool-cal-year-cell.sat-col:not(.muted):not(.holiday) .tool-cal-year-cell-num,
+    .tool-cal-year-cell.sat-col:not(.muted):not(.holiday) .tool-cal-year-cell-sub {
+        color: #1565c0 !important;
+    }
+    .tool-cal-year-cell.holiday .tool-cal-year-cell-num,
+    .tool-cal-year-cell.holiday .tool-cal-year-cell-sub {
+        color: #d32f2f !important;
+        font-weight: 700 !important;
+    }
+    .tool-cal-year-cell.today:not(.muted) {
+        background: transparent !important;
+        border: 0.35pt solid #2f6bff !important;
+        box-shadow: inset 0 0 0 0.25pt #2f6bff !important;
+    }
+    .tool-cal-year-cell.today:not(.muted) .tool-cal-year-cell-num {
+        color: #2f6bff !important;
+        font-weight: 900 !important;
+        text-decoration: underline;
+    }
+    .tool-cal-year-cell.today:not(.muted) .tool-cal-year-cell-sub {
+        color: #2f6bff !important;
+        font-weight: 700 !important;
+    }
+}
