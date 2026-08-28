@@ -1,0 +1,15 @@
+# EdgeOne Pages 部署时排除的目录/文件（不参与发布）
+node_modules/
+app/
+dist-utools/
+scripts/
+.idea/
+.git/
+.gitignore
+.edgeoneignore
+todo-page.txt
+plugin.json
+package.json
+package-lock.json
+*.md
+*.log
