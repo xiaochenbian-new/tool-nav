@@ -30,7 +30,7 @@
                 color: var(--text);
             }
             .page {
-                height: calc(100vh - 16px);
+                height: calc(100vh);
                 display: flex;
                 align-items: stretch;
                 gap: 0;
@@ -1119,7 +1119,7 @@
                 white-space: nowrap;
             }
             @media (max-width: 1000px) {
-                .page { flex-direction: column; height: auto; min-height: calc(100vh - 16px); }
+                .page { flex-direction: column; height: auto; min-height: calc(100vh); }
                 .pane-left, .pane-right { min-height: 40vh; }
                 .pane-resizer {
                     flex: 0 0 8px;
@@ -1143,6 +1143,14 @@
                 body.pane-resizing { cursor: row-resize; }
             }
         </style>
+    
+    <!-- 外壳注入：清除 body/根容器内边距 + 隐藏根滚动条，使工具内容宽度与导航栏一致（file:// 跨域下由页面自带） -->
+    <style id="tool-shell-flush">
+        body{padding:0!important;}
+        body>*{padding:0!important;margin:0!important;}
+        html::-webkit-scrollbar{width:0!important;height:0!important;}
+        html{scrollbar-width:none!important;}
+    </style>
     </head>
     <body>
         <div class="page" id="page">

@@ -17,6 +17,7 @@
                 --muted: #6f7d96;
                 --border: #dbe6ff;
                 --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+                --fav-bar-w: 44px;
             }
             html, body {
                 width: 100%;
@@ -860,10 +861,6 @@
             .content {
                 flex: 1;
                 overflow: hidden;
-                border: 1px solid var(--border);
-                border-radius: 8px;
-                background: var(--card);
-                box-shadow: var(--shadow);
             }
             #tool-frame-container {
                 width: 100%;
@@ -890,6 +887,261 @@
                 .left-zone { min-width: 0; }
                 .recent-nav { width: 100%; margin-left: 0; justify-content: flex-start; margin-right: 0; }
                 .search-wrap { width: 100%; }
+            }
+            /* ===== 收藏栏（右侧通高栏：上下右贴边、左侧留与导航栏间距一致的 6px；优先级同头部 z-index:50） ===== */
+            body {
+                padding-right: 44px;
+            }
+            #fav-bar {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: var(--fav-bar-w);
+                z-index: 50;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                box-sizing: border-box;
+                background: var(--card);
+                border: none;
+                border-left: 1px solid var(--border);
+                padding: 6px 0 4px;
+            }
+            .fav-bar-label {
+                flex: 0 0 auto;
+                text-align: center;
+                font-size: 9px;
+                line-height: 1.2;
+                letter-spacing: 2px;
+                color: var(--muted);
+                margin: 0 0 4px;
+                user-select: none;
+            }
+            .fav-bar-list {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                overflow-x: hidden;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+                padding: 0 2px;
+            }
+            .fav-bar-list::-webkit-scrollbar {
+                width: 3px;
+            }
+            .fav-bar-list::-webkit-scrollbar-thumb {
+                background: #c9d8f5;
+                border-radius: 2px;
+            }
+            .fav-bar-item {
+                position: relative;
+                flex: 0 0 auto;
+                width: 30px;
+                height: 30px;
+                border: none;
+                border-radius: 7px;
+                background: transparent;
+                color: #3c4f78;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: grab;
+                user-select: none;
+                transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+            }
+            .fav-bar-item svg {
+                display: block;
+            }
+            .fav-bar-item:hover {
+                background: rgba(47, 107, 255, 0.09);
+                color: var(--primary);
+            }
+            .fav-bar-item.active {
+                color: var(--primary);
+                background: rgba(47, 107, 255, 0.14);
+            }
+            .fav-bar-item.dragging {
+                opacity: 0.4;
+            }
+            .fav-bar-item.drop-before::before,
+            .fav-bar-item.drop-after::after {
+                content: "";
+                position: absolute;
+                left: 1px;
+                right: 1px;
+                height: 2px;
+                border-radius: 2px;
+                background: var(--primary);
+                pointer-events: none;
+            }
+            .fav-bar-item.drop-before::before {
+                top: -3px;
+            }
+            .fav-bar-item.drop-after::after {
+                bottom: -3px;
+            }
+            .fav-bar-item-rm {
+                display: none;
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                width: 14px;
+                height: 14px;
+                padding: 0;
+                border: 1px solid #d8e5ff;
+                border-radius: 50%;
+                background: #fff;
+                color: #c0392b;
+                font-size: 10px;
+                line-height: 1;
+                cursor: pointer;
+                align-items: center;
+                justify-content: center;
+                z-index: 2;
+                box-shadow: 0 1px 3px rgba(36, 90, 190, 0.15);
+            }
+            .fav-bar-item:hover .fav-bar-item-rm {
+                display: inline-flex;
+            }
+            .fav-bar-item-rm:hover {
+                border-color: #c0392b;
+                background: #fdecec;
+            }
+            .fav-bar-item-rm.tapped {
+                color: #c0392b;
+                border-color: #c0392b;
+                background: #fff;
+                transform: scale(1.2);
+            }
+            .fav-bar-empty {
+                flex: 0 0 auto;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                color: #b9c8e4;
+                user-select: none;
+            }
+            .fav-bar-divider {
+                flex: 0 0 auto;
+                height: 1px;
+                margin: 6px 6px 4px;
+                background: var(--border);
+            }
+            .fav-bar-current {
+                flex: 0 0 auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                padding: 1px 2px 4px;
+                min-height: 38px;
+            }
+            .fav-bar-star-btn {
+                width: 24px;
+                height: 24px;
+                padding: 0;
+                border: 1px solid #d8e5ff;
+                border-radius: 7px;
+                background: #f8fbff;
+                color: #d48806;
+                font-size: 13px;
+                line-height: 1;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .fav-bar-star-btn:hover {
+                border-color: var(--primary);
+                background: #edf3ff;
+            }
+            .fav-bar-star-btn.favored {
+                background: #fff7e0;
+                border-color: #f0d78a;
+            }
+            .fav-bar-current-icon {
+                color: #3c4f78;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .fav-bar-current-none {
+                font-size: 10px;
+                color: #b9c8e4;
+                line-height: 1.2;
+                text-align: center;
+            }
+            .fav-bar-bottom {
+                flex: 0 0 auto;
+                display: flex;
+                justify-content: center;
+                padding: 6px 0 2px;
+                border-top: 1px solid var(--border);
+            }
+            .fav-all-toggle {
+                width: 28px;
+                height: 28px;
+                padding: 0;
+                border: 1px solid #d8e5ff;
+                border-radius: 8px;
+                background: #f8fbff;
+                color: #3c4f78;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 0;
+            }
+            .fav-all-toggle:hover,
+            .fav-all-toggle.active {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #e8f0ff;
+            }
+            .fav-all-toggle svg {
+                display: block;
+            }
+            /* ===== 工具图标（全部分类面板 / 搜索结果 / 头部最近工具） ===== */
+            .tool-chip,
+            .result-item,
+            .recent-tool {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .chip-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex: 0 0 auto;
+            }
+            /* ===== 收藏栏快速提示（悬停立即显示工具名称） ===== */
+            #fav-bar-tip {
+                display: none;
+                position: fixed;
+                z-index: 55;
+                max-width: 240px;
+                padding: 5px 10px;
+                border: 1px solid #d8e5ff;
+                border-radius: 7px;
+                background: #fff;
+                box-shadow: 0 6px 18px rgba(36, 90, 190, 0.18);
+                font-size: 12px;
+                line-height: 1.4;
+                color: #2b3e63;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                pointer-events: none;
+            }
+            #fav-bar-tip.visible {
+                display: block;
             }
         </style>
     </head>
@@ -1066,6 +1318,21 @@
                 <div id="tool-frame-container"></div>
             </div>
         </div>
+        <div id="fav-bar" aria-label="收藏栏">
+            <div class="fav-bar-label" title="收藏的工具">收藏</div>
+            <div id="fav-bar-list" class="fav-bar-list"></div>
+            <div class="fav-bar-divider"></div>
+            <div class="fav-bar-label" title="当前工具">当前</div>
+            <div id="fav-bar-current" class="fav-bar-current"></div>
+            <div class="fav-bar-bottom">
+                <button type="button" id="fav-all-toggle" class="fav-all-toggle" title="全部分类工具" aria-label="全部分类工具">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="fav-bar-tip" role="tooltip" aria-hidden="true"></div>
         <div id="calendar-backdrop" class="calendar-backdrop" aria-hidden="true"></div>
         <div id="calendar-panel" class="calendar-panel" aria-hidden="true">
             <div class="calendar-panel-head">
@@ -1597,54 +1864,54 @@
             const FORM_CACHE = {};
             const FRAME_CACHE = {};
             const TOOLS = [
-                { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", keywords: ["json", "format", "格式化", "压缩", "修复"] },
-                { id: "tab48", name: "格式互转", category: "解析与转换", path: "pages/格式互转工具.html", keywords: ["格式互转", "转换", "互转", "json", "yaml", "xml", "toml", "csv", "properties", "php", "query"] },
-                { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", keywords: ["format", "json", "xml", "sql", "css", "js", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
-                { id: "tab44", name: "HTML 预览", category: "解析与转换", path: "pages/HTML预览工具.html", keywords: ["html", "preview", "预览", "实时", "编辑", "iframe", "网页", "渲染"] },
-                { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", keywords: ["ddl", "mysql", "pgsql", "oracle"] },
-                { id: "tab21", name: "MyBatis SQL 填充", category: "解析与转换", path: "pages/MyBatisSql日志填充.html", keywords: ["mybatis", "sql", "日志", "jdbc", "参数", "preparing", "ibatis", "完整sql"] },
-                { id: "tab2", name: "Java 与 JSON", category: "解析与转换", path: "pages/JavaToJson.html", keywords: ["java", "json"] },
-                { id: "tab3", name: "JSON/Excel/SQL", category: "解析与转换", path: "pages/JsonToExcel.html", keywords: ["json", "excel", "csv", "sql", "insert"] },
-                { id: "tab4", name: "Tester 文档解析", category: "解析与转换", path: "pages/TesterJSON.html", keywords: ["tester", "talend", "api"] },
-                { id: "tab9", name: "Nginx 配置", category: "运维工具", path: "pages/Nginx配置工具.html", keywords: ["nginx", "proxy", "server"] },
-                { id: "tab5", name: "Shell 脚本生成", category: "运维工具", path: "pages/Shell脚本.html", keywords: ["shell", "script"] },
-                { id: "tab6", name: "Crontab", category: "运维工具", path: "pages/Crontab工具.html", keywords: ["cron", "schedule"] },
-                { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", keywords: ["curl", "linux", "http", "api"] },
-                { id: "tab43", name: "Js编排", category: "运维工具", path: "pages/Js请求工具.html", keywords: ["js", "javascript", "fetch", "ajax", "xhr", "axios", "jquery", "http", "api", "请求", "接口", "编排", "依赖", "多接口", "串联", "并行"] },
-                { id: "tab42", name: "WebSocket", category: "运维工具", path: "pages/WebSocket工具.html", keywords: ["websocket", "ws", "wss", "socket", "实时", "调试", "消息"] },
-                { id: "tab7", name: "身份证生成", category: "生成", path: "pages/身份证号码生成器.html", keywords: ["idcard", "身份证"] },
-                { id: "tab22", name: "时间日期", category: "其他", path: "pages/时间日期工具.html", keywords: ["时间", "日期", "时间戳", "时区", "unix", "timestamp", "换算", "离线"] },
-                { id: "tab18", name: "文本处理", category: "其他", path: "pages/文本处理工具.html", keywords: ["文本", "trim", "排序", "去重", "base64", "url", "行号", "换行", "text"] },
-                { id: "tab11", name: "二维码/条形码生成", category: "生成", path: "pages/码生成工具.html", keywords: ["二维码", "条形码", "qrcode", "barcode"] },
-                { id: "tab20", name: "UUID 工具", category: "生成", path: "pages/UUID工具.html", keywords: ["uuid", "guid", "唯一标识", "生成", "rfc4122"] },
-                { id: "tab14", name: "Excel SQL 查询", category: "其他", path: "pages/ExcelSQL查询工具.html", keywords: ["excel", "sql", "查询", "数据分析", "时间筛选", "csv", "粘贴"] },
-                { id: "tab15", name: "统一社会信用代码生成", category: "生成", path: "pages/统一社会信用代码生成工具.html", keywords: ["统一社会信用代码", "社会信用代码", "信用代码", "生成", "校验"] },
-                { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
-                { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", keywords: ["集合", "集合对比", "集合比较", "分隔", "分割", "分组", "比较", "对比", "交集", "差异", "compare", "set", "diff", "excel"] },
-                { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", keywords: ["单位换算", "时间", "长度", "面积", "体积", "质量", "温度", "压强", "功率", "能量", "密度", "力", "速度", "字节", "角度"] },
-                { id: "tab39", name: "人民币大写", category: "解析与转换", path: "pages/阿拉伯数字转大写人民币工具.html", keywords: ["人民币", "大写", "金额", "财务", "票据", "数字", "元角分", "转换", "阿拉伯数字", "反向", "双向", "解析"] },
-                { id: "tab45", name: "YAML/Properties", category: "解析与转换", path: "pages/YAML Properties工具.html", keywords: ["yaml", "yml", "properties", "配置", "转换", "spring", "application", "配置文件", "离线"] },
-                { id: "tab47", name: "Markdown 转 Word", category: "文件格式转换", path: "pages/Markdown转Word工具.html", keywords: ["markdown", "md", "word", "docx", "转换", "导出", "预览", "表格", "公式", "脚注", "离线"] },
-                { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", keywords: ["退税", "出口退税", "税率", "计算"] },
-                { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
-                { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
-                { id: "tab25", name: "RSA 加解密", category: "加解密", path: "pages/RSA加解密工具.html", keywords: ["rsa", "pem", "公钥", "私钥", "加密", "解密", "jsencrypt", "pkcs", "离线"] },
-                { id: "tab26", name: "HMAC", category: "加解密", path: "pages/HMAC工具.html", keywords: ["hmac", "sha256", "sha1", "md5", "消息认证", "密钥", "签名", "离线"] },
-                { id: "tab28", name: "Base64 编解码", category: "编解码", path: "pages/Base64编解码工具.html", keywords: ["base64", "编码", "解码", "离线"] },
-                { id: "tab29", name: "URL 编解码", category: "编解码", path: "pages/URL编解码工具.html", keywords: ["url", "encodeURIComponent", "decodeURIComponent", "编码", "解码", "离线"] },
-                { id: "tab30", name: "Unicode 转义", category: "编解码", path: "pages/Unicode转义编解码工具.html", keywords: ["unicode", "\\u", "U+", "html entity", "css entity", "编码", "解码", "离线"] },
-                { id: "tab31", name: "JWT 解析", category: "编解码", path: "pages/JWT解析工具.html", keywords: ["jwt", "json", "token", "header", "payload", "离线"] },
-                { id: "tab32", name: "十六进制编解码", category: "编解码", path: "pages/十六进制编解码工具.html", keywords: ["hex", "十六进制", "utf-8", "编码", "解码", "离线"] },
-                { id: "tab33", name: "HTML 实体编解码", category: "编解码", path: "pages/HTML实体编解码工具.html", keywords: ["html", "entity", "&amp;", "编码", "解码", "离线"] },
-                { id: "tab34", name: "GZIP / Deflate", category: "编解码", path: "pages/GZIP编解码工具.html", keywords: ["gzip", "deflate", "压缩", "解压", "pako", "base64", "离线"] },
-                { id: "tab35", name: "ASN.1 DER 解析", category: "编解码", path: "pages/ASN1解析工具.html", keywords: ["asn1", "der", "证书", "x509", "xml", "离线"] },
-                { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
-                { id: "tab46", name: "图片压缩", category: "图片&视频", path: "pages/图片压缩工具.html", keywords: ["图片", "压缩", "jpeg", "jpg", "png", "webp", "质量", "体积", "离线", "image", "compress", "指定大小"] },
-                { id: "tab27", name: "证件照冲印排版", category: "图片&视频", path: "pages/证件照冲印排版工具.html", keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] },
-                { id: "tab38", name: "证件照换底色", category: "图片&视频", path: "photo-background-change/index.html", keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
-                { id: "tab37", name: "翻译工具", category: "其他", path: "pages/翻译工具.html", keywords: ["翻译", "中英", "日语", "韩语", "词典", "例句", "领域", "自动检测", "translate", "mymemory"] },
-                { id: "tab40", name: "工作语言", category: "其他", path: "pages/工作语言工具.html", keywords: ["工作语言", "口语", "润色", "职场", "汇报", "纪要", "会议纪要", "待办", "产品经理", "研发", "岗位", "角色", "书面语", "整理", "大模型"] },
-                { id: "tab41", name: "VIN码生成", category: "生成", path: "pages/VIN工具.html", keywords: ["vin", "车架号", "车辆识别码", "校验", "生成", "wmi", "离线"] }
+                { id: "tab8", name: "Json工具", category: "解析与转换", path: "pages/Json工具.html", icon: '<path d="M8 3H7a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2 2 0 0 1-2 2h-1"/>', keywords: ["json", "format", "格式化", "压缩", "修复"] },
+                { id: "tab48", name: "格式互转", category: "解析与转换", path: "pages/格式互转工具.html", icon: '<path d="M4 9h13"/><path d="m13 5 4 4-4 4"/><path d="M20 15H7"/><path d="m11 11-4 4 4 4"/>', keywords: ["格式互转", "转换", "互转", "json", "yaml", "xml", "toml", "csv", "properties", "php", "query"] },
+                { id: "tab19", name: "格式化工具", category: "解析与转换", path: "pages/格式化工具.html", icon: '<path d="m15 4 5 5L9.5 19.5a2.1 2.1 0 0 1-3-3L15 4z"/><path d="m13.5 6.5 4 4"/><path d="M19 15v6"/><path d="M16 18h6"/>', keywords: ["format", "json", "xml", "sql", "css", "js", "javascript", "html", "美化", "压缩", "格式化", "prettier"] },
+                { id: "tab44", name: "HTML 预览", category: "解析与转换", path: "pages/HTML预览工具.html", icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8.5h18"/><path d="m9.5 12.5-2 2 2 2"/><path d="m14.5 12.5 2 2-2 2"/>', keywords: ["html", "preview", "预览", "实时", "编辑", "iframe", "网页", "渲染"] },
+                { id: "tab1", name: "DDL 解析", category: "解析与转换", path: "pages/DDL.html", icon: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>', keywords: ["ddl", "mysql", "pgsql", "oracle"] },
+                { id: "tab21", name: "MyBatis SQL 填充", category: "解析与转换", path: "pages/MyBatisSql日志填充.html", icon: '<ellipse cx="11" cy="5" rx="7" ry="2.5"/><path d="M4 5v10c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5V5"/><path d="M4 10c0 1.38 3.13 2.5 7 2.5"/><path d="M18 13v7"/><path d="m15.5 17.5 2.5 2.5 2.5-2.5"/>', keywords: ["mybatis", "sql", "日志", "jdbc", "参数", "preparing", "ibatis", "完整sql"] },
+                { id: "tab2", name: "Java 与 JSON", category: "解析与转换", path: "pages/JavaToJson.html", icon: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/><path d="M6.5 2.5v2"/><path d="M10 2.5v2"/>', keywords: ["java", "json"] },
+                { id: "tab3", name: "JSON/Excel/SQL", category: "解析与转换", path: "pages/JsonToExcel.html", icon: '<rect x="3" y="3" width="12" height="18" rx="2"/><path d="M3 9h12"/><path d="M8 9v12"/><path d="M19 9v7"/><path d="m16.5 13.5 2.5 2.5 2.5-2.5"/>', keywords: ["json", "excel", "csv", "sql", "insert"] },
+                { id: "tab4", name: "Tester 文档解析", category: "解析与转换", path: "pages/TesterJSON.html", icon: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m9 14.5 1.8 1.8L15 12"/>', keywords: ["tester", "talend", "api"] },
+                { id: "tab9", name: "Nginx 配置", category: "运维工具", path: "pages/Nginx配置工具.html", icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5V6"/><path d="M12 18v3.5"/><path d="M2.5 12H6"/><path d="M18 12h3.5"/><path d="m5 5 2.5 2.5"/><path d="m16.5 16.5 2.5 2.5"/><path d="m19 5-2.5 2.5"/><path d="m7.5 16.5-2.5 2.5"/>', keywords: ["nginx", "proxy", "server"] },
+                { id: "tab5", name: "Shell 脚本生成", category: "运维工具", path: "pages/Shell脚本.html", icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3"/><path d="M12 15h5"/>', keywords: ["shell", "script"] },
+                { id: "tab6", name: "Crontab", category: "运维工具", path: "pages/Crontab工具.html", icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>', keywords: ["cron", "schedule"] },
+                { id: "tab12", name: "Linux curl", category: "运维工具", path: "pages/LinuxCurl工具.html", icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h4"/><path d="M7 12h4"/><path d="M7 16h4"/><path d="m15 9 3 3-3 3"/>', keywords: ["curl", "linux", "http", "api"] },
+                { id: "tab43", name: "Js编排", category: "运维工具", path: "pages/Js请求工具.html", icon: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m13.5 6.5-5 5.5h3.5l-1 5.5 5-5.5h-3.5l1-5.5z"/>', keywords: ["js", "javascript", "fetch", "ajax", "xhr", "axios", "jquery", "http", "api", "请求", "接口", "编排", "依赖", "多接口", "串联", "并行"] },
+                { id: "tab42", name: "WebSocket", category: "运维工具", path: "pages/WebSocket工具.html", icon: '<circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><circle cx="12" cy="5" r="2.5"/><circle cx="12" cy="19" r="2.5"/><path d="m7.2 10.8 3.3-4.1"/><path d="m7.2 13.2 3.3 4.1"/><path d="m16.8 10.8-3.3-4.1"/><path d="m16.8 13.2-3.3 4.1"/>', keywords: ["websocket", "ws", "wss", "socket", "实时", "调试", "消息"] },
+                { id: "tab7", name: "身份证生成", category: "生成", path: "pages/身份证号码生成器.html", icon: '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M5.5 16.5c.5-1.6 1.4-2.4 2.5-2.4s2 .8 2.5 2.4"/><path d="M14 9.5h5"/><path d="M14 12.5h5"/><path d="M14 15.5h3"/>', keywords: ["idcard", "身份证"] },
+                { id: "tab22", name: "时间日期", category: "其他", path: "pages/时间日期工具.html", icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9.5h18"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M8 13.5h2.5"/><path d="M13.5 13.5H16"/><path d="M8 17h2.5"/><path d="M13.5 17H16"/>', keywords: ["时间", "日期", "时间戳", "时区", "unix", "timestamp", "换算", "离线"] },
+                { id: "tab18", name: "文本处理", category: "其他", path: "pages/文本处理工具.html", icon: '<path d="M4 6.5h16"/><path d="M4 11h10"/><path d="M4 15.5h16"/><path d="M4 20h7"/>', keywords: ["文本", "trim", "排序", "去重", "base64", "url", "行号", "换行", "text"] },
+                { id: "tab11", name: "二维码/条形码生成", category: "生成", path: "pages/码生成工具.html", icon: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M19 14h2"/><path d="M14 19h2"/><path d="M19 19h2"/>', keywords: ["二维码", "条形码", "qrcode", "barcode"] },
+                { id: "tab20", name: "UUID 工具", category: "生成", path: "pages/UUID工具.html", icon: '<path d="M7 7a5.5 5.5 0 0 1 10 .5"/><path d="M8.2 10.8a3.2 3.2 0 0 1 6 .6c0 2-.3 3.9-1 5.6"/><path d="M12 5v3.5"/><path d="M9.5 19a5.2 5.2 0 0 1 5 0"/>', keywords: ["uuid", "guid", "唯一标识", "生成", "rfc4122"] },
+                { id: "tab14", name: "Excel SQL 查询", category: "其他", path: "pages/ExcelSQL查询工具.html", icon: '<rect x="3" y="3" width="12" height="16" rx="2"/><path d="M3 9h12"/><path d="M8 9v10"/><circle cx="17.5" cy="14" r="3.5"/><path d="m20 16.5 2 2"/>', keywords: ["excel", "sql", "查询", "数据分析", "时间筛选", "csv", "粘贴"] },
+                { id: "tab15", name: "统一社会信用代码生成", category: "生成", path: "pages/统一社会信用代码生成工具.html", icon: '<path d="M12 3 5 5.5V11c0 4.6 3 8 7 9.8 4-1.8 7-5.2 7-9.8V5.5L12 3z"/><path d="m9 11.2 2 2 4-4.2"/>', keywords: ["统一社会信用代码", "社会信用代码", "信用代码", "生成", "校验"] },
+                { id: "tab10", name: "文本对比", category: "比较", path: "pages/文本对比.html", icon: '<rect x="3" y="4" width="7.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="7.5" height="16" rx="1.5"/><path d="M6.5 8h.01"/><path d="M6.5 12h.01"/><path d="M6.5 16h.01"/><path d="M17 8h.01"/><path d="M17 12h.01"/><path d="M17 16h.01"/>', keywords: ["文本对比", "比较", "对比", "diff", "compare"] },
+                { id: "tab13", name: "集合比较", category: "比较", path: "pages/集合比较工具.html", icon: '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>', keywords: ["集合", "集合对比", "集合比较", "分隔", "分割", "分组", "比较", "对比", "交集", "差异", "compare", "set", "diff", "excel"] },
+                { id: "tab16", name: "单位换算", category: "解析与转换", path: "pages/单位换算工具.html", icon: '<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7v4"/><path d="M11 7v6"/><path d="M15 7v4"/><path d="M19 7v2"/>', keywords: ["单位换算", "时间", "长度", "面积", "体积", "质量", "温度", "压强", "功率", "能量", "密度", "力", "速度", "字节", "角度"] },
+                { id: "tab39", name: "人民币大写", category: "解析与转换", path: "pages/阿拉伯数字转大写人民币工具.html", icon: '<path d="M6 7h12"/><path d="M12 7v12"/><path d="m8.5 4 3.5 5.5L15.5 4"/>', keywords: ["人民币", "大写", "金额", "财务", "票据", "数字", "元角分", "转换", "阿拉伯数字", "反向", "双向", "解析"] },
+                { id: "tab45", name: "YAML/Properties", category: "解析与转换", path: "pages/YAML Properties工具.html", icon: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13.5h6"/><path d="M9 17h4"/>', keywords: ["yaml", "yml", "properties", "配置", "转换", "spring", "application", "配置文件", "离线"] },
+                { id: "tab47", name: "Markdown 转 Word", category: "文件格式转换", path: "pages/Markdown转Word工具.html", icon: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 16.5v-4.5l2 2.5 2-2.5v4.5"/>', keywords: ["markdown", "md", "word", "docx", "转换", "导出", "预览", "表格", "公式", "脚注", "离线"] },
+                { id: "tab17", name: "退税计算", category: "其他", path: "pages/退税计算工具.html", icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7.5h6"/><path d="M9.5 12h.01"/><path d="M12.5 12h.01"/><path d="M15.5 12h.01"/><path d="M9.5 15.5h.01"/><path d="M12.5 15.5h.01"/><path d="M15.5 15.5h.01"/>', keywords: ["退税", "出口退税", "税率", "计算"] },
+                { id: "tab23", name: "哈希(Hash)", category: "加解密", path: "pages/Hash工具.html", icon: '<path d="M9 4 7 20"/><path d="M17 4l-2 16"/><path d="M4 9h16"/><path d="M4 15h16"/>', keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sm3", "国密", "哈希", "摘要", "盐值", "离线"] },
+                { id: "tab24", name: "对称加解密", category: "加解密", path: "pages/对称加解密工具.html", icon: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', keywords: ["aes", "des", "3des", "tripledes", "rc4", "rabbit", "cbc", "ecb", "加密", "解密", "cryptojs", "对称", "离线"] },
+                { id: "tab25", name: "RSA 加解密", category: "加解密", path: "pages/RSA加解密工具.html", icon: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7"/><path d="M17 5l3 3"/><path d="m15 7 2 2"/>', keywords: ["rsa", "pem", "公钥", "私钥", "加密", "解密", "jsencrypt", "pkcs", "离线"] },
+                { id: "tab26", name: "HMAC", category: "加解密", path: "pages/HMAC工具.html", icon: '<circle cx="12" cy="8" r="4"/><path d="M12 12v4"/><path d="M9 20h6"/>', keywords: ["hmac", "sha256", "sha1", "md5", "消息认证", "密钥", "签名", "离线"] },
+                { id: "tab28", name: "Base64 编解码", category: "编解码", path: "pages/Base64编解码工具.html", icon: '<path d="M4 7h16"/><path d="m14 3 4 4-4 4"/><path d="M20 17H4"/><path d="m10 13-4 4 4 4"/>', keywords: ["base64", "编码", "解码", "离线"] },
+                { id: "tab29", name: "URL 编解码", category: "编解码", path: "pages/URL编解码工具.html", icon: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>', keywords: ["url", "encodeURIComponent", "decodeURIComponent", "编码", "解码", "离线"] },
+                { id: "tab30", name: "Unicode 转义", category: "编解码", path: "pages/Unicode转义编解码工具.html", icon: '<path d="M5 5v6a3.5 3.5 0 0 0 7 0V5"/><path d="M5 5h7"/><path d="m15.5 5 4.5 14"/>', keywords: ["unicode", "\\u", "U+", "html entity", "css entity", "编码", "解码", "离线"] },
+                { id: "tab31", name: "JWT 解析", category: "编解码", path: "pages/JWT解析工具.html", icon: '<rect x="4" y="3" width="16" height="5" rx="2.5"/><rect x="4" y="9.5" width="16" height="5" rx="2.5"/><rect x="4" y="16" width="16" height="5" rx="2.5"/>', keywords: ["jwt", "json", "token", "header", "payload", "离线"] },
+                { id: "tab32", name: "十六进制编解码", category: "编解码", path: "pages/十六进制编解码工具.html", icon: '<path d="M12 2.5 20 7v10l-8 5-8-5V7l8-4.5z"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/>', keywords: ["hex", "十六进制", "utf-8", "编码", "解码", "离线"] },
+                { id: "tab33", name: "HTML 实体编解码", category: "编解码", path: "pages/HTML实体编解码工具.html", icon: '<path d="m9 7.5-4.5 4.5L9 16.5"/><path d="m15 7.5 4.5 4.5L15 16.5"/>', keywords: ["html", "entity", "&amp;", "编码", "解码", "离线"] },
+                { id: "tab34", name: "GZIP / Deflate", category: "编解码", path: "pages/GZIP编解码工具.html", icon: '<path d="M4 9h16"/><path d="M6 9v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M9 5h6l1.5 4h-9L9 5z"/><path d="M12 9v3"/>', keywords: ["gzip", "deflate", "压缩", "解压", "pako", "base64", "离线"] },
+                { id: "tab35", name: "ASN.1 DER 解析", category: "编解码", path: "pages/ASN1解析工具.html", icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v4l3-2 3 2V3"/><circle cx="12" cy="13.5" r="3.5"/><path d="m10.8 13.5 1 1 1.8-1.8"/>', keywords: ["asn1", "der", "证书", "x509", "xml", "离线"] },
+                { id: "tab36", name: "Punycode", category: "编解码", path: "pages/Punycode编解码工具.html", icon: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>', keywords: ["punycode", "xn--", "idn", "域名", "编码", "解码", "离线"] },
+                { id: "tab46", name: "图片压缩", category: "图片&视频", path: "pages/图片压缩工具.html", icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15.5-4.5-4.5L6 21.5"/><path d="M6 3v4"/><path d="M4 5l2 2 2-2"/><path d="M18 3v4"/><path d="m16 5 2 2 2-2"/>', keywords: ["图片", "压缩", "jpeg", "jpg", "png", "webp", "质量", "体积", "离线", "image", "compress", "指定大小"] },
+                { id: "tab27", name: "证件照冲印排版", category: "图片&视频", path: "pages/证件照冲印排版工具.html", icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 18c.8-2.2 2.6-3.3 5-3.3s4.2 1.1 5 3.3"/>', keywords: ["证件照", "排版", "冲印", "一寸", "二寸", "相纸", "打印", "裁剪", "离线"] },
+                { id: "tab38", name: "证件照换底色", category: "图片&视频", path: "photo-background-change/index.html", icon: '<circle cx="9.5" cy="10" r="3"/><path d="M5.5 17.5c.7-1.9 2.2-2.9 4-2.9s3.3 1 4 2.9"/><path d="M16.5 13.5c1.3 1.8 2.3 3.1 2.3 4.1a2.3 2.3 0 0 1-4.6 0c0-1 1-2.3 2.3-4.1z"/>', keywords: ["证件照", "换底色", "底色", "背景", "抠图", "一寸", "二寸", "蓝底", "白底", "红底", "冲印", "离线", "matools"] },
+                { id: "tab37", name: "翻译工具", category: "其他", path: "pages/翻译工具.html", icon: '<path d="M4 5h16v10.5H9.5L4 19.5V5z"/><path d="M9 9.5h6"/><path d="M12 9.5v4"/>', keywords: ["翻译", "中英", "日语", "韩语", "词典", "例句", "领域", "自动检测", "translate", "mymemory"] },
+                { id: "tab40", name: "工作语言", category: "其他", path: "pages/工作语言工具.html", icon: '<path d="M4 5h16v11H9.5L4 19.5V5z"/><path d="M12.5 8.5l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9.9-1.9z"/>', keywords: ["工作语言", "口语", "润色", "职场", "汇报", "纪要", "会议纪要", "待办", "产品经理", "研发", "岗位", "角色", "书面语", "整理", "大模型"] },
+                { id: "tab41", name: "VIN码生成", category: "生成", path: "pages/VIN工具.html", icon: '<path d="M4 16.5 5.5 11a2 2 0 0 1 1.9-1.4h9.2a2 2 0 0 1 1.9 1.4l1.5 5.5"/><path d="M4 16.5h16v2.5a1 1 0 0 1-1 1h-.8a1 1 0 0 1-1-1v-1H6.8v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.5z"/><circle cx="7.5" cy="16" r="1"/><circle cx="16.5" cy="16" r="1"/>', keywords: ["vin", "车架号", "车辆识别码", "校验", "生成", "wmi", "离线"] }
             ];
             /** 全部分类工具面板「常用」分栏（顺序即展示顺序；头部快捷入口取前 RECENT_TOOLS_MAX 个） */
             const COMMON_TOOL_IDS = ["tab8", "tab18", "tab37", "tab11", "tab13", "tab10", "tab14", "tab5"];
@@ -1789,6 +2056,27 @@
                     script.setAttribute("data-tool-persist-injected", "1");
                     (doc.head || doc.documentElement).appendChild(script);
                     doc.documentElement.setAttribute("data-tool-persist-lib", "1");
+                } catch (e) {
+                    // Ignore injection failures.
+                }
+            }
+
+            /** 外壳注入：去掉工具页 body 及根容器内边距 + 隐藏根滚动条（经典滚动条占 ~15px 宽，导致内容比导航栏窄）。
+                滚轮/触摸/键盘滚动仍正常。宽度与导航栏完全一致。 */
+            function injectToolPaddingOverride(tool) {
+                if (!tool || !tool.path) return;
+                const doc = getFrameDoc(tool.id);
+                if (!doc || doc.documentElement.getAttribute("data-tool-flush-bound") === "1") return;
+                try {
+                    const style = doc.createElement("style");
+                    style.setAttribute("data-tool-flush", "1");
+                    style.textContent =
+                        "html::-webkit-scrollbar{width:0!important;height:0!important;}"
+                        + "html{scrollbar-width:none!important;}"
+                        + "body{padding:0!important;}"
+                        + "body>*{padding:0!important;margin:0!important;}";
+                    (doc.head || doc.documentElement).appendChild(style);
+                    doc.documentElement.setAttribute("data-tool-flush-bound", "1");
                 } catch (e) {
                     // Ignore injection failures.
                 }
@@ -2289,14 +2577,291 @@
                     const chip = document.createElement("div");
                     chip.className = "recent-tool";
                     chip.setAttribute("data-id", tool.id);
-                    chip.textContent = tool.name;
                     chip.title = tool.name;
+                    const chipIcon = document.createElement("span");
+                    chipIcon.className = "chip-icon";
+                    chipIcon.innerHTML = toolIconSvg(tool, 14);
+                    chip.appendChild(chipIcon);
+                    const chipName = document.createElement("span");
+                    chipName.textContent = tool.name;
+                    chip.appendChild(chipName);
                     chip.addEventListener("click", function (e) {
                         e.stopPropagation();
                         openTool(tool.id, true);
                     });
                     nav.appendChild(chip);
                 });
+            }
+
+            /* ===== 收藏栏 ===== */
+            const FAV_STORAGE_KEY = "tool-nav:favorites";
+            /** 拖拽排序状态 */
+            let favDragFromId = null;
+            let favDragEndedAt = 0;
+
+            /** 判断鼠标位于目标项的上半（before）还是下半（after） */
+            function favDropSide(id, e) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+            }
+
+            function clearFavDropIndicators() {
+                document.querySelectorAll(".fav-bar-item.drop-before, .fav-bar-item.drop-after").forEach((el) => {
+                    el.classList.remove("drop-before", "drop-after");
+                });
+            }
+
+            /** 将 fromId 移动到 toId 前/后并持久化 */
+            function reorderFavorites(fromId, toId, side) {
+                if (!fromId || !toId || fromId === toId) return;
+                const favs = loadFavorites();
+                const fromIdx = favs.indexOf(fromId);
+                if (fromIdx === -1) return;
+                favs.splice(fromIdx, 1);
+                let toIdx = favs.indexOf(toId);
+                if (toIdx === -1) toIdx = favs.length;
+                favs.splice(side === "before" ? toIdx : toIdx + 1, 0, fromId);
+                saveFavorites(favs);
+                renderFavBar();
+                updateActiveStates();
+            }
+
+            function loadFavorites() {
+                try {
+                    const raw = localStorage.getItem(FAV_STORAGE_KEY);
+                    const arr = raw ? JSON.parse(raw) : [];
+                    if (!Array.isArray(arr)) return [];
+                    return arr.filter((id) => TOOLS.some((t) => t.id === id));
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveFavorites(ids) {
+                try {
+                    localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(ids));
+                } catch (e) {
+                    // Ignore storage failures.
+                }
+            }
+
+            function toggleFavorite(id) {
+                if (!id || !TOOLS.some((t) => t.id === id)) return;
+                const favs = loadFavorites();
+                const idx = favs.indexOf(id);
+                if (idx >= 0) {
+                    favs.splice(idx, 1);
+                } else {
+                    favs.push(id);
+                }
+                saveFavorites(favs);
+                renderFavBar();
+                updateActiveStates();
+            }
+
+            /** 收藏栏快速提示：悬停立即显示工具名称（位置在图标左侧） */
+            function showFavTip(anchor, text) {
+                const tip = document.getElementById("fav-bar-tip");
+                if (!tip) return;
+                tip.textContent = text;
+                tip.classList.add("visible");
+                const rect = anchor.getBoundingClientRect();
+                const tipRect = tip.getBoundingClientRect();
+                let top = rect.top + rect.height / 2 - tipRect.height / 2;
+                top = Math.max(4, Math.min(top, window.innerHeight - tipRect.height - 4));
+                let left = rect.left - tipRect.width - 10;
+                if (left < 4) {
+                    left = rect.right + 10;
+                }
+                tip.style.top = Math.round(top) + "px";
+                tip.style.left = Math.round(left) + "px";
+            }
+
+            function hideFavTip() {
+                const tip = document.getElementById("fav-bar-tip");
+                if (!tip) return;
+                tip.classList.remove("visible");
+                tip.textContent = "";
+            }
+
+            function bindFavBarTooltip() {
+                const bar = document.getElementById("fav-bar");
+                if (!bar || bar.getAttribute("data-tip-bound") === "1") return;
+                bar.setAttribute("data-tip-bound", "1");
+                bar.addEventListener("mouseover", function (e) {
+                    const el = e.target && e.target.closest ? e.target.closest(".fav-bar-item, .fav-bar-current-icon, .fav-bar-empty") : null;
+                    if (!el) return;
+                    const tipText = el.getAttribute("data-tip");
+                    if (tipText) showFavTip(el, tipText);
+                });
+                bar.addEventListener("mouseleave", function () {
+                    hideFavTip();
+                });
+            }
+
+            /** 工具图标 SVG（描边风格，与头部图标一致）；无图标时返回空串 */
+            function toolIconSvg(tool, size) {
+                if (!tool || !tool.icon) return "";
+                size = size || 16;
+                return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="'
+                    + size + '" height="' + size
+                    + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+                    + tool.icon + "</svg>";
+            }
+
+            function renderFavBar() {
+                const bar = document.getElementById("fav-bar");
+                if (!bar) return;
+                hideFavTip();
+                const favs = loadFavorites();
+                const currentTool = TOOLS.find((t) => t.id === currentId) || null;
+                const curFav = currentTool && favs.indexOf(currentTool.id) !== -1;
+
+                /* 上部分：收藏的工具（支持拖拽排序） */
+                const list = document.getElementById("fav-bar-list");
+                if (list) {
+                    list.innerHTML = "";
+                    list.addEventListener("scroll", hideFavTip);
+                    if (!favs.length) {
+                        const empty = document.createElement("div");
+                        empty.className = "fav-bar-empty";
+                        empty.setAttribute("data-tip", "暂无收藏，点击下方当前工具旁的 ☆ 收藏");
+                        empty.textContent = "☆";
+                        list.appendChild(empty);
+                    } else {
+                        favs.forEach((id) => {
+                            const tool = TOOLS.find((t) => t.id === id);
+                            if (!tool) return;
+                            const item = document.createElement("div");
+                            item.className = "fav-bar-item" + (id === currentId ? " active" : "");
+                            item.setAttribute("data-id", id);
+                            item.setAttribute("data-tip", tool.name + "（" + tool.category + "）· 点击打开，可拖动排序");
+                            item.draggable = true;
+                            const icon = document.createElement("span");
+                            icon.className = "fav-bar-item-icon";
+                            icon.innerHTML = toolIconSvg(tool, 14);
+                            const rm = document.createElement("button");
+                            rm.type = "button";
+                            rm.className = "fav-bar-item-rm";
+                            rm.textContent = "×";
+                            rm.title = "双击取消收藏 " + tool.name;
+                            rm.setAttribute("aria-label", "双击取消收藏 " + tool.name);
+                            /** 防误触：单击 × 不删除也不打开（stopPropagation），需连点两次（dblclick）才移除 */
+                            rm.addEventListener("click", function (e) {
+                                e.stopPropagation();
+                                rm.classList.add("tapped");
+                                if (rm._tappedTimer) clearTimeout(rm._tappedTimer);
+                                rm._tappedTimer = setTimeout(function () {
+                                    rm.classList.remove("tapped");
+                                }, 350);
+                            });
+                            rm.addEventListener("dblclick", function (e) {
+                                e.stopPropagation();
+                                hideFavTip();
+                                toggleFavorite(id);
+                            });
+                            item.appendChild(icon);
+                            item.appendChild(rm);
+                            item.addEventListener("dragstart", function (e) {
+                                favDragFromId = id;
+                                hideFavTip();
+                                e.dataTransfer.effectAllowed = "move";
+                                try {
+                                    e.dataTransfer.setData("text/plain", id);
+                                } catch (err) {
+                                    // Ignore dataTransfer failures.
+                                }
+                                item.classList.add("dragging");
+                            });
+                            item.addEventListener("dragend", function () {
+                                favDragFromId = null;
+                                favDragEndedAt = Date.now();
+                                item.classList.remove("dragging");
+                                clearFavDropIndicators();
+                                renderFavBar();
+                            });
+                            item.addEventListener("dragover", function (e) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                                clearFavDropIndicators();
+                                item.classList.add(favDropSide(id, e) === "before" ? "drop-before" : "drop-after");
+                            });
+                            item.addEventListener("dragleave", function () {
+                                item.classList.remove("drop-before", "drop-after");
+                            });
+                            item.addEventListener("drop", function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                clearFavDropIndicators();
+                                const fromId = favDragFromId || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+                                reorderFavorites(fromId, id, favDropSide(id, e));
+                            });
+                            item.addEventListener("click", function () {
+                                if (Date.now() - favDragEndedAt < 350) return;
+                                openTool(id, true);
+                            });
+                            list.appendChild(item);
+                        });
+                        /* 拖到列表空白处 = 排到末尾 */
+                        list.addEventListener("dragover", function (e) {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                        });
+                        list.addEventListener("drop", function (e) {
+                            e.preventDefault();
+                            const fromId = favDragFromId || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+                            if (!fromId) return;
+                            const favsNow = loadFavorites();
+                            const fromIdx = favsNow.indexOf(fromId);
+                            if (fromIdx === -1) return;
+                            favsNow.splice(fromIdx, 1);
+                            favsNow.push(fromId);
+                            saveFavorites(favsNow);
+                            favDragFromId = null;
+                            renderFavBar();
+                            updateActiveStates();
+                        });
+                    }
+                }
+
+                /* 下部分（分割线之后）：当前工具；已在收藏时直接高亮收藏列表，不再重复展示 */
+                const cur = document.getElementById("fav-bar-current");
+                if (cur) {
+                    cur.innerHTML = "";
+                    if (!currentTool) {
+                        const none = document.createElement("div");
+                        none.className = "fav-bar-current-none";
+                        none.textContent = "—";
+                        cur.appendChild(none);
+                    } else if (curFav) {
+                        const star = document.createElement("button");
+                        star.type = "button";
+                        star.className = "fav-bar-star-btn favored";
+                        star.textContent = "★";
+                        star.title = currentTool.name + " 已在收藏，点击取消收藏";
+                        star.setAttribute("aria-label", "取消收藏 " + currentTool.name);
+                        star.addEventListener("click", function () {
+                            toggleFavorite(currentTool.id);
+                        });
+                        cur.appendChild(star);
+                    } else {
+                        const star = document.createElement("button");
+                        star.type = "button";
+                        star.className = "fav-bar-star-btn";
+                        star.textContent = "☆";
+                        star.title = "收藏 " + currentTool.name;
+                        star.setAttribute("aria-label", "收藏 " + currentTool.name);
+                        star.addEventListener("click", function () {
+                            toggleFavorite(currentTool.id);
+                        });
+                        cur.appendChild(star);
+                        const icon = document.createElement("div");
+                        icon.className = "fav-bar-current-icon";
+                        icon.innerHTML = toolIconSvg(currentTool, 14);
+                        icon.setAttribute("data-tip", currentTool.name);
+                        cur.appendChild(icon);
+                    }
+                }
             }
 
             function openTool(id, updateHash) {
@@ -2381,6 +2946,7 @@
                     frame.setAttribute("data-loaded", "1");
                     try {
                         injectToolFormPersist(tool);
+                        injectToolPaddingOverride(tool);
                         restoreToolFormDataTwice(tool.id);
                         bindFrameAutosave(tool.id);
                         bindFrameCalendarDismiss(tool.id);
@@ -2425,6 +2991,7 @@
                 document.querySelectorAll(".clover-tool").forEach((el) => {
                     el.classList.toggle("active", el.getAttribute("data-id") === currentId);
                 });
+                renderFavBar();
             }
 
             function getTabFromHash() {
@@ -2532,7 +3099,13 @@
                         const chip = document.createElement("div");
                         chip.className = "tool-chip clover-tool" + (options.commonGroup ? " tool-chip-common" : "");
                         chip.setAttribute("data-id", tool.id);
-                        chip.textContent = tool.name;
+                        const chipIcon = document.createElement("span");
+                        chipIcon.className = "chip-icon";
+                        chipIcon.innerHTML = toolIconSvg(tool, 14);
+                        chip.appendChild(chipIcon);
+                        const chipName = document.createElement("span");
+                        chipName.textContent = tool.name;
+                        chip.appendChild(chipName);
                         chip.addEventListener("click", function () {
                             openTool(tool.id, true);
                         });
@@ -2610,6 +3183,8 @@
                 overviewVisible = false;
                 document.getElementById("overview-panel").classList.remove("visible");
                 document.getElementById("clover-toggle").classList.remove("active");
+                const favAll = document.getElementById("fav-all-toggle");
+                if (favAll) favAll.classList.remove("active");
                 hideCryptoAlgoModal();
             }
             window.hideOverviewPanel = hideOverviewPanel;
@@ -2641,6 +3216,8 @@
                 syncOverviewPanelPosition();
                 document.getElementById("overview-panel").classList.add("visible");
                 document.getElementById("clover-toggle").classList.add("active");
+                const favAll = document.getElementById("fav-all-toggle");
+                if (favAll) favAll.classList.add("active");
             }
 
             function applySearch(keyword) {
@@ -2663,7 +3240,13 @@
                     const item = document.createElement("div");
                     item.className = "result-item";
                     item.setAttribute("data-id", tool.id);
-                    item.textContent = tool.name + "（" + tool.category + "）";
+                    const itemIcon = document.createElement("span");
+                    itemIcon.className = "chip-icon";
+                    itemIcon.innerHTML = toolIconSvg(tool, 13);
+                    item.appendChild(itemIcon);
+                    const itemName = document.createElement("span");
+                    itemName.textContent = tool.name + "（" + tool.category + "）";
+                    item.appendChild(itemName);
                     item.addEventListener("click", function () {
                         openTool(tool.id, true);
                     });
@@ -3689,8 +4272,18 @@
                 });
                 var brandTitle = document.getElementById("brand-title");
                 if (brandTitle) brandTitle.addEventListener("click", onBrandTitleClick);
+                var favAllToggle = document.getElementById("fav-all-toggle");
+                if (favAllToggle && !favAllToggle.getAttribute("data-fav-bound")) {
+                    favAllToggle.setAttribute("data-fav-bound", "1");
+                    favAllToggle.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        toggleOverviewPanel();
+                    });
+                }
+                bindFavBarTooltip();
                 resetRecentNavToCommon();
                 renderRecentNav();
+                renderFavBar();
                 bridgePhotoPrintHandoffFromStorage();
                 bridgePrintToPhotoHandoffFromStorage();
                 bridgeTextToExcelSqlHandoffFromStorage();
