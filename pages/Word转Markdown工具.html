@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>Word 转 Markdown</title>
+        <link rel="stylesheet" href="libs/tool-danger-btn.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" href="../vendor/codemirror/theme/eclipse.css" />
+        <script src="libs/tool-copy.js"></script>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            :root {
+                --card: #ffffff;
+                --bg: #f3f7ff;
+                --border: #dbe6ff;
+                --text: #1f2a44;
+                --muted: #6f7d96;
+                --primary: #2f6bff;
+                --primary-2: #5b8dff;
+                --shadow: 0 10px 30px rgba(36, 90, 190, 0.12);
+            }
+            html, body {
+                width: 100%;
+                height: 100%;
+                font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                background: radial-gradient(circle at top right, #eaf1ff, #f8fbff 40%, var(--bg) 80%);
+                color: var(--text);
+                overflow: hidden;
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-height: 0;
+            }
+            .toolbar {
+                flex-shrink: 0;
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                padding: 8px 10px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+            }
+            .toolbar-title {
+                font-weight: 600;
+                color: #324a76;
+                margin-right: 4px;
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .title-btn {
+                border: 1px solid #d8e5ff;
+                border-radius: 6px;
+                background: #edf3ff;
+                color: #3c4f78;
+                padding: 5px 12px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: inherit;
+            }
+            .title-btn:hover { border-color: var(--primary); color: var(--primary); }
+            .title-btn.primary {
+                color: #fff;
+                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            }
+            .title-btn.primary:hover { filter: brightness(1.05); color: #fff; }
+            .title-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+            .split-wrap {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                align-items: stretch;
+                gap: 0;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                box-shadow: var(--shadow);
+                overflow: hidden;
+                min-height: 0;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .panel-code { flex: 0 0 50%; }
+            .panel-preview { flex: 1 1 auto; }
+            .panel-title {
+                padding: 8px 10px;
+                font-size: 14px;
+                color: #324a76;
+                border-bottom: 1px solid #e4edff;
+                background: #f8fbff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .panel-title-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+            .panel-body {
+                flex: 1;
+                min-height: 0;
+                position: relative;
+                background: #fff;
+            }
+            .cm-wrap { position: absolute; inset: 0; }
+            .cm-wrap .CodeMirror {
+                position: absolute;
+                inset: 0;
+                height: auto;
+                font-size: 13px;
+                line-height: 1.55;
+                font-family: Consolas, "Courier New", monospace;
+            }
+            .cm-wrap .CodeMirror-scroll { min-height: 120px; }
+            #preview-body {
+                position: absolute;
+                inset: 0;
+                overflow: auto;
+                padding: 16px 20px;
+                font-size: 14px;
+                line-height: 1.7;
+            }
+            #preview-body h1, #preview-body h2, #preview-body h3,
+            #preview-body h4, #preview-body h5, #preview-body h6 {
+                margin: 0.9em 0 0.45em;
+                color: #1f2a44;
+                line-height: 1.35;
+            }
+            #preview-body h1 { font-size: 1.6em; border-bottom: 1px solid #e4edff; padding-bottom: 0.25em; }
+            #preview-body h2 { font-size: 1.35em; }
+            #preview-body p { margin: 0.45em 0; }
+            #preview-body ul, #preview-body ol { padding-left: 1.6em; margin: 0.5em 0; }
+            #preview-body li { margin: 0.28em 0; line-height: 1.65; }
+            #preview-body blockquote {
+                margin: 0.6em 0;
+                padding: 0.2em 0.9em;
+                border-left: 4px solid var(--primary);
+                color: #4a5a78;
+                background: #f8fbff;
+            }
+            #preview-body code {
+                font-family: Consolas, "Courier New", monospace;
+                background: #f3f5f9;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+                font-size: 0.92em;
+                color: #c7254e;
+            }
+            #preview-body pre {
+                background: #f5f7fa;
+                border: 1px solid #e8eef8;
+                border-radius: 8px;
+                padding: 12px;
+                overflow: auto;
+                margin: 0.7em 0;
+            }
+            #preview-body pre code {
+                background: none;
+                color: inherit;
+                padding: 0;
+            }
+            #preview-body table {
+                border-collapse: collapse;
+                margin: 0.7em 0;
+                width: 100%;
+            }
+            #preview-body th, #preview-body td {
+                border: 1px solid #d8e5ff;
+                padding: 6px 10px;
+            }
+            #preview-body th { background: #eaf1ff; }
+            #preview-body img { max-width: 100%; height: auto; border-radius: 4px; }
+            #preview-body hr { border: none; border-top: 1px solid #dbe6ff; margin: 1.2em 0; }
+            .pane-resizer {
+                flex: 0 0 8px;
+                cursor: col-resize;
+                position: relative;
+                z-index: 5;
+                margin: 0 -2px;
+                align-self: stretch;
+                touch-action: none;
+            }
+            body.pane-resizing { cursor: col-resize; user-select: none; }
+            body.pane-resizing .CodeMirror,
+            body.pane-resizing #preview-body { pointer-events: none; }
+            .status-ok { color: #1a7f37; font-weight: 600; }
+            .status-err {
+                color: #c62828;
+                font-weight: 700;
+                background: #ffebee;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            /* 文件拖放区域 */
+            .drop-overlay {
+                display: none;
+                position: absolute;
+                inset: 0;
+                z-index: 20;
+                background: rgba(47, 107, 255, 0.08);
+                border: 2px dashed var(--primary);
+                border-radius: 10px;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                color: var(--primary);
+                font-weight: 600;
+                pointer-events: none;
+            }
+            .drop-overlay.visible { display: flex; }
+            /* 欢迎占位 */
+            .empty-hint {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                color: var(--muted);
+                font-size: 14px;
+                pointer-events: none;
+            }
+            .empty-hint svg { opacity: 0.35; }
+            .empty-hint p { line-height: 1.5; text-align: center; max-width: 280px; }
+            /* 转换消息 */
+            .convert-msgs {
+                display: none;
+                flex-shrink: 0;
+                padding: 6px 10px;
+                background: #f8fbff;
+                border-top: 1px solid #e4edff;
+                font-size: 12px;
+                color: #5a6d8f;
+                max-height: 60px;
+                overflow: auto;
+            }
+            .convert-msgs.visible { display: block; }
+            @media (max-width: 900px) {
+                .split-wrap { flex-direction: column; }
+                .pane-resizer { display: none; }
+                .panel-code, .panel-preview { flex: 1 1 50%; }
+            }
+        </style>
+        <style id="tool-shell-flush">
+            body{padding:0!important;}
+            body>*{padding:0!important;margin:0!important;}
+            html::-webkit-scrollbar{width:0!important;height:0!important;}
+            html{scrollbar-width:none!important;}
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="toolbar">
+                <span class="toolbar-title">Word → Markdown</span>
+                <button type="button" class="title-btn primary" id="btn-open" title="打开 .docx 文件">打开 .docx</button>
+                <button type="button" class="title-btn" id="btn-copy-md" title="复制 Markdown 源码">复制 Markdown</button>
+                <button type="button" class="title-btn" id="btn-download-md" title="下载 .md 文件">下载 .md</button>
+                <button type="button" class="title-btn danger" id="btn-clear">清空</button>
+                <span class="hint" id="status-hint">完全离线 · 拖拽 .docx 到页面即可转换</span>
+                <input type="file" id="file-docx" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+            </div>
+            <div class="split-wrap" id="split-wrap">
+                <div class="panel panel-code" id="panel-code">
+                    <div class="panel-title">
+                        <span>Markdown</span>
+                        <div class="panel-title-actions">
+                            <span class="hint" id="stat-hint">等待导入…</span>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="empty-hint" id="empty-hint">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                                <path d="M14 3v6h6"/>
+                                <path d="M9 16.5v-4.5l2 2.5 2-2.5v4.5"/>
+                            </svg>
+                            <p>点击「打开 .docx」选择文件<br />或将 .docx 拖拽到此处</p>
+                        </div>
+                        <div class="cm-wrap">
+                            <textarea id="md-output" data-persist-key="word_to_md_output" spellcheck="false" aria-hidden="true" tabindex="-1"></textarea>
+                        </div>
+                        <div class="drop-overlay" id="drop-overlay">释放文件以转换</div>
+                    </div>
+                    <div class="convert-msgs" id="convert-msgs"></div>
+                </div>
+                <div class="pane-resizer" id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="调整左右宽度" tabindex="0"></div>
+                <div class="panel panel-preview" id="panel-preview">
+                    <div class="panel-title">
+                        <span>HTML 预览</span>
+                        <div class="panel-title-actions">
+                            <span class="hint">原始排版预览</span>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="preview-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="../vendor/codemirror/lib/codemirror.js"></script>
+        <script src="../vendor/codemirror/mode/markdown/markdown.js"></script>
+        <script src="../vendor/codemirror/mode/xml/xml.js"></script>
+        <script src="../vendor/codemirror/addon/display/placeholder.js"></script>
+        <!-- file:// 下不可用 ESM import()，改用 IIFE 离线包 -->
+        <script src="../vendor/word-to-markdown/word-to-markdown-offline.js"></script>
+        <script>
+            (function () {
+                var ta = document.getElementById("md-output");
+                var previewBody = document.getElementById("preview-body");
+                var statusHint = document.getElementById("status-hint");
+                var statHint = document.getElementById("stat-hint");
+                var emptyHint = document.getElementById("empty-hint");
+                var convertMsgs = document.getElementById("convert-msgs");
+                var splitWrap = document.getElementById("split-wrap");
+                var panelCode = document.getElementById("panel-code");
+                var panelPreview = document.getElementById("panel-preview");
+                var paneResizer = document.getElementById("pane-resizer");
+                var fileDocx = document.getElementById("file-docx");
+                var dropOverlay = document.getElementById("drop-overlay");
+
+                var cm = null;
+                var previewTimer = null;
+                var paneSplitRatio = 0.5;
+                var SPLIT_KEY = "word_to_md_pane_split";
+                var currentFileName = "document";
+
+                /* ---------- CodeMirror 初始化 ---------- */
+                function initCM() {
+                    if (typeof CodeMirror === "undefined") return;
+                    cm = CodeMirror.fromTextArea(ta, {
+                        mode: "markdown",
+                        theme: "eclipse",
+                        lineNumbers: false,
+                        lineWrapping: true,
+                        styleActiveLine: false,
+                        matchBrackets: false,
+                        viewportMargin: Infinity,
+                        placeholder: "转换后的 Markdown 将显示在此…",
+                    });
+                    cm.on("change", function () {
+                        schedulePreview();
+                        syncEmptyHint();
+                        updateStat();
+                    });
+                    // 恢复上次分割比例
+                    try {
+                        var saved = parseFloat(localStorage.getItem(SPLIT_KEY));
+                        if (saved > 0.15 && saved < 0.85) paneSplitRatio = saved;
+                    } catch (e) {}
+                    applySplitRatio();
+                }
+
+                function syncEmptyHint() {
+                    if (!cm) return;
+                    var hasContent = cm.getValue().trim().length > 0;
+                    if (emptyHint) emptyHint.style.display = hasContent ? "none" : "";
+                }
+
+                function updateStat() {
+                    if (!cm || !statHint) return;
+                    var val = cm.getValue();
+                    if (!val.trim()) {
+                        statHint.textContent = "等待导入…";
+                        statHint.className = "hint";
+                        return;
+                    }
+                    var lines = val.split("\n").length;
+                    var chars = val.length;
+                    statHint.textContent = lines + " 行 · " + chars + " 字符";
+                    statHint.className = "hint";
+                }
+
+                /* ---------- 实时预览（Markdown → HTML）---------- */
+                function schedulePreview() {
+                    if (previewTimer) clearTimeout(previewTimer);
+                    previewTimer = setTimeout(doPreview, 200);
+                }
+
+                function doPreview() {
+                    if (!cm || !previewBody) return;
+                    var md = cm.getValue();
+                    if (!md.trim()) {
+                        previewBody.innerHTML = '<div style="color:#b9c8e4;text-align:center;margin-top:40px;">预览区域</div>';
+                        return;
+                    }
+                    // 简易 Markdown → HTML（标题、粗斜体、链接、图片、代码块、表格、列表、引用、水平线）
+                    var html = simpleMarkdownToHtml(md);
+                    previewBody.innerHTML = html;
+                }
+
+                function simpleMarkdownToHtml(md) {
+                    var html = md
+                        // 代码块 (``` ... ```)
+                        .replace(/```(\w*)\n([\s\S]*?)```/g, function (m, lang, code) {
+                            return '<pre><code class="language-' + (lang || "") + '">' + escapeHtml(code.trimEnd()) + '</code></pre>';
+                        })
+                        // 行内代码
+                        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+                        // 标题
+                        .replace(/^######\s+(.+)$/gm, '<h6>$1</h6>')
+                        .replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
+                        .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
+                        .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+                        .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+                        .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+                        // 水平线
+                        .replace(/^---+$/gm, '<hr />')
+                        // 粗体+斜体
+                        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                        // 粗体
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        // 斜体
+                        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                        // 删除线
+                        .replace(/~~(.+?)~~/g, '<del>$1</del>')
+                        // 图片
+                        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+                        // 链接
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+                        // 引用
+                        .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
+                        // 无序列表
+                        .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+                        // 有序列表
+                        .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+                        // 换行
+                        .replace(/\n{2,}/g, '</p><p>')
+                        .replace(/\n/g, '<br />');
+
+                    // 包裹表格
+                    html = wrapTables('<p>' + html + '</p>');
+
+                    // 合并连续 <li> 为 <ul>
+                    html = html.replace(/((?:<li>.*?<\/li>(?:<br\s*\/?>)?)+)/g, function (m) {
+                        return '<ul>' + m.replace(/<br\s*\/?>/g, '') + '</ul>';
+                    });
+
+                    return html;
+                }
+
+                function wrapTables(html) {
+                    var tableRegex = /(<tr>.*?<\/tr>(?:\s*<br\s*\/?>\s*<tr>.*?<\/tr>)+)/g;
+                    return html.replace(tableRegex, function (m) {
+                        var rows = m.split(/<br\s*\/?>/).filter(Boolean);
+                        var result = '<table>';
+                        rows.forEach(function (row, i) {
+                            var tag = i === 0 ? 'th' : 'td';
+                            var cells = row.replace(/<\/?tr>/g, '').split(/<\/?td>|<\/?th>/).filter(Boolean);
+                            var cellTag = i === 0 ? 'th' : 'td';
+                            result += '<tr>' + cells.map(function (c) { return '<' + cellTag + '>' + c + '</' + cellTag + '>'; }).join('') + '</tr>';
+                        });
+                        result += '</table>';
+                        return result;
+                    });
+                }
+
+                function escapeHtml(s) {
+                    return s
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                }
+
+                /* ---------- 文件操作 ---------- */
+                function setStatus(msg, ok) {
+                    if (!statusHint) return;
+                    statusHint.textContent = msg;
+                    statusHint.className = ok === true ? "status-ok" : ok === false ? "status-err" : "hint";
+                }
+
+                function showConvertMessages(messages) {
+                    if (!convertMsgs || !messages || !messages.length) {
+                        if (convertMsgs) convertMsgs.classList.remove("visible");
+                        return;
+                    }
+                    var text = messages.map(function (m) {
+                        return (m.type === "error" ? "❌ " : "⚠️ ") + m.message;
+                    }).join("\n");
+                    convertMsgs.textContent = text;
+                    convertMsgs.classList.add("visible");
+                }
+
+                async function handleFile(file) {
+                    if (!file) return;
+                    if (!/\.docx$/i.test(file.name) && file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                        setStatus("请选择 .docx 文件", false);
+                        return;
+                    }
+
+                    setStatus("正在转换…");
+                    currentFileName = file.name.replace(/\.docx$/i, "");
+
+                    try {
+                        var arrayBuffer = await file.arrayBuffer();
+                        var result = await WordToMarkdown.convert(arrayBuffer);
+
+                        if (!cm) return;
+                        cm.setValue(result.markdown);
+                        syncEmptyHint();
+                        updateStat();
+                        schedulePreview();
+
+                        var msgs = result.messages || [];
+                        var errors = msgs.filter(function (m) { return m.type === "error"; });
+                        var warnings = msgs.filter(function (m) { return m.type === "warning"; });
+
+                        if (errors.length) {
+                            setStatus("转换完成，但有 " + errors.length + " 个错误", false);
+                        } else if (warnings.length) {
+                            setStatus("转换完成，" + warnings.length + " 条提示", true);
+                        } else {
+                            setStatus("转换完成 · " + file.name, true);
+                        }
+                        showConvertMessages(msgs);
+                    } catch (err) {
+                        setStatus("转换失败: " + (err.message || "未知错误"), false);
+                        console.error("Word→Markdown 转换失败", err);
+                    }
+                }
+
+                /* ---------- 按钮事件 ---------- */
+                document.getElementById("btn-open").addEventListener("click", function () {
+                    fileDocx.click();
+                });
+
+                fileDocx.addEventListener("change", function () {
+                    var f = fileDocx.files && fileDocx.files[0];
+                    if (f) handleFile(f);
+                    fileDocx.value = "";
+                });
+
+                document.getElementById("btn-copy-md").addEventListener("click", function () {
+                    if (!cm) return;
+                    var text = cm.getValue();
+                    if (!text.trim()) {
+                        setStatus("没有可复制的内容", false);
+                        return;
+                    }
+                    copyToClipboard(text).then(function () {
+                        setStatus("已复制 Markdown", true);
+                    }).catch(function () {
+                        setStatus("复制失败", false);
+                    });
+                });
+
+                document.getElementById("btn-download-md").addEventListener("click", function () {
+                    if (!cm) return;
+                    var text = cm.getValue();
+                    if (!text.trim()) {
+                        setStatus("没有可下载的内容", false);
+                        return;
+                    }
+                    downloadTextFile(text, (currentFileName || "document") + ".md", "text/markdown");
+                    setStatus("已下载 " + currentFileName + ".md", true);
+                });
+
+                document.getElementById("btn-clear").addEventListener("click", function () {
+                    if (!cm) return;
+                    cm.setValue("");
+                    if (convertMsgs) convertMsgs.classList.remove("visible");
+                    setStatus("已清空");
+                    syncEmptyHint();
+                    updateStat();
+                });
+
+                /* ---------- 剪贴板 & 下载 ---------- */
+                function copyToClipboard(text) {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        return navigator.clipboard.writeText(text);
+                    }
+                    return new Promise(function (resolve, reject) {
+                        var ta = document.createElement("textarea");
+                        ta.value = text;
+                        ta.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try {
+                            document.execCommand("copy");
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        } finally {
+                            document.body.removeChild(ta);
+                        }
+                    });
+                }
+
+                function downloadTextFile(text, filename, mimeType) {
+                    var blob = new Blob([text], { type: mimeType || "text/plain;charset=utf-8" });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename;
+                    a.style.display = "none";
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function () {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                }
+
+                /* ---------- 拖拽支持 ---------- */
+                var dragCounter = 0;
+
+                document.addEventListener("dragenter", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragCounter++;
+                    if (dropOverlay) dropOverlay.classList.add("visible");
+                });
+
+                document.addEventListener("dragleave", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragCounter--;
+                    if (dragCounter <= 0) {
+                        dragCounter = 0;
+                        if (dropOverlay) dropOverlay.classList.remove("visible");
+                    }
+                });
+
+                document.addEventListener("dragover", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+
+                document.addEventListener("drop", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragCounter = 0;
+                    if (dropOverlay) dropOverlay.classList.remove("visible");
+                    var files = e.dataTransfer && e.dataTransfer.files;
+                    if (files && files.length) {
+                        handleFile(files[0]);
+                    }
+                });
+
+                /* ---------- 分割面板拖拽 ---------- */
+                function applySplitRatio() {
+                    if (!panelCode || !splitWrap) return;
+                    var total = splitWrap.clientWidth;
+                    var codeW = Math.round(total * paneSplitRatio);
+                    panelCode.style.flex = "0 0 " + codeW + "px";
+                }
+
+                (function initResizer() {
+                    if (!paneResizer) return;
+                    var startX = 0;
+                    var startW = 0;
+
+                    function onMove(e) {
+                        var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                        var total = splitWrap.clientWidth;
+                        var dx = clientX - startX;
+                        var newW = Math.max(200, Math.min(total - 200, startW + dx));
+                        paneSplitRatio = newW / total;
+                        panelCode.style.flex = "0 0 " + newW + "px";
+                        if (cm) cm.refresh();
+                    }
+
+                    function onUp() {
+                        document.body.classList.remove("pane-resizing");
+                        document.removeEventListener("mousemove", onMove);
+                        document.removeEventListener("mouseup", onUp);
+                        document.removeEventListener("touchmove", onMove);
+                        document.removeEventListener("touchend", onUp);
+                        try { localStorage.setItem(SPLIT_KEY, String(paneSplitRatio)); } catch (e) {}
+                        if (cm) cm.refresh();
+                    }
+
+                    paneResizer.addEventListener("mousedown", function (e) {
+                        e.preventDefault();
+                        startX = e.clientX;
+                        startW = panelCode.offsetWidth;
+                        document.body.classList.add("pane-resizing");
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                    });
+
+                    paneResizer.addEventListener("touchstart", function (e) {
+                        startX = e.touches[0].clientX;
+                        startW = panelCode.offsetWidth;
+                        document.body.classList.add("pane-resizing");
+                        document.addEventListener("touchmove", onMove, { passive: false });
+                        document.addEventListener("touchend", onUp);
+                    });
+                })();
+
+                /* ---------- 初始化 ---------- */
+                document.addEventListener("DOMContentLoaded", function () {
+                    initCM();
+                    syncEmptyHint();
+                    updateStat();
+                });
+            })();
+        </script>
+    </body>
+</html>

@@ -120,6 +120,27 @@ async function buildZhTranIife() {
     console.log("[copy-vendor] zh-tran IIFE（file:// 离线）-> " + path.relative(root, outFile));
 }
 
+async function buildWordToMarkdownIife() {
+    var entryPath = path.join(entriesDir, "word-to-markdown-global.mjs");
+    if (!fs.existsSync(entryPath)) {
+        console.warn("[copy-vendor] 跳过 word-to-markdown-offline：无入口 " + entryPath);
+        return;
+    }
+    var outFile = path.join(vendor, "word-to-markdown", "word-to-markdown-offline.js");
+    mustDir(path.dirname(outFile));
+    await esbuild.build({
+        entryPoints: [entryPath],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: ["es2020"],
+        outfile: outFile,
+        sourcemap: false,
+        logLevel: "warning"
+    });
+    console.log("[copy-vendor] word-to-markdown IIFE（file:// 离线）-> " + path.relative(root, outFile));
+}
+
 async function main() {
     mustDir(vendor);
     mustDir(bundlesDir);
@@ -206,6 +227,7 @@ async function main() {
     });
     await buildZhTranIife();
     await buildMdDocxIife();
+    await buildWordToMarkdownIife();
 
     // KaTeX（预览公式）
     copyThing(
