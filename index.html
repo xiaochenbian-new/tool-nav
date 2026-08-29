@@ -514,6 +514,23 @@
             .calculator-panel.pinned {
                 box-shadow: 0 8px 24px rgba(36, 90, 190, 0.18);
             }
+            /* 钉图标：空心/实心切换 */
+            .pin-icon-hollow { display: block; }
+            .pin-icon-solid { display: none; }
+            .calculator-panel-action.active .pin-icon-hollow { display: none; }
+            .calculator-panel-action.active .pin-icon-solid { display: block; }
+            /* 钉住后：标题栏可拖动 */
+            .calculator-panel.pinned .calculator-panel-head {
+                cursor: grab;
+                user-select: none;
+            }
+            .calculator-panel.pinned .calculator-panel-head:active {
+                cursor: grabbing;
+            }
+            .calculator-panel.dragging {
+                transition: none !important;
+                opacity: 0.92;
+            }
             #calculator-panel-root {
                 min-height: 0;
             }
@@ -1361,7 +1378,10 @@
                 <span class="calculator-panel-title">计算器</span>
                 <div class="calculator-panel-actions">
                     <button type="button" id="calculator-pin-btn" class="calculator-panel-action" title="固定" aria-label="固定计算器" aria-pressed="false">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                        <svg class="pin-icon-hollow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+                        </svg>
+                        <svg class="pin-icon-solid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
                             <path fill="currentColor" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
                         </svg>
                     </button>
@@ -1666,6 +1686,10 @@
                     var btn = document.getElementById("calculator-toggle");
                     if (!panel || !btn) return;
                     ensureCalculatorUiInBody();
+                    // 钉住且已拖动过（left 已设置）时，不覆盖位置
+                    if (calculatorPinned && panel.style.left && panel.style.left !== "auto") {
+                        return;
+                    }
                     var r = btn.getBoundingClientRect();
                     panel.style.top = Math.round(r.bottom + 6) + "px";
                     panel.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
@@ -1853,6 +1877,88 @@
                             window.__positionCalculatorPanel();
                         }
                     });
+
+                    /* ===== 计算器拖动（钉住后可拖动窗口） ===== */
+                    (function initCalculatorDrag() {
+                        var panel = document.getElementById("calculator-panel");
+                        var head = panel ? panel.querySelector(".calculator-panel-head") : null;
+                        if (!panel || !head) return;
+
+                        var dragging = false;
+                        var startX = 0;
+                        var startY = 0;
+                        var startLeft = 0;
+                        var startTop = 0;
+
+                        function getClientXY(e) {
+                            if (e.touches && e.touches.length) {
+                                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                            }
+                            return { x: e.clientX, y: e.clientY };
+                        }
+
+                        function onDragStart(e) {
+                            if (!calculatorPinned) return;
+                            // 忽略按钮点击
+                            if (e.target && e.target.closest && e.target.closest("button")) return;
+
+                            var rect = panel.getBoundingClientRect();
+                            var pos = getClientXY(e);
+
+                            dragging = true;
+                            startX = pos.x;
+                            startY = pos.y;
+                            startLeft = rect.left;
+                            startTop = rect.top;
+
+                            // 确保用 left 而非 right 定位
+                            panel.style.right = "auto";
+                            panel.style.left = startLeft + "px";
+                            panel.style.top = startTop + "px";
+                            panel.classList.add("dragging");
+
+                            e.preventDefault();
+                        }
+
+                        function onDragMove(e) {
+                            if (!dragging) return;
+                            var pos = getClientXY(e);
+                            var dx = pos.x - startX;
+                            var dy = pos.y - startY;
+
+                            var newLeft = startLeft + dx;
+                            var newTop = startTop + dy;
+
+                            // 边界限制
+                            var pw = panel.offsetWidth;
+                            var ph = panel.offsetHeight;
+                            var maxLeft = window.innerWidth - pw;
+                            var maxTop = window.innerHeight - ph;
+                            newLeft = Math.max(0, Math.min(maxLeft, newLeft));
+                            newTop = Math.max(0, Math.min(maxTop, newTop));
+
+                            panel.style.left = newLeft + "px";
+                            panel.style.top = newTop + "px";
+
+                            e.preventDefault();
+                        }
+
+                        function onDragEnd() {
+                            if (!dragging) return;
+                            dragging = false;
+                            panel.classList.remove("dragging");
+                        }
+
+                        // 鼠标事件
+                        head.addEventListener("mousedown", onDragStart);
+                        document.addEventListener("mousemove", onDragMove);
+                        document.addEventListener("mouseup", onDragEnd);
+
+                        // 触摸事件
+                        head.addEventListener("touchstart", onDragStart, { passive: false });
+                        document.addEventListener("touchmove", onDragMove, { passive: false });
+                        document.addEventListener("touchend", onDragEnd);
+                    })();
                 });
             })();
         </script>
