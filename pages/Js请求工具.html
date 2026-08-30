@@ -1118,6 +1118,50 @@
             .proxy-enable-btn {
                 white-space: nowrap;
             }
+            /* ===== JSON Tree View ===== */
+            .json-tree { font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.6; padding: 0; margin: 0; }
+            .json-tree .jt-row { display: flex; align-items: baseline; gap: 0; white-space: nowrap; position: relative; }
+            .json-tree .jt-indent { display: inline-block; width: 14px; flex-shrink: 0; position: relative; }
+            .json-tree .jt-indent::after { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; width: 1px; background: #dde2eb; z-index: -1; }
+            .json-tree .jt-toggle { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; color: #999; font-size: 9px; border-radius: 3px; transition: background 0.1s; margin-right: 1px; }
+            .json-tree .jt-toggle:hover { background: #e8eef8; color: var(--primary); }
+            .json-tree .jt-toggle.collapsed { transform: rotate(-90deg); }
+            .json-tree .jt-key { color: #6c5ce7; font-weight: 600; flex-shrink: 0; }
+            .json-tree .jt-str { color: #22a06b; white-space: nowrap; }
+            .json-tree .jt-num { color: #e67e22; font-weight: 700; }
+            .json-tree .jt-bool { color: #0f6ab4; font-weight: 700; }
+            .json-tree .jt-null { color: #999; font-style: italic; }
+            .json-tree .jt-brace { color: #999; font-weight: 700; }
+            .json-tree .jt-comma { color: #999; flex-shrink: 0; }
+            .json-tree .jt-ellipsis { color: #aaa; font-style: italic; font-size: 11px; margin-left: 4px; }
+            .json-tree .jt-children { margin-left: 0; }
+            .json-tree .jt-children.collapsed { display: none; }
+            .json-tree .jt-copy-btn { margin-left: 8px; font-size: 10px; color: var(--primary); cursor: pointer; text-decoration: underline; background: none; border: 0; padding: 0; font-family: inherit; }
+            .json-tree .jt-copy-btn:hover { color: #1a56e8; }
+            .test-log { overflow-x: auto; overflow-y: auto; }
+            /* ===== Tutorial Modal ===== */
+            .tutorial-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 3vh 3vw; background: rgba(15, 25, 48, 0.45); backdrop-filter: blur(2px); }
+            .tutorial-overlay[hidden] { display: none !important; }
+            .tutorial-panel { width: 720px; max-width: 92vw; max-height: 85vh; background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 20px 48px rgba(36, 90, 190, 0.22); display: flex; flex-direction: column; overflow: hidden; }
+            .tutorial-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: #f8fbff; border-radius: 12px 12px 0 0; flex-shrink: 0; }
+            .tutorial-head h3 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; }
+            .tutorial-close { background: transparent; color: var(--muted); border: 0; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; min-height: auto; box-shadow: none; }
+            .tutorial-close:hover { color: var(--danger); filter: none; }
+            .tutorial-body { flex: 1; overflow-y: auto; padding: 18px 20px; font-size: 13px; line-height: 1.7; color: var(--text); }
+            .tutorial-body h4 { margin: 16px 0 8px; font-size: 14px; font-weight: 700; color: var(--primary); }
+            .tutorial-body h4:first-child { margin-top: 0; }
+            .tutorial-body p { margin: 6px 0; }
+            .tutorial-body code { background: #f0f4ff; color: var(--primary); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: Consolas, monospace; }
+            .tutorial-body pre { background: #1e2a3a; color: #e8ecf1; padding: 12px 14px; border-radius: 8px; font-size: 12px; line-height: 1.6; overflow-x: auto; margin: 8px 0; font-family: Consolas, monospace; }
+            .tutorial-body pre code { background: transparent; color: inherit; padding: 0; }
+            .tutorial-body .tip { background: #fffbe6; border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 12px; }
+            .tutorial-body .tip strong { color: var(--warn); }
+            .tutorial-body table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+            .tutorial-body th { text-align: left; padding: 6px 8px; background: #f4f7ff; border: 1px solid var(--border); font-weight: 700; }
+            .tutorial-body td { padding: 6px 8px; border: 1px solid var(--border); }
+            .tutorial-body .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; margin-right: 6px; flex-shrink: 0; }
+            .tutorial-body .step { display: flex; align-items: flex-start; margin: 10px 0; }
+            .tutorial-body .step-content { flex: 1; }
             @media (max-width: 1000px) {
                 .page { flex-direction: column; height: auto; min-height: calc(100vh); }
                 .pane-left, .pane-right { min-height: 40vh; }
@@ -1289,7 +1333,7 @@
                                 </div>
                                 <div class="section-body">
                                     <div id="body-text-panel">
-                                        <p class="field-hint">支持 <code>{{A.data.token}}</code> 引用上游节点响应；JSON 示例：<code>{"token":"{{A.data.token}}"}</code></p>
+                                        <p class="field-hint">支持 <code>{{A.data.token}}</code> 引用上游节点响应；JSON 示例：<code>{"token":"{{A.data.token}}"}</code> <button type="button" id="show-tutorial-btn" style="background:none;border:1px solid #d8e5ff;border-radius:6px;padding:2px 8px;font-size:11px;color:var(--primary);cursor:pointer;margin-left:6px;font-weight:600;min-height:auto;">📖 使用教程</button></p>
                                         <textarea id="node-body" spellcheck="false" placeholder='{"key":"value"}'></textarea>
                                         <div class="body-toolbar">
                                             <div class="body-format-tabs" id="body-format-tabs">
@@ -1331,6 +1375,11 @@
                             <section class="detail-section test-log-main" id="test-log-section" style="margin:0;padding:0;border:0;">
                                 <div class="kv-section-head" style="margin-bottom:6px;">
                                     <span class="kv-section-title">接口响应数据</span>
+                                    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+                                        <button type="button" id="resp-view-tree" class="body-format-tab active" style="border:0;background:transparent;color:var(--primary);padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;border-radius:4px;">Tree</button>
+                                        <button type="button" id="resp-view-raw" class="body-format-tab" style="border:0;background:transparent;color:var(--muted);padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;border-radius:4px;">Raw</button>
+                                        <button type="button" id="resp-copy-btn" style="border:0;background:transparent;color:var(--primary);padding:3px 8px;font-size:11px;cursor:pointer;text-decoration:underline;min-height:auto;font-family:inherit;">复制</button>
+                                    </div>
                                 </div>
                                 <div id="test-log" class="test-log">暂无响应数据</div>
                             </section>
@@ -1399,6 +1448,97 @@
                     <span class="ctx-hint" id="ctx-delete-hint">不可撤销</span>
                 </span>
             </button>
+        </div>
+
+        <!-- Tutorial Modal -->
+        <div id="tutorial-overlay" class="tutorial-overlay" hidden>
+            <div class="tutorial-panel">
+                <div class="tutorial-head">
+                    <h3>📖 节点间变量引用教程</h3>
+                    <button type="button" class="tutorial-close" id="tutorial-close-btn">×</button>
+                </div>
+                <div class="tutorial-body">
+                    <h4>核心概念</h4>
+                    <p>Js编排工具通过 <strong>画布连线</strong> 定义节点执行顺序。当节点 A → 节点 B 有一条连线时，<strong>B 会在 A 执行完成后才执行</strong>，并且 B 可以通过变量语法 <code>{{A.路径}}</code> 引用 A 的响应数据。</p>
+
+                    <h4>第一步：创建节点并连线</h4>
+                    <div class="step"><span class="step-num">1</span><div class="step-content">
+                        <p>在画布上添加两个节点（如 A 和 B），然后从 <strong>A 的右侧端口</strong> 拖拽连线到 <strong>B 的左侧端口</strong>，建立 A → B 的依赖关系。</p>
+                        <p>连线后，B 节点的 URL / Headers / Body 中就可以引用 A 的响应数据了。</p>
+                    </div></div>
+
+                    <h4>第二步：了解变量语法</h4>
+                    <p>变量使用 <code>{{节点名.路径}}</code> 格式，其中：</p>
+                    <table>
+                        <thead><tr><th>部分</th><th>说明</th><th>示例</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>节点名</code></td><td>节点的字母标识（A、B、C...）</td><td><code>A</code></td></tr>
+                            <tr><td><code>.路径</code></td><td>响应数据中的字段路径，用 <code>.</code> 分隔</td><td><code>.data.id</code></td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4>第三步：实际用法示例</h4>
+                    <p>假设节点 A 的响应是：</p>
+                    <pre><code>{
+  "code": 200,
+  "data": {
+    "token": "abc123",
+    "user": {
+      "id": 1001,
+      "name": "张三"
+    }
+  }
+}</code></pre>
+
+                    <p>那么在节点 B 中可以这样引用：</p>
+                    <table>
+                        <thead><tr><th>写法</th><th>取到的值</th><th>说明</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>{{A}}</code></td><td>整个响应对象</td><td>不写路径 = 取整个响应</td></tr>
+                            <tr><td><code>{{A.code}}</code></td><td><code>200</code></td><td>取顶层字段</td></tr>
+                            <tr><td><code>{{A.data.token}}</code></td><td><code>abc123</code></td><td>取嵌套字段</td></tr>
+                            <tr><td><code>{{A.data.user.id}}</code></td><td><code>1001</code></td><td>多层嵌套</td></tr>
+                            <tr><td><code>{{A.data.user.name}}</code></td><td><code>张三</code></td><td>多层嵌套</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4>第四步：在各字段中使用</h4>
+
+                    <p><strong>① URL 中引用：</strong></p>
+                    <pre><code>https://api.example.com/users/{{A.data.user.id}}/orders</code></pre>
+                    <p>请求时会自动替换为 <code>https://api.example.com/users/1001/orders</code></p>
+
+                    <p><strong>② Headers 中引用：</strong></p>
+                    <pre><code>Authorization: Bearer {{A.data.token}}</code></pre>
+                    <p>会自动替换为 <code>Authorization: Bearer abc123</code></p>
+
+                    <p><strong>③ Body (JSON) 中引用：</strong></p>
+                    <pre><code>{
+  "userId": {{A.data.user.id}},
+  "token": "{{A.data.token}}",
+  "userName": "{{A.data.user.name}}"
+}</code></pre>
+                    <p>数字类型会直接替换为数字（不加引号），字符串类型会替换为带引号的值。</p>
+
+                    <p><strong>④ Query 参数中引用：</strong></p>
+                    <pre><code>token={{A.data.token}}&amp;uid={{A.data.user.id}}</code></pre>
+
+                    <h4>多节点链路示例</h4>
+                    <p>三个节点 A → B → C 的链路中，每个节点都可以引用其<strong>所有上游节点</strong>的响应：</p>
+                    <pre><code>节点 A: GET /api/login  →  响应 {"token": "xyz"}
+节点 B: POST /api/data  →  引用 {{A.token}} 获取登录 token
+节点 C: GET /api/export →  引用 {{A.token}} 和 {{B.fileUrl}}</code></pre>
+                    <p>节点 C 可以同时引用 A 和 B 的数据，因为它们都在 C 的上游。</p>
+
+                    <div class="tip">
+                        <strong>💡 提示：</strong>在画布上连线后，点击节点，在右侧配置面板的 URL 输入框下方会看到变量引用提示。点击 <strong>「本节点链路」</strong> 按钮可以测试整条链路，观察每个节点的响应数据。
+                    </div>
+
+                    <div class="tip">
+                        <strong>💡 调试技巧：</strong>先单独测试上游节点（点击「本节点」按钮），确认响应数据结构正确后，再在下游节点中编写变量引用。响应数据区域支持 <strong>Tree</strong> 视图查看 JSON 结构，方便找到正确的字段路径。
+                    </div>
+                </div>
+            </div>
         </div>
 
         <script src="libs/tool-copy.js"></script>
@@ -3419,10 +3559,82 @@
                 return text;
             }
 
+            var _lastResponseText = "";
+            var _respViewMode = "tree";
+
             function setResponseDisplay(text) {
+                _lastResponseText = text || "";
                 var box = $("test-log");
-                box.textContent = text || "暂无响应数据";
+                if (!text) { box.textContent = "暂无响应数据"; box.scrollTop = 0; return; }
+                if (_respViewMode === "raw") { box.textContent = text; box.scrollTop = 0; return; }
+                try {
+                    var parsed = JSON.parse(text);
+                    box.innerHTML = "";
+                    var tree = document.createElement("div");
+                    tree.className = "json-tree";
+                    renderJsonTree(tree, parsed, 0, true);
+                    box.appendChild(tree);
+                } catch (e) {
+                    box.textContent = text;
+                }
                 box.scrollTop = 0;
+            }
+
+            function makeIndents(row, depth) {
+                for (var d = 0; d <= depth; d++) {
+                    var ind = document.createElement("span");
+                    ind.className = "jt-indent";
+                    row.appendChild(ind);
+                }
+            }
+
+            function renderJsonTree(container, data, depth, isLast) {
+                if (data === null) { var sp = document.createElement("span"); sp.className = "jt-null"; sp.textContent = "null"; container.appendChild(sp); return; }
+                if (typeof data === "string") { var sp2 = document.createElement("span"); sp2.className = "jt-str"; sp2.textContent = '"' + data + '"'; container.appendChild(sp2); return; }
+                if (typeof data === "number") { var sp3 = document.createElement("span"); sp3.className = "jt-num"; sp3.textContent = String(data); container.appendChild(sp3); return; }
+                if (typeof data === "boolean") { var sp4 = document.createElement("span"); sp4.className = "jt-bool"; sp4.textContent = String(data); container.appendChild(sp4); return; }
+                if (Array.isArray(data)) {
+                    if (!data.length) { var sp5 = document.createElement("span"); sp5.className = "jt-brace"; sp5.textContent = "[]"; container.appendChild(sp5); return; }
+                    var uid = "jt_" + Math.random().toString(36).slice(2, 8);
+                    var toggle = document.createElement("span"); toggle.className = "jt-toggle"; toggle.textContent = "▼";
+                    container.appendChild(toggle);
+                    var ob = document.createElement("span"); ob.className = "jt-brace"; ob.textContent = "["; container.appendChild(ob);
+                    var ellipsis = document.createElement("span"); ellipsis.className = "jt-ellipsis"; ellipsis.textContent = " " + data.length + " items "; ellipsis.style.display = "none"; container.appendChild(ellipsis);
+                    var children = document.createElement("div"); children.className = "jt-children"; container.appendChild(children);
+                    data.forEach(function (item, i) {
+                        var row = document.createElement("div"); row.className = "jt-row";
+                        makeIndents(row, depth);
+                        var cv = document.createElement("span"); cv.style.flex = "1"; cv.style.minWidth = "0";
+                        renderJsonTree(cv, item, depth + 1, i === data.length - 1);
+                        row.appendChild(cv);
+                        if (i < data.length - 1) { var cm = document.createElement("span"); cm.className = "jt-comma"; cm.textContent = ","; row.appendChild(cm); }
+                        children.appendChild(row);
+                    });
+                    var cb = document.createElement("span"); cb.className = "jt-brace"; cb.textContent = "]"; container.appendChild(cb);
+                    toggle.addEventListener("click", function () { var isOpen = !children.classList.contains("collapsed"); children.classList.toggle("collapsed"); toggle.classList.toggle("collapsed"); toggle.textContent = isOpen ? "▶" : "▼"; ellipsis.style.display = isOpen ? "" : "none"; });
+                } else if (typeof data === "object") {
+                    var keys = Object.keys(data);
+                    if (!keys.length) { var sp6 = document.createElement("span"); sp6.className = "jt-brace"; sp6.textContent = "{}"; container.appendChild(sp6); return; }
+                    var uid2 = "jt_" + Math.random().toString(36).slice(2, 8);
+                    var toggle2 = document.createElement("span"); toggle2.className = "jt-toggle"; toggle2.textContent = "▼";
+                    container.appendChild(toggle2);
+                    var ob2 = document.createElement("span"); ob2.className = "jt-brace"; ob2.textContent = "{"; container.appendChild(ob2);
+                    var ellipsis2 = document.createElement("span"); ellipsis2.className = "jt-ellipsis"; ellipsis2.textContent = " " + keys.length + " keys "; ellipsis2.style.display = "none"; container.appendChild(ellipsis2);
+                    var children2 = document.createElement("div"); children2.className = "jt-children"; container.appendChild(children2);
+                    keys.forEach(function (k, i) {
+                        var row2 = document.createElement("div"); row2.className = "jt-row";
+                        makeIndents(row2, depth);
+                        var kn = document.createElement("span"); kn.className = "jt-key"; kn.textContent = '"' + k + '"'; row2.appendChild(kn);
+                        var sep = document.createElement("span"); sep.className = "jt-comma"; sep.textContent = ": "; row2.appendChild(sep);
+                        var cv2 = document.createElement("span"); cv2.style.flex = "1"; cv2.style.minWidth = "0";
+                        renderJsonTree(cv2, data[k], depth + 1, i === keys.length - 1);
+                        row2.appendChild(cv2);
+                        if (i < keys.length - 1) { var cm2 = document.createElement("span"); cm2.className = "jt-comma"; cm2.textContent = ","; row2.appendChild(cm2); }
+                        children2.appendChild(row2);
+                    });
+                    var cb2 = document.createElement("span"); cb2.className = "jt-brace"; cb2.textContent = "}"; container.appendChild(cb2);
+                    toggle2.addEventListener("click", function () { var isOpen2 = !children2.classList.contains("collapsed"); children2.classList.toggle("collapsed"); toggle2.classList.toggle("collapsed"); toggle2.textContent = isOpen2 ? "▶" : "▼"; ellipsis2.style.display = isOpen2 ? "" : "none"; });
+                } else { var sp7 = document.createElement("span"); sp7.textContent = String(data); container.appendChild(sp7); }
             }
 
             function showResponseForNode(node) {
@@ -4379,6 +4591,52 @@
 
                 if (!loadWorkflowFromStorage()) {
                     addNode();
+                }
+
+                /* === Tutorial Modal === */
+                var tutorialOverlay = $("tutorial-overlay");
+                $("show-tutorial-btn").addEventListener("click", function () { tutorialOverlay.hidden = false; });
+                $("tutorial-close-btn").addEventListener("click", function () { tutorialOverlay.hidden = true; });
+                tutorialOverlay.addEventListener("click", function (e) { if (e.target === tutorialOverlay) tutorialOverlay.hidden = true; });
+
+                /* === Response View Toggle (Tree / Raw) === */
+                $("resp-view-tree").addEventListener("click", function () {
+                    _respViewMode = "tree";
+                    this.classList.add("active");
+                    this.style.color = "var(--primary)";
+                    $("resp-view-raw").classList.remove("active");
+                    $("resp-view-raw").style.color = "var(--muted)";
+                    setResponseDisplay(_lastResponseText);
+                });
+                $("resp-view-raw").addEventListener("click", function () {
+                    _respViewMode = "raw";
+                    this.classList.add("active");
+                    this.style.color = "var(--primary)";
+                    $("resp-view-tree").classList.remove("active");
+                    $("resp-view-tree").style.color = "var(--muted)";
+                    setResponseDisplay(_lastResponseText);
+                });
+                $("resp-copy-btn").addEventListener("click", function () {
+                    if (!_lastResponseText) { setStatus("暂无数据可复制。", true); return; }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(_lastResponseText).then(function () {
+                            setStatus("已复制响应数据。", false);
+                        }).catch(function () {
+                            fallbackCopy(_lastResponseText);
+                        });
+                    } else {
+                        fallbackCopy(_lastResponseText);
+                    }
+                });
+                function fallbackCopy(text) {
+                    var ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand("copy"); setStatus("已复制响应数据。", false); }
+                    catch (e) { setStatus("复制失败，请手动复制。", true); }
+                    document.body.removeChild(ta);
                 }
             }
 
