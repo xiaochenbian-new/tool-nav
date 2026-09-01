@@ -1,0 +1,32 @@
+name: Sync gitee to github
+
+# 你推送到 gitee（源），本工作流每 15 分钟把 gitee 的所有分支镜像到本仓库（github），
+# 从而实现「push gitee → 自动同步到 github」。github 上的 push 会再触发 deploy-pages 发布到 Pages。
+# 也可手动触发（Actions → 本工作流 → Run workflow）。
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-gitee
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    # 注意：gitee 仓库需为公开（或本工作流能匿名 clone），否则无法拉取。
+    steps:
+      - name: Mirror gitee branches into this repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git clone --mirror https://gitee.com/xiaochenbian/tool-nav.git tmp
+          cd tmp
+          # 用本仓库的 GITHUB_TOKEN 推回（镜像所有分支/标签）
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force --mirror origin

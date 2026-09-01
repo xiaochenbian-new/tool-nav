@@ -1,0 +1,51 @@
+name: Deploy Tool Site to GitHub Pages
+
+# 推送到 gitee 后，经 sync-from-gitee 镜像回本仓库（github）的 push 会触发；
+# 也可手动运行（Actions → 本工作流 → Run workflow）。
+on:
+  push:
+    branches: [offline, master, online]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 站点为纯静态（index.html + pages + vendor 均已入库），无需 npm 构建，
+      # 直接把要发布的静态文件打包到 dist-site。
+      - name: Stage static site
+        run: |
+          mkdir -p dist-site
+          cp -r index.html plugin.json pages vendor dist-site/
+          cp -r photo-background-change dist-site/ 2>/dev/null || true
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
