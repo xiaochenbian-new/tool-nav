@@ -4,8 +4,8 @@ name: Sync gitee to github
 # 从而实现「push gitee → 自动同步到 github」。github 上的 push 会再触发 deploy-pages 发布到 Pages。
 # 也可手动触发（Actions → 本工作流 → Run workflow）。
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # 说明：gitee 对 GitHub Actions 数据中心 IP 限流(HTTP 429)，定时 clone 几乎必失败。
+  # 故停用定时任务，改为「手动触发」(workflow_dispatch)。可靠同步请看仓库 docs/gitee-github-auto-sync.md 的"本机同步"方案。
   workflow_dispatch:
 
 permissions:
