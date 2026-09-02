@@ -305,11 +305,39 @@ echo [sync-github] exit=%errorlevel%
 
 > 也可用 PowerShell 一键创建任务（免手点）：
 > ```powershell
-> $a = New-ScheduledTaskAction -Execute "C:\path\to\scripts\sync-github.cmd"
-> $t = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(5) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration ([TimeSpan]::FromDays(3650))
-> $p = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
-> Register-ScheduledTask -TaskName "sync github" -Action $a -Trigger $t -Principal $p -Force
+> $tn   = "sync github"
+> $a    = New-ScheduledTaskAction -Execute "C:\path\to\scripts\sync-github.cmd"
+> # 注意：开始时间要取“未来”（AddMinutes(2)），否则若落在过去，任务不会按间隔正常触发
+> $t    = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration ([TimeSpan]::FromDays(3650))
+> $p    = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+> Register-ScheduledTask -TaskName $tn -Action $a -Trigger $t -Principal $p -Force
 > ```
 
 **前提**：你 push gitee 也是在这台机器的这个项目目录（这样本机仓库始终与 gitee 一致，脚本推 github 即最新）。本机 push 到 github 后会触发 github 的 `deploy-pages` 重新发布 Pages。
+
+### 如何查看 / 管理这个任务计划
+
+**PowerShell 查看：**
+```powershell
+Get-ScheduledTask -TaskName "sync github"                      # 基本信息
+(Get-ScheduledTask -TaskName "sync github").Triggers           # 触发器（每15分钟）
+(Get-ScheduledTask -TaskName "sync github").Actions            # 执行的脚本路径
+Get-ScheduledTaskInfo -TaskName "sync github"                  # 上次/下次运行时间、结果
+Get-ScheduledTask | Where-Object TaskName -like "*github*"     # 列出所有含 github 的任务
+```
+
+**图形界面：** Win+R → `taskschd.msc` → 任务计划程序库 → 找到该任务双击查看。
+
+**命令行详情：**
+```bash
+schtasks /query /tn "sync github" /v /fo list
+```
+
+**手动触发/停止：**
+```powershell
+Start-ScheduledTask  -TaskName "sync github"    # 立即跑一次
+Stop-ScheduledTask   -TaskName "sync github"    # 停止
+Unregister-ScheduledTask -TaskName "sync github" -Confirm:$false   # 删除任务
+```
+
 
