@@ -1,0 +1,16 @@
+# Cloudflare Pages 头部配置：静态资源长缓存加速，HTML/工具页不缓存保证更新及时
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+
+# 第三方/构建产物（大、不可变）—— 长期缓存，显著加速
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 工具页 HTML —— 不缓存，保证每次更新立即可见
+/pages/*
+  Cache-Control: no-cache
+
+# 主入口 —— 不缓存
+/index.html
+  Cache-Control: no-cache

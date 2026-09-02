@@ -58,6 +58,7 @@
     "copy:monaco": "node scripts/copy-vendor-all.cjs",
     "postinstall": "node scripts/copy-vendor-all.cjs",
     "pack:utools": "node scripts/pack-utools.cjs",
+    "build:site": "node scripts/pack-site.cjs",
     "serve": "node scripts/local-server.cjs",
     "start": "node scripts/local-server.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
