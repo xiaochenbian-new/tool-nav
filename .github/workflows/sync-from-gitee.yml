@@ -22,9 +22,9 @@ jobs:
       - name: Sync content branches from gitee to this repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 若 gitee 为私有仓库，需要在仓库 Secrets 里配置 GITEE_TOKEN（gitee 私人令牌），
-          # 否则匿名 clone 会失败。若 gitee 已公开，可不配置（走公开 URL）。
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          # 避免 gitee 匿名克隆被限流(429)，在仓库 Secrets 里配 gitee 私人令牌即可；
+          # 名字用 GITEE_TOKEN 或 GITEE_TOOL_NAV 都行（这里兼容两者）
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN || secrets.GITEE_TOOL_NAV }}
         run: |
           set -e
           # gitee 匿名克隆易被限流(HTTP 429)，优先使用 GITEE_TOKEN 认证克隆；无令牌再走公开
