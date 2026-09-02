@@ -18,14 +18,21 @@ concurrency:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    # 注意：gitee 仓库需为公开（或本工作流能匿名 clone），否则无法拉取。
     steps:
       - name: Sync content branches from gitee to this repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 若 gitee 为私有仓库，需要在仓库 Secrets 里配置 GITEE_TOKEN（gitee 私人令牌），
+          # 否则匿名 clone 会失败。若 gitee 已公开，可不配置（走公开 URL）。
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           set -e
-          git clone --mirror https://gitee.com/xiaochenbian/tool-nav.git tmp
+          if [ -n "$GITEE_TOKEN" ]; then
+            GITEE_URL="https://oauth2:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git"
+          else
+            GITEE_URL="https://gitee.com/xiaochenbian/tool-nav.git"
+          fi
+          git clone --mirror "$GITEE_URL" tmp
           cd tmp
           # 仅同步内容分支（offline/master/online），排除含授权逻辑的 app 分支
           git push --force \
@@ -33,5 +40,6 @@ jobs:
             refs/heads/offline:refs/heads/offline \
             refs/heads/master:refs/heads/master \
             refs/heads/online:refs/heads/online
+
 
 
