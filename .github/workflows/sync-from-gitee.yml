@@ -5,7 +5,7 @@ name: Sync gitee to github
 # 也可手动触发（Actions → 本工作流 → Run workflow）。
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,13 +27,28 @@ jobs:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN || secrets.GITEE_TOOL_NAV }}
         run: |
           set -e
-          # gitee 匿名克隆易被限流(HTTP 429)，优先使用 GITEE_TOKEN 认证克隆；无令牌再走公开
+          # gitee 匿名克隆易被限流(429)，最好用令牌认证。gitee 的令牌认证通常用 用户名:令牌，
+          # oauth2: 前缀 gitee 有时不识别（会被当作匿名导致 429）。这里按优先级多方式尝试 + 重试。
+          AUTH_URLS=()
           if [ -n "$GITEE_TOKEN" ]; then
-            echo "使用 GITEE_TOKEN 认证拉取 gitee..."
-            git clone --mirror "https://oauth2:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git" tmp
-          else
-            echo "未配置 GITEE_TOKEN，尝试公开方式拉取（可能被 gitee 限流 429）..."
-            git clone --mirror "https://gitee.com/xiaochenbian/tool-nav.git" tmp
+            AUTH_URLS+=("https://xiaochenbian:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git")
+            AUTH_URLS+=("https://oauth2:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git")
+          fi
+          AUTH_URLS+=("https://gitee.com/xiaochenbian/tool-nav.git")
+
+          clone_ok=0
+          for url in "${AUTH_URLS[@]}"; do
+            for i in 1 2 3; do
+              echo "尝试克隆 gitee (第 ${i} 次): ${url/*@/***@}"
+              if git clone --mirror "$url" tmp 2>/tmp/ce; then
+                echo "克隆成功"; clone_ok=1; break 2
+              fi
+              echo "  失败: $(tail -n1 /tmp/ce)"
+              sleep 5
+            done
+          done
+          if [ "$clone_ok" != "1" ]; then
+            echo "所有克隆尝试均失败：" >&2; cat /tmp/ce >&2; exit 1
           fi
           cd tmp
           # 仅同步内容分支（offline/master/online），排除含授权逻辑的 app 分支
