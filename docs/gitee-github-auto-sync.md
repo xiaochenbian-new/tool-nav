@@ -15,6 +15,7 @@
 - [7. 常用命令速查](#7-常用命令速查)
 - [8. 安全与体积注意事项](#8-安全与体积注意事项)
 - [9. 常见问题排查](#9-常见问题排查)
+- [10. 本机同步方案（绕过 gitee 对 CI 的 429 限流，推荐）](#10-本机同步方案绕过-gitee-对-ci-的-429-限流推荐)
 
 ---
 
@@ -124,6 +125,9 @@ git push github <branch>     # 推 github（用于引导，让工作流先存在
 ```
 
 > **引导原理**：定时任务只从"默认分支"运行，且工作流文件必须已在 github 上（首次需手动推一次）。之后每次 gitee 有更新，工作流就会拉 gitee 并刷到 github。
+
+> ⚠️ **重要（gitee 会封 GitHub CI 的 IP）**：gitee 对 **GitHub Actions 数据中心 IP 段**做了防滥用限流，GitHub Actions 里 `git clone https://gitee.com/...`（无论公开还是带令牌）**经常返回 `HTTP 429`（Too Many Requests）**，导致定时同步几乎必失败。日志典型报错为 `error: RPC failed; HTTP 429` 和 `fatal: expected flush after ref listing`。
+> 因此 **CI 定时克隆 gitee 不可靠**。若遇到 429，请改用下面的 **「本机同步」方案（第 10 节）**，用你本机 IP 推 github（本机 IP 一般不会被限流）。
 
 ---
 
@@ -270,4 +274,42 @@ github 分支更新
 GitHub Actions: deploy-pages → 发布 GitHub Pages
 ```
 
-> 关键点回顾：① 工作流文件放在 github **默认分支**；② gitee 私有需配 `GITEE_TOKEN`；③ 要发布 Pages 需在 Settings 开启 **Source: GitHub Actions**。
+> 关键点回顾：① 工作流文件放在 github **默认分支**；② gitee 私有需配 `GITEE_TOKEN`；③ 要发布 Pages 需在 Settings 开启 **Source: GitHub Actions**；④ **gitee 常 429 GitHub CI IP，同步优先用第 10 节本机方案。**
+
+---
+
+## 10. 本机同步方案（绕过 gitee 对 CI 的 429 限流，推荐）
+
+当 gitee 对 GitHub Actions 限流（HTTP 429）时，让同步走你**本机**（本机 IP 一般不被限流）。
+
+### 方案 A：一条命令同时推两个仓库（最简单）
+```bash
+# 配置一次：定义 pushall = 先推 gitee 再推 github
+git config --global alias.pushall "push origin && push github"
+
+# 以后每次提交后：
+git pushall <分支>      # 等价 git push origin <分支> && git push github <分支>
+```
+
+### 方案 B：本机定时自动同步（真全自动）
+在仓库建一个同步脚本（如 `scripts/sync-github.cmd`）：
+```bat
+@echo off
+REM Push offline/master to github (SSH). Bypasses gitee 429 on CI by using your local IP.
+cd /d "%~dp0.."
+git push github offline master
+echo [sync-github] exit=%errorlevel%
+```
+然后用 **Windows 任务计划程序** 每 15 分钟运行它：
+- Win+R → `taskschd.msc` → 创建基本任务 → 触发器选 **Daily / 重复间隔 15 分钟 / 无限期** → 操作"启动程序"填该 `.cmd` 路径 → 完成。
+
+> 也可用 PowerShell 一键创建任务（免手点）：
+> ```powershell
+> $a = New-ScheduledTaskAction -Execute "C:\path\to\scripts\sync-github.cmd"
+> $t = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(5) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration ([TimeSpan]::FromDays(3650))
+> $p = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+> Register-ScheduledTask -TaskName "sync github" -Action $a -Trigger $t -Principal $p -Force
+> ```
+
+**前提**：你 push gitee 也是在这台机器的这个项目目录（这样本机仓库始终与 gitee 一致，脚本推 github 即最新）。本机 push 到 github 后会触发 github 的 `deploy-pages` 重新发布 Pages。
+
