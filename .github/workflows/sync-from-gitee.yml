@@ -27,12 +27,17 @@ jobs:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           set -e
-          if [ -n "$GITEE_TOKEN" ]; then
-            GITEE_URL="https://oauth2:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git"
+          # 优先以公开方式拉取 gitee；若失败（如私有），再回退用 GITEE_TOKEN
+          if git clone --mirror "https://gitee.com/xiaochenbian/tool-nav.git" tmp 2>/tmp/gitee_clone_err; then
+            echo "已通过公开方式拉取 gitee"
+          elif [ -n "$GITEE_TOKEN" ]; then
+            echo "公开拉取失败，改用 GITEE_TOKEN 拉取..."
+            git clone --mirror "https://oauth2:${GITEE_TOKEN}@gitee.com/xiaochenbian/tool-nav.git" tmp
           else
-            GITEE_URL="https://gitee.com/xiaochenbian/tool-nav.git"
+            echo "公开拉取失败且未配置 GITEE_TOKEN：" >&2
+            cat /tmp/gitee_clone_err >&2
+            exit 1
           fi
-          git clone --mirror "$GITEE_URL" tmp
           cd tmp
           # 仅同步内容分支（offline/master/online），排除含授权逻辑的 app 分支
           git push --force \
