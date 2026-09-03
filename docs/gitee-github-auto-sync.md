@@ -315,6 +315,19 @@ echo [sync-github] exit=%errorlevel%
 
 **前提**：你 push gitee 也是在这台机器的这个项目目录（这样本机仓库始终与 gitee 一致，脚本推 github 即最新）。本机 push 到 github 后会触发 github 的 `deploy-pages` 重新发布 Pages。
 
+> **避免弹窗（建议）**：任务计划直接运行 `.cmd` 会弹出 cmd 控制台窗口，影响使用。改成用 **`wscript` 运行一个隐藏的 VBScript**（VBScript 无控制台；`Run ..., 0, False` 表示隐藏窗口 + 后台执行不等待）。在仓库建 `sync-github-hidden.vbs`：
+> ```vbs
+> Set sh = CreateObject("WScript.Shell")
+> sh.CurrentDirectory = "C:\path\to\project"
+> sh.Run "git push github offline master", 0, False
+> ```
+> 然后把任务的「操作」改为：程序 `wscript.exe`，参数 `"C:\path\to\scripts\sync-github-hidden.vbs"`。用 PowerShell 更新：
+> ```powershell
+> $a = New-ScheduledTaskAction -Execute "wscript.exe" -Argument '"C:\path\to\scripts\sync-github-hidden.vbs"'
+> Set-ScheduledTask -TaskName "sync github" -Action $a
+> ```
+> （本次已在 tool-nav 项目里做好 `scripts/sync-github-hidden.vbs` 并已按此配置任务。）
+
 ### 如何查看 / 管理这个任务计划
 
 **PowerShell 查看：**
