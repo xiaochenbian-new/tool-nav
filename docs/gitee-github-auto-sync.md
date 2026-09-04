@@ -315,25 +315,21 @@ echo [sync-github] exit=%errorlevel%
 
 **前提**：你 push gitee 也是在这台机器的这个项目目录（这样本机仓库始终与 gitee 一致，脚本推 github 即最新）。本机 push 到 github 后会触发 github 的 `deploy-pages` 重新发布 Pages。
 
-> **避免弹窗（建议）**：任务计划直接运行 `.cmd` 会弹出 cmd 控制台窗口，影响使用。改成用 **隐藏脚本**。推荐直接用 **PowerShell 隐藏窗口**（无需额外脚本文件，且不会踩编码坑）。把任务的「操作」设为：
-> - 程序：`powershell.exe`
-> - 参数：`-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "cd 'C:\path\to\project'; git push github offline master"`
+> **避免弹窗（建议）**：任务计划直接运行 `.cmd` 会弹出 cmd 控制台窗口，影响使用。改成用**完全无窗口**的方式执行。
+> - **首选：`wscript` 运行隐藏 VBScript**（`WScript.Shell.Run(..., 0, True)` 的 `0` 是 SW_HIDE 完全隐藏窗口，且 wscript 是 GUI 宿主无窗口 → **零闪现**）。**注意：VBScript 文件里不要写中文注释**（否则 wscript 按 ANSI 解析 UTF-8 中文会报"缺少对象"等运行错误），内容保持纯 ASCII。建 `sync-github-hidden.vbs`：
+>   ```vbs
+>   Set sh = CreateObject("WScript.Shell")
+>   sh.CurrentDirectory = "C:\path\to\project"
+>   sh.Run "git push github offline master", 0, True
+>   ```
+>   任务「操作」改为：程序 `wscript.exe`，参数 `"C:\path\to\scripts\sync-github-hidden.vbs"`；用 PowerShell 更新：
+>   ```powershell
+>   $a = New-ScheduledTaskAction -Execute "wscript.exe" -Argument '"C:\path\to\scripts\sync-github-hidden.vbs"'
+>   Set-ScheduledTask -TaskName "sync github" -Action $a
+>   ```
+> - **备选：`powershell.exe -WindowStyle Hidden`**（`-NoProfile -WindowStyle Hidden -Command "cd '...'; git push ..."`）。优点：无需额外脚本；缺点：PowerShell 是控制台程序，启动瞬间**可能仍有一次轻微闪现**，做不到 100% 无窗。
 >
-> 用 PowerShell 更新任务：
-> ```powershell
-> $a = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "cd ''C:\path\to\project''; git push github offline master"'
-> Set-ScheduledTask -TaskName "sync github" -Action $a
-> ```
->
-> 或（备选）用 **`wscript` 运行隐藏 VBScript**：**注意 VBScript 文件里不要写中文注释**（否则 wscript 按 ANSI 解析 UTF-8 中文会报"缺少对象"等运行错误），内容保持纯 ASCII，例如 `sync-github-hidden.vbs`：
-> ```vbs
-> Set sh = CreateObject("WScript.Shell")
-> sh.CurrentDirectory = "C:\path\to\project"
-> sh.Run "git push github offline master", 0, True
-> ```
-> `0` = 隐藏窗口；`True` = 等待 git push 完成，保证任务正常收尾。任务「操作」改为：程序 `wscript.exe`，参数 `"C:\path\to\scripts\sync-github-hidden.vbs"`。
->
-> （本次已在 tool-nav 项目里按**PowerShell 隐藏方式**配置好任务。）
+> （本次已在 tool-nav 项目里按**首选 wscript + VBS(0)** 配置好任务，`scripts/sync-github-hidden.vbs` 为纯 ASCII。）
 
 ### 如何查看 / 管理这个任务计划
 
