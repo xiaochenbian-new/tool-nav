@@ -398,6 +398,21 @@ function checkDuplicateKey(input) {
                 }
             }
 
+            /** 包裹为 shell 单引号字符串；内部 ' 写成 '\'' */
+            function shellSingleQuote(str) {
+                return "'" + String(str).replace(/'/g, "'\\''") + "'";
+            }
+
+            /** sed BRE 模式转义（含分隔符 #） */
+            function sedEscapePattern(str) {
+                return String(str).replace(/[\\\.^$*\[\]#]/g, "\\$&");
+            }
+
+            /** sed 替换侧转义：\ & # */
+            function sedEscapeReplacement(str) {
+                return String(str).replace(/[\\&#]/g, "\\$&");
+            }
+
 function generateScript() {
                 const resultDiv = document.getElementById('result');
                 resultDiv.innerHTML = '';
@@ -435,8 +450,7 @@ configItems.forEach(item => {
                         const key = item.querySelector('.configKey').value.trim();
                         const value = item.querySelector('.configValue').value.trim();
                         if (key && value) {
-                            const escapedValue = value.includes('&') ? value.replace(/&/g, '\\&') : value;
-                            configs.push({ key, value: escapedValue });
+                            configs.push({ key, value });
                         }
                     });
 
@@ -451,21 +465,35 @@ configItems.forEach(item => {
 
                     configs.forEach(config => {
                         const { key, value } = config;
+                        const keyQ = shellSingleQuote(key);
+                        const lineQ = shellSingleQuote(key + "=" + value);
+                        const sedExpr = shellSingleQuote(
+                            "s#" +
+                                "^" +
+                                sedEscapePattern(key) +
+                                "=.*" +
+                                "#" +
+                                sedEscapeReplacement(key + "=" + value) +
+                                "#g"
+                        );
                         filesWithConfigPath.forEach(file => {
-                            scriptContent += `grep -q '${key}' ${file} && sed -i 's#^${key}=.*#${key}=${value}#g' ${file}\n`;
-                            scriptContent += `grep -q '${key}' ${file} || echo '${key}=${value}' >> ${file}\n\n`;
+                            const fileQ = shellSingleQuote(file);
+                            scriptContent += `grep -qF ${keyQ} ${fileQ} && sed -i ${sedExpr} ${fileQ}\n`;
+                            scriptContent += `grep -qF ${keyQ} ${fileQ} || echo ${lineQ} >> ${fileQ}\n\n`;
                         });
                     });
 
                     scriptContent += '\n# 更新文件时间戳\n';
                     filesWithConfigPath.forEach(file => {
-                        scriptContent += `touch ${file}\n`;
+                        scriptContent += `touch ${shellSingleQuote(file)}\n`;
                     });
 
                     scriptContent += '\n';
                 });
 
-                resultDiv.innerHTML = `<pre>${scriptContent}</pre>`;
+                const pre = document.createElement("pre");
+                pre.textContent = scriptContent;
+                resultDiv.appendChild(pre);
             }
 
 function clearShellForm() {
