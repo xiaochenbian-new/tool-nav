@@ -2997,28 +2997,11 @@
                 }
 
                 const previousId = currentId;
-                if (previousId) {
-                    try {
-                        saveToolFormData(previousId);
-                    } catch (e) {
-                        // Never block navigation due to save failures.
-                    }
-                }
                 currentId = tool.id;
                 const frame = getOrCreateToolFrame(tool);
+                touchFrameLru(tool.id);
                 activateToolFrame(tool.id);
-                if (frame.getAttribute("data-loaded") === "1") {
-                    try {
-                        restoreToolFormDataTwice(currentId);
-                        bindFrameCalendarDismiss(currentId);
-                    } catch (e) {
-                        // Ignore runtime restore failures.
-                    }
-                }
-                if (!isInitialPageLoad) {
-                    persistRecentToolId(tool.id);
-                    renderRecentNav();
-                }
+                // 先完成界面切换，再异步保存/恢复，避免点击后「卡住一会」
                 updateActiveStates();
                 document.getElementById("search-results").classList.remove("visible");
                 hideOverviewPanel();
@@ -3028,6 +3011,29 @@
                         window.location.hash = nextHash;
                     }
                 }
+                if (!isInitialPageLoad) {
+                    persistRecentToolId(tool.id);
+                    renderRecentNav();
+                }
+                window.requestAnimationFrame(function () {
+                    if (previousId) {
+                        try {
+                            saveToolFormData(previousId);
+                        } catch (e) {
+                            // Never block navigation due to save failures.
+                        }
+                        trimFrameCache();
+                    }
+                    if (currentId !== tool.id) return;
+                    if (frame.getAttribute("data-loaded") === "1") {
+                        try {
+                            restoreToolFormDataTwice(currentId);
+                            bindFrameCalendarDismiss(currentId);
+                        } catch (e) {
+                            // Ignore runtime restore failures.
+                        }
+                    }
+                });
             }
 
             function activateToolFrame(toolId) {
@@ -3044,8 +3050,64 @@
                 return tool.path + sep + "_toolNavId=" + encodeURIComponent(tool.id);
             }
 
+            /** 常驻 iframe 上限：过多后台页会抢主线程，导致表头切换都卡 */
+            var FRAME_LRU = [];
+            var FRAME_CACHE_MAX = 6;
+
+            function touchFrameLru(toolId) {
+                if (!toolId) return;
+                var idx = FRAME_LRU.indexOf(toolId);
+                if (idx >= 0) FRAME_LRU.splice(idx, 1);
+                FRAME_LRU.push(toolId);
+            }
+
+            function disposeToolFrame(toolId) {
+                if (!toolId || toolId === currentId) return;
+                var frame = FRAME_CACHE[toolId];
+                if (!frame) return;
+                try {
+                    saveToolFormData(toolId);
+                } catch (e) {}
+                try {
+                    frame.onload = null;
+                    frame.onerror = null;
+                    frame.src = "about:blank";
+                    if (frame.parentNode) frame.parentNode.removeChild(frame);
+                } catch (e2) {}
+                delete FRAME_CACHE[toolId];
+                var idx = FRAME_LRU.indexOf(toolId);
+                if (idx >= 0) FRAME_LRU.splice(idx, 1);
+            }
+
+            function trimFrameCache() {
+                while (FRAME_LRU.length > FRAME_CACHE_MAX) {
+                    var victim = null;
+                    for (var i = 0; i < FRAME_LRU.length; i++) {
+                        var id = FRAME_LRU[i];
+                        if (id === currentId) continue;
+                        // 优先回收非表头常用工具
+                        if (COMMON_TOOL_IDS.indexOf(id) >= 0) continue;
+                        victim = id;
+                        break;
+                    }
+                    if (!victim) {
+                        for (var j = 0; j < FRAME_LRU.length; j++) {
+                            if (FRAME_LRU[j] !== currentId) {
+                                victim = FRAME_LRU[j];
+                                break;
+                            }
+                        }
+                    }
+                    if (!victim) break;
+                    disposeToolFrame(victim);
+                }
+            }
+
             function getOrCreateToolFrame(tool) {
-                if (FRAME_CACHE[tool.id]) return FRAME_CACHE[tool.id];
+                if (FRAME_CACHE[tool.id]) {
+                    touchFrameLru(tool.id);
+                    return FRAME_CACHE[tool.id];
+                }
                 const container = document.getElementById("tool-frame-container");
                 const frame = document.createElement("iframe");
                 frame.setAttribute("data-tool-id", tool.id);
@@ -3084,158 +3146,129 @@
                 };
                 frame.src = toolFrameSrc(tool);
                 FRAME_CACHE[tool.id] = frame;
+                touchFrameLru(tool.id);
                 container.appendChild(frame);
+                trimFrameCache();
                 return frame;
             }
 
             /**
-             * 首屏打开默认工具后，后台预创建「全部」工具 iframe（不只是表头常用）。
-             * 切换时若已加载完成则直接显示。
-             *
-             * 注意：不能依赖 requestIdleCallback 串队列——重工具占用主线程时 idle 几乎不触发，
-             * 会导致只灌完表头几个就卡住。
+             * 缓存策略（避免「全量 iframe」卡死切换）：
+             * 1) fetch 预热全部工具页 HTML → 填满 SW/HTTP 缓存（不执行页面 JS）
+             * 2) 仅对表头常用工具做低并发 iframe 预创建（切换即时）
+             * 3) 常驻 iframe 上限 LRU，防止后台页抢主线程
              */
-            var TOOL_PRELOAD = {
+            var TOOL_WARM = {
                 started: false,
-                queue: [],
-                active: 0,
-                maxConcurrent: 4,
-                /** 单工具最多占用并发槽的时间；超时后仍继续加载，但放行后续工具 */
-                slotHoldMs: 2500,
-                loadTimeoutMs: 90000,
-                doneCount: 0,
-                totalCount: 0
+                htmlQueue: [],
+                frameQueue: [],
+                htmlActive: 0,
+                frameActive: 0,
+                maxHtmlConcurrent: 3,
+                maxFrameConcurrent: 1
             };
 
-            function shouldSkipBackgroundPreload(tool) {
+            function shouldSkipToolWarm(tool) {
                 if (!tool || !tool.path) return true;
-                // 换底色子项目当前未入库，预加载只会 404
                 if (tool.id === HANDOFF_PHOTO_BG_TAB) return true;
                 return false;
             }
 
-            function buildBackgroundPreloadQueue() {
-                var seen = {};
-                var ordered = [];
-                function pushId(id) {
-                    if (!id || seen[id] || id === currentId) return;
+            function absoluteToolUrl(path) {
+                try {
+                    return new URL(path, window.location.href).href;
+                } catch (e) {
+                    return path;
+                }
+            }
+
+            function warmFetchHtml(tool) {
+                if (!tool || shouldSkipToolWarm(tool)) return Promise.resolve();
+                var url = absoluteToolUrl(tool.path);
+                return fetch(url, {
+                    method: "GET",
+                    credentials: "same-origin",
+                    cache: "force-cache"
+                })
+                    .then(function (res) {
+                        // 读完 body，确保进入 Cache / HTTP 缓存
+                        return res && typeof res.text === "function" ? res.text() : null;
+                    })
+                    .then(function () {})
+                    .catch(function () {});
+            }
+
+            function pumpHtmlWarm() {
+                if (document.hidden) return;
+                while (
+                    TOOL_WARM.htmlActive < TOOL_WARM.maxHtmlConcurrent &&
+                    TOOL_WARM.htmlQueue.length
+                ) {
+                    var tool = TOOL_WARM.htmlQueue.shift();
+                    if (!tool) continue;
+                    TOOL_WARM.htmlActive += 1;
+                    warmFetchHtml(tool).then(function () {
+                        TOOL_WARM.htmlActive -= 1;
+                        window.setTimeout(pumpHtmlWarm, 40);
+                    });
+                }
+            }
+
+            function pumpHeaderFrameWarm() {
+                if (document.hidden) return;
+                while (
+                    TOOL_WARM.frameActive < TOOL_WARM.maxFrameConcurrent &&
+                    TOOL_WARM.frameQueue.length
+                ) {
+                    var id = TOOL_WARM.frameQueue.shift();
+                    if (!id || id === currentId || FRAME_CACHE[id]) continue;
                     var tool = TOOLS.find(function (t) {
                         return t.id === id;
                     });
-                    if (!tool || shouldSkipBackgroundPreload(tool)) return;
-                    seen[id] = true;
-                    ordered.push(id);
-                }
-                // 常用优先，其余按 TOOLS 全量（覆盖分类面板里每一个工具）
-                COMMON_TOOL_IDS.forEach(pushId);
-                TOOLS.forEach(function (t) {
-                    pushId(t.id);
-                });
-                return ordered;
-            }
-
-            function schedulePreloadTick(fn, delayMs) {
-                window.setTimeout(fn, typeof delayMs === "number" ? delayMs : 80);
-            }
-
-            function waitForFrameSettled(frame) {
-                return new Promise(function (resolve) {
-                    if (!frame) {
-                        resolve();
-                        return;
-                    }
-                    var state = frame.getAttribute("data-loaded");
-                    if (state === "1" || state === "error") {
-                        resolve();
-                        return;
-                    }
-                    var finished = false;
+                    if (!tool || shouldSkipToolWarm(tool)) continue;
+                    TOOL_WARM.frameActive += 1;
+                    var frame = getOrCreateToolFrame(tool);
+                    if (tool.id !== currentId) frame.classList.remove("tool-frame-active");
+                    var settled = false;
                     function done() {
-                        if (finished) return;
-                        finished = true;
-                        frame.removeEventListener("load", done);
-                        frame.removeEventListener("error", done);
-                        resolve();
+                        if (settled) return;
+                        settled = true;
+                        TOOL_WARM.frameActive -= 1;
+                        window.setTimeout(pumpHeaderFrameWarm, 200);
                     }
-                    frame.addEventListener("load", done);
-                    frame.addEventListener("error", done);
-                    window.setTimeout(done, TOOL_PRELOAD.loadTimeoutMs);
-                });
-            }
-
-            function preloadOneTool(toolId) {
-                var tool = TOOLS.find(function (t) {
-                    return t.id === toolId;
-                });
-                if (!tool || shouldSkipBackgroundPreload(tool)) {
-                    return Promise.resolve();
-                }
-                if (FRAME_CACHE[tool.id]) {
-                    return waitForFrameSettled(FRAME_CACHE[tool.id]);
-                }
-                var frame = getOrCreateToolFrame(tool);
-                // 保持隐藏，不抢当前激活工具
-                if (tool.id !== currentId) {
-                    frame.classList.remove("tool-frame-active");
-                }
-                // 槽位尽快释放，避免重工具拖死整条全量预加载队列
-                return Promise.race([
-                    waitForFrameSettled(frame),
-                    new Promise(function (resolve) {
-                        window.setTimeout(resolve, TOOL_PRELOAD.slotHoldMs);
-                    })
-                ]);
-            }
-
-            function updatePreloadProgress() {
-                try {
-                    document.documentElement.setAttribute(
-                        "data-tool-preload",
-                        String(TOOL_PRELOAD.doneCount) + "/" + String(TOOL_PRELOAD.totalCount)
-                    );
-                } catch (e) {}
-            }
-
-            function pumpBackgroundToolPreload() {
-                if (document.hidden) return;
-                while (
-                    TOOL_PRELOAD.active < TOOL_PRELOAD.maxConcurrent &&
-                    TOOL_PRELOAD.queue.length
-                ) {
-                    var id = TOOL_PRELOAD.queue.shift();
-                    if (!id) continue;
-                    // 已创建则计为已调度，继续下一个；未完成的由用户点开时自然等待
-                    if (FRAME_CACHE[id]) {
-                        TOOL_PRELOAD.doneCount += 1;
-                        updatePreloadProgress();
-                        continue;
+                    if (frame.getAttribute("data-loaded") === "1" || frame.getAttribute("data-loaded") === "error") {
+                        done();
+                    } else {
+                        frame.addEventListener("load", done, { once: true });
+                        frame.addEventListener("error", done, { once: true });
+                        window.setTimeout(done, 12000);
                     }
-                    TOOL_PRELOAD.active += 1;
-                    preloadOneTool(id)
-                        .catch(function () {})
-                        .then(function () {
-                            TOOL_PRELOAD.active -= 1;
-                            TOOL_PRELOAD.doneCount += 1;
-                            updatePreloadProgress();
-                            schedulePreloadTick(pumpBackgroundToolPreload, 60);
-                        });
                 }
             }
 
             function scheduleBackgroundToolPreload() {
-                if (TOOL_PRELOAD.started) return;
-                TOOL_PRELOAD.started = true;
-                TOOL_PRELOAD.queue = buildBackgroundPreloadQueue();
-                TOOL_PRELOAD.totalCount = TOOL_PRELOAD.queue.length;
-                TOOL_PRELOAD.doneCount = 0;
-                updatePreloadProgress();
-                document.addEventListener("visibilitychange", function () {
-                    if (!document.hidden) schedulePreloadTick(pumpBackgroundToolPreload, 120);
+                if (TOOL_WARM.started) return;
+                TOOL_WARM.started = true;
+
+                // 全量：只预取 HTML（轻量），覆盖分类面板所有工具
+                TOOL_WARM.htmlQueue = TOOLS.filter(function (t) {
+                    return t.id !== currentId && !shouldSkipToolWarm(t);
                 });
-                // 首屏稳定后立刻开始全量预加载（不用 idle，保证一定会跑完队列）
-                window.setTimeout(function () {
-                    pumpBackgroundToolPreload();
-                }, 600);
+
+                // 表头常用：低并发 iframe，保证来回点不重新冷启动
+                TOOL_WARM.frameQueue = COMMON_TOOL_IDS.filter(function (id) {
+                    return id && id !== currentId;
+                });
+
+                document.addEventListener("visibilitychange", function () {
+                    if (document.hidden) return;
+                    window.setTimeout(pumpHtmlWarm, 100);
+                    window.setTimeout(pumpHeaderFrameWarm, 300);
+                });
+
+                window.setTimeout(pumpHtmlWarm, 500);
+                // 等首屏更稳一点再预创建表头 iframe，避免和默认工具抢带宽/主线程
+                window.setTimeout(pumpHeaderFrameWarm, 1800);
             }
 
             function updateActiveStates() {
