@@ -7,7 +7,7 @@
 - 工具页：`pages/*.html`（48 个独立工具页，每个为自包含 HTML）
 - 离线依赖：`vendor/`（由 `scripts/copy-vendor-all.cjs` 从 node_modules 生成）
 - 网页缓存：`sw.js`（工具页/JS/CSS 首次加载后写入浏览器 Cache；再次打开优先读本地并后台更新，弱网更快；`file://`/uTools 不启用）
-- 后台预热：首屏后 **fetch 预取全部工具 HTML**（进 SW/HTTP 缓存，不跑页面 JS）；表头常用工具再低并发预创建 iframe；常驻 iframe 最多 6 个（LRU），避免切换卡顿
+- 后台预热：串行 fetch 全部工具 HTML（不并发、用户操作时暂停）；**不**后台创建 iframe；常驻仅当前+上一个，保证切换流畅；再次打开走 SW 缓存加速
 - 打包：`scripts/pack-utools.cjs` 生成 `dist-utools/`（uTools 插件包）
 
 ## 本地开发

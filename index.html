@@ -3050,9 +3050,9 @@
                 return tool.path + sep + "_toolNavId=" + encodeURIComponent(tool.id);
             }
 
-            /** 常驻 iframe 上限：过多后台页会抢主线程，导致表头切换都卡 */
+            /** 常驻 iframe：只留当前 + 上一个，后台页一多就会抢主线程导致切换卡顿 */
             var FRAME_LRU = [];
-            var FRAME_CACHE_MAX = 6;
+            var FRAME_CACHE_MAX = 2;
 
             function touchFrameLru(toolId) {
                 if (!toolId) return;
@@ -3083,19 +3083,9 @@
                 while (FRAME_LRU.length > FRAME_CACHE_MAX) {
                     var victim = null;
                     for (var i = 0; i < FRAME_LRU.length; i++) {
-                        var id = FRAME_LRU[i];
-                        if (id === currentId) continue;
-                        // 优先回收非表头常用工具
-                        if (COMMON_TOOL_IDS.indexOf(id) >= 0) continue;
-                        victim = id;
-                        break;
-                    }
-                    if (!victim) {
-                        for (var j = 0; j < FRAME_LRU.length; j++) {
-                            if (FRAME_LRU[j] !== currentId) {
-                                victim = FRAME_LRU[j];
-                                break;
-                            }
+                        if (FRAME_LRU[i] !== currentId) {
+                            victim = FRAME_LRU[i];
+                            break;
                         }
                     }
                     if (!victim) break;
@@ -3144,28 +3134,28 @@
                 frame.onerror = function () {
                     frame.setAttribute("data-loaded", "error");
                 };
-                frame.src = toolFrameSrc(tool);
-                FRAME_CACHE[tool.id] = frame;
+                // 先腾出额度再挂新页，避免短暂并存过多 iframe
                 touchFrameLru(tool.id);
-                container.appendChild(frame);
+                FRAME_CACHE[tool.id] = frame;
                 trimFrameCache();
+                frame.src = toolFrameSrc(tool);
+                container.appendChild(frame);
                 return frame;
             }
 
             /**
-             * 缓存策略（避免「全量 iframe」卡死切换）：
-             * 1) fetch 预热全部工具页 HTML → 填满 SW/HTTP 缓存（不执行页面 JS）
-             * 2) 仅对表头常用工具做低并发 iframe 预创建（切换即时）
-             * 3) 常驻 iframe 上限 LRU，防止后台页抢主线程
+             * 流畅优先方案：
+             * - 不再后台创建任何工具 iframe（后台跑 Monaco 等会卡切换）
+             * - 只串行 fetch 预热全部工具 HTML → SW/HTTP 缓存，真正打开时更快
+             * - 用户操作时暂停预热；常驻 iframe 仅当前+上一个
              */
             var TOOL_WARM = {
                 started: false,
-                htmlQueue: [],
-                frameQueue: [],
-                htmlActive: 0,
-                frameActive: 0,
-                maxHtmlConcurrent: 3,
-                maxFrameConcurrent: 1
+                queue: [],
+                busy: false,
+                pauseUntil: 0,
+                gapMs: 450,
+                timer: null
             };
 
             function shouldSkipToolWarm(tool) {
@@ -3182,6 +3172,30 @@
                 }
             }
 
+            function buildSerialWarmQueue() {
+                var seen = {};
+                var q = [];
+                function pushTool(tool) {
+                    if (!tool || seen[tool.id] || tool.id === currentId || shouldSkipToolWarm(tool)) return;
+                    seen[tool.id] = true;
+                    q.push(tool);
+                }
+                COMMON_TOOL_IDS.forEach(function (id) {
+                    pushTool(
+                        TOOLS.find(function (t) {
+                            return t.id === id;
+                        })
+                    );
+                });
+                TOOLS.forEach(pushTool);
+                return q;
+            }
+
+            function pauseToolWarm(ms) {
+                var until = Date.now() + (typeof ms === "number" ? ms : 2500);
+                if (until > TOOL_WARM.pauseUntil) TOOL_WARM.pauseUntil = until;
+            }
+
             function warmFetchHtml(tool) {
                 if (!tool || shouldSkipToolWarm(tool)) return Promise.resolve();
                 var url = absoluteToolUrl(tool.path);
@@ -3191,84 +3205,64 @@
                     cache: "force-cache"
                 })
                     .then(function (res) {
-                        // 读完 body，确保进入 Cache / HTTP 缓存
                         return res && typeof res.text === "function" ? res.text() : null;
                     })
                     .then(function () {})
                     .catch(function () {});
             }
 
-            function pumpHtmlWarm() {
-                if (document.hidden) return;
-                while (
-                    TOOL_WARM.htmlActive < TOOL_WARM.maxHtmlConcurrent &&
-                    TOOL_WARM.htmlQueue.length
-                ) {
-                    var tool = TOOL_WARM.htmlQueue.shift();
-                    if (!tool) continue;
-                    TOOL_WARM.htmlActive += 1;
-                    warmFetchHtml(tool).then(function () {
-                        TOOL_WARM.htmlActive -= 1;
-                        window.setTimeout(pumpHtmlWarm, 40);
-                    });
+            function scheduleSerialWarmTick(delayMs) {
+                if (TOOL_WARM.timer) {
+                    window.clearTimeout(TOOL_WARM.timer);
+                    TOOL_WARM.timer = null;
                 }
+                TOOL_WARM.timer = window.setTimeout(pumpSerialToolWarm, delayMs);
             }
 
-            function pumpHeaderFrameWarm() {
-                if (document.hidden) return;
-                while (
-                    TOOL_WARM.frameActive < TOOL_WARM.maxFrameConcurrent &&
-                    TOOL_WARM.frameQueue.length
-                ) {
-                    var id = TOOL_WARM.frameQueue.shift();
-                    if (!id || id === currentId || FRAME_CACHE[id]) continue;
-                    var tool = TOOLS.find(function (t) {
-                        return t.id === id;
-                    });
-                    if (!tool || shouldSkipToolWarm(tool)) continue;
-                    TOOL_WARM.frameActive += 1;
-                    var frame = getOrCreateToolFrame(tool);
-                    if (tool.id !== currentId) frame.classList.remove("tool-frame-active");
-                    var settled = false;
-                    function done() {
-                        if (settled) return;
-                        settled = true;
-                        TOOL_WARM.frameActive -= 1;
-                        window.setTimeout(pumpHeaderFrameWarm, 200);
-                    }
-                    if (frame.getAttribute("data-loaded") === "1" || frame.getAttribute("data-loaded") === "error") {
-                        done();
-                    } else {
-                        frame.addEventListener("load", done, { once: true });
-                        frame.addEventListener("error", done, { once: true });
-                        window.setTimeout(done, 12000);
-                    }
+            function pumpSerialToolWarm() {
+                TOOL_WARM.timer = null;
+                if (document.hidden || TOOL_WARM.busy) return;
+                if (!TOOL_WARM.queue.length) return;
+                var wait = TOOL_WARM.pauseUntil - Date.now();
+                if (wait > 0) {
+                    scheduleSerialWarmTick(wait + 30);
+                    return;
                 }
+                var tool = TOOL_WARM.queue.shift();
+                if (!tool) return;
+                TOOL_WARM.busy = true;
+                warmFetchHtml(tool).then(function () {
+                    TOOL_WARM.busy = false;
+                    try {
+                        document.documentElement.setAttribute(
+                            "data-tool-warm",
+                            String(TOOL_WARM.queue.length) + " left"
+                        );
+                    } catch (e) {}
+                    if (TOOL_WARM.queue.length) scheduleSerialWarmTick(TOOL_WARM.gapMs);
+                });
             }
 
             function scheduleBackgroundToolPreload() {
                 if (TOOL_WARM.started) return;
                 TOOL_WARM.started = true;
+                TOOL_WARM.queue = buildSerialWarmQueue();
 
-                // 全量：只预取 HTML（轻量），覆盖分类面板所有工具
-                TOOL_WARM.htmlQueue = TOOLS.filter(function (t) {
-                    return t.id !== currentId && !shouldSkipToolWarm(t);
-                });
-
-                // 表头常用：低并发 iframe，保证来回点不重新冷启动
-                TOOL_WARM.frameQueue = COMMON_TOOL_IDS.filter(function (id) {
-                    return id && id !== currentId;
-                });
-
+                function onUserAct() {
+                    pauseToolWarm(2800);
+                }
+                document.addEventListener("pointerdown", onUserAct, true);
+                document.addEventListener("keydown", onUserAct, true);
                 document.addEventListener("visibilitychange", function () {
                     if (document.hidden) return;
-                    window.setTimeout(pumpHtmlWarm, 100);
-                    window.setTimeout(pumpHeaderFrameWarm, 300);
+                    pauseToolWarm(800);
+                    scheduleSerialWarmTick(900);
                 });
 
-                window.setTimeout(pumpHtmlWarm, 500);
-                // 等首屏更稳一点再预创建表头 iframe，避免和默认工具抢带宽/主线程
-                window.setTimeout(pumpHeaderFrameWarm, 1800);
+                // 首屏稳定后再一个一个预热，绝不并发
+                window.setTimeout(function () {
+                    scheduleSerialWarmTick(200);
+                }, 2000);
             }
 
             function updateActiveStates() {
