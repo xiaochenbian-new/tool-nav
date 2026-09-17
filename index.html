@@ -4433,7 +4433,28 @@
                         "#tab=" +
                         encodeURIComponent(initialTab)
                 );
+                registerStaticAssetServiceWorker();
             });
+
+            /** 首次加载后的 JS/CSS 写入本地 Cache，弱网时复用；file:// / uTools 跳过 */
+            function registerStaticAssetServiceWorker() {
+                if (!("serviceWorker" in navigator)) return;
+                var protocol = window.location.protocol;
+                var host = window.location.hostname;
+                var okProto =
+                    protocol === "https:" ||
+                    ((host === "localhost" || host === "127.0.0.1") && protocol === "http:");
+                if (!okProto) return;
+                function doRegister() {
+                    navigator.serviceWorker
+                        .register("sw.js", { scope: "./" })
+                        .catch(function () {
+                            // 注册失败不影响正常使用
+                        });
+                }
+                if (document.readyState === "complete") doRegister();
+                else window.addEventListener("load", doRegister);
+            }
         </script>
     </body>
 </html>

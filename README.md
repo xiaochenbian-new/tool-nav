@@ -6,6 +6,7 @@
 - 入口：`index.html`（工具导航外壳，含收藏栏 / 搜索 / 计算器 / 日历）
 - 工具页：`pages/*.html`（48 个独立工具页，每个为自包含 HTML）
 - 离线依赖：`vendor/`（由 `scripts/copy-vendor-all.cjs` 从 node_modules 生成）
+- 网页缓存：`sw.js`（首次打开工具后把 JS/CSS 写入浏览器 Cache，弱网可复用；`file://`/uTools 不启用）
 - 打包：`scripts/pack-utools.cjs` 生成 `dist-utools/`（uTools 插件包）
 
 ## 本地开发

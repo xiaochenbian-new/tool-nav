@@ -14,3 +14,7 @@
 # 主入口 —— 不缓存
 /index.html
   Cache-Control: no-cache
+
+# Service Worker —— 不缓存，保证策略更新及时
+/sw.js
+  Cache-Control: no-cache

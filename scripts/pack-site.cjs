@@ -11,7 +11,7 @@ const out = path.join(root, "dist-site");
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 
-const items = ["index.html", "plugin.json", "pages", "vendor", "_headers"];
+const items = ["index.html", "sw.js", "plugin.json", "pages", "vendor", "_headers"];
 for (const it of items) {
     const src = path.join(root, it);
     if (!fs.existsSync(src)) {
