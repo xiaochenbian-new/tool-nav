@@ -693,31 +693,63 @@
                     return DEFAULT_SPLIT_RATIO;
                 }
 
+                /** 拖动分割线时先按预览区宽度实时缩放已有码图，松手后再重绘清晰像素 */
+                function syncPreviewMediaSize() {
+                    var size = getPreviewQrSize();
+                    var barH = getPreviewBarHeight();
+                    var nodes = document.querySelectorAll("#qrcode canvas, #qrcode img");
+                    for (var i = 0; i < nodes.length; i++) {
+                        nodes[i].style.width = size + "px";
+                        nodes[i].style.height = "auto";
+                    }
+                    var barcode = document.getElementById("barcode");
+                    if (barcode && !barcode.classList.contains("hidden")) {
+                        barcode.style.width = Math.max(80, size) + "px";
+                        barcode.style.maxWidth = "100%";
+                        barcode.style.height = barH + "px";
+                    }
+                }
+
                 function scheduleRegenerateOnResize() {
                     if (resizeGenTimer) window.clearTimeout(resizeGenTimer);
                     resizeGenTimer = window.setTimeout(function () {
                         if (inputEl.value.trim()) generateCode();
-                    }, 180);
+                    }, 120);
                 }
 
                 function initPaneResizer() {
                     paneSplitRatio = readSavedPaneSplitRatio();
                     applyPaneSplit(paneSplitRatio);
+                    syncPreviewMediaSize();
 
                     if (!paneResizerEl || !editorZoneEl) return;
 
                     var dragging = false;
+                    var dragRaf = 0;
+                    var pendingClientX = 0;
+
+                    function flushDragFrame() {
+                        dragRaf = 0;
+                        var rect = editorZoneEl.getBoundingClientRect();
+                        applyPaneSplit((pendingClientX - rect.left) / rect.width);
+                        syncPreviewMediaSize();
+                    }
 
                     function onPointerMove(clientX) {
-                        var rect = editorZoneEl.getBoundingClientRect();
-                        applyPaneSplit((clientX - rect.left) / rect.width);
-                        scheduleRegenerateOnResize();
+                        pendingClientX = clientX;
+                        if (dragRaf) return;
+                        dragRaf = window.requestAnimationFrame(flushDragFrame);
                     }
 
                     function stopDrag() {
                         if (!dragging) return;
                         dragging = false;
                         document.body.classList.remove("pane-resizing");
+                        if (dragRaf) {
+                            window.cancelAnimationFrame(dragRaf);
+                            dragRaf = 0;
+                            flushDragFrame();
+                        }
                         try {
                             localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio));
                         } catch (e) {}
@@ -744,11 +776,13 @@
                         if (e.key === "ArrowLeft") {
                             e.preventDefault();
                             applyPaneSplit(paneSplitRatio - step);
+                            syncPreviewMediaSize();
                             try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
                             scheduleRegenerateOnResize();
                         } else if (e.key === "ArrowRight") {
                             e.preventDefault();
                             applyPaneSplit(paneSplitRatio + step);
+                            syncPreviewMediaSize();
                             try { localStorage.setItem(SPLIT_STORAGE_KEY, String(paneSplitRatio)); } catch (err) {}
                             scheduleRegenerateOnResize();
                         }
@@ -756,6 +790,7 @@
 
                     window.addEventListener("resize", function () {
                         applyPaneSplit(paneSplitRatio);
+                        syncPreviewMediaSize();
                         scheduleRegenerateOnResize();
                         layoutChunkDividers();
                     });

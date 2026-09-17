@@ -1,12 +1,12 @@
 /**
  * tool-nav 静态资源本地缓存
- * - 首次访问某 JS/CSS（及字体/图片等）时写入 Cache Storage
- * - 之后优先走本地缓存，弱网/断网仍可继续使用已打开过的工具
- * - HTML 走网络优先，失败再回退缓存，便于发版更新
- * - 仅在 http(s) 下由 index.html 注册；uTools file:// 不受影响（资源本身已在包内）
+ * - JS/CSS/字体/图片/vendor：缓存优先
+ * - HTML（含工具页）：优先返回本地缓存，后台静默更新（避免弱网每次等远程）
+ * - 缓存键忽略 ?_toolNavId 等查询参数，避免同一工具页反复 miss
+ * - 仅在 http(s) 下由 index.html 注册；uTools file:// 不受影响
  */
 /* eslint-disable no-restricted-globals */
-var CACHE_NAME = "tool-nav-static-v1";
+var CACHE_NAME = "tool-nav-static-v2";
 var STATIC_EXT =
     /\.(?:js|mjs|cjs|css|woff2?|ttf|otf|eot|map|wasm|png|jpe?g|gif|svg|ico|webp)(?:\?.*)?$/i;
 
@@ -15,21 +15,23 @@ self.addEventListener("install", function (event) {
     event.waitUntil(
         caches.open(CACHE_NAME).then(function (cache) {
             var base = self.registration.scope;
-            return cache.addAll(
-                [
-                    base,
-                    base + "index.html",
-                    base + "pages/libs/tool-calendar.css",
-                    base + "pages/libs/tool-calendar.js",
-                    base + "pages/libs/tool-calculator.css",
-                    base + "pages/libs/tool-calculator.js",
-                    base + "pages/libs/tool-form-persist.js"
-                ].map(function (url) {
-                    return new Request(url, { cache: "reload" });
-                })
-            ).catch(function () {
-                // 预缓存失败不影响后续按需缓存
-            });
+            return cache
+                .addAll(
+                    [
+                        base,
+                        base + "index.html",
+                        base + "pages/libs/tool-calendar.css",
+                        base + "pages/libs/tool-calendar.js",
+                        base + "pages/libs/tool-calculator.css",
+                        base + "pages/libs/tool-calculator.js",
+                        base + "pages/libs/tool-form-persist.js"
+                    ].map(function (url) {
+                        return new Request(url, { cache: "reload" });
+                    })
+                )
+                .catch(function () {
+                    // 预缓存失败不影响后续按需缓存
+                });
         })
     );
 });
@@ -55,42 +57,71 @@ self.addEventListener("activate", function (event) {
     );
 });
 
+/** 去掉 query/hash，保证 pages/xxx.html?_toolNavId=… 能命中同一缓存 */
+function cacheKey(request) {
+    try {
+        var url = new URL(request.url);
+        url.search = "";
+        url.hash = "";
+        return url.href;
+    } catch (e) {
+        return request.url;
+    }
+}
+
+function canCacheResponse(response) {
+    if (!response || !response.ok) return false;
+    // 同源 basic；偶发 cors
+    return response.type === "basic" || response.type === "cors";
+}
+
 function putInCache(request, response) {
-    if (!response || !response.ok) return response;
+    if (!canCacheResponse(response)) return response;
     var copy = response.clone();
+    var key = cacheKey(request);
     caches.open(CACHE_NAME).then(function (cache) {
-        cache.put(request, copy);
+        cache.put(key, copy);
     });
     return response;
 }
 
-function cacheFirst(request) {
-    return caches.match(request).then(function (cached) {
-        if (cached) return cached;
-        return fetch(request)
-            .then(function (response) {
-                return putInCache(request, response);
-            })
-            .catch(function () {
-                return cached || Response.error();
-            });
+function matchCache(request) {
+    var key = cacheKey(request);
+    return caches.match(key).then(function (hit) {
+        if (hit) return hit;
+        return caches.match(request, { ignoreSearch: true });
     });
 }
 
-function networkFirst(request) {
-    return fetch(request)
-        .then(function (response) {
-            return putInCache(request, response);
-        })
-        .catch(function () {
-            return caches.match(request).then(function (cached) {
-                if (cached) return cached;
-                if (request.mode === "navigate") {
-                    return caches.match(self.registration.scope + "index.html");
-                }
-                return Response.error();
-            });
+function fetchAndCache(request) {
+    return fetch(request).then(function (response) {
+        return putInCache(request, response);
+    });
+}
+
+/** 有缓存立刻返回，后台刷新；无缓存再走网络 */
+function staleWhileRevalidate(request) {
+    return matchCache(request).then(function (cached) {
+        var networkPromise = fetchAndCache(request).catch(function () {
+            return null;
         });
+        if (cached) {
+            networkPromise.then(function () {});
+            return cached;
+        }
+        return networkPromise.then(function (response) {
+            return response || Response.error();
+        });
+    });
+}
+
+function cacheFirst(request) {
+    return matchCache(request).then(function (cached) {
+        if (cached) return cached;
+        return fetchAndCache(request).catch(function () {
+            return Response.error();
+        });
+    });
 }
 
 function isSameOriginScope(url) {
@@ -128,6 +159,7 @@ self.addEventListener("fetch", function (event) {
         return;
     }
     if (isHtml) {
-        event.respondWith(networkFirst(request));
+        // 工具页 HTML 也优先本地，避免弱网下「打开过还要等加载」
+        event.respondWith(staleWhileRevalidate(request));
     }
 });
