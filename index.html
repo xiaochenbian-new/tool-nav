@@ -3089,15 +3089,22 @@
             }
 
             /**
-             * 首屏打开默认工具后，后台预创建其余工具 iframe。
-             * 切换工具时若已预加载则直接显示，无需再等网络/解析。
+             * 首屏打开默认工具后，后台预创建「全部」工具 iframe（不只是表头常用）。
+             * 切换时若已加载完成则直接显示。
+             *
+             * 注意：不能依赖 requestIdleCallback 串队列——重工具占用主线程时 idle 几乎不触发，
+             * 会导致只灌完表头几个就卡住。
              */
             var TOOL_PRELOAD = {
                 started: false,
                 queue: [],
                 active: 0,
-                maxConcurrent: 2,
-                loadTimeoutMs: 60000
+                maxConcurrent: 4,
+                /** 单工具最多占用并发槽的时间；超时后仍继续加载，但放行后续工具 */
+                slotHoldMs: 2500,
+                loadTimeoutMs: 90000,
+                doneCount: 0,
+                totalCount: 0
             };
 
             function shouldSkipBackgroundPreload(tool) {
@@ -3112,9 +3119,14 @@
                 var ordered = [];
                 function pushId(id) {
                     if (!id || seen[id] || id === currentId) return;
+                    var tool = TOOLS.find(function (t) {
+                        return t.id === id;
+                    });
+                    if (!tool || shouldSkipBackgroundPreload(tool)) return;
                     seen[id] = true;
                     ordered.push(id);
                 }
+                // 常用优先，其余按 TOOLS 全量（覆盖分类面板里每一个工具）
                 COMMON_TOOL_IDS.forEach(pushId);
                 TOOLS.forEach(function (t) {
                     pushId(t.id);
@@ -3122,14 +3134,8 @@
                 return ordered;
             }
 
-            function scheduleIdle(fn, timeoutMs) {
-                if (typeof window.requestIdleCallback === "function") {
-                    window.requestIdleCallback(function () {
-                        fn();
-                    }, { timeout: timeoutMs || 2000 });
-                } else {
-                    window.setTimeout(fn, Math.min(timeoutMs || 2000, 400));
-                }
+            function schedulePreloadTick(fn, delayMs) {
+                window.setTimeout(fn, typeof delayMs === "number" ? delayMs : 80);
             }
 
             function waitForFrameSettled(frame) {
@@ -3164,15 +3170,30 @@
                 if (!tool || shouldSkipBackgroundPreload(tool)) {
                     return Promise.resolve();
                 }
-                if (FRAME_CACHE[tool.id] && FRAME_CACHE[tool.id].getAttribute("data-loaded")) {
-                    return Promise.resolve();
+                if (FRAME_CACHE[tool.id]) {
+                    return waitForFrameSettled(FRAME_CACHE[tool.id]);
                 }
                 var frame = getOrCreateToolFrame(tool);
                 // 保持隐藏，不抢当前激活工具
                 if (tool.id !== currentId) {
                     frame.classList.remove("tool-frame-active");
                 }
-                return waitForFrameSettled(frame);
+                // 槽位尽快释放，避免重工具拖死整条全量预加载队列
+                return Promise.race([
+                    waitForFrameSettled(frame),
+                    new Promise(function (resolve) {
+                        window.setTimeout(resolve, TOOL_PRELOAD.slotHoldMs);
+                    })
+                ]);
+            }
+
+            function updatePreloadProgress() {
+                try {
+                    document.documentElement.setAttribute(
+                        "data-tool-preload",
+                        String(TOOL_PRELOAD.doneCount) + "/" + String(TOOL_PRELOAD.totalCount)
+                    );
+                } catch (e) {}
             }
 
             function pumpBackgroundToolPreload() {
@@ -3182,14 +3203,21 @@
                     TOOL_PRELOAD.queue.length
                 ) {
                     var id = TOOL_PRELOAD.queue.shift();
-                    // 用户已点开或正在创建的工具跳过，避免重复占并发
-                    if (!id || FRAME_CACHE[id]) continue;
+                    if (!id) continue;
+                    // 已创建则计为已调度，继续下一个；未完成的由用户点开时自然等待
+                    if (FRAME_CACHE[id]) {
+                        TOOL_PRELOAD.doneCount += 1;
+                        updatePreloadProgress();
+                        continue;
+                    }
                     TOOL_PRELOAD.active += 1;
                     preloadOneTool(id)
                         .catch(function () {})
                         .then(function () {
                             TOOL_PRELOAD.active -= 1;
-                            scheduleIdle(pumpBackgroundToolPreload, 1200);
+                            TOOL_PRELOAD.doneCount += 1;
+                            updatePreloadProgress();
+                            schedulePreloadTick(pumpBackgroundToolPreload, 60);
                         });
                 }
             }
@@ -3198,13 +3226,16 @@
                 if (TOOL_PRELOAD.started) return;
                 TOOL_PRELOAD.started = true;
                 TOOL_PRELOAD.queue = buildBackgroundPreloadQueue();
+                TOOL_PRELOAD.totalCount = TOOL_PRELOAD.queue.length;
+                TOOL_PRELOAD.doneCount = 0;
+                updatePreloadProgress();
                 document.addEventListener("visibilitychange", function () {
-                    if (!document.hidden) scheduleIdle(pumpBackgroundToolPreload, 800);
+                    if (!document.hidden) schedulePreloadTick(pumpBackgroundToolPreload, 120);
                 });
-                // 等首屏工具先稳定一会儿，再开始后台灌 iframe
+                // 首屏稳定后立刻开始全量预加载（不用 idle，保证一定会跑完队列）
                 window.setTimeout(function () {
-                    scheduleIdle(pumpBackgroundToolPreload, 2500);
-                }, 1200);
+                    pumpBackgroundToolPreload();
+                }, 600);
             }
 
             function updateActiveStates() {
