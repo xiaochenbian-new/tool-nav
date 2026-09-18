@@ -3223,10 +3223,12 @@
             }
 
             /**
-             * 物理下载（IndexedDB）：访问工具后后台串行拉取 JS/CSS；SW 优先用本地文件。
-             * 右侧圆圈显示进度；点击可清除本地并重新下载。
+             * 物理下载（IndexedDB）：访问工具后后台拉取该工具完整静态资源；SW 优先用本地。
+             * 已下载的刷新后直接复用，不重新拉取。圆圈可清除并重下。
              */
             var OFFLINE_RING_LEN = 2 * Math.PI * 13;
+            var offlineHydratedFrames = Object.create(null);
+            var offlineWasComplete = false;
 
             function scheduleToolOfflineDownload(tool) {
                 if (!window.ToolOffline || !tool) return;
@@ -3246,7 +3248,36 @@
                 if (snap.localCount > 0) {
                     return "已有 " + snap.localCount + " 个本地文件（打开工具后继续下载；点击可清除重下）";
                 }
-                return "打开工具后将后台下载 JS/CSS 到本地（点击可手动开始/重下）";
+                return "打开工具后将后台下载静态资源到本地（点击可手动开始/重下）";
+            }
+
+            function reloadCurrentToolFrameFromLocal() {
+                if (!currentId || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+                var frame = FRAME_CACHE[currentId];
+                if (!frame || !frame.getAttribute("data-tool-id")) return;
+                if (offlineHydratedFrames[currentId]) return;
+                offlineHydratedFrames[currentId] = true;
+                try {
+                    var tool = TOOLS.find(function (t) {
+                        return t.id === currentId;
+                    });
+                    if (!tool) return;
+                    // 重新加载以走 SW → IndexedDB 本地资源
+                    frame.removeAttribute("data-loaded");
+                    frame.src = toolFrameSrc(tool);
+                } catch (e) {}
+            }
+
+            function onOfflineProgressChange(snap) {
+                renderOfflineDownloadProgress(snap);
+                if (snap && snap.complete && !snap.downloading) {
+                    if (!offlineWasComplete) {
+                        offlineWasComplete = true;
+                        reloadCurrentToolFrameFromLocal();
+                    }
+                } else if (snap && snap.downloading) {
+                    offlineWasComplete = false;
+                }
             }
 
             function renderOfflineDownloadProgress(snap) {
@@ -3292,16 +3323,18 @@
                     var snap = window.ToolOffline.getSnapshot();
                     if (!snap.enabled) return;
                     var msg =
-                        (snap.localCount > 0 || snap.complete
-                            ? "清除本机已下载的 JS/CSS，并按已访问工具重新下载？\n（站点更新功能后可用此方式刷新本地资源）"
-                            : "开始下载已访问工具的 JS/CSS 到本地？");
+                        snap.localCount > 0 || snap.complete
+                            ? "清除本机已下载的静态资源，并按已访问工具重新下载？\n（站点更新功能后可用此方式刷新本地资源）"
+                            : "开始下载已访问工具的静态资源到本地？";
                     if (!window.confirm(msg)) return;
+                    offlineHydratedFrames = Object.create(null);
+                    offlineWasComplete = false;
                     window.ToolOffline.clearAndRedownload(TOOLS, currentId).then(function (next) {
                         renderOfflineDownloadProgress(next);
                     });
                 });
                 if (window.ToolOffline && typeof window.ToolOffline.onChange === "function") {
-                    window.ToolOffline.onChange(renderOfflineDownloadProgress);
+                    window.ToolOffline.onChange(onOfflineProgressChange);
                 }
                 renderOfflineDownloadProgress();
             }
@@ -4619,36 +4652,52 @@
                 bridgeSheetsToTextDiffHandoffFromStorage();
                 bridgeJsonToFmtHandoffFromStorage();
                 const initialTab = resolveStartupTab();
-                openTool(initialTab, false);
-                if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
-                    notifyPrintToolHandoff("photo-to-print", 0);
-                }
-                if (initialTab === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
-                    notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
-                }
-                if (initialTab === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
-                    notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
-                }
-                if (initialTab === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
-                    notifyTextToolHandoff("excel-sql-to-text", 0);
-                }
-                if (initialTab === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
-                    notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
-                }
-                if (initialTab === HANDOFF_FMT_CONVERT_TAB && pendingJsonToFmtHandoff) {
-                    notifyFmtConvertToolHandoff("json-to-fmt-convert", 0);
-                }
-                isInitialPageLoad = false;
                 bindOfflineDownloadUi();
-                if (window.ToolOffline) {
-                    window.ToolOffline.init().then(function () {
-                        var tool = TOOLS.find(function (t) {
-                            return t.id === currentId;
-                        });
-                        if (tool) scheduleToolOfflineDownload(tool);
-                        renderOfflineDownloadProgress();
+
+                function afterOfflineReady() {
+                    openTool(initialTab, false);
+                    if (initialTab === HANDOFF_PRINT_TAB && pendingPhotoPrintHandoff) {
+                        notifyPrintToolHandoff("photo-to-print", 0);
+                    }
+                    if (initialTab === HANDOFF_PHOTO_BG_TAB && pendingPrintToPhotoHandoff) {
+                        notifyPhotoBgToolHandoff("print-to-photo-bg", 0);
+                    }
+                    if (initialTab === HANDOFF_EXCEL_SQL_TAB && pendingTextToExcelSqlHandoff) {
+                        notifyExcelSqlToolHandoff("text-to-excel-sql", 0);
+                    }
+                    if (initialTab === HANDOFF_TEXT_TAB && pendingExcelSqlToTextHandoff) {
+                        notifyTextToolHandoff("excel-sql-to-text", 0);
+                    }
+                    if (initialTab === HANDOFF_TEXT_DIFF_TAB && pendingSheetsToTextDiffHandoff) {
+                        notifyTextDiffToolHandoff("sheets-to-text-diff", 0);
+                    }
+                    if (initialTab === HANDOFF_FMT_CONVERT_TAB && pendingJsonToFmtHandoff) {
+                        notifyFmtConvertToolHandoff("json-to-fmt-convert", 0);
+                    }
+                    isInitialPageLoad = false;
+                    var tool = TOOLS.find(function (t) {
+                        return t.id === currentId;
                     });
+                    if (tool) scheduleToolOfflineDownload(tool);
+                    var snap = window.ToolOffline ? window.ToolOffline.getSnapshot() : null;
+                    renderOfflineDownloadProgress(snap);
+                    if (snap && snap.complete && navigator.serviceWorker && navigator.serviceWorker.controller) {
+                        offlineWasComplete = true;
+                        offlineHydratedFrames[currentId] = true;
+                    }
                 }
+
+                ensureOfflineServiceWorker()
+                    .catch(function () {})
+                    .then(function () {
+                        if (!window.ToolOffline) return null;
+                        return window.ToolOffline.init(TOOLS);
+                    })
+                    .catch(function () {})
+                    .then(function () {
+                        afterOfflineReady();
+                    });
+
                 window.addEventListener("pagehide", function () {
                     if (currentId) {
                         try {
@@ -4664,18 +4713,17 @@
                         "#tab=" +
                         encodeURIComponent(initialTab)
                 );
-                registerOfflineAssetServiceWorker();
             });
 
-            /** SW 只负责「有本地文件则优先返回」；并清掉旧 Cache Storage。file:// / uTools 跳过 */
-            function registerOfflineAssetServiceWorker() {
-                if (!("serviceWorker" in navigator)) return;
+            /** 先注册并激活 SW，再打开工具，确保静态请求能命中 IndexedDB */
+            function ensureOfflineServiceWorker() {
+                if (!("serviceWorker" in navigator)) return Promise.resolve(null);
                 var protocol = window.location.protocol;
                 var host = window.location.hostname;
                 var okProto =
                     protocol === "https:" ||
                     ((host === "localhost" || host === "127.0.0.1") && protocol === "http:");
-                if (!okProto) return;
+                if (!okProto) return Promise.resolve(null);
 
                 function purgeLegacyCaches() {
                     if (!("caches" in window)) return Promise.resolve();
@@ -4692,18 +4740,38 @@
                     });
                 }
 
-                function doRegister() {
-                    purgeLegacyCaches()
-                        .catch(function () {})
-                        .then(function () {
-                            return navigator.serviceWorker.register("sw.js", { scope: "./" });
-                        })
-                        .catch(function () {
-                            // 注册失败不影响正常使用
+                return purgeLegacyCaches()
+                    .catch(function () {})
+                    .then(function () {
+                        return navigator.serviceWorker.register("sw.js", { scope: "./" });
+                    })
+                    .then(function (reg) {
+                        return navigator.serviceWorker.ready.then(function () {
+                            return reg;
                         });
-                }
-                if (document.readyState === "complete") doRegister();
-                else window.addEventListener("load", doRegister);
+                    })
+                    .then(function (reg) {
+                        try {
+                            if (reg && reg.active) {
+                                reg.active.postMessage({ type: "tool-nav-offline-claim" });
+                            }
+                        } catch (e) {}
+                        if (navigator.serviceWorker.controller) return reg;
+                        return new Promise(function (resolve) {
+                            var done = false;
+                            function finish() {
+                                if (done) return;
+                                done = true;
+                                navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+                                resolve(reg);
+                            }
+                            function onChange() {
+                                finish();
+                            }
+                            navigator.serviceWorker.addEventListener("controllerchange", onChange);
+                            setTimeout(finish, 1500);
+                        });
+                    });
             }
         </script>
     </body>

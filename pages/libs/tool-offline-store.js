@@ -1,8 +1,8 @@
 /**
  * tool-nav 物理下载（IndexedDB）
- * - 访问工具后后台下载该工具 JS/CSS（及 monaco/katex 整包）
- * - 优先走已下载本地文件；Service Worker 从 IDB 直接响应
- * - 无 Cache Storage 全量缓存
+ * - 访问工具后后台下载该工具完整静态资源
+ * - 已下载的不重复拉取；刷新后直接复用本地
+ * - Service Worker 从 IDB 优先响应
  */
 (function (global) {
     "use strict";
@@ -18,20 +18,21 @@
         ready: false,
         enabled: false,
         manifest: null,
-        /** @type {string[]} */
         queue: [],
         queuedSet: Object.create(null),
-        /** target set for progress denominator */
         targets: Object.create(null),
         targetCount: 0,
         doneCount: 0,
         localCount: 0,
+        /** in-memory set of keys known present in IDB */
+        localKeys: Object.create(null),
         busy: false,
         pauseUntil: 0,
         timer: null,
-        gapMs: 120,
+        gapMs: 80,
         clearing: false,
-        listeners: []
+        listeners: [],
+        db: null
     };
 
     function canUseOffline() {
@@ -56,22 +57,24 @@
     function getSnapshot() {
         var total = state.targetCount;
         var done = Math.min(state.doneCount, total);
-        var pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        var downloading = state.busy || state.queue.length > 0;
+        var pct = total > 0 ? Math.round((done / total) * 100) : state.localCount > 0 ? 100 : 0;
+        var downloading = !!(state.busy || state.queue.length > 0);
+        var complete = total > 0 ? done >= total && !downloading : state.localCount > 0 && !downloading;
         return {
             enabled: state.enabled,
             ready: state.ready,
-            percent: pct,
+            percent: complete && total === 0 && state.localCount > 0 ? 100 : pct,
             done: done,
             total: total,
             localCount: state.localCount,
             queueLeft: state.queue.length,
             downloading: downloading,
-            complete: total > 0 && done >= total && !downloading
+            complete: complete
         };
     }
 
     function openDb() {
+        if (state.db) return Promise.resolve(state.db);
         return new Promise(function (resolve, reject) {
             var req = indexedDB.open(DB_NAME, DB_VERSION);
             req.onupgradeneeded = function () {
@@ -84,7 +87,14 @@
                 }
             };
             req.onsuccess = function () {
-                resolve(req.result);
+                state.db = req.result;
+                state.db.onversionchange = function () {
+                    try {
+                        state.db.close();
+                    } catch (e) {}
+                    state.db = null;
+                };
+                resolve(state.db);
             };
             req.onerror = function () {
                 reject(req.error);
@@ -103,33 +113,49 @@
         });
     }
 
+    /** 先挂 tx 完成回调，再跑请求，避免错过 oncomplete */
     function withStore(mode, storeName, fn) {
         return openDb().then(function (db) {
             return new Promise(function (resolve, reject) {
                 var tx = db.transaction(storeName, mode);
                 var store = tx.objectStore(storeName);
-                Promise.resolve(fn(store))
-                    .then(function (val) {
-                        tx.oncomplete = function () {
-                            db.close();
-                            resolve(val);
-                        };
-                        tx.onerror = function () {
-                            db.close();
-                            reject(tx.error);
-                        };
-                        tx.onabort = function () {
-                            db.close();
-                            reject(tx.error || new Error("aborted"));
-                        };
-                    })
-                    .catch(function (err) {
-                        try {
-                            tx.abort();
-                        } catch (e) {}
-                        db.close();
+                var settled = false;
+                var result;
+                tx.oncomplete = function () {
+                    if (settled) return;
+                    settled = true;
+                    resolve(result);
+                };
+                tx.onerror = function () {
+                    if (settled) return;
+                    settled = true;
+                    reject(tx.error);
+                };
+                tx.onabort = function () {
+                    if (settled) return;
+                    settled = true;
+                    reject(tx.error || new Error("aborted"));
+                };
+                try {
+                    Promise.resolve(fn(store))
+                        .then(function (val) {
+                            result = val;
+                        })
+                        .catch(function (err) {
+                            try {
+                                tx.abort();
+                            } catch (e) {}
+                            if (!settled) {
+                                settled = true;
+                                reject(err);
+                            }
+                        });
+                } catch (err) {
+                    if (!settled) {
+                        settled = true;
                         reject(err);
-                    });
+                    }
+                }
             });
         });
     }
@@ -138,11 +164,10 @@
         try {
             var u = new URL(url, global.location.href);
             var scope = new URL("./", global.location.href);
-            var path = u.pathname;
-            var base = scope.pathname;
-            if (base && path.indexOf(base) === 0) {
-                path = path.slice(base.length);
-            }
+            var path = decodeURIComponent(u.pathname);
+            var base = scope.pathname || "/";
+            if (!base.endsWith("/")) base += "/";
+            if (path.indexOf(base) === 0) path = path.slice(base.length);
             return path.replace(/^\/+/, "");
         } catch (e) {
             return String(url || "").replace(/^\/+/, "");
@@ -150,19 +175,30 @@
     }
 
     function guessType(key, headerType) {
-        if (headerType && headerType !== "application/octet-stream") return headerType;
+        if (headerType && headerType.indexOf("text/html") === 0) return "text/html; charset=utf-8";
+        if (headerType && headerType !== "application/octet-stream" && headerType.indexOf("charset") >= 0) {
+            return headerType;
+        }
+        if (headerType && headerType !== "application/octet-stream" && !/octet-stream/i.test(headerType)) {
+            // keep useful typed headers; still normalize js/css
+        }
         var k = key.toLowerCase();
+        if (k.endsWith(".html")) return "text/html; charset=utf-8";
         if (k.endsWith(".css")) return "text/css; charset=utf-8";
         if (k.endsWith(".js") || k.endsWith(".mjs") || k.endsWith(".cjs"))
             return "application/javascript; charset=utf-8";
         if (k.endsWith(".wasm")) return "application/wasm";
-        if (k.endsWith(".json")) return "application/json";
+        if (k.endsWith(".json") || k.endsWith(".map")) return "application/json";
         if (k.endsWith(".svg")) return "image/svg+xml";
+        if (k.endsWith(".png")) return "image/png";
+        if (k.endsWith(".jpg") || k.endsWith(".jpeg")) return "image/jpeg";
+        if (k.endsWith(".gif")) return "image/gif";
+        if (k.endsWith(".webp")) return "image/webp";
+        if (k.endsWith(".ico")) return "image/x-icon";
         if (k.endsWith(".woff2")) return "font/woff2";
         if (k.endsWith(".woff")) return "font/woff";
         if (k.endsWith(".ttf")) return "font/ttf";
         if (k.endsWith(".otf")) return "font/otf";
-        if (k.endsWith(".map")) return "application/json";
         return headerType || "application/octet-stream";
     }
 
@@ -191,18 +227,52 @@
         saveVisited(ids);
     }
 
-    function countLocalFiles() {
+    function markLocal(key) {
+        if (!key) return;
+        if (!state.localKeys[key]) {
+            state.localKeys[key] = true;
+            state.localCount += 1;
+        }
+    }
+
+    function unmarkAllLocal() {
+        state.localKeys = Object.create(null);
+        state.localCount = 0;
+    }
+
+    function loadLocalKeyIndex() {
         return withStore("readonly", STORE, function (store) {
-            return idbReq(store.count());
+            if (typeof store.getAllKeys === "function") {
+                return idbReq(store.getAllKeys());
+            }
+            return new Promise(function (resolve, reject) {
+                var keys = [];
+                var req = store.openCursor();
+                req.onsuccess = function () {
+                    var cursor = req.result;
+                    if (cursor) {
+                        keys.push(cursor.primaryKey);
+                        cursor.continue();
+                    } else {
+                        resolve(keys);
+                    }
+                };
+                req.onerror = function () {
+                    reject(req.error);
+                };
+            });
+        }).then(function (keys) {
+            unmarkAllLocal();
+            (keys || []).forEach(function (k) {
+                state.localKeys[k] = true;
+            });
+            state.localCount = keys ? keys.length : 0;
+            return state.localCount;
         });
     }
 
-    function hasFile(key) {
-        return withStore("readonly", STORE, function (store) {
-            return idbReq(store.get(key)).then(function (row) {
-                return !!(row && row.blob);
-            });
-        });
+    function hasFileSync(key) {
+        return !!state.localKeys[key];
     }
 
     function putFile(key, blob, contentType) {
@@ -216,32 +286,57 @@
                     updatedAt: Date.now()
                 })
             );
+        }).then(function () {
+            markLocal(key);
         });
     }
 
     function clearAllFiles() {
         return withStore("readwrite", STORE, function (store) {
             return idbReq(store.clear());
+        }).then(function () {
+            unmarkAllLocal();
         });
     }
 
     function addTarget(key) {
-        if (!key || state.targets[key]) return;
+        if (!key || state.targets[key]) return false;
         state.targets[key] = true;
         state.targetCount += 1;
+        if (hasFileSync(key)) state.doneCount += 1;
+        return true;
     }
 
+    function recountDone() {
+        var n = 0;
+        Object.keys(state.targets).forEach(function (key) {
+            if (hasFileSync(key)) n += 1;
+        });
+        state.doneCount = n;
+        return n;
+    }
+
+    /**
+     * 只把「尚未落盘」的资源入队；已下载的只计入进度，不重新请求。
+     */
     function enqueueKeys(keys) {
-        if (!keys || !keys.length) return;
+        if (!keys || !keys.length) return Promise.resolve();
+        var missing = [];
         keys.forEach(function (key) {
             if (!key) return;
             addTarget(key);
+            if (hasFileSync(key)) return;
             if (state.queuedSet[key]) return;
             state.queuedSet[key] = true;
+            missing.push(key);
+        });
+        recountDone();
+        missing.forEach(function (key) {
             state.queue.push(key);
         });
         emit();
-        schedulePump(0);
+        if (missing.length) schedulePump(0);
+        return Promise.resolve();
     }
 
     function assetsForTool(tool) {
@@ -253,37 +348,14 @@
             out.push(key);
         }
         var man = state.manifest;
-        if (man && Array.isArray(man.shared)) {
-            man.shared.forEach(push);
-        }
+        if (man && Array.isArray(man.shared)) man.shared.forEach(push);
         if (tool && tool.path && man && man.byPage && man.byPage[tool.path]) {
             man.byPage[tool.path].forEach(push);
+        } else if (tool && tool.path) {
+            // 清单缺失时至少拉工具页本身
+            push(tool.path.split("?")[0]);
         }
         return out;
-    }
-
-    function refreshDoneCount() {
-        var keys = Object.keys(state.targets);
-        if (!keys.length) {
-            state.doneCount = 0;
-            return Promise.resolve(0);
-        }
-        return withStore("readonly", STORE, function (store) {
-            return Promise.all(
-                keys.map(function (key) {
-                    return idbReq(store.get(key)).then(function (row) {
-                        return row && row.blob ? 1 : 0;
-                    });
-                })
-            ).then(function (flags) {
-                var n = 0;
-                flags.forEach(function (f) {
-                    n += f;
-                });
-                state.doneCount = n;
-                return n;
-            });
-        });
     }
 
     function pause(ms) {
@@ -300,19 +372,17 @@
     }
 
     function downloadOne(key) {
-        return hasFile(key).then(function (exists) {
-            if (exists) return true;
-            var url = new URL(key, global.location.href).href;
-            return fetch(url, {
-                method: "GET",
-                credentials: "same-origin",
-                cache: "no-store"
-            }).then(function (res) {
-                if (!res || !res.ok) throw new Error("HTTP " + (res && res.status));
-                var headerType = res.headers.get("content-type") || "";
-                return res.blob().then(function (blob) {
-                    return putFile(key, blob, guessType(key, headerType));
-                });
+        if (hasFileSync(key)) return Promise.resolve(true);
+        var url = new URL(key, global.location.href).href;
+        return fetch(url, {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store"
+        }).then(function (res) {
+            if (!res || !res.ok) throw new Error("HTTP " + (res && res.status));
+            var headerType = res.headers.get("content-type") || "";
+            return res.blob().then(function (blob) {
+                return putFile(key, blob, guessType(key, headerType));
             });
         });
     }
@@ -322,6 +392,7 @@
         if (!state.enabled || state.clearing) return;
         if (state.busy) return;
         if (!state.queue.length) {
+            recountDone();
             emit();
             return;
         }
@@ -337,20 +408,20 @@
 
         var key = state.queue.shift();
         delete state.queuedSet[key];
-        state.busy = true;
+        if (hasFileSync(key)) {
+            recountDone();
+            emit();
+            if (state.queue.length) schedulePump(0);
+            return;
+        }
 
+        state.busy = true;
         downloadOne(key)
             .then(function () {
-                return refreshDoneCount().then(function () {
-                    return countLocalFiles();
-                });
-            })
-            .then(function (n) {
-                state.localCount = n;
+                recountDone();
             })
             .catch(function () {
-                // 失败稍后重试一次
-                if (!state.queuedSet[key]) {
+                if (!state.queuedSet[key] && !hasFileSync(key)) {
                     state.queuedSet[key] = true;
                     state.queue.push(key);
                 }
@@ -374,13 +445,14 @@
     }
 
     function enqueueTool(tool) {
-        if (!state.enabled || !tool) return;
+        if (!state.enabled || !tool || !state.ready) return Promise.resolve(getSnapshot());
         rememberVisited(tool.id);
-        enqueueKeys(assetsForTool(tool));
-        refreshDoneCount().then(emit);
+        return enqueueKeys(assetsForTool(tool)).then(function () {
+            return getSnapshot();
+        });
     }
 
-    function requeueVisited(toolsList) {
+    function restoreVisitedTargets(toolsList) {
         var visited = loadVisited();
         var map = Object.create(null);
         (toolsList || []).forEach(function (t) {
@@ -397,10 +469,17 @@
         }
         if (state.manifest && state.manifest.shared) pushAll(state.manifest.shared);
         visited.forEach(function (id) {
-            pushAll(assetsForTool(map[id]));
+            if (map[id]) pushAll(assetsForTool(map[id]));
         });
-        enqueueKeys(keys);
-        return refreshDoneCount().then(emit);
+        // 只登记目标与进度，缺失的才入队
+        return enqueueKeys(keys);
+    }
+
+    function requeueVisited(toolsList) {
+        return restoreVisitedTargets(toolsList).then(function () {
+            emit();
+            return getSnapshot();
+        });
     }
 
     function clearAndRedownload(toolsList, preferToolId) {
@@ -420,7 +499,6 @@
         emit();
         return clearAllFiles()
             .then(function () {
-                state.localCount = 0;
                 state.clearing = false;
                 return requeueVisited(toolsList);
             })
@@ -433,21 +511,27 @@
             });
     }
 
-    function init() {
+    function init(toolsList) {
         state.enabled = canUseOffline();
         if (!state.enabled) {
             state.ready = true;
             emit();
             return Promise.resolve(getSnapshot());
         }
-        return loadManifest()
+        return openDb()
+            .then(function () {
+                return loadManifest();
+            })
             .then(function (man) {
                 state.manifest = man || { shared: [], byPage: {} };
-                return countLocalFiles();
+                return loadLocalKeyIndex();
             })
-            .then(function (n) {
-                state.localCount = n;
+            .then(function () {
                 state.ready = true;
+                // 刷新后：恢复已访问工具的目标进度；已下载的不会再入队
+                return restoreVisitedTargets(toolsList || []);
+            })
+            .then(function () {
                 emit();
                 return getSnapshot();
             })
@@ -470,7 +554,7 @@
     function bindUserPause() {
         if (!global.document) return;
         function onAct() {
-            pause(1800);
+            pause(1200);
         }
         global.document.addEventListener("pointerdown", onAct, true);
         global.document.addEventListener("keydown", onAct, true);
