@@ -1,121 +1,71 @@
 /**
- * tool-nav 轻量静态缓存（v3）
- * - 仅缓存 /vendor/（大库、不可变）与 /pages/libs/（共用小脚本）
- * - 不再缓存全部 JS/CSS，也不再缓存工具 HTML（避免 Cache 膨胀与切换卡死）
- * - vendor：缓存优先；pages/libs：有缓存先返回并后台刷新
- * - 仅在 http(s) 下由 index.html 注册；uTools file:// 不受影响
+ * tool-nav：从 IndexedDB 物理下载结果提供 JS/CSS（非 Cache Storage）
+ * - 命中本地文件 → 直接 Response(blob)
+ * - 未命中 → 网络（不写入 Cache API）
+ * - 激活时清掉历史 tool-nav Cache Storage
  */
 /* eslint-disable no-restricted-globals */
-var CACHE_NAME = "tool-nav-static-v3";
+var DB_NAME = "tool-nav-offline-files";
+var DB_VERSION = 1;
+var STORE = "files";
 
-self.addEventListener("install", function (event) {
-    self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(function (cache) {
-            var base = self.registration.scope;
-            return cache
-                .addAll(
-                    [
-                        base + "pages/libs/tool-calendar.css",
-                        base + "pages/libs/tool-calendar.js",
-                        base + "pages/libs/tool-calculator.css",
-                        base + "pages/libs/tool-calculator.js",
-                        base + "pages/libs/tool-form-persist.js"
-                    ].map(function (url) {
-                        return new Request(url, { cache: "reload" });
-                    })
-                )
-                .catch(function () {
-                    // 预缓存失败不影响后续按需缓存
-                });
-        })
-    );
-});
+function openDb() {
+    return new Promise(function (resolve, reject) {
+        var req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function () {
+            var db = req.result;
+            if (!db.objectStoreNames.contains(STORE)) {
+                db.createObjectStore(STORE, { keyPath: "key" });
+            }
+            if (!db.objectStoreNames.contains("meta")) {
+                db.createObjectStore("meta", { keyPath: "key" });
+            }
+        };
+        req.onsuccess = function () {
+            resolve(req.result);
+        };
+        req.onerror = function () {
+            reject(req.error);
+        };
+    });
+}
 
-self.addEventListener("activate", function (event) {
-    event.waitUntil(
-        caches
-            .keys()
-            .then(function (keys) {
-                return Promise.all(
-                    keys
-                        .filter(function (key) {
-                            // 清掉 v1/v2 全量 JS/CSS/HTML 缓存，以及其它 tool-nav-* 旧桶
-                            return key.indexOf("tool-nav-") === 0 && key !== CACHE_NAME;
-                        })
-                        .map(function (key) {
-                            return caches.delete(key);
-                        })
-                );
-            })
-            .then(function () {
-                return self.clients.claim();
-            })
-    );
-});
+function idbGet(key) {
+    return openDb().then(function (db) {
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction(STORE, "readonly");
+            var req = tx.objectStore(STORE).get(key);
+            req.onsuccess = function () {
+                resolve(req.result || null);
+            };
+            req.onerror = function () {
+                reject(req.error);
+            };
+            tx.oncomplete = function () {
+                db.close();
+            };
+            tx.onerror = function () {
+                db.close();
+            };
+        });
+    });
+}
 
-function cacheKey(request) {
+function assetKey(url, scopeUrl) {
     try {
-        var url = new URL(request.url);
-        url.search = "";
-        url.hash = "";
-        return url.href;
+        var u = new URL(url);
+        var scope = new URL(scopeUrl);
+        var path = u.pathname;
+        var base = scope.pathname;
+        if (base && path.indexOf(base) === 0) path = path.slice(base.length);
+        return path.replace(/^\/+/, "");
     } catch (e) {
-        return request.url;
+        return "";
     }
 }
 
-function canCacheResponse(response) {
-    if (!response || !response.ok) return false;
-    return response.type === "basic" || response.type === "cors";
-}
-
-function putInCache(request, response) {
-    if (!canCacheResponse(response)) return response;
-    var copy = response.clone();
-    var key = cacheKey(request);
-    caches.open(CACHE_NAME).then(function (cache) {
-        cache.put(key, copy);
-    });
-    return response;
-}
-
-function matchCache(request) {
-    var key = cacheKey(request);
-    return caches.match(key).then(function (hit) {
-        if (hit) return hit;
-        return caches.match(request, { ignoreSearch: true });
-    });
-}
-
-function fetchAndCache(request) {
-    return fetch(request).then(function (response) {
-        return putInCache(request, response);
-    });
-}
-
-function staleWhileRevalidate(request) {
-    return matchCache(request).then(function (cached) {
-        var networkPromise = fetchAndCache(request).catch(function () {
-            return null;
-        });
-        if (cached) {
-            networkPromise.then(function () {});
-            return cached;
-        }
-        return networkPromise.then(function (response) {
-            return response || Response.error();
-        });
-    });
-}
-
-function cacheFirst(request) {
-    return matchCache(request).then(function (cached) {
-        if (cached) return cached;
-        return fetchAndCache(request).catch(function () {
-            return Response.error();
-        });
-    });
+function isStaticAsset(pathname) {
+    return /\.(?:js|mjs|cjs|css|woff2?|ttf|otf|eot|wasm|map|svg)(?:\/?)$/i.test(pathname);
 }
 
 function isSameOriginScope(url) {
@@ -124,12 +74,33 @@ function isSameOriginScope(url) {
     return url.pathname.indexOf(scopePath) === 0;
 }
 
-/** 只拦截有必要落盘的路径，其它 JS/CSS/HTML 交回浏览器默认缓存策略 */
-function cacheKind(pathname) {
-    if (pathname.indexOf("/vendor/") !== -1) return "vendor";
-    if (pathname.indexOf("/pages/libs/") !== -1) return "libs";
-    return null;
-}
+self.addEventListener("install", function (event) {
+    self.skipWaiting();
+    event.waitUntil(Promise.resolve());
+});
+
+self.addEventListener("activate", function (event) {
+    event.waitUntil(
+        Promise.resolve()
+            .then(function () {
+                if (!("caches" in self)) return;
+                return caches.keys().then(function (keys) {
+                    return Promise.all(
+                        keys
+                            .filter(function (key) {
+                                return key.indexOf("tool-nav-") === 0;
+                            })
+                            .map(function (key) {
+                                return caches.delete(key);
+                            })
+                    );
+                });
+            })
+            .then(function () {
+                return self.clients.claim();
+            })
+    );
+});
 
 self.addEventListener("fetch", function (event) {
     var request = event.request;
@@ -143,13 +114,25 @@ self.addEventListener("fetch", function (event) {
     }
     if (!isSameOriginScope(url)) return;
     if (url.pathname.replace(/\/+$/, "").endsWith("/sw.js")) return;
+    if (!isStaticAsset(url.pathname)) return;
 
-    var kind = cacheKind(url.pathname);
-    if (!kind) return;
+    var key = assetKey(request.url, self.registration.scope);
+    if (!key) return;
 
-    if (kind === "vendor") {
-        event.respondWith(cacheFirst(request));
-        return;
-    }
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(
+        idbGet(key)
+            .then(function (row) {
+                if (row && row.blob) {
+                    var headers = {
+                        "Content-Type": row.contentType || "application/octet-stream",
+                        "X-Tool-Nav-Offline": "1"
+                    };
+                    return new Response(row.blob, { status: 200, headers: headers });
+                }
+                return fetch(request);
+            })
+            .catch(function () {
+                return fetch(request);
+            })
+    );
 });

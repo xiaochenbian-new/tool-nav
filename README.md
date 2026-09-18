@@ -6,8 +6,8 @@
 - 入口：`index.html`（工具导航外壳，含收藏栏 / 搜索 / 计算器 / 日历）
 - 工具页：`pages/*.html`（48 个独立工具页，每个为自包含 HTML）
 - 离线依赖：`vendor/`（由 `scripts/copy-vendor-all.cjs` 从 node_modules 生成）
-- 网页缓存：`sw.js`（仅缓存 `/vendor/` 与 `/pages/libs/`，不再全量缓存工具页 JS/CSS/HTML，减轻卡顿；`file://`/uTools 不启用）
-- 后台预热：仅串行预热「常用」几个工具 HTML；**不**后台创建 iframe；常驻仅当前+上一个
+- 网页离线：打开工具后，将对应 JS/CSS **物理下载到 IndexedDB**；右侧收藏栏底部圆圈显示进度；完成后优先走本地。点击圆圈可清除并重新下载（站点更新后用）。`sw.js` 只负责把本地文件返回给页面，**不再使用 Cache Storage 缓存**。`file://`/uTools 不启用（插件包已自带资源）
+- 常驻 iframe：仅当前 + 上一个，避免后台页抢主线程
 - 打包：`scripts/pack-utools.cjs` 生成 `dist-utools/`（uTools 插件包）
 
 ## 本地开发
