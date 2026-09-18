@@ -1,14 +1,12 @@
 /**
- * tool-nav 静态资源本地缓存
- * - JS/CSS/字体/图片/vendor：缓存优先
- * - HTML（含工具页）：优先返回本地缓存，后台静默更新（避免弱网每次等远程）
- * - 缓存键忽略 ?_toolNavId 等查询参数，避免同一工具页反复 miss
+ * tool-nav 轻量静态缓存（v3）
+ * - 仅缓存 /vendor/（大库、不可变）与 /pages/libs/（共用小脚本）
+ * - 不再缓存全部 JS/CSS，也不再缓存工具 HTML（避免 Cache 膨胀与切换卡死）
+ * - vendor：缓存优先；pages/libs：有缓存先返回并后台刷新
  * - 仅在 http(s) 下由 index.html 注册；uTools file:// 不受影响
  */
 /* eslint-disable no-restricted-globals */
-var CACHE_NAME = "tool-nav-static-v2";
-var STATIC_EXT =
-    /\.(?:js|mjs|cjs|css|woff2?|ttf|otf|eot|map|wasm|png|jpe?g|gif|svg|ico|webp)(?:\?.*)?$/i;
+var CACHE_NAME = "tool-nav-static-v3";
 
 self.addEventListener("install", function (event) {
     self.skipWaiting();
@@ -18,8 +16,6 @@ self.addEventListener("install", function (event) {
             return cache
                 .addAll(
                     [
-                        base,
-                        base + "index.html",
                         base + "pages/libs/tool-calendar.css",
                         base + "pages/libs/tool-calendar.js",
                         base + "pages/libs/tool-calculator.css",
@@ -44,6 +40,7 @@ self.addEventListener("activate", function (event) {
                 return Promise.all(
                     keys
                         .filter(function (key) {
+                            // 清掉 v1/v2 全量 JS/CSS/HTML 缓存，以及其它 tool-nav-* 旧桶
                             return key.indexOf("tool-nav-") === 0 && key !== CACHE_NAME;
                         })
                         .map(function (key) {
@@ -57,7 +54,6 @@ self.addEventListener("activate", function (event) {
     );
 });
 
-/** 去掉 query/hash，保证 pages/xxx.html?_toolNavId=… 能命中同一缓存 */
 function cacheKey(request) {
     try {
         var url = new URL(request.url);
@@ -71,7 +67,6 @@ function cacheKey(request) {
 
 function canCacheResponse(response) {
     if (!response || !response.ok) return false;
-    // 同源 basic；偶发 cors
     return response.type === "basic" || response.type === "cors";
 }
 
@@ -99,7 +94,6 @@ function fetchAndCache(request) {
     });
 }
 
-/** 有缓存立刻返回，后台刷新；无缓存再走网络 */
 function staleWhileRevalidate(request) {
     return matchCache(request).then(function (cached) {
         var networkPromise = fetchAndCache(request).catch(function () {
@@ -130,6 +124,13 @@ function isSameOriginScope(url) {
     return url.pathname.indexOf(scopePath) === 0;
 }
 
+/** 只拦截有必要落盘的路径，其它 JS/CSS/HTML 交回浏览器默认缓存策略 */
+function cacheKind(pathname) {
+    if (pathname.indexOf("/vendor/") !== -1) return "vendor";
+    if (pathname.indexOf("/pages/libs/") !== -1) return "libs";
+    return null;
+}
+
 self.addEventListener("fetch", function (event) {
     var request = event.request;
     if (request.method !== "GET") return;
@@ -141,25 +142,14 @@ self.addEventListener("fetch", function (event) {
         return;
     }
     if (!isSameOriginScope(url)) return;
-
-    // 不拦截 Service Worker 自身，避免更新困难
     if (url.pathname.replace(/\/+$/, "").endsWith("/sw.js")) return;
 
-    var isStatic =
-        STATIC_EXT.test(url.pathname) ||
-        url.pathname.indexOf("/vendor/") !== -1 ||
-        url.pathname.indexOf("/pages/libs/") !== -1;
-    var isHtml =
-        url.pathname.endsWith(".html") ||
-        url.pathname.endsWith("/") ||
-        request.mode === "navigate";
+    var kind = cacheKind(url.pathname);
+    if (!kind) return;
 
-    if (isStatic) {
+    if (kind === "vendor") {
         event.respondWith(cacheFirst(request));
         return;
     }
-    if (isHtml) {
-        // 工具页 HTML 也优先本地，避免弱网下「打开过还要等加载」
-        event.respondWith(staleWhileRevalidate(request));
-    }
+    event.respondWith(staleWhileRevalidate(request));
 });

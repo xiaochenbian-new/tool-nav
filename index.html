@@ -3144,17 +3144,17 @@
             }
 
             /**
-             * 流畅优先方案：
-             * - 不再后台创建任何工具 iframe（后台跑 Monaco 等会卡切换）
-             * - 只串行 fetch 预热全部工具 HTML → SW/HTTP 缓存，真正打开时更快
-             * - 用户操作时暂停预热；常驻 iframe 仅当前+上一个
+             * 流畅优先：
+             * - 不后台创建工具 iframe
+             * - 不再全量预热全部工具 HTML（易与 SW 抢带宽/主线程导致卡死）
+             * - 仅轻量预热「常用」几个工具的 HTML；常驻 iframe 仅当前+上一个
              */
             var TOOL_WARM = {
                 started: false,
                 queue: [],
                 busy: false,
                 pauseUntil: 0,
-                gapMs: 450,
+                gapMs: 800,
                 timer: null
             };
 
@@ -3175,19 +3175,15 @@
             function buildSerialWarmQueue() {
                 var seen = {};
                 var q = [];
-                function pushTool(tool) {
-                    if (!tool || seen[tool.id] || tool.id === currentId || shouldSkipToolWarm(tool)) return;
-                    seen[tool.id] = true;
-                    q.push(tool);
-                }
                 COMMON_TOOL_IDS.forEach(function (id) {
-                    pushTool(
-                        TOOLS.find(function (t) {
-                            return t.id === id;
-                        })
-                    );
+                    if (seen[id] || id === currentId) return;
+                    var tool = TOOLS.find(function (t) {
+                        return t.id === id;
+                    });
+                    if (!tool || shouldSkipToolWarm(tool)) return;
+                    seen[id] = true;
+                    q.push(tool);
                 });
-                TOOLS.forEach(pushTool);
                 return q;
             }
 
@@ -3199,14 +3195,11 @@
             function warmFetchHtml(tool) {
                 if (!tool || shouldSkipToolWarm(tool)) return Promise.resolve();
                 var url = absoluteToolUrl(tool.path);
+                // 用默认缓存策略，避免 force-cache 强行塞满浏览器缓存
                 return fetch(url, {
                     method: "GET",
-                    credentials: "same-origin",
-                    cache: "force-cache"
+                    credentials: "same-origin"
                 })
-                    .then(function (res) {
-                        return res && typeof res.text === "function" ? res.text() : null;
-                    })
                     .then(function () {})
                     .catch(function () {});
             }
@@ -3233,12 +3226,6 @@
                 TOOL_WARM.busy = true;
                 warmFetchHtml(tool).then(function () {
                     TOOL_WARM.busy = false;
-                    try {
-                        document.documentElement.setAttribute(
-                            "data-tool-warm",
-                            String(TOOL_WARM.queue.length) + " left"
-                        );
-                    } catch (e) {}
                     if (TOOL_WARM.queue.length) scheduleSerialWarmTick(TOOL_WARM.gapMs);
                 });
             }
@@ -3247,6 +3234,7 @@
                 if (TOOL_WARM.started) return;
                 TOOL_WARM.started = true;
                 TOOL_WARM.queue = buildSerialWarmQueue();
+                if (!TOOL_WARM.queue.length) return;
 
                 function onUserAct() {
                     pauseToolWarm(2800);
@@ -3259,10 +3247,9 @@
                     scheduleSerialWarmTick(900);
                 });
 
-                // 首屏稳定后再一个一个预热，绝不并发
                 window.setTimeout(function () {
-                    scheduleSerialWarmTick(200);
-                }, 2000);
+                    scheduleSerialWarmTick(1200);
+                }, 3500);
             }
 
             function updateActiveStates() {
@@ -4617,7 +4604,7 @@
                 registerStaticAssetServiceWorker();
             });
 
-            /** 首次加载后的 JS/CSS 写入本地 Cache，弱网时复用；file:// / uTools 跳过 */
+            /** 轻量 SW：仅 vendor + pages/libs；顺带清掉旧版全量 JS/CSS 缓存；file:// / uTools 跳过 */
             function registerStaticAssetServiceWorker() {
                 if (!("serviceWorker" in navigator)) return;
                 var protocol = window.location.protocol;
@@ -4626,9 +4613,31 @@
                     protocol === "https:" ||
                     ((host === "localhost" || host === "127.0.0.1") && protocol === "http:");
                 if (!okProto) return;
+
+                function purgeStaleAssetCaches() {
+                    if (!("caches" in window)) return Promise.resolve();
+                    return caches.keys().then(function (keys) {
+                        return Promise.all(
+                            keys
+                                .filter(function (key) {
+                                    return (
+                                        key === "tool-nav-static-v1" ||
+                                        key === "tool-nav-static-v2"
+                                    );
+                                })
+                                .map(function (key) {
+                                    return caches.delete(key);
+                                })
+                        );
+                    });
+                }
+
                 function doRegister() {
-                    navigator.serviceWorker
-                        .register("sw.js", { scope: "./" })
+                    purgeStaleAssetCaches()
+                        .catch(function () {})
+                        .then(function () {
+                            return navigator.serviceWorker.register("sw.js", { scope: "./" });
+                        })
                         .catch(function () {
                             // 注册失败不影响正常使用
                         });
