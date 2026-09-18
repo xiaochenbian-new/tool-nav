@@ -1566,7 +1566,7 @@
             let currentColWidths = {};
             let resultHeadExpanded = false;
             let currentPage = 1;
-            let currentPageSize = 1000;
+            let currentPageSize = 200;
             const FILTER_VALUE_PAGE_SIZE = 20;
             const ZH_COLLATOR = new Intl.Collator("zh-CN", { numeric: true, sensitivity: "base" });
             let currentSumText = "";
@@ -1595,7 +1595,9 @@
             let nextCsvPasteId = 2;
             let csvPasteRenameId = null;
             /** 大批量导入时每 N 行让出一次主线程，便于等待层及时显示 */
-            const IMPORT_YIELD_ROWS = 8000;
+            const IMPORT_YIELD_ROWS = 4000;
+            /** 大表导入时跳过同步生成 CSV 文本（极耗内存/CPU），保留 importRows 即可查询 */
+            const SKIP_CSV_TEXT_ROWS = 5000;
             /** 导入等异步操作：超过该时间才显示等待层，避免极短操作闪烁 */
             const BUSY_SHOW_DELAY_MS = 200;
 
@@ -1697,10 +1699,11 @@
             }
 
             async function excelSheetToTableRows(sheet, date1904) {
+                // raw:true 避免整表格式化成字符串再回解析，3万+ 行明显更快
                 var rowsRaw = XLSX.utils.sheet_to_json(sheet, {
                     defval: "",
-                    raw: false,
-                    dateNF: "yyyy-mm-dd HH:mm:ss"
+                    raw: true,
+                    blankrows: false
                 });
                 if (!rowsRaw.length) return null;
                 return await normalizeImportedRowsAsync(rowsRaw, { date1904: date1904 });
@@ -1721,14 +1724,31 @@
                 return XLSX.utils.sheet_to_csv(ws);
             }
 
+            /** 大表用占位标记，打开 CSV 弹窗时再按需生成 */
+            var CSV_LAZY_MARKER = "\u0000__lazy_csv__";
+
+            function ensureEntryCsvText(entry) {
+                if (!entry) return "";
+                if (entry.text && entry.text !== CSV_LAZY_MARKER) return entry.text;
+                if (entry.importRows && entry.importRows.length) {
+                    entry.text = rowsToCsvText(entry.importRows);
+                    return entry.text;
+                }
+                return entry.text || "";
+            }
+
             function addCsvPasteEntryFromImport(label, text, options) {
                 options = options || {};
                 if (!options.skipSave) {
                     saveActiveCsvPasteEntry();
                 }
+                var importRows = options.importRows || null;
                 var norm = String(text || "");
-                if (!normalizeCsvHandoffText(norm)) return null;
-                if (options.dedupeByText) {
+                if (!normalizeCsvHandoffText(norm) && !(importRows && importRows.length)) return null;
+                if (!normalizeCsvHandoffText(norm) && importRows && importRows.length) {
+                    norm = CSV_LAZY_MARKER;
+                }
+                if (options.dedupeByText && norm !== CSV_LAZY_MARKER) {
                     var existing = findCsvPasteEntryByText(norm);
                     if (existing) {
                         existing.label = allocUniqueLabel(
@@ -1737,16 +1757,19 @@
                             }),
                             label
                         );
+                        if (importRows && importRows.length) existing.importRows = importRows;
                         return existing;
                     }
                 }
                 var uniqueLabel = allocUniqueLabel(csvPasteEntries, label);
                 var soleEmpty =
-                    csvPasteEntries.length === 1 && !normalizeCsvHandoffText(csvPasteEntries[0].text);
+                    csvPasteEntries.length === 1
+                    && !normalizeCsvHandoffText(csvPasteEntries[0].text)
+                    && !(csvPasteEntries[0].importRows && csvPasteEntries[0].importRows.length);
                 if (soleEmpty) {
                     csvPasteEntries[0].text = norm;
                     csvPasteEntries[0].label = uniqueLabel;
-                    csvPasteEntries[0].importRows = options.importRows || null;
+                    csvPasteEntries[0].importRows = importRows;
                     if (!options.skipActiveSwitch) {
                         activeCsvPasteId = csvPasteEntries[0].id;
                     }
@@ -1757,7 +1780,7 @@
                     label: uniqueLabel,
                     name: "",
                     text: norm,
-                    importRows: options.importRows || null
+                    importRows: importRows
                 };
                 csvPasteEntries.push(entry);
                 if (!options.skipActiveSwitch) {
@@ -1816,7 +1839,8 @@
                 clearTimeout(csvAutoLoadTimer);
                 csvAutoLoadTimer = null;
                 const todo = csvPasteEntries.filter(function (e) {
-                    return !!(e.text || "").trim();
+                    return !!(e.text || "").trim()
+                        || (e.importRows && e.importRows.length);
                 });
                 if (!todo.length) {
                     delete dbStore[UNIFIED_DB_KEY];
@@ -3259,7 +3283,8 @@
             }
 
             function renderResult(rows) {
-                lastQueryRows = Array.isArray(rows) ? rows.slice() : [];
+                // 不 slice 复制：大结果集会双倍占内存并卡住主线程
+                lastQueryRows = Array.isArray(rows) ? rows : [];
                 rowDisplayCache = new WeakMap();
                 currentFilters = {};
                 currentSorts = [];
@@ -3339,7 +3364,7 @@
                 var headerW = measureHeaderColWidth(name);
                 ctx.font = '13px "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
                 var rows = currentViewRows || [];
-                var limit = Math.min(rows.length, 5000);
+                var limit = Math.min(rows.length, 300);
                 var cellPad = 36;
                 var widths = [];
                 for (var i = 0; i < limit; i++) {
@@ -4296,6 +4321,60 @@
                 return lines.join("\n");
             }
 
+            function sqlQuoteIdent(name) {
+                return "[" + String(name || "").replace(/]/g, "]]") + "]";
+            }
+
+            function sqlLiteralValue(v) {
+                if (v === null || v === undefined) return "NULL";
+                if (typeof v === "number" && Number.isFinite(v)) return String(v);
+                if (typeof v === "boolean") return v ? "1" : "0";
+                if (v instanceof Date && !isNaN(v.getTime())) {
+                    return "'" + partsToSortable(dateToParts(v)).replace(/'/g, "''") + "'";
+                }
+                var s = String(formatCellForDisplay(v));
+                if (s === "") return "NULL";
+                return "'" + s.replace(/'/g, "''") + "'";
+            }
+
+            /** 当前查询主表名（默认表 / SQL FROM），用于 INSERT */
+            function getCurrentQueryTableName() {
+                var sel = document.getElementById("table-select");
+                if (sel && sel.value) return String(sel.value);
+                return getExportTableBaseName();
+            }
+
+            function getSelectedResultRows() {
+                if (!rangeSelection || !currentViewRows.length) return [];
+                var start = Math.min(rangeSelection.start, rangeSelection.end);
+                var end = Math.max(rangeSelection.start, rangeSelection.end);
+                var out = [];
+                if (rangeSelection.mode === "row" || rangeSelection.mode === "col") {
+                    for (var i = start; i <= end; i++) {
+                        var row = currentViewRows[i - 1];
+                        if (row) out.push(row);
+                    }
+                }
+                return out;
+            }
+
+            function buildInsertSqlFromSelection() {
+                var rows = getSelectedResultRows();
+                if (!rows.length || !currentCols.length) return "";
+                var tableName = getCurrentQueryTableName();
+                var cols = currentCols.slice();
+                var colList = cols.map(sqlQuoteIdent).join(", ");
+                var valueLines = rows.map(function (row) {
+                    return "(" + cols.map(function (c) {
+                        return sqlLiteralValue(row[c]);
+                    }).join(", ") + ")";
+                });
+                return "INSERT INTO " + sqlQuoteIdent(tableName)
+                    + " (" + colList + ") VALUES\n"
+                    + valueLines.join(",\n")
+                    + ";";
+            }
+
             function buildCopyTextHeadersOnly() {
                 if (!currentCols.length) return "";
                 return currentCols.join("\t");
@@ -4434,6 +4513,9 @@
                         html += "<button type=\"button\" data-act=\"copy-header\">复制（含表头）</button>";
                         html += "<button type=\"button\" data-act=\"copy-headers-only\">复制（仅表头）</button>";
                     }
+                    if (opts.includeInsertSql) {
+                        html += "<button type=\"button\" data-act=\"copy-insert-sql\">复制 INSERT SQL</button>";
+                    }
                 }
                 menu.innerHTML = html;
                 menu.classList.add("show");
@@ -4531,7 +4613,7 @@
                             }
                             pendingImports.push({
                                 label: tableLabel,
-                                text: rowsToCsvText(dbTables[0].rows),
+                                text: text,
                                 importRows: dbTables[0].rows
                             });
                         } else {
@@ -4562,7 +4644,11 @@
                                         skippedSheets++;
                                         continue;
                                     }
-                                    const csvText = rowsToCsvText(rows);
+                                    var csvText = "";
+                                    if (rows.length < SKIP_CSV_TEXT_ROWS) {
+                                        csvText = rowsToCsvText(rows);
+                                        await yieldToBrowser();
+                                    }
                                     pendingImports.push({
                                         label: buildExcelTableLabel(file.name, sheetName),
                                         text: csvText,
@@ -4624,7 +4710,10 @@
                             result.tableCount +
                             " 张表，" +
                             result.totalRows +
-                            " 行；已同步到 CSV 文本框。" +
+                            " 行。" +
+                            (result.totalRows >= SKIP_CSV_TEXT_ROWS
+                                ? "大表已跳过同步生成 CSV 文本（打开「CSV」时可按需生成）。"
+                                : "已同步到 CSV 文本框。") +
                             extra,
                         false
                     );
@@ -4653,13 +4742,18 @@
             function loadActiveCsvPasteEntryToUi() {
                 var entry = getActiveCsvPasteEntry();
                 if (!entry) return;
-                document.getElementById("csv-paste-input").value = entry.text || "";
+                var text = ensureEntryCsvText(entry);
+                if (text === CSV_LAZY_MARKER) text = "";
+                document.getElementById("csv-paste-input").value = text || "";
             }
 
             function getCsvPasteSnapshot() {
                 return csvPasteEntries
                     .map(function (e) {
-                        return e.id + "\t" + (e.label || "") + "\t" + (e.text || "");
+                        var t = e.text === CSV_LAZY_MARKER
+                            ? ("lazy:" + (e.importRows ? e.importRows.length : 0))
+                            : (e.text || "");
+                        return e.id + "\t" + (e.label || "") + "\t" + t;
                     })
                     .join("\n");
             }
@@ -4680,7 +4774,9 @@
                 csvAutoLoadTimer = setTimeout(function () {
                     saveActiveCsvPasteEntry();
                     var hasAny = csvPasteEntries.some(function (e) {
-                        return !!(e.text || "").trim();
+                        if (e.importRows && e.importRows.length) return true;
+                        var t = (e.text || "").trim();
+                        return !!t && t !== CSV_LAZY_MARKER;
                     });
                     if (!hasAny) return;
                     if (getCsvPasteSnapshot() === csvPasteLoadedSnapshot) return;
@@ -5090,12 +5186,14 @@
                 if (!btn) return;
                 saveActiveCsvPasteEntry();
                 var filled = csvPasteEntries.filter(function (e) {
-                    return !!(e.text || "").trim();
+                    if (e.importRows && e.importRows.length) return true;
+                    var t = (e.text || "").trim();
+                    return !!t && t !== CSV_LAZY_MARKER;
                 }).length;
                 var has = filled > 0;
                 btn.classList.toggle("has-content", has);
                 if (has) {
-                    btn.title = "已设置 " + filled + " 个 CSV 文本，点击编辑";
+                    btn.title = "已设置 " + filled + " 个数据源，点击编辑";
                 } else {
                     btn.title = "粘贴 CSV 或 Excel 复制内容";
                 }
@@ -5104,6 +5202,11 @@
             function openCsvModal() {
                 closeSqlHistoryPop();
                 renderCsvTabBar();
+                var entry = getActiveCsvPasteEntry();
+                if (entry && entry.text === CSV_LAZY_MARKER && entry.importRows && entry.importRows.length) {
+                    setStatus("正在根据已导入数据生成 CSV 文本…", false);
+                    ensureEntryCsvText(entry);
+                }
                 loadActiveCsvPasteEntryToUi();
                 var mask = document.getElementById("csv-modal-mask");
                 mask.classList.add("show");
@@ -5126,7 +5229,8 @@
                 var closeWhenDone = options.closeModal === true;
                 saveActiveCsvPasteEntry();
                 const todo = csvPasteEntries.filter(function (e) {
-                    return !!(e.text || "").trim();
+                    return !!(e.text || "").trim()
+                        || (e.importRows && e.importRows.length);
                 });
                 if (!todo.length) {
                     setStatus("请先在弹窗中粘贴至少一份 CSV 或 Excel 复制的内容。", true);
@@ -5645,6 +5749,12 @@
                 const dataCell = e.target.closest("td.data-cell");
                 if (!theadTh && !rowNoCell && !dataCell) return;
                 e.preventDefault();
+                var canInsertSql = !!(
+                    rangeSelection
+                    && (rangeSelection.mode === "row" || rangeSelection.mode === "col")
+                    && rangeSelection.start != null
+                    && rangeSelection.end != null
+                );
                 // 点击行号全选列，或 Ctrl/Shift 多选列后：右键提供「复制」「复制（含表头）」
                 if (rangeSelection && rangeSelection.mode === "headerCol" && getSelectedHeaderColNames().length) {
                     copyMenuState = { type: "selection", col: "" };
@@ -5665,14 +5775,26 @@
                 copyMenuState = { type: "selection", col: "" };
                 if (!rangeSelection) return;
                 showCopyMenu(e.clientX, e.clientY, {
-                    includeHeaderAction: rangeSelection.mode === "row" || rangeSelection.mode === "headerCol"
+                    includeHeaderAction: rangeSelection.mode === "row" || rangeSelection.mode === "headerCol",
+                    includeInsertSql: canInsertSql
                 });
             });
             document.getElementById("copy-menu").addEventListener("click", function (e) {
                 var actBtn = e.target.closest("button[data-act]");
                 if (!actBtn) return;
                 var act = actBtn.getAttribute("data-act");
-                if (act === "copy-headers-only") {
+                if (act === "copy-insert-sql") {
+                    var insertSql = buildInsertSqlFromSelection();
+                    if (insertSql) {
+                        writeClipboardText(
+                            insertSql,
+                            "已复制 INSERT SQL（表 " + getCurrentQueryTableName() + "，"
+                                + getSelectedResultRows().length + " 行）"
+                        );
+                    } else {
+                        setStatus("请先选中若干行后再复制 INSERT SQL。", true);
+                    }
+                } else if (act === "copy-headers-only") {
                     var headerText = "";
                     if (copyMenuState.type === "column" && copyMenuState.col) {
                         headerText = copyMenuState.col;

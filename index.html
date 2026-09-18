@@ -2112,6 +2112,9 @@
             const HANDOFF_SHEETS_TO_TEXT_DIFF_KEY = "tool-nav:handoff:sheets-to-text-diff";
             const HANDOFF_JSON_TO_FMT_KEY = "tool-nav:handoff:json-to-fmt-convert";
             const HANDOFF_FMT_CONVERT_TAB = "tab48";
+            /** 内存态很重：勿被 iframe LRU 清掉（本地下载也不再强制重载） */
+            var PINNED_FRAME_IDS = {};
+            PINNED_FRAME_IDS["tab14"] = true;
             /** 换底色 ↔ 冲印排版：经父页中转（file:// 下 iframe 无法共享 sessionStorage） */
             let pendingPhotoPrintHandoff = null;
             let pendingPrintToPhotoHandoff = null;
@@ -3142,6 +3145,7 @@
 
             function disposeToolFrame(toolId) {
                 if (!toolId || toolId === currentId) return;
+                if (PINNED_FRAME_IDS[toolId]) return;
                 var frame = FRAME_CACHE[toolId];
                 if (!frame) return;
                 try {
@@ -3162,10 +3166,11 @@
                 while (FRAME_LRU.length > FRAME_CACHE_MAX) {
                     var victim = null;
                     for (var i = 0; i < FRAME_LRU.length; i++) {
-                        if (FRAME_LRU[i] !== currentId) {
-                            victim = FRAME_LRU[i];
-                            break;
-                        }
+                        var id = FRAME_LRU[i];
+                        if (id === currentId) continue;
+                        if (PINNED_FRAME_IDS[id]) continue;
+                        victim = id;
+                        break;
                     }
                     if (!victim) break;
                     disposeToolFrame(victim);
@@ -3251,30 +3256,11 @@
                 return "打开工具后将后台下载静态资源到本地（点击可手动开始/重下）";
             }
 
-            function reloadCurrentToolFrameFromLocal() {
-                if (!currentId || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-                var frame = FRAME_CACHE[currentId];
-                if (!frame || !frame.getAttribute("data-tool-id")) return;
-                if (offlineHydratedFrames[currentId]) return;
-                offlineHydratedFrames[currentId] = true;
-                try {
-                    var tool = TOOLS.find(function (t) {
-                        return t.id === currentId;
-                    });
-                    if (!tool) return;
-                    // 重新加载以走 SW → IndexedDB 本地资源
-                    frame.removeAttribute("data-loaded");
-                    frame.src = toolFrameSrc(tool);
-                } catch (e) {}
-            }
-
             function onOfflineProgressChange(snap) {
                 renderOfflineDownloadProgress(snap);
+                // 禁止重载 iframe：会清空 Excel SQL 等工具的内存数据
                 if (snap && snap.complete && !snap.downloading) {
-                    if (!offlineWasComplete) {
-                        offlineWasComplete = true;
-                        reloadCurrentToolFrameFromLocal();
-                    }
+                    offlineWasComplete = true;
                 } else if (snap && snap.downloading) {
                     offlineWasComplete = false;
                 }
