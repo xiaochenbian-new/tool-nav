@@ -4677,7 +4677,10 @@
                     .catch(function () {})
                     .then(function () {
                         if (!window.ToolOffline) return null;
-                        return window.ToolOffline.init(TOOLS);
+                        var prefer = TOOLS.find(function (t) {
+                            return t.id === initialTab;
+                        });
+                        return window.ToolOffline.init(TOOLS, prefer);
                     })
                     .catch(function () {})
                     .then(function () {

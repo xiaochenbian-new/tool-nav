@@ -6,7 +6,7 @@
 - 入口：`index.html`（工具导航外壳，含收藏栏 / 搜索 / 计算器 / 日历）
 - 工具页：`pages/*.html`（48 个独立工具页，每个为自包含 HTML）
 - 离线依赖：`vendor/`（由 `scripts/copy-vendor-all.cjs` 从 node_modules 生成）
-- 网页离线：打开工具后，将该工具**完整静态资源**（HTML/JS/CSS/字体/图片及所涉 vendor 整包）下载到 IndexedDB；右侧圆圈显示进度。**已下载的刷新后直接复用，不重下**；SW 优先返回本地文件。点击圆圈可清除并重新下载。`file://`/uTools 不启用
+- 网页离线：首次打开站点即在后台下载**全部工具**静态资源到 IndexedDB（已有文件跳过，刷新不重下）；右侧圆圈显示总进度。切工具不再临时补下。点击圆圈可清除并重新下载。`file://`/uTools 不启用
 - 常驻 iframe：仅当前 + 上一个，避免后台页抢主线程
 - 打包：`scripts/pack-utools.cjs` 生成 `dist-utools/`（uTools 插件包）
 

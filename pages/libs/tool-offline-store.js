@@ -1,6 +1,6 @@
 /**
  * tool-nav 物理下载（IndexedDB）
- * - 访问工具后后台下载该工具完整静态资源
+ * - 首次打开站点即后台下载全部工具静态资源
  * - 已下载的不重复拉取；刷新后直接复用本地
  * - Service Worker 从 IDB 优先响应
  */
@@ -444,40 +444,50 @@
             });
     }
 
+    /** 清单里全部工具页 + 共用库 + 导航表中的工具路径（去重） */
+    function assetsForAll(toolsList) {
+        var seen = Object.create(null);
+        var keys = [];
+        function push(key) {
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            keys.push(key);
+        }
+        var man = state.manifest || {};
+        if (man.byPage) {
+            Object.keys(man.byPage).forEach(function (page) {
+                (man.byPage[page] || []).forEach(push);
+            });
+        }
+        (man.shared || []).forEach(push);
+        (toolsList || []).forEach(function (tool) {
+            assetsForTool(tool).forEach(push);
+        });
+        return keys;
+    }
+
+    /**
+     * 入队全部资源。preferTool 的文件排在最前，当前页更快就绪。
+     * 已落盘的只计进度，不重新请求。
+     */
+    function enqueueAll(toolsList, preferTool) {
+        var ordered = [];
+        var seen = Object.create(null);
+        function push(key) {
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            ordered.push(key);
+        }
+        if (preferTool) assetsForTool(preferTool).forEach(push);
+        assetsForAll(toolsList).forEach(push);
+        return enqueueKeys(ordered);
+    }
+
     function enqueueTool(tool) {
         if (!state.enabled || !tool || !state.ready) return Promise.resolve(getSnapshot());
         rememberVisited(tool.id);
+        // 全量已在 init 入队；这里只补当前工具，已下载的不会再请求
         return enqueueKeys(assetsForTool(tool)).then(function () {
-            return getSnapshot();
-        });
-    }
-
-    function restoreVisitedTargets(toolsList) {
-        var visited = loadVisited();
-        var map = Object.create(null);
-        (toolsList || []).forEach(function (t) {
-            if (t && t.id) map[t.id] = t;
-        });
-        var keys = [];
-        var seen = Object.create(null);
-        function pushAll(arr) {
-            (arr || []).forEach(function (k) {
-                if (!k || seen[k]) return;
-                seen[k] = true;
-                keys.push(k);
-            });
-        }
-        if (state.manifest && state.manifest.shared) pushAll(state.manifest.shared);
-        visited.forEach(function (id) {
-            if (map[id]) pushAll(assetsForTool(map[id]));
-        });
-        // 只登记目标与进度，缺失的才入队
-        return enqueueKeys(keys);
-    }
-
-    function requeueVisited(toolsList) {
-        return restoreVisitedTargets(toolsList).then(function () {
-            emit();
             return getSnapshot();
         });
     }
@@ -500,7 +510,15 @@
         return clearAllFiles()
             .then(function () {
                 state.clearing = false;
-                return requeueVisited(toolsList);
+                var prefer = null;
+                (toolsList || []).some(function (t) {
+                    if (t && t.id === preferToolId) {
+                        prefer = t;
+                        return true;
+                    }
+                    return false;
+                });
+                return enqueueAll(toolsList, prefer);
             })
             .catch(function () {
                 state.clearing = false;
@@ -511,7 +529,7 @@
             });
     }
 
-    function init(toolsList) {
+    function init(toolsList, preferTool) {
         state.enabled = canUseOffline();
         if (!state.enabled) {
             state.ready = true;
@@ -528,8 +546,8 @@
             })
             .then(function () {
                 state.ready = true;
-                // 刷新后：恢复已访问工具的目标进度；已下载的不会再入队
-                return restoreVisitedTargets(toolsList || []);
+                // 首次/刷新：后台下完全部工具；已有文件直接跳过
+                return enqueueAll(toolsList || [], preferTool || null);
             })
             .then(function () {
                 emit();
@@ -554,7 +572,7 @@
     function bindUserPause() {
         if (!global.document) return;
         function onAct() {
-            pause(1200);
+            pause(300);
         }
         global.document.addEventListener("pointerdown", onAct, true);
         global.document.addEventListener("keydown", onAct, true);
@@ -565,8 +583,8 @@
     global.ToolOffline = {
         init: init,
         enqueueTool: enqueueTool,
+        enqueueAll: enqueueAll,
         clearAndRedownload: clearAndRedownload,
-        requeueVisited: requeueVisited,
         getSnapshot: getSnapshot,
         onChange: onChange,
         pause: pause,
