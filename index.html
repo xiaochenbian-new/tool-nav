@@ -4,6 +4,25 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
         <title>工具大全</title>
+        <script>
+            // Cloudflare Pages SPA 回退曾把外壳塞进 iframe → 无限嵌套；嵌套时整页替换并中止
+            (function () {
+                try {
+                    if (window.top === window.self) return;
+                } catch (e) {
+                    return;
+                }
+                document.open();
+                document.write(
+                    "<!DOCTYPE html><html lang=\"zh-CN\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><title>嵌套错误</title></head>" +
+                        "<body style=\"margin:0;font-family:Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;padding:24px;color:#1f2a44;background:#f3f7ff\">" +
+                        "<p style=\"margin:0 0 12px\">工具页错误加载了导航外壳（通常是离线缓存被 SPA 回退污染）。</p>" +
+                        "<p style=\"margin:0;color:#6f7d96\">请清除本站站点数据后强制刷新，或点击右侧离线进度圆圈「清除并重下」。</p>" +
+                        "</body></html>"
+                );
+                document.close();
+            })();
+        </script>
         <link rel="stylesheet" href="pages/libs/tool-calendar.css" />
         <link rel="stylesheet" href="pages/libs/tool-calculator.css" />
         <style>

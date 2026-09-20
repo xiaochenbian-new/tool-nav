@@ -301,6 +301,73 @@
         });
     }
 
+    function unmarkLocal(key) {
+        if (!key || !state.localKeys[key]) return;
+        delete state.localKeys[key];
+        if (state.localCount > 0) state.localCount -= 1;
+    }
+
+    function deleteFile(key) {
+        return withStore("readwrite", STORE, function (store) {
+            return idbReq(store.delete(key));
+        }).then(function () {
+            unmarkLocal(key);
+        });
+    }
+
+    /** 清理历史 SPA 回退污染（JS 存了 index.html、工具页存了外壳等） */
+    function purgePoisonedEntries() {
+        return withStore("readonly", STORE, function (store) {
+            return new Promise(function (resolve, reject) {
+                var rows = [];
+                var req = store.openCursor();
+                req.onsuccess = function () {
+                    var cursor = req.result;
+                    if (!cursor) {
+                        resolve(rows);
+                        return;
+                    }
+                    rows.push(cursor.value);
+                    cursor.continue();
+                };
+                req.onerror = function () {
+                    reject(req.error);
+                };
+            });
+        }).then(function (rows) {
+            var jobs = [];
+            (rows || []).forEach(function (row) {
+                if (!row || !row.key) return;
+                var key = row.key;
+                var type = row.contentType || "";
+                var check = Promise.resolve(false);
+                try {
+                    check = assertDownloadPayload(key, type, row.blob).then(
+                        function () {
+                            return false;
+                        },
+                        function () {
+                            return true;
+                        }
+                    );
+                } catch (e) {
+                    check = Promise.resolve(true);
+                }
+                jobs.push(
+                    check.then(function (bad) {
+                        if (!bad) return null;
+                        return deleteFile(key).then(function () {
+                            return key;
+                        });
+                    })
+                );
+            });
+            return Promise.all(jobs).then(function (deleted) {
+                return deleted.filter(Boolean);
+            });
+        });
+    }
+
     function addTarget(key) {
         if (!key || state.targets[key]) return false;
         state.targets[key] = true;
@@ -374,18 +441,63 @@
         state.timer = setTimeout(pump, typeof delay === "number" ? delay : state.gapMs);
     }
 
+    /** Cloudflare Pages SPA 回退会把缺失资源以 200 + text/html(index) 返回，绝不能写入离线库 */
+    function assertDownloadPayload(key, headerType, blob) {
+        var k = String(key || "").toLowerCase();
+        var type = String(headerType || "").toLowerCase();
+        var expectsHtml = /\.html?(?:$|[?#])/i.test(k);
+        if (!expectsHtml && type.indexOf("text/html") === 0) {
+            throw new Error("SPA/HTML fallback for non-HTML asset: " + key);
+        }
+        if (
+            /\.(?:js|mjs|cjs)(?:$|[?#])/i.test(k) &&
+            type &&
+            type.indexOf("javascript") < 0 &&
+            type.indexOf("ecmascript") < 0 &&
+            type.indexOf("octet-stream") < 0 &&
+            type.indexOf("text/plain") < 0
+        ) {
+            throw new Error("unexpected Content-Type for JS: " + headerType);
+        }
+        if (
+            /\.css(?:$|[?#])/i.test(k) &&
+            type &&
+            type.indexOf("text/css") < 0 &&
+            type.indexOf("octet-stream") < 0 &&
+            type.indexOf("text/plain") < 0
+        ) {
+            throw new Error("unexpected Content-Type for CSS: " + headerType);
+        }
+        // 工具页被 SPA 回退成外壳时，标题/体积可区分
+        if (expectsHtml && k.indexOf("pages/") === 0 && blob && blob.size > 0) {
+            return blob.slice(0, 800).text().then(function (head) {
+                if (
+                    /id=["']brand-title["']/.test(head) ||
+                    /<title>\s*工具大全\s*<\/title>/.test(head)
+                ) {
+                    throw new Error("shell HTML fallback for tool page: " + key);
+                }
+                return true;
+            });
+        }
+        return Promise.resolve(true);
+    }
+
     function downloadOne(key) {
         if (hasFileSync(key)) return Promise.resolve(true);
         var url = new URL(key, global.location.href).href;
         return fetch(url, {
             method: "GET",
             credentials: "same-origin",
-            cache: "no-store"
+            cache: "no-store",
+            redirect: "follow"
         }).then(function (res) {
             if (!res || !res.ok) throw new Error("HTTP " + (res && res.status));
             var headerType = res.headers.get("content-type") || "";
             return res.blob().then(function (blob) {
-                return putFile(key, blob, guessType(key, headerType));
+                return assertDownloadPayload(key, headerType, blob).then(function () {
+                    return putFile(key, blob, guessType(key, headerType));
+                });
             });
         });
     }
@@ -547,6 +659,11 @@
             .then(function (man) {
                 state.manifest = man || { shared: [], byPage: {} };
                 return loadLocalKeyIndex();
+            })
+            .then(function () {
+                return purgePoisonedEntries().catch(function () {
+                    return [];
+                });
             })
             .then(function () {
                 state.ready = true;

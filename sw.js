@@ -123,13 +123,53 @@ function isSameOriginScope(url) {
     return path === bare || path.indexOf(scopePath) === 0 || path.indexOf(bare + "/") === 0;
 }
 
+function mimeMatchesKey(key, contentType) {
+    var k = String(key || "").toLowerCase();
+    var type = String(contentType || "").toLowerCase();
+    if (!type) return true;
+    if (/\.(?:js|mjs|cjs)$/i.test(k)) {
+        if (type.indexOf("text/html") === 0) return false;
+        return (
+            type.indexOf("javascript") >= 0 ||
+            type.indexOf("ecmascript") >= 0 ||
+            type.indexOf("octet-stream") >= 0 ||
+            type.indexOf("text/plain") >= 0
+        );
+    }
+    if (/\.css$/i.test(k) && type.indexOf("text/html") === 0) return false;
+    if (/\.json$/i.test(k) && type.indexOf("text/html") === 0) return false;
+    return true;
+}
+
+function isPoisonedShellHtml(key, blob) {
+    var k = String(key || "").toLowerCase();
+    if (!blob || k.indexOf("pages/") !== 0 || !/\.html$/i.test(k)) {
+        return Promise.resolve(false);
+    }
+    return blob
+        .slice(0, 1200)
+        .text()
+        .then(function (head) {
+            return /id=["']brand-title["']/.test(head) || /<title>\s*工具大全\s*<\/title>/.test(head);
+        })
+        .catch(function () {
+            return false;
+        });
+}
+
 function localResponse(row) {
-    var headers = {
-        "Content-Type": row.contentType || "application/octet-stream",
-        "X-Tool-Nav-Offline": "1",
-        "Cache-Control": "no-store"
-    };
-    return new Response(row.blob, { status: 200, statusText: "OK", headers: headers });
+    var key = (row && row.key) || "";
+    var contentType = (row && row.contentType) || "application/octet-stream";
+    if (!mimeMatchesKey(key, contentType)) return Promise.resolve(null);
+    return isPoisonedShellHtml(key, row.blob).then(function (poisoned) {
+        if (poisoned) return null;
+        var headers = {
+            "Content-Type": contentType,
+            "X-Tool-Nav-Offline": "1",
+            "Cache-Control": "no-store"
+        };
+        return new Response(row.blob, { status: 200, statusText: "OK", headers: headers });
+    });
 }
 
 self.addEventListener("install", function (event) {
@@ -187,7 +227,12 @@ self.addEventListener("fetch", function (event) {
     event.respondWith(
         idbGetFirst(keys)
             .then(function (row) {
-                if (row && row.blob) return localResponse(row);
+                if (row && row.blob) {
+                    return localResponse(row).then(function (local) {
+                        if (local) return local;
+                        return fetch(request);
+                    });
+                }
                 return fetch(request);
             })
             .catch(function () {

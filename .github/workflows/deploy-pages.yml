@@ -28,7 +28,7 @@ jobs:
       - name: Stage static site
         run: |
           mkdir -p dist-site
-          cp -r index.html sw.js asset-manifest.json plugin.json pages vendor dist-site/
+          cp -r index.html 404.html sw.js asset-manifest.json plugin.json pages vendor dist-site/
           cp _headers dist-site/ 2>/dev/null || true
           cp -r photo-background-change dist-site/ 2>/dev/null || true
 

@@ -12,8 +12,11 @@
 /pages/*
   Cache-Control: no-cache
 
-# 主入口 / 清单 / SW —— 不缓存
+# 主入口 / 404 / 清单 / SW —— 不缓存
 /index.html
+  Cache-Control: no-cache
+
+/404.html
   Cache-Control: no-cache
 
 /asset-manifest.json
