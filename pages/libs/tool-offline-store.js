@@ -20,6 +20,8 @@
         manifest: null,
         queue: [],
         queuedSet: Object.create(null),
+        /** 下载失败（如 404）后不再重试 */
+        failedSet: Object.create(null),
         targets: Object.create(null),
         targetCount: 0,
         doneCount: 0,
@@ -310,14 +312,14 @@
     function recountDone() {
         var n = 0;
         Object.keys(state.targets).forEach(function (key) {
-            if (hasFileSync(key)) n += 1;
+            if (hasFileSync(key) || state.failedSet[key]) n += 1;
         });
         state.doneCount = n;
         return n;
     }
 
     /**
-     * 只把「尚未落盘」的资源入队；已下载的只计入进度，不重新请求。
+     * 只把「尚未落盘、且未永久失败」的资源入队；已下载的只计入进度，不重新请求。
      */
     function enqueueKeys(keys) {
         if (!keys || !keys.length) return Promise.resolve();
@@ -326,6 +328,7 @@
             if (!key) return;
             addTarget(key);
             if (hasFileSync(key)) return;
+            if (state.failedSet[key]) return;
             if (state.queuedSet[key]) return;
             state.queuedSet[key] = true;
             missing.push(key);
@@ -421,10 +424,10 @@
                 recountDone();
             })
             .catch(function () {
-                if (!state.queuedSet[key] && !hasFileSync(key)) {
-                    state.queuedSet[key] = true;
-                    state.queue.push(key);
-                }
+                // 404 / 网络失败等：只尝试一次，记入失败集后不再入队
+                state.failedSet[key] = true;
+                delete state.queuedSet[key];
+                recountDone();
             })
             .then(function () {
                 state.busy = false;
@@ -497,6 +500,7 @@
         state.clearing = true;
         state.queue = [];
         state.queuedSet = Object.create(null);
+        state.failedSet = Object.create(null);
         state.targets = Object.create(null);
         state.targetCount = 0;
         state.doneCount = 0;
