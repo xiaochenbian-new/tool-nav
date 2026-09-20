@@ -343,7 +343,8 @@
                 function applySheetsDiffHandoff(payload) {
                     if (!payload) return;
                     setReturnToolFromPayload(payload);
-                    if (!originalModel || !modifiedModel) {
+                    // DiffEditor 未就绪时先挂起，避免只写入 model 却未触发对比刷新
+                    if (!diffEditor || !originalModel || !modifiedModel) {
                         pendingSheetsDiffHandoff = payload;
                         return;
                     }
@@ -371,11 +372,20 @@
                     var leftLabel = payload.leftName ? String(payload.leftName) : "左侧";
                     var rightLabel = payload.rightName ? String(payload.rightName) : "右侧";
                     $("summary").textContent = "已载入对比：" + leftLabel + " ↔ " + rightLabel;
+
+                    function refreshAfterHandoff() {
+                        if (!diffEditor) return;
+                        layoutEditor();
+                        applyFoldUnchangedAndRefreshDiff();
+                        layoutEditor();
+                        updateChangeNav();
+                    }
+                    refreshAfterHandoff();
                     requestAnimationFrame(function () {
-                        if (diffEditor) {
-                            applyFoldUnchangedAndRefreshDiff();
-                            layoutEditor();
-                        }
+                        refreshAfterHandoff();
+                        // 覆盖 iframe 从 hidden 切回可见后的布局，以及 Monaco 内容防抖
+                        setTimeout(refreshAfterHandoff, 50);
+                        setTimeout(refreshAfterHandoff, 250);
                     });
                 }
 
@@ -494,6 +504,7 @@
                     if (!diffEditor || !originalModel || !modifiedModel) return;
                     var o = originalModel;
                     var m = modifiedModel;
+                    layoutEditor();
                     diffEditor.updateOptions({
                         useInlineViewWhenSpaceIsLimited: false,
                         hideUnchangedRegions: hideUnchangedRegionsOptions()
@@ -501,7 +512,7 @@
                     diffEditor.setModel(null);
                     diffEditor.setModel({ original: o, modified: m });
                     requestAnimationFrame(function () {
-                        diffEditor.layout();
+                        if (diffEditor) diffEditor.layout();
                     });
                 }
 
