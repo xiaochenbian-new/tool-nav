@@ -985,13 +985,13 @@
                 position: fixed;
                 left: 0;
                 top: 0;
-                width: 320px;
+                width: 360px;
                 max-width: calc(100vw - 24px);
                 border: 1px solid #d8e5ff;
-                border-radius: 8px;
+                border-radius: 10px;
                 background: #fff;
                 box-shadow: 0 8px 22px rgba(36, 90, 190, 0.16);
-                padding: 8px;
+                padding: 12px;
                 z-index: 5000;
             }
             .filter-pop.show {
@@ -999,37 +999,41 @@
             }
             .filter-input {
                 width: 100%;
-                height: 32px;
+                height: 34px;
                 border: 1px solid #d8e5ff;
                 border-radius: 6px;
-                padding: 4px 8px;
+                padding: 6px 10px;
                 font-size: 12px;
-                margin-bottom: 6px;
+                margin: 0 0 10px;
                 outline: none;
+                box-sizing: border-box;
             }
             .filter-values {
                 max-height: 160px;
                 overflow: auto;
                 border: 1px solid #dbe7ff;
                 border-radius: 8px;
-                padding: 6px;
-                margin-bottom: 6px;
+                padding: 8px;
+                margin: 0 0 10px;
                 background: #f8fbff;
             }
             .filter-check {
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 font-size: 12px;
                 line-height: 1.35;
-                margin-bottom: 4px;
+                margin-bottom: 6px;
                 word-break: break-all;
                 border: 1px solid transparent;
                 border-radius: 6px;
-                padding: 4px 6px;
+                padding: 6px 8px;
                 background: #fff;
                 cursor: pointer;
                 transition: border-color .15s ease, background-color .15s ease;
+            }
+            .filter-check:last-child {
+                margin-bottom: 0;
             }
             .filter-check:hover {
                 border-color: #d8e5ff;
@@ -1086,71 +1090,83 @@
             }
             .filter-actions {
                 display: flex;
-                gap: 6px;
+                flex-wrap: wrap;
+                gap: 8px;
                 justify-content: flex-end;
             }
             .filter-meta {
-                margin-top: 2px;
-                margin-bottom: 6px;
+                margin: 0 0 10px;
                 font-size: 12px;
                 color: #6f7d96;
                 text-align: right;
+                line-height: 1.4;
             }
             .filter-date {
-                margin-bottom: 6px;
+                margin: 0 0 10px;
                 border: 1px solid #dbe7ff;
                 border-radius: 8px;
-                padding: 6px;
+                padding: 10px;
                 background: #f8fbff;
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
+                grid-template-columns: 1fr;
+                gap: 8px;
             }
             .filter-quarter {
-                margin-bottom: 6px;
+                margin: 0 0 10px;
                 border: 1px solid #dbe7ff;
                 border-radius: 8px;
-                padding: 6px;
+                padding: 10px;
                 background: #f8fbff;
                 display: flex;
-                flex-wrap: nowrap;
+                flex-wrap: wrap;
                 align-items: center;
-                gap: 6px;
-                font-size: 11px;
-                white-space: nowrap;
+                gap: 8px;
+                font-size: 12px;
+                line-height: 1.35;
+                color: #3c4f78;
+            }
+            .filter-quarter > span {
+                flex: 0 0 auto;
+                padding-right: 2px;
             }
             .filter-quarter select {
-                width: 88px;
-                height: 28px;
-                font-size: 11px;
-                padding: 2px 6px;
+                width: auto;
+                min-width: 96px;
+                height: 30px;
+                font-size: 12px;
+                padding: 4px 8px;
+                margin: 0;
+                box-sizing: border-box;
             }
             .quarter-btn {
                 border: 1px solid #d8e5ff;
                 border-radius: 999px;
                 background: #edf3ff;
                 color: #3c4f78;
-                padding: 2px 8px;
-                font-size: 11px;
-                line-height: 1.2;
+                padding: 4px 10px;
+                font-size: 12px;
+                line-height: 1.3;
                 cursor: pointer;
             }
             .quarter-btn:hover {
                 background: #e3eeff;
             }
             .filter-date input {
-                height: 30px;
+                height: 34px;
                 width: 100%;
                 min-width: 0;
                 display: block;
                 margin: 0;
+                padding: 6px 10px;
+                font-size: 12px;
+                box-sizing: border-box;
             }
             .mini-btn {
                 border: 1px solid #d8e5ff;
                 border-radius: 6px;
                 background: #edf3ff;
                 color: #3c4f78;
-                padding: 4px 8px;
+                padding: 6px 10px;
                 font-size: 12px;
                 cursor: pointer;
             }

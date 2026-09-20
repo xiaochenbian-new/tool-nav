@@ -444,7 +444,7 @@
             });
     }
 
-    /** 清单里全部工具页 + 共用库 + 导航表中的工具路径（去重） */
+    /** 按 toolsList 顺序收集资源（与「全部工具页」从上往下一致）；shared 优先，清单孤儿页殿后 */
     function assetsForAll(toolsList) {
         var seen = Object.create(null);
         var keys = [];
@@ -454,20 +454,20 @@
             keys.push(key);
         }
         var man = state.manifest || {};
+        (man.shared || []).forEach(push);
+        (toolsList || []).forEach(function (tool) {
+            assetsForTool(tool).forEach(push);
+        });
         if (man.byPage) {
             Object.keys(man.byPage).forEach(function (page) {
                 (man.byPage[page] || []).forEach(push);
             });
         }
-        (man.shared || []).forEach(push);
-        (toolsList || []).forEach(function (tool) {
-            assetsForTool(tool).forEach(push);
-        });
         return keys;
     }
 
     /**
-     * 入队全部资源。preferTool 的文件排在最前，当前页更快就绪。
+     * 入队全部资源。preferTool 的文件排在最前，其后按 toolsList（全部工具页从上往下）顺序。
      * 已落盘的只计进度，不重新请求。
      */
     function enqueueAll(toolsList, preferTool) {

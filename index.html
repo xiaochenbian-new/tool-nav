@@ -3327,7 +3327,7 @@
                     if (!window.confirm(msg)) return;
                     offlineHydratedFrames = Object.create(null);
                     offlineWasComplete = false;
-                    window.ToolOffline.clearAndRedownload(TOOLS, currentId).then(function (next) {
+                    window.ToolOffline.clearAndRedownload(getToolsInOverviewOrder(), currentId).then(function (next) {
                         renderOfflineDownloadProgress(next);
                     });
                 });
@@ -3369,6 +3369,44 @@
                 if (pendingSheetsToTextDiffHandoff) return HANDOFF_TEXT_DIFF_TAB;
                 if (pendingExcelSqlToJsonExcelHandoff) return HANDOFF_JSON_EXCEL_TAB;
                 return DEFAULT_TAB_ID;
+            }
+
+            /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
+            const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "文件格式转换", "运维工具", "生成", "比较", "加解密", "编解码", "图片&视频", "其他"];
+
+            /** 与「全部工具页」从上往下一致的工具顺序（常用 → 各大类），供离线下载优先级使用 */
+            function getToolsInOverviewOrder() {
+                const ordered = [];
+                const seen = Object.create(null);
+                function pushTool(tool) {
+                    if (!tool || !tool.id || seen[tool.id]) return;
+                    seen[tool.id] = true;
+                    ordered.push(tool);
+                }
+                COMMON_TOOL_IDS.forEach(function (id) {
+                    pushTool(TOOLS.find(function (t) { return t.id === id; }));
+                });
+                const grouped = {};
+                TOOLS.forEach(function (tool) {
+                    if (!grouped[tool.category]) grouped[tool.category] = [];
+                    grouped[tool.category].push(tool);
+                });
+                const categoryOrder = [];
+                const seenCat = Object.create(null);
+                OVERVIEW_CATEGORY_ORDER.forEach(function (cat) {
+                    if (grouped[cat] && grouped[cat].length) {
+                        categoryOrder.push(cat);
+                        seenCat[cat] = true;
+                    }
+                });
+                Object.keys(grouped).forEach(function (cat) {
+                    if (!seenCat[cat]) categoryOrder.push(cat);
+                });
+                categoryOrder.forEach(function (cat) {
+                    (grouped[cat] || []).forEach(pushTool);
+                });
+                TOOLS.forEach(pushTool);
+                return ordered;
             }
 
             function renderOverviewPanel() {
@@ -3475,8 +3513,6 @@
                     panel.appendChild(group);
                 }
 
-                /** 大类展示顺序；未列出的分类按在 TOOLS 中首次出现的顺序排在末尾 */
-                const OVERVIEW_CATEGORY_ORDER = ["解析与转换", "文件格式转换", "运维工具", "生成", "比较", "加解密", "编解码", "图片&视频", "其他"];
                 const commonTools = COMMON_TOOL_IDS.map((id) => TOOLS.find((t) => t.id === id)).filter(Boolean);
                 appendToolGroup("常用", commonTools, { commonGroup: true });
 
@@ -4766,7 +4802,7 @@
                         var prefer = TOOLS.find(function (t) {
                             return t.id === initialTab;
                         });
-                        return window.ToolOffline.init(TOOLS, prefer);
+                        return window.ToolOffline.init(getToolsInOverviewOrder(), prefer);
                     })
                     .catch(function () {})
                     .then(function () {
