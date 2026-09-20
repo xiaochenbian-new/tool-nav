@@ -1500,6 +1500,13 @@
                                 <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
                             </svg>
                         </button>
+                        <button id="csv-preview-json-excel-handoff-btn" class="csv-modal-handoff-btn" type="button" title="将 CSV 文本导入 JSON/Excel/SQL 工具">
+                            <span>JSON/Excel/SQL</span>
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class="icon-paper-plane">
+                                <path d="M22 2L11 13"></path>
+                                <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                            </svg>
+                        </button>
                     </div>
                     <button id="csv-preview-close" class="csv-modal-close" type="button" aria-label="关闭">×</button>
                 </div>
@@ -1585,7 +1592,9 @@
             let sqlHistoryPage = 1;
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
             const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
+            const HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY = "tool-nav:handoff:excel-sql-to-json-excel";
             const HANDOFF_TEXT_TAB = "tab18";
+            const HANDOFF_JSON_EXCEL_TAB = "tab3";
             /** 统一数据源：Excel 上传与 CSV 粘贴均注册为同一库中的表 */
             const UNIFIED_DB_KEY = "__data__";
             let csvPasteEntries = [{ id: 1, label: "CSV 1", name: "", text: "", importRows: null }];
@@ -2403,7 +2412,7 @@
                 }
             }
 
-            /** AlaSQL / Excel 结果里统一成易读时间（与 Excel 常见「2026/2/14 15:19」风格一致） */
+            /** AlaSQL / Excel 结果里统一成「年-月-日 时:分:秒」 */
             function formatCellForDisplay(value) {
                 if (value === null || value === undefined) return "";
                 if (value instanceof Date) {
@@ -2439,9 +2448,8 @@
 
             function formatDatePartsFriendly(p) {
                 if (!p) return "";
-                var t = pad2(p.H) + ":" + pad2(p.M);
-                if (p.S) t += ":" + pad2(p.S);
-                return p.y + "/" + p.m + "/" + p.d + " " + t;
+                return p.y + "-" + pad2(p.m) + "-" + pad2(p.d)
+                    + " " + pad2(p.H) + ":" + pad2(p.M) + ":" + pad2(p.S || 0);
             }
 
             /**
@@ -2824,6 +2832,52 @@
                     // ignore
                 }
                 window.location.href = base + "#tab=" + HANDOFF_TEXT_TAB;
+            }
+
+            function handoffCsvPreviewToJsonExcelTool() {
+                var text = document.getElementById("csv-preview-text").value;
+                if (!String(text || "").trim()) {
+                    setStatus("没有可发送的 CSV 文本。", true);
+                    return;
+                }
+                var payload = { text: text, sheetName: "查询结果", sourceType: "csv" };
+                if (window.parent && window.parent !== window) {
+                    try {
+                        window.parent.postMessage(
+                            {
+                                type: "tool-nav:open-tool",
+                                toolId: HANDOFF_JSON_EXCEL_TAB,
+                                handoff: "excel-sql-to-json-excel",
+                                payload: payload,
+                            },
+                            "*"
+                        );
+                        setStatus("已发送到 JSON/Excel/SQL 工具。", false);
+                        closeCsvPreviewModal();
+                        return;
+                    } catch (e1) {
+                        // fall through to storage navigation
+                    }
+                }
+                try {
+                    sessionStorage.setItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY, JSON.stringify(payload));
+                } catch (e2) {
+                    // ignore
+                }
+                try {
+                    localStorage.setItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY, JSON.stringify(payload));
+                } catch (e3) {
+                    // ignore
+                }
+                var base = "../index.html";
+                try {
+                    if (/pages\//i.test(window.location.pathname)) {
+                        base = "../index.html";
+                    }
+                } catch (e4) {
+                    // ignore
+                }
+                window.location.href = base + "#tab=" + HANDOFF_JSON_EXCEL_TAB;
             }
 
             function getRowDisplayValue(row, col) {
@@ -3800,8 +3854,8 @@
                     +
                     (dateCol
                         ? "<div class=\"filter-date\">"
-                        + "<input class=\"filter-date-from\" type=\"datetime-local\" step=\"1\" title=\"开始时间\" value=\"" + escapeHtml(toDatetimeLocalValue(initialFrom, true)) + "\" />"
-                        + "<input class=\"filter-date-to\" type=\"datetime-local\" step=\"1\" title=\"结束时间\" value=\"" + escapeHtml(toDatetimeLocalValue(initialTo, true)) + "\" />"
+                        + "<input class=\"filter-date-from\" type=\"datetime-local\" step=\"60\" title=\"开始时间（精确到分钟）\" value=\"" + escapeHtml(toDatetimeLocalValue(initialFrom, false)) + "\" />"
+                        + "<input class=\"filter-date-to\" type=\"datetime-local\" step=\"60\" title=\"结束时间（精确到分钟）\" value=\"" + escapeHtml(toDatetimeLocalValue(initialTo, false)) + "\" />"
                         + "</div>"
                         : "")
                     + "<input class=\"filter-input\" placeholder=\"输入关键词\" value=\"" + escapeHtml(rule.keyword || "") + "\" />"
@@ -3863,8 +3917,8 @@
                         if (!range) return;
                         var fromInput = panel.querySelector(".filter-date-from");
                         var toInput = panel.querySelector(".filter-date-to");
-                        if (fromInput) fromInput.value = toDatetimeLocalValue(range.from, true);
-                        if (toInput) toInput.value = toDatetimeLocalValue(range.to, true);
+                        if (fromInput) fromInput.value = toDatetimeLocalValue(range.from, false);
+                        if (toInput) toInput.value = toDatetimeLocalValue(range.to, false);
                         updateMeta();
                     });
                 });
@@ -3943,13 +3997,13 @@
                 if (toEl) toEl.addEventListener("input", updateMeta);
                 if (fromEl) {
                     fromEl.addEventListener("change", function () {
-                        fromEl.value = toDatetimeLocalValue(enforceDefaultTimeForInputValue(fromEl.value, false), true);
+                        fromEl.value = toDatetimeLocalValue(normalizeDateInputValue(fromEl.value, false), false);
                         updateMeta();
                     });
                 }
                 if (toEl) {
                     toEl.addEventListener("change", function () {
-                        toEl.value = toDatetimeLocalValue(enforceDefaultTimeForInputValue(toEl.value, true), true);
+                        toEl.value = toDatetimeLocalValue(normalizeDateInputValue(toEl.value, true), false);
                         updateMeta();
                     });
                 }
@@ -4322,7 +4376,7 @@
             }
 
             function sqlQuoteIdent(name) {
-                return "[" + String(name || "").replace(/]/g, "]]") + "]";
+                return String(name || "");
             }
 
             function sqlLiteralValue(v) {
@@ -5606,6 +5660,10 @@
             document.getElementById("csv-preview-text-handoff-btn").addEventListener("click", function (e) {
                 e.stopPropagation();
                 handoffCsvPreviewToTextTool();
+            });
+            document.getElementById("csv-preview-json-excel-handoff-btn").addEventListener("click", function (e) {
+                e.stopPropagation();
+                handoffCsvPreviewToJsonExcelTool();
             });
             document.getElementById("csv-preview-copy-btn").addEventListener("click", function (e) {
                 e.stopPropagation();

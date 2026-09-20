@@ -1233,6 +1233,81 @@ insert into users(id,name) values (1,'A'),(2,'B');'></textarea>
             window.addEventListener("load", restoreSheetsFromPersist);
             document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
             syncUIBySourceType();
+
+            var HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY = "tool-nav:handoff:excel-sql-to-json-excel";
+
+            function clearExcelSqlToJsonExcelHandoffStorage() {
+                try {
+                    sessionStorage.removeItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY);
+                } catch (e1) {}
+                try {
+                    localStorage.removeItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY);
+                } catch (e2) {}
+            }
+
+            function allocUniqueJsonExcelSheetName(baseName) {
+                var name = String(baseName || "查询结果").trim() || "查询结果";
+                var used = {};
+                inputSheets.forEach(function (s) {
+                    used[s.name] = true;
+                });
+                if (!used[name]) return name;
+                var n = 2;
+                while (used[name + " " + n]) n++;
+                return name + " " + n;
+            }
+
+            function consumeExcelSqlToJsonExcelHandoff(payload) {
+                if (!payload || typeof payload.text !== "string") return;
+                var text = String(payload.text);
+                if (!text.trim()) return;
+                syncInputFromTextarea();
+                var sourceSelect = document.getElementById("source-type");
+                if (sourceSelect) {
+                    sourceSelect.value = payload.sourceType === "csv" || !payload.sourceType ? "csv" : payload.sourceType;
+                    syncUIBySourceType();
+                    enforceSourceTargetExclusion(true);
+                }
+                var sheetName = allocUniqueJsonExcelSheetName(payload.sheetName || "查询结果");
+                var sheet = {
+                    id: genSheetId(),
+                    name: sheetName,
+                    content: text,
+                };
+                inputSheets.push(sheet);
+                activeInputSheetId = sheet.id;
+                applyActiveSheetToInput();
+                renderSheetTabs();
+                persistSheetsState();
+                clearExcelSqlToJsonExcelHandoffStorage();
+                setStatus("已从 Excel SQL 载入 CSV 文本到「" + sheetName + "」。", false);
+            }
+
+            function tryConsumeExcelSqlToJsonExcelFromStorage() {
+                var raw = null;
+                try {
+                    raw = sessionStorage.getItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY);
+                } catch (e1) {}
+                if (!raw) {
+                    try {
+                        raw = localStorage.getItem(HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY);
+                    } catch (e2) {}
+                }
+                if (!raw) return;
+                try {
+                    consumeExcelSqlToJsonExcelHandoff(JSON.parse(raw));
+                } catch (e3) {}
+            }
+
+            window.addEventListener("message", function (e) {
+                var d = e.data;
+                if (!d || d.type !== "tool-nav:consume-handoff") return;
+                if (d.handoff === "excel-sql-to-json-excel") {
+                    consumeExcelSqlToJsonExcelHandoff(d.payload || null);
+                }
+            });
+
+            tryConsumeExcelSqlToJsonExcelFromStorage();
         </script>
         <script src="libs/tool-form-persist.js"></script>
     </body>
