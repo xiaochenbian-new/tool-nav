@@ -3154,10 +3154,51 @@
                 });
             }
 
+            /**
+             * Cloudflare Pages 会把 *.html 308 到无后缀，且中文 Location 会乱码。
+             * 在 CF 域名上直接请求无后缀路径；GitHub Pages / 本地仍用 .html。
+             */
+            function isCloudflarePagesHost() {
+                var h = (location.hostname || "").toLowerCase();
+                return (
+                    h.endsWith(".pages.dev") ||
+                    h.endsWith(".wangdou.win") ||
+                    h === "wangdou.win"
+                );
+            }
+
+            function toServeAssetPath(assetPath) {
+                var raw = String(assetPath || "");
+                if (!raw) return "";
+                var qi = raw.indexOf("?");
+                var path = qi >= 0 ? raw.slice(0, qi) : raw;
+                var query = qi >= 0 ? raw.slice(qi) : "";
+                if (!isCloudflarePagesHost() || !/\.html?$/i.test(path)) {
+                    return raw;
+                }
+                var stripped = path.replace(/\.html?$/i, "");
+                if (/\/index$/i.test(stripped)) {
+                    stripped = stripped.replace(/\/index$/i, "/");
+                }
+                stripped = stripped
+                    .split("/")
+                    .map(function (seg) {
+                        if (!seg) return "";
+                        try {
+                            return encodeURIComponent(decodeURIComponent(seg));
+                        } catch (e) {
+                            return encodeURIComponent(seg);
+                        }
+                    })
+                    .join("/");
+                return stripped + query;
+            }
+
             function toolFrameSrc(tool) {
                 if (!tool || !tool.path) return "";
-                const sep = tool.path.indexOf("?") >= 0 ? "&" : "?";
-                return tool.path + sep + "_toolNavId=" + encodeURIComponent(tool.id);
+                var base = toServeAssetPath(tool.path);
+                const sep = base.indexOf("?") >= 0 ? "&" : "?";
+                return base + sep + "_toolNavId=" + encodeURIComponent(tool.id);
             }
 
             /** 常驻 iframe：只留当前 + 上一个，后台页一多就会抢主线程导致切换卡顿 */

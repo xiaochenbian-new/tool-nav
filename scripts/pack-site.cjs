@@ -12,7 +12,19 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 
 // 404.html 必须打包：Cloudflare Pages 无顶层 404 时会按 SPA 把缺失路径回退成 index.html
-const items = ["index.html", "404.html", "sw.js", "asset-manifest.json", "plugin.json", "pages", "vendor", "_headers"];
+// _routes.json / functions 仅 Cloudflare Pages 使用（避开中文 .html 的坏 308）
+const items = [
+    "index.html",
+    "404.html",
+    "sw.js",
+    "asset-manifest.json",
+    "plugin.json",
+    "pages",
+    "vendor",
+    "_headers",
+    "_routes.json",
+    "functions"
+];
 for (const it of items) {
     const src = path.join(root, it);
     if (!fs.existsSync(src)) {

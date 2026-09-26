@@ -483,15 +483,46 @@
         return Promise.resolve(true);
     }
 
-    function downloadOne(key) {
-        if (hasFileSync(key)) return Promise.resolve(true);
-        var url = new URL(key, global.location.href).href;
-        return fetch(url, {
+    /** CF Pages 对中文 *.html 的 308 Location 会乱码，勿跟随；改打无后缀路径 */
+    function networkUrlForKey(key) {
+        var path = String(key || "").split("?")[0];
+        var fetchPath = path;
+        if (/\.html?$/i.test(path)) {
+            fetchPath = path.replace(/\.html?$/i, "");
+            if (/\/index$/i.test(fetchPath)) {
+                fetchPath = fetchPath.replace(/\/index$/i, "/");
+            }
+        }
+        return new URL(fetchPath, global.location.href).href;
+    }
+
+    function fetchAsset(key) {
+        var primary = new URL(String(key || "").split("?")[0], global.location.href).href;
+        var opts = {
             method: "GET",
             credentials: "same-origin",
-            cache: "no-store",
-            redirect: "follow"
-        }).then(function (res) {
+            cache: "no-store"
+        };
+        // 先 manual：若 CF 返回 308 则不跟坏 Location，改请求无后缀
+        if (/\.html?$/i.test(String(key || ""))) {
+            return fetch(primary, Object.assign({}, opts, { redirect: "manual" })).then(function (res) {
+                if (res && res.ok) return res;
+                if (res && res.status >= 300 && res.status < 400) {
+                    return fetch(networkUrlForKey(key), Object.assign({}, opts, { redirect: "follow" }));
+                }
+                // 部分环境 manual 对跨跳转不透明；无后缀再试一次
+                if (!res || !res.ok) {
+                    return fetch(networkUrlForKey(key), Object.assign({}, opts, { redirect: "follow" }));
+                }
+                return res;
+            });
+        }
+        return fetch(primary, Object.assign({}, opts, { redirect: "follow" }));
+    }
+
+    function downloadOne(key) {
+        if (hasFileSync(key)) return Promise.resolve(true);
+        return fetchAsset(key).then(function (res) {
             if (!res || !res.ok) throw new Error("HTTP " + (res && res.status));
             var headerType = res.headers.get("content-type") || "";
             return res.blob().then(function (blob) {

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "include": [
+    "/*.html",
+    "/pages/*.html",
+    "/photo-background-change/*.html",
+    "/photo-background-change/*/*.html"
+  ],
+  "exclude": ["/vendor/*"]
+}

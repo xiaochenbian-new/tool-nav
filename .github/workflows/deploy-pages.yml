@@ -30,6 +30,8 @@ jobs:
           mkdir -p dist-site
           cp -r index.html 404.html sw.js asset-manifest.json plugin.json pages vendor dist-site/
           cp _headers dist-site/ 2>/dev/null || true
+          cp _routes.json dist-site/ 2>/dev/null || true
+          cp -r functions dist-site/ 2>/dev/null || true
           cp -r photo-background-change dist-site/ 2>/dev/null || true
 
       - name: Configure Pages

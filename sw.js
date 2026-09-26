@@ -75,6 +75,32 @@ function normalizeScopePath(scopePath) {
     return scopePath.endsWith("/") ? scopePath : scopePath + "/";
 }
 
+function pushAssetKey(keys, rel) {
+    if (!rel || keys.indexOf(rel) >= 0) return;
+    keys.push(rel);
+    try {
+        var enc = rel
+            .split("/")
+            .map(function (p) {
+                if (!p) return "";
+                return encodeURIComponent(decodeURIComponent(p));
+            })
+            .join("/");
+        if (enc !== rel && keys.indexOf(enc) < 0) keys.push(enc);
+    } catch (e2) {}
+    // CF pretty URL：请求无后缀时也能命中离线库里的 *.html
+    if (/\.html?$/i.test(rel)) {
+        var bare = rel.replace(/\.html?$/i, "");
+        if (bare && keys.indexOf(bare) < 0) keys.push(bare);
+    } else {
+        var leaf = (rel.split("/").pop() || "");
+        if (leaf && !/\.[a-z0-9]+$/i.test(leaf)) {
+            var withHtml = rel + ".html";
+            if (keys.indexOf(withHtml) < 0) keys.push(withHtml);
+        }
+    }
+}
+
 function assetKeysForRequest(url, scopeUrl) {
     var keys = [];
     try {
@@ -91,25 +117,31 @@ function assetKeysForRequest(url, scopeUrl) {
             rel = path.replace(/^\/+/, "");
         }
         rel = rel.replace(/^\/+/, "");
-        if (rel) {
-            keys.push(rel);
-            try {
-                var enc = rel
-                    .split("/")
-                    .map(function (p) {
-                        return encodeURIComponent(decodeURIComponent(p));
-                    })
-                    .join("/");
-                if (enc !== rel) keys.push(enc);
-            } catch (e2) {}
-        }
+        pushAssetKey(keys, rel);
     } catch (e) {}
     return keys;
 }
 
 function isStaticAsset(pathname) {
-    return /\.(?:js|mjs|cjs|css|woff2?|ttf|otf|eot|wasm|map|svg|png|jpe?g|gif|webp|ico|json|html)(?:\/)?$/i.test(
-        pathname
+    var decoded = pathname;
+    try {
+        decoded = decodeURIComponent(pathname);
+    } catch (e) {}
+    if (
+        /\.(?:js|mjs|cjs|css|woff2?|ttf|otf|eot|wasm|map|svg|png|jpe?g|gif|webp|ico|json|html)(?:\/)?$/i.test(
+            decoded
+        )
+    ) {
+        return true;
+    }
+    // Cloudflare pretty URL：/pages/中文工具 无后缀
+    var trimmed = decoded.replace(/\/+$/, "");
+    var leaf = trimmed.split("/").pop() || "";
+    if (!leaf || /\.[a-z0-9]+$/i.test(leaf)) return false;
+    return (
+        /\/pages\//i.test(decoded) ||
+        /\/photo-background-change(?:\/|$)/i.test(decoded) ||
+        /\/404$/i.test(trimmed)
     );
 }
 
