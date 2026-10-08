@@ -20,34 +20,31 @@ npm run pack:utools  # 生成 uTools 可打包目录 dist-utools/
 
 > 在 uTools 开发者工具中，将 plugin.json 指向 `dist-utools/plugin.json` 即可打包。
 
-## 部署架构（自动同步 + 自动发布 GitHub Pages）
+## 环境与部署
 
-```
-你 push 到 gitee（源, origin）
-   └─ sync-from-gitee 工作流（github 上每 15 分钟，workflow_dispatch 可手动触发）
-        └─ 把 gitee 的 offline/master/online 分支镜像到 github
-             └─ 该 push 触发 deploy-pages 工作流
-                  └─ 打包静态文件（index.html + pages + vendor）→ 发布到 GitHub Pages
+| 环境 | 分支 | 托管 |
+|------|------|------|
+| **测试** | `main` | GitHub Pages（Actions） |
+| **生产** | `production` | Cloudflare Pages（`tool-nav-vbb.pages.dev`） |
+
+代码源以 **GitHub** 为准。日常：`git push github main`（测）→ merge/推送 `production`（产）。Gitee `origin` 仅作可选镜像。
+
+```bash
+npm run deploy          # Cloudflare production
+npm run deploy:preview  # Cloudflare Preview（main）
 ```
 
 ### 两个远程
 
 | 名称 | 地址 | 用途 |
 |---|---|---|
-| `origin` | `https://gitee.com/xiaochenbian/tool-nav.git` | 源仓库（手动推送） |
-| `github` | `git@github.com:xiaochenbian-new/tool-nav.git` | GitHub 镜像（SSH 推送更稳定） |
+| `github` | `git@github.com:xiaochenbian-new/tool-nav.git` | 部署源 |
+| `origin` | `https://gitee.com/xiaochenbian/tool-nav.git` | 可选镜像 |
 
-> 注：本机到 `github.com:443`（HTTPS）不稳定时，用 **SSH** 推送更可靠：
-> ```bash
-> git push github <branch>
-> ```
+### GitHub Actions（`.github/workflows/`）
 
-### GitHub Actions 工作流（`.github/workflows/`）
-
-- **`deploy-pages.yml`**：在 push 到 `offline`/`master`/`online` 时，把静态站点打包并发布到 **GitHub Pages**。
-  - 需要的 Pages 地址（手动开启后生效）：`https://xiaochenbian-new.github.io/tool-nav/`
-  - 开启方法：仓库 `Settings → Pages → Source` 选择 **GitHub Actions**。
-- **`sync-from-gitee.yml`**：每 15 分钟把 gitee 的 `offline`/`master`/`online` 三个内容分支镜像到 github；**已排除含授权逻辑的 `app` 分支**。
+- **`deploy-pages.yml`**：push `main` → **GitHub Pages** 测试站 `https://xiaochenbian-new.github.io/tool-nav/`（Source = GitHub Actions）。
+- **`sync-from-gitee.yml`**：可选手动镜像，**不参与部署**。
 
 ### 分支说明
 
