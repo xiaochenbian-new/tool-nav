@@ -25,7 +25,7 @@ npm run pack:utools  # 生成 uTools 可打包目录 dist-utools/
 | 环境 | 分支 | 托管 |
 |------|------|------|
 | **测试** | `main` | GitHub Pages（Actions） |
-| **生产** | `production` | Cloudflare Pages（`tool-nav-vbb.pages.dev`） |
+| **生产** | `production` | Cloudflare Pages（`tool-nav-10a.pages.dev` · `ctool-nav.wangdou.win`） |
 
 代码源以 **GitHub** 为准。日常：`git push github main`（测）→ merge/推送 `production`（产）。Gitee `origin` 仅作可选镜像。
 

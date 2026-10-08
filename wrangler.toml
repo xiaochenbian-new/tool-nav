@@ -1,4 +1,4 @@
 # Cloudflare Pages — 工具导航（静态 + 可选 Functions）
-name = "tool-nav-vbb"
+name = "tool-nav"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "."
