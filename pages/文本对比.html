@@ -220,14 +220,30 @@
                 /** 与 node_modules/monaco-editor/min/vs 一致，由 npm run copy:monaco / postinstall 复制到 vendor */
                 var MONACO_ROOT = new URL("../vendor/monaco/min/vs/", window.location.href).href.replace(/\/?$/, "");
 
+                /**
+                 * 说明（重要）：Monaco 的 DefaultWorkerFactory 调用本函数时，
+                 * moduleId 恒为 "workerMain.js"，真正的“要跑哪个 worker”由 label 决定，
+                 * 而具体要加载的 AMD 模块名则由 SimpleWorkerClient 在 worker 内部 resolve。
+                 * 因此：
+                 *   - 编辑器自身的 worker（行级 diff / 链接计算 / unicode 高亮等）必须指向
+                 *     base/worker/workerMain.js（AMD 引导入口）。曾经误指向 editor/editor.worker.js——
+                 *     该文件在 npm 包里根本不存在（monaco-editor 的 min/vs/editor/ 只有
+                 *     editor.main.{js,css}），且即便存在也不是可独立启动的入口，
+                 *     结果是 worker 静默不响应、diffEditor.getLineChanges() 返回 null、
+                 *     差异块不标黄/标红，并抛 "no diff result available"。
+                 *   - 仅语言服务 worker（json/css/html/ts）是自包含的独立 worker 文件。
+                 */
                 self.MonacoEnvironment = {
-                    getWorkerUrl: function (_moduleId, label) {
+                    getWorkerUrl: function (moduleId, label) {
                         var base = MONACO_ROOT + "/";
                         if (label === "json") return base + "language/json/json.worker.js";
                         if (label === "css" || label === "scss" || label === "less") return base + "language/css/css.worker.js";
                         if (label === "html" || label === "handlebars" || label === "razor") return base + "language/html/html.worker.js";
                         if (label === "typescript" || label === "javascript") return base + "language/typescript/ts.worker.js";
-                        return base + "editor/editor.worker.js";
+                        // editorWorkerService / 未知 label：一律走编辑器通用 worker 引导入口。
+                        // Monaco 传入的 moduleId 恒为 "workerMain.js"，其内部再按需 require
+                        // vs/editor/common/services/editorSimpleWorker 等 AMD 模块。
+                        return base + "base/worker/workerMain.js";
                     }
                 };
 
