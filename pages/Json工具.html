@@ -1193,6 +1193,14 @@
                     }
                 }
 
+                // 视图恢复 / 页面隐藏期间的"滚动写回"屏蔽标志。
+                // 必须声明在最早的使用点之前：applyActiveSheetToEditor() 在脚本靠前处
+                // 就会经由 scheduleViewRestore 写这两个标志，若声明在靠后位置，
+                // 后置的 var 初始化会把已置位的 true 重置回 false，导致恢复期间
+                // 的 scroll 事件被当成真实滚动写回，把刚恢复的位置冲成 0。
+                var cmViewRestoring = false;
+                var cmSuspended = false;
+
                 function restoreCmView(view) {
                     if (!mainCm || !view) return;
                     // 先恢复查找状态：setCursor/setSelection 会触发 cursorActivity →
@@ -1241,22 +1249,15 @@
                     mainCm.setValue(content);
                     mainInput.value = "";
                     applyEditorPerformanceMode(content);
-                    // setValue 会把滚动清零；若该 sheet 有保存的视图状态则恢复
+                    // setValue 会把滚动清零；若该 sheet 有保存的视图状态则恢复。
+                    // 注意：此处内容刚写入、布局尚未计算，同步 scrollTo 大概率被夹回 0，
+                    // 真正的落位交给 scheduleViewRestore 的自适应通道（它会等
+                    // scrollHeight > clientHeight 再应用，并在期间保持 cmViewRestoring）。
                     if (sheet && sheet.view) {
-                        var v = sheet.view;
-                        // 等一次 layout 后再定位，避免容器尚未确定高度导致 scrollTo 失效
-                        mainCm.refresh();
-                        restoreCmView(v);
-                        requestAnimationFrame(function () {
-                            if (mainCm) restoreCmView(v);
-                        });
-                        setTimeout(function () {
-                            if (mainCm) restoreCmView(v);
-                            cmViewRestoring = false;
-                        }, 60);
+                        scheduleViewRestore(sheet.view, sheet.id, 6000);
                     } else {
                         setTimeout(function () {
-                            cmViewRestoring = false;
+                            if (!pendingViewRestore) cmViewRestoring = false;
                         }, 60);
                     }
                 }
@@ -1662,6 +1663,90 @@
                  * CodeMirror 内部滚动容器会被浏览器重置为 0，
                  * 这里按当前 sheet 保存的视图重新定位并重新高亮查找结果。
                  */
+                /**
+                 * iframe 被 LRU 驱逐重建后，CM 的内容是异步回填的：
+                 * 父页要先发 tool-nav-persist-restore-data → 本页 sheet 状态写入
+                 * → 再 applyActiveSheetToEditor() 才有文本。在此之前
+                 * scrollHeight === clientHeight，任何 scrollTo 都会被 CodeMirror
+                 * 夹回 0（固定时间表全跑完也救不回来，这正是线上"经 3 个工具切回
+                 * 位置丢失"的真因）。
+                 * 因此恢复改为"内容就绪驱动"：先挂待恢复标记，等 CM 真正有可滚动
+                 * 内容（scrollHeight > clientHeight 且能落到目标位置）后再停。
+                 */
+                var pendingViewRestore = null;   // { view, deadline } ；非空表示还欠一次恢复
+                var _pendingRestoreRaf = 0;
+
+                function mainCmHasScrollableContent() {
+                    if (!mainCm) return false;
+                    var info = mainCm.getScrollInfo();
+                    return info.height > info.clientHeight + 1;
+                }
+
+                /** 尝试应用待恢复视图；成功（或超时）后清空待恢复标记。 */
+                function flushPendingViewRestore(force) {
+                    var pend = pendingViewRestore;
+                    if (!pend || !mainCm) return false;
+                    var sheet = getActiveSheet();
+                    // 用户已切到别的 sheet 时放弃这次恢复，避免把视图套错对象
+                    if (sheet && pend.sheetId && sheet.id !== pend.sheetId) {
+                        pendingViewRestore = null;
+                        cmViewRestoring = false;
+                        return false;
+                    }
+                    var hasContent = mainCmHasScrollableContent();
+                    var expired = Date.now() > pend.deadline;
+                    if (!hasContent && !expired && !force) return false;
+
+                    try { mainCm.refresh(); } catch (e) {}
+                    restoreCmView(pend.view);
+
+                    // 校验是否真的落到位：已滚动内容的文档，scrollTo 后 top 应该 > 0
+                    var want = pend.view.scrollTop | 0;
+                    var got = 0;
+                    try { got = mainCm.getScrollInfo().top; } catch (e2) { got = 0; }
+                    var done = (want <= 0) || (Math.abs(got - want) <= 2) || !hasContent;
+                    if (expired) done = true;
+                    if (!done) return false;
+
+                    pendingViewRestore = null;
+                    // 等一帧再解除挂起，避免紧随其后的 scroll 事件把刚恢复的值写回覆盖
+                    setTimeout(function () {
+                        cmViewRestoring = false;
+                        cmSuspended = false;
+                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                            refreshFindHighlights();
+                        }
+                    }, 80);
+                    return true;
+                }
+
+                /** 挂一个待恢复视图，并启动自适应轮询（内容未就绪时会一直等到超时）。 */
+                function scheduleViewRestore(view, sheetId, timeoutMs) {
+                    if (!mainCm || !view || isEmptyView(view)) return;
+                    pendingViewRestore = {
+                        view: view,
+                        sheetId: sheetId || null,
+                        deadline: Date.now() + (timeoutMs || 6000)
+                    };
+                    cmViewRestoring = true;
+                    function tick() {
+                        _pendingRestoreRaf = 0;
+                        if (!pendingViewRestore) return;
+                        if (!flushPendingViewRestore(false)) {
+                            _pendingRestoreRaf = requestAnimationFrame(tick);
+                        }
+                    }
+                    flushPendingViewRestore(false);
+                    if (pendingViewRestore && !_pendingRestoreRaf) {
+                        _pendingRestoreRaf = requestAnimationFrame(tick);
+                    }
+                }
+
+                // CM 内容一有变化就试一次：不等固定时间表，内容到位的瞬间就落位。
+                mainCm.on("change", function () {
+                    if (pendingViewRestore) flushPendingViewRestore(false);
+                });
+
                 function restoreEditorViewAfterResume() {
                     if (!mainCm) return;
                     var sheet = getActiveSheet();
@@ -1669,35 +1754,7 @@
                         cmSuspended = false;
                         return;
                     }
-                    // 视图恢复期间要挂起"滚动写回"，否则下面的程序性 scrollTo 会被
-                    // 节流的 saveActiveSheetView 再次采集并覆盖。
-                    cmViewRestoring = true;
-                    var v = sheet.view;
-                    var attempts = 0;
-                    function apply() {
-                        if (!mainCm) return;
-                        try { mainCm.refresh(); } catch (e) {}
-                        restoreCmView(v);
-                    }
-                    // 首次立即尝试；随后多轮重试，覆盖 iframe 刚显示时容器尺寸
-                    // 尚未稳定（clientHeight 偏小导致 scrollTo 被裁剪）的情况。
-                    apply();
-                    requestAnimationFrame(apply);
-                    var timers = [60, 180, 360, 600];
-                    timers.forEach(function (ms) {
-                        setTimeout(function () {
-                            if (!mainCm) return;
-                            attempts++;
-                            apply();
-                            if (attempts >= timers.length) {
-                                cmViewRestoring = false;
-                                cmSuspended = false;
-                                if (findBar && !findBar.hidden && findInput && findInput.value) {
-                                    refreshFindHighlights();
-                                }
-                            }
-                        }, ms);
-                    });
+                    scheduleViewRestore(sheet.view, sheet.id, 6000);
                 }
 
                 if (typeof ResizeObserver !== "undefined") {
@@ -1741,16 +1798,12 @@
                 function reassertActiveSheetView() {
                     var sheet = getActiveSheet();
                     if (!sheet || !sheet.view || !mainCm) return;
-                    cmViewRestoring = true;
-                    restoreCmView(sheet.view);
-                    setTimeout(function () {
-                        if (mainCm) restoreCmView(sheet.view);
-                        cmViewRestoring = false;
-                        if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
-                    }, 80);
+                    scheduleViewRestore(sheet.view, sheet.id, 6000);
                 }
                 setTimeout(reassertActiveSheetView, 0);
                 setTimeout(reassertActiveSheetView, 300);
+                // 重建场景下内容可能比 300ms 更晚才到，这里再兜一次（幂等，不影响已完成的恢复）
+                setTimeout(reassertActiveSheetView, 1500);
 
                 // 父页把本 iframe 从隐藏切回可见时，浏览器会重置内部滚动位置，
                 // 这里恢复当前 sheet 的滚动/光标（搜索后停在中间的位置得以保留）。
@@ -1819,10 +1872,7 @@
                 });
 
                 // 滚动位置也要跟随当前 sheet 记录（节流，避免滚动时频繁写）
-                var cmViewRestoring = false;
-                // 本页被父页隐藏期间为 true：iframe 被 visibility:hidden 时浏览器会把
-                // 内部滚动清零并派发 scroll 事件，若不屏蔽，节流保存会把 sheet.view 冲成 0。
-                var cmSuspended = false;
+                // （cmViewRestoring / cmSuspended 已在文件靠前处声明，见 restoreCmView 上方）
                 (function bindCmScrollViewMemory() {
                     var _scrollViewTimer = null;
                     mainCm.on("scroll", function () {
