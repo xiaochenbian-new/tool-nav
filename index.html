@@ -3150,8 +3150,44 @@
                 Object.keys(FRAME_CACHE).forEach((id) => {
                     const frame = FRAME_CACHE[id];
                     if (!frame) return;
-                    frame.classList.toggle("tool-frame-active", id === toolId);
+                    const wasActive = frame.classList.contains("tool-frame-active");
+                    const willBeActive = id === toolId;
+                    // 即将被隐藏的工具页：先让它保存当前视图（如 Json 工具的滚动/光标）
+                    if (wasActive && !willBeActive) {
+                        notifyFrameHidden(frame);
+                    }
+                    frame.classList.toggle("tool-frame-active", willBeActive);
+                    // iframe 由 CSS visibility 控制显隐；被隐藏期间浏览器可能重置内部滚动位置。
+                    // 重新激活时通知子页（工具页）恢复各自的视图状态（如 Json 工具的滚动/光标）。
+                    if (willBeActive && !wasActive) {
+                        notifyFrameShown(frame);
+                    }
                 });
+            }
+
+            /** 通知即将被隐藏的工具 iframe：离开前保存自己的视图状态。 */
+            function notifyFrameHidden(frame) {
+                if (!frame || !frame.contentWindow) return;
+                try {
+                    frame.contentWindow.postMessage({ type: "tool-nav:frame-hidden" }, "*");
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            /** 通知刚从隐藏变为可见的工具 iframe：可以恢复自己的视图状态了。 */
+            function notifyFrameShown(frame) {
+                if (!frame || !frame.contentWindow) return;
+                function send() {
+                    try {
+                        frame.contentWindow.postMessage({ type: "tool-nav:frame-shown" }, "*");
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+                send();
+                // iframe 内部布局稳定后再补发一次，避免 scrollTo 早于容器尺寸确定
+                setTimeout(send, 150);
             }
 
             /**

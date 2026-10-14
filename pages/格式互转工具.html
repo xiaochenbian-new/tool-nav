@@ -1031,26 +1031,118 @@
                     return changed;
                 }
 
+                /**
+                 * 保存 / 恢复每个 sheet 的视图状态（滚动位置 + 光标 + 查找定位）。
+                 * 修复：切换 sheet 或切到其他工具再切回时，原来只 setValue(content)，
+                 * 会把滚动位置重置为 0，用户"搜索后停在中间"的位置丢失。
+                 */
+                function captureCmView() {
+                    if (!mainCm) return null;
+                    var si = mainCm.getScrollInfo();
+                    var cur = mainCm.getCursor();
+                    return {
+                        scrollTop: si.top,
+                        scrollLeft: si.left,
+                        cursorLine: cur.line,
+                        cursorCh: cur.ch,
+                        cursorEndLine: mainCm.getCursor("to").line,
+                        cursorEndCh: mainCm.getCursor("to").ch,
+                        findIndex: typeof findNavMatchIndex === "number" ? findNavMatchIndex : -1,
+                        findValue: findInput ? findInput.value : "",
+                        findOpen: !!(findBar && !findBar.hidden),
+                    };
+                }
+
+                function saveActiveSheetView() {
+                    var sheet = getActiveSheet();
+                    if (!sheet || !mainCm) return;
+                    var v = captureCmView();
+                    if (v) sheet.view = v;
+                }
+
+                function restoreCmView(view) {
+                    if (!mainCm || !view) return;
+                    var lineCount = mainCm.lineCount();
+                    var targetLine = Math.min(Math.max(0, view.cursorLine | 0), Math.max(0, lineCount - 1));
+                    var targetCh = view.cursorCh | 0;
+                    var endLine = Math.min(Math.max(targetLine, view.cursorEndLine | 0), Math.max(0, lineCount - 1));
+                    var endCh = view.cursorEndCh | 0;
+                    try {
+                        mainCm.setCursor({ line: targetLine, ch: targetCh });
+                        mainCm.setSelection(
+                            { line: targetLine, ch: targetCh },
+                            { line: endLine, ch: endCh },
+                            { scroll: false }
+                        );
+                    } catch (e) {
+                        // ignore
+                    }
+                    try {
+                        mainCm.scrollTo(view.scrollLeft | 0, view.scrollTop | 0);
+                    } catch (e2) {
+                        // ignore
+                    }
+                    if (findInput && typeof view.findValue === "string" && findInput.value !== view.findValue) {
+                        findInput.value = view.findValue;
+                    }
+                    if (findBar && view.findOpen) findBar.removeAttribute("hidden");
+                    if (typeof view.findIndex === "number" && view.findIndex >= 0) {
+                        findNavMatchIndex = view.findIndex;
+                        updateFindCount();
+                    }
+                }
+
                 function applyActiveSheetToEditor() {
                     var sheet = getActiveSheet();
                     var content = sheet ? normalizeEditorText(sheet.content) : "";
                     if (sheet) sheet.content = content;
+                    cmViewRestoring = true;
                     mainCm.setValue(content);
                     mainInput.value = "";
                     applyEditorPerformanceMode(content);
+                    // setValue 会把滚动清零；若该 sheet 有保存的视图状态则恢复
+                    if (sheet && sheet.view) {
+                        var v = sheet.view;
+                        mainCm.refresh();
+                        restoreCmView(v);
+                        requestAnimationFrame(function () {
+                            if (mainCm) restoreCmView(v);
+                        });
+                        setTimeout(function () {
+                            if (mainCm) restoreCmView(v);
+                            cmViewRestoring = false;
+                        }, 60);
+                    } else {
+                        setTimeout(function () {
+                            cmViewRestoring = false;
+                        }, 60);
+                    }
+                }
+
+                /** 收集当前内存里各 sheet 的视图状态，按 id 索引（重建 sheet 数组时用于保留）。 */
+                function snapshotSheetViews() {
+                    var map = {};
+                    for (var i = 0; i < jsonSheets.length; i++) {
+                        var s = jsonSheets[i];
+                        if (s && s.id && s.view) map[s.id] = s.view;
+                    }
+                    return map;
                 }
 
                 function initSheetsFromStorage() {
                     var legacy = normalizeEditorText(mainInput.value);
+                    var keepViews = snapshotSheetViews();
                     if (sheetsMetaInput.value) {
                         try {
                             var state = JSON.parse(sheetsMetaInput.value);
                             if (state && state.sheets && state.sheets.length) {
                                 jsonSheets = state.sheets.map(function (s) {
+                                    var id = s.id || genSheetId();
                                     return {
-                                        id: s.id || genSheetId(),
+                                        id: id,
                                         name: String(s.name || "Sheet1"),
                                         content: normalizeEditorText(s.content),
+                                        view: keepViews[id] || null,
                                     };
                                 });
                                 activeSheetId = state.activeId;
@@ -1061,13 +1153,15 @@
                             /* 损坏的存储，回退为单表 */
                         }
                     }
-                    jsonSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy }];
+                    jsonSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy, view: null }];
                     activeSheetId = jsonSheets[0].id;
                 }
 
                 function switchSheet(sheetId) {
                     if (!sheetId || sheetId === activeSheetId) return;
                     syncMainInputFromCm();
+                    // 先存下当前 sheet 的滚动/光标，切换后新 sheet 才能恢复自己的位置
+                    saveActiveSheetView();
                     activeSheetId = sheetId;
                     applyActiveSheetToEditor();
                     resetFindNavigation();
@@ -1083,6 +1177,7 @@
                         id: genSheetId(),
                         name: nextSheetName(),
                         content: "",
+                        view: null,
                     };
                     jsonSheets.push(sheet);
                     switchSheet(sheet.id);
@@ -1334,10 +1429,16 @@
                 }
                 // 从文本对比返回本工具时，去掉 Ctrl 多选高亮
                 document.addEventListener("visibilitychange", function () {
-                    if (document.visibilityState === "visible") clearCompareSelect();
+                    if (document.visibilityState === "visible") {
+                        clearCompareSelect();
+                        restoreEditorViewAfterResume();
+                    } else {
+                        saveActiveSheetView();
+                    }
                 });
                 window.addEventListener("pageshow", function () {
                     clearCompareSelect();
+                    restoreEditorViewAfterResume();
                 });
                 sheetAddBtn.addEventListener("click", addSheet);
 
@@ -1358,6 +1459,34 @@
                     var h = stack ? stack.clientHeight : 300;
                     mainCm.setSize(null, Math.max(120, h));
                     mainCm.refresh();
+                }
+
+                /**
+                 * 从其他工具切回本页时（iframe 被 visibility 隐藏过），
+                 * CodeMirror 内部滚动容器会被浏览器重置为 0，
+                 * 这里按当前 sheet 保存的视图重新定位并重新高亮查找结果。
+                 */
+                function restoreEditorViewAfterResume() {
+                    if (!mainCm) return;
+                    var sheet = getActiveSheet();
+                    if (!sheet || !sheet.view) return;
+                    var v = sheet.view;
+                    cmViewRestoring = true;
+                    function apply() {
+                        if (!mainCm) return;
+                        try { mainCm.refresh(); } catch (e) {}
+                        restoreCmView(v);
+                    }
+                    apply();
+                    requestAnimationFrame(apply);
+                    setTimeout(apply, 60);
+                    setTimeout(function () {
+                        apply();
+                        cmViewRestoring = false;
+                        if (findBar && !findBar.hidden && findInput && findInput.value) {
+                            refreshFindHighlights();
+                        }
+                    }, 180);
                 }
 
                 if (typeof ResizeObserver !== "undefined") {
@@ -1390,6 +1519,20 @@
 
                 window.addEventListener("load", restoreSheetsFromPersist);
                 document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
+
+                // 父页把本 iframe 从隐藏切回可见时，浏览器会重置内部滚动位置，
+                // 这里恢复当前 sheet 的滚动/光标/查找定位。
+                window.addEventListener("message", function (event) {
+                    var data = event && event.data;
+                    if (!data) return;
+                    if (data.type === "tool-nav:frame-hidden") {
+                        saveActiveSheetView();
+                        return;
+                    }
+                    if (data.type === "tool-nav:frame-shown") {
+                        restoreEditorViewAfterResume();
+                    }
+                });
 
                 var _sheetPersistTimer = null;
                 function schedulePersistSheets() {
@@ -1435,9 +1578,28 @@
                 });
                 mainCm.on("cursorActivity", function () {
                     if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                    if (!cmViewRestoring) saveActiveSheetView();
                 });
 
+                // 滚动位置跟随当前 sheet 记录（节流）；恢复视图期间不回写，避免覆盖已保存值
+                var cmViewRestoring = false;
+                (function bindCmScrollViewMemory() {
+                    var _scrollViewTimer = null;
+                    mainCm.on("scroll", function () {
+                        if (cmViewRestoring) return;
+                        if (_scrollViewTimer) return;
+                        _scrollViewTimer = setTimeout(function () {
+                            _scrollViewTimer = null;
+                            if (cmViewRestoring) return;
+                            saveActiveSheetView();
+                        }, 120);
+                    });
+                })();
+
                 mainInput.addEventListener("input", function () {
+                    // mainInput 仅作为父页 localStorage 的载体；内容以 sheets 状态为准。
+                    // 父页持久化脚本恢复空值时若无条件回写会清空编辑器并冲掉滚动位置。
+                    if (!mainInput.value && mainCm.getValue()) return;
                     if (mainCm.getValue() !== mainInput.value) {
                         mainCm.setValue(mainInput.value);
                     }
