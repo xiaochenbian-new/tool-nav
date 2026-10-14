@@ -1003,11 +1003,113 @@
                     };
                 }
 
+                /** 是否为"空视图"：滚动在顶部、光标在 0 行 0 列、没有查找定位。 */
+                function isEmptyView(v) {
+                    if (!v) return true;
+                    return (
+                        !(v.scrollTop > 0) &&
+                        !(v.scrollLeft > 0) &&
+                        !(v.cursorLine > 0 || v.cursorCh > 0) &&
+                        !(typeof v.findIndex === "number" && v.findIndex >= 0)
+                    );
+                }
+
+                /**
+                 * 合并新旧视图：逐字段取"更有信息量"的一方。
+                 * iframe 被 LRU 驱逐重建后，滚动可能已恢复但光标/查找序号还没落位，
+                 * 若整体覆盖会把这两项写成默认值。
+                 */
+                function mergeView(oldV, newV) {
+                    if (!newV) return oldV || null;
+                    if (!oldV || isEmptyView(oldV)) return newV;
+                    if (isEmptyView(newV)) return oldV;
+                    return {
+                        scrollTop: newV.scrollTop > 0 ? newV.scrollTop : oldV.scrollTop,
+                        scrollLeft: newV.scrollLeft > 0 ? newV.scrollLeft : oldV.scrollLeft,
+                        cursorLine: newV.cursorLine > 0 ? newV.cursorLine : oldV.cursorLine,
+                        cursorCh: newV.cursorCh > 0 ? newV.cursorCh : oldV.cursorCh,
+                        cursorEndLine: newV.cursorEndLine > 0 ? newV.cursorEndLine : oldV.cursorEndLine,
+                        cursorEndCh: newV.cursorEndCh > 0 ? newV.cursorEndCh : oldV.cursorEndCh,
+                        findIndex:
+                            typeof newV.findIndex === "number" && newV.findIndex >= 0
+                                ? newV.findIndex
+                                : oldV.findIndex,
+                        findValue: newV.findValue || oldV.findValue || "",
+                        findOpen: !!(newV.findOpen || oldV.findOpen),
+                    };
+                }
+
+                /**
+                 * 视图状态除内存外写入 sessionStorage。
+                 * 主页对工具 iframe 做 LRU 缓存（只留当前 + 上一个），连续经过 2 个以上
+                 * 其他工具后本页 iframe 会被销毁重建；重建后内存里的 sheet.view 全为 null。
+                 * sessionStorage 与主页同源、随标签页存活，重建后仍可读回。
+                 */
+                var SHEET_VIEWS_SESSION_KEY = "cl-tool-nav:text-sheet-views";
+
+                function persistSheetViewsToSession() {
+                    try {
+                        var map = readSheetViewsFromSession();
+                        for (var i = 0; i < docSheets.length; i++) {
+                            var s = docSheets[i];
+                            if (!s || !s.id || !s.view) continue;
+                            map[s.id] = mergeView(map[s.id], s.view);
+                            s.view = map[s.id];
+                        }
+                        sessionStorage.setItem(SHEET_VIEWS_SESSION_KEY, JSON.stringify(map));
+                    } catch (e) {
+                        // 隐私模式/配额异常时忽略
+                    }
+                }
+
+                function readSheetViewsFromSession() {
+                    try {
+                        var raw = sessionStorage.getItem(SHEET_VIEWS_SESSION_KEY);
+                        if (!raw) return {};
+                        var map = JSON.parse(raw);
+                        return map && typeof map === "object" ? map : {};
+                    } catch (e) {
+                        return {};
+                    }
+                }
+
                 function saveActiveSheetView() {
                     var sheet = getActiveSheet();
                     if (!sheet || !editor) return;
                     var v = captureCmView();
-                    if (v) sheet.view = v;
+                    sheet.view = mergeView(sheet.view, v);
+                    persistSheetViewsToSession();
+                    reportViewToParent();
+                }
+
+                /** 把当前视图上报给父页保管（iframe 被驱逐重建后的最后一道保险）。 */
+                function reportViewToParent() {
+                    if (window.parent === window) return;
+                    var sheet = getActiveSheet();
+                    if (!sheet) return;
+                    try {
+                        window.parent.postMessage(
+                            {
+                                type: "tool-nav:view-state",
+                                toolId: getSelfToolId(),
+                                sheetId: sheet.id,
+                                view: sheet.view || null,
+                            },
+                            "*"
+                        );
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+
+                /** 从自身 URL 的 ?_toolNavId= 参数取工具 id（父页注入的）。 */
+                function getSelfToolId() {
+                    try {
+                        var m = /[?&]_toolNavId=([^&]+)/.exec(location.search);
+                        return m ? decodeURIComponent(m[1]) : "";
+                    } catch (e) {
+                        return "";
+                    }
                 }
 
                 function restoreCmView(view) {
@@ -1071,10 +1173,11 @@
 
                 /** 收集当前内存里各 sheet 的视图状态，按 id 索引（重建 sheet 数组时用于保留）。 */
                 function snapshotSheetViews() {
-                    var map = {};
+                    // 先取 sessionStorage 里持久化的（iframe 被销毁重建后内存已空，靠它兜底）
+                    var map = readSheetViewsFromSession();
                     for (var i = 0; i < docSheets.length; i++) {
                         var s = docSheets[i];
-                        if (s && s.id && s.view) map[s.id] = s.view;
+                        if (s && s.id && s.view) map[s.id] = mergeView(map[s.id], s.view);
                     }
                     return map;
                 }
@@ -1082,18 +1185,27 @@
                 function initSheetsFromStorage() {
                     var legacy = persistTa.value ? String(persistTa.value) : "";
                     var keepViews = snapshotSheetViews();
+                    // 按 id 找不到时退化为按序号：iframe 重建后 id 可能被重新生成。
+                    var keepViewList = Object.keys(keepViews).map(function (k) {
+                        return keepViews[k];
+                    });
+                    function pickView(id, index) {
+                        if (keepViews[id]) return keepViews[id];
+                        if (keepViewList.length === 1) return keepViewList[0];
+                        return keepViewList[index] || null;
+                    }
                     if (sheetsMetaInput.value) {
                         try {
                             var state = JSON.parse(sheetsMetaInput.value);
                             if (state && state.sheets && state.sheets.length) {
-                                docSheets = state.sheets.map(function (s) {
+                                docSheets = state.sheets.map(function (s, idx) {
                                     var id = s.id || genSheetId();
                                     return {
                                         id: id,
                                         name: String(s.name || "Sheet1"),
                                         content: s.content == null ? "" : String(s.content),
-                                        // 视图状态仅存内存：从旧数组按 id 迁移，避免被持久化数据覆盖为 null
-                                        view: keepViews[id] || null,
+                                        // 视图状态优先按 id 迁移，找不到再按序号兜底
+                                        view: pickView(id, idx),
                                     };
                                 });
                                 activeSheetId = state.activeId;
@@ -1104,7 +1216,7 @@
                             /* 损坏的存储，回退为单表 */
                         }
                     }
-                    docSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy, view: null }];
+                    docSheets = [{ id: genSheetId(), name: "Sheet1", content: legacy, view: keepViewList[0] || null }];
                     activeSheetId = docSheets[0].id;
                 }
 
@@ -1415,6 +1527,24 @@
                 window.addEventListener("load", restoreSheetsFromPersist);
                 document.addEventListener("tool-nav:form-restored", restoreSheetsFromPersist);
 
+                /**
+                 * 兜底再恢复一次视图：同步脚本全部执行完之后再对齐一次，
+                 * 避免靠后声明的状态变量把先前恢复好的值重置。
+                 */
+                function reassertActiveSheetView() {
+                    var sheet = getActiveSheet();
+                    if (!sheet || !sheet.view || !editor) return;
+                    cmViewRestoring = true;
+                    restoreCmView(sheet.view);
+                    setTimeout(function () {
+                        if (editor) restoreCmView(sheet.view);
+                        cmViewRestoring = false;
+                        if (findBar && !findBar.hidden && findInput && findInput.value) refreshFindHighlights();
+                    }, 80);
+                }
+                setTimeout(reassertActiveSheetView, 0);
+                setTimeout(reassertActiveSheetView, 300);
+
                 // 恢复视图期间为 true：禁止 scroll / cursorActivity 把中间态回写到 sheet.view，
                 // 否则 setValue 后的滚动归零会覆盖掉刚恢复的位置。
                 var cmViewRestoring = false;
@@ -1430,16 +1560,32 @@
                     }
                     if (!editor) return;
                     cmViewRestoring = true;
-                    editor.refresh();
-                    restoreCmView(sheet.view);
-                    requestAnimationFrame(function () {
-                        if (editor) restoreCmView(sheet.view);
+                    var v = sheet.view;
+                    var attempts = 0;
+                    function apply() {
+                        if (!editor) return;
+                        try { editor.refresh(); } catch (e) {}
+                        restoreCmView(v);
+                    }
+                    // 首次立即尝试；随后多轮重试，覆盖 iframe 刚显示时容器尺寸
+                    // 尚未稳定（clientHeight 偏小导致 scrollTo 被裁剪）的情况。
+                    apply();
+                    requestAnimationFrame(apply);
+                    var timers = [60, 180, 360, 600];
+                    timers.forEach(function (ms) {
+                        setTimeout(function () {
+                            if (!editor) return;
+                            attempts++;
+                            apply();
+                            if (attempts >= timers.length) {
+                                cmViewRestoring = false;
+                                cmSuspended = false;
+                                if (findBar && !findBar.hidden && findInput && findInput.value) {
+                                    refreshFindHighlights();
+                                }
+                            }
+                        }, ms);
                     });
-                    setTimeout(function () {
-                        if (editor) restoreCmView(sheet.view);
-                        cmViewRestoring = false;
-                        cmSuspended = false;
-                    }, 60);
                 }
 
                 editor.on("change", function () {
@@ -2639,6 +2785,12 @@
                         return;
                     }
                     if (d.type === "tool-nav:frame-shown") {
+                        // 父页会把它保管的 view 一并回传（iframe 被驱逐重建后尤其重要）
+                        if (d.view && !isEmptyView(d.view)) {
+                            var s = getActiveSheet();
+                            if (s) s.view = mergeView(s.view, d.view);
+                        }
+                        cmSuspended = false;
                         restoreEditorViewAfterResume();
                         return;
                     }

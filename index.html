@@ -3160,7 +3160,7 @@
                     // iframe 由 CSS visibility 控制显隐；被隐藏期间浏览器可能重置内部滚动位置。
                     // 重新激活时通知子页（工具页）恢复各自的视图状态（如 Json 工具的滚动/光标）。
                     if (willBeActive && !wasActive) {
-                        notifyFrameShown(frame);
+                        notifyFrameShown(frame, id);
                     }
                 });
             }
@@ -3175,19 +3175,55 @@
                 }
             }
 
+            /**
+             * 各工具页最后上报的视图状态（滚动/光标/查找定位）。
+             * 工具 iframe 采用 LRU 缓存（只留当前 + 上一个），连切两个以上工具后
+             * 目标页会被销毁重建；重建后页面内内存态丢失，光靠子页 sessionStorage
+             * 在初始化时序上不够稳。父页作为"不会丢"的一方代为保管，
+             * 重建后通过 tool-nav:frame-shown 把 view 一并回传。
+             */
+            var TOOL_VIEW_CACHE = {};
+            try {
+                var cachedViews = sessionStorage.getItem("tool-nav:view-cache");
+                if (cachedViews) TOOL_VIEW_CACHE = JSON.parse(cachedViews) || {};
+            } catch (e) {
+                TOOL_VIEW_CACHE = {};
+            }
+            function rememberToolViewCache() {
+                try {
+                    sessionStorage.setItem("tool-nav:view-cache", JSON.stringify(TOOL_VIEW_CACHE));
+                } catch (e) {
+                    // ignore
+                }
+            }
+            // 监听子页上报的视图状态
+            window.addEventListener("message", function (ev) {
+                var d = ev && ev.data;
+                if (!d || d.type !== "tool-nav:view-state") return;
+                if (!d.toolId) return;
+                TOOL_VIEW_CACHE[d.toolId] = d.view || null;
+                rememberToolViewCache();
+            });
+
             /** 通知刚从隐藏变为可见的工具 iframe：可以恢复自己的视图状态了。 */
-            function notifyFrameShown(frame) {
+            function notifyFrameShown(frame, toolId) {
                 if (!frame || !frame.contentWindow) return;
+                var cached = (toolId && TOOL_VIEW_CACHE[toolId]) || null;
                 function send() {
                     try {
-                        frame.contentWindow.postMessage({ type: "tool-nav:frame-shown" }, "*");
+                        frame.contentWindow.postMessage(
+                            { type: "tool-nav:frame-shown", view: cached },
+                            "*"
+                        );
                     } catch (e) {
                         // ignore
                     }
                 }
                 send();
-                // iframe 内部布局稳定后再补发一次，避免 scrollTo 早于容器尺寸确定
+                // iframe 内部布局稳定后再补发一次，避免 scrollTo 早于容器尺寸确定；
+                // 对被 LRU 驱逐后重建的页面，额外再补发，覆盖"较慢的首次渲染"。
                 setTimeout(send, 150);
+                setTimeout(send, 600);
             }
 
             /**
