@@ -122,6 +122,76 @@ function assetKeysForRequest(url, scopeUrl) {
     return keys;
 }
 
+/**
+ * 与工具页强耦合的资源必须「网络优先」。
+ *
+ * 原因：工具页的 <script src="libs/xxx.js"> 不带版本号，而离线库只按路径存一份。
+ * 若某台机器上离线库是旧版本、HTML 是新的（或反过来），SW 无条件返回本地旧副本，
+ * 就会出现「新页面调旧库 → xxx is not a function」的 JS 报错。
+ * 这些路径在线时一律走网络（有 HTTP 缓存，304 很便宜），失败/超时才回退离线库，
+ * 所以离线可用性不受影响。
+ */
+function prefersNetwork(url) {
+    var decoded = url.pathname;
+    try {
+        decoded = decodeURIComponent(decoded);
+    } catch (e) {}
+    if (/\.html?$/i.test(decoded)) return true;              // 所有 HTML
+    if (/\/pages\/libs\//i.test(decoded)) return true;       // 工具页本地脚本（tool-find / tool-copy …）
+    if (/(?:^|\/)asset-manifest\.json$/i.test(decoded)) return true;
+    // Cloudflare pretty URL：/pages/中文工具（无后缀）
+    var trimmed = decoded.replace(/\/+$/, "");
+    var leaf = trimmed.split("/").pop() || "";
+    if (/\/pages\//i.test(decoded) && leaf && !/\.[a-z0-9]+$/i.test(leaf)) return true;
+    return false;
+}
+
+/** 网络优先；弱网挂起超过 NET_TIMEOUT_MS 或请求失败时回退离线库。 */
+var NET_TIMEOUT_MS = 3000;
+
+function respondFromLocal(keys) {
+    return idbGetFirst(keys)
+        .then(function (row) {
+            if (!row || !row.blob) return null;
+            return localResponse(row);
+        })
+        .catch(function () {
+            return null;
+        });
+}
+
+function networkThenLocal(request, keys) {
+    return new Promise(function (resolve) {
+        var settled = false;
+        var netPromise = fetch(request);
+        var timer = setTimeout(function () {
+            if (settled) return;
+            settled = true;
+            // 弱网挂起：先用离线副本；本地也没有就继续等这次网络请求自己回来
+            respondFromLocal(keys).then(function (local) {
+                resolve(local || netPromise);
+            });
+        }, NET_TIMEOUT_MS);
+
+        netPromise.then(
+            function (res) {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve(res);
+            },
+            function () {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                respondFromLocal(keys).then(function (local) {
+                    resolve(local || netPromise);
+                });
+            }
+        );
+    });
+}
+
 function isStaticAsset(pathname) {
     var decoded = pathname;
     try {
@@ -255,6 +325,16 @@ self.addEventListener("fetch", function (event) {
 
     var keys = assetKeysForRequest(request.url, self.registration.scope);
     if (!keys.length) return;
+
+    // 工具页 HTML 与 pages/libs/* 与版本强耦合 → 网络优先；其余（vendor/图片/字体）仍离线优先
+    if (prefersNetwork(url)) {
+        event.respondWith(
+            networkThenLocal(request, keys).catch(function () {
+                return fetch(request);
+            })
+        );
+        return;
+    }
 
     event.respondWith(
         idbGetFirst(keys)
