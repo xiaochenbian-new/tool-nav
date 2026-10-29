@@ -3450,10 +3450,11 @@
                     hdrs["Content-Type"] = bodyPack.contentType;
                 }
 
-                function finish(status, data) {
+                function finish(status, data, pack) {
                     if (status < 200 || status >= 300) {
-                        var err = new Error("HTTP " + status + ": " + (typeof data === "string" ? data : JSON.stringify(data)));
+                        var err = new Error(buildHttpErrorMessage(status, data, pack));
                         err.response = data;
+                        err.httpStatus = status;
                         throw err;
                     }
                     return normalizeResponseBody(data);
@@ -3463,6 +3464,7 @@
                     return fetch(getProxyBase() + "/proxy", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
+                        cache: "no-store",
                         body: JSON.stringify({
                             url: url,
                             method: node.method,
@@ -3470,22 +3472,39 @@
                             body: bodyPack.body,
                             bodyEncoding: bodyPack.bodyEncoding
                         })
-                    }).then(function (res) { return res.json(); }).then(function (pack) {
-                        if (pack.error) throw new Error(pack.error);
-                        return finish(pack.status, pack.body);
+                    }).then(function (res) {
+                        return res.text().then(function (text) {
+                            var pack;
+                            try {
+                                pack = JSON.parse(text);
+                            } catch (e) {
+                                throw buildProxyBrokenError(res.status, text);
+                            }
+                            if (!pack || pack.error) {
+                                throw new Error(pack && pack.error ? pack.error : "服务端代理返回了空结果");
+                            }
+                            return finish(pack.status, pack.body, pack);
+                        });
                     }).catch(function (err) {
-                        if (/Failed to fetch|NetworkError/i.test(err.message)) {
-                            state.proxyAvailable = false;
-                            updateProxyStatusUI();
+                        if (err && err.proxyBroken) {
+                            markProxyUnavailable(err.proxyBrokenReason || "代理端点返回了非 JSON 内容");
+                        } else if (/Failed to fetch|NetworkError/i.test(err.message || "")) {
+                            markProxyUnavailable("网络错误，无法连接代理端点");
                         }
                         throw err;
                     });
                 }
 
                 function readFetchResponse(res) {
-                    var ct = res.headers.get("content-type") || "";
-                    var read = ct.indexOf("json") >= 0 ? res.json() : res.text();
-                    return read.then(function (data) { return finish(res.status, data); });
+                    return res.text().then(function (text) {
+                        var ct = res.headers.get("content-type") || "";
+                        var data = text;
+                        var trimmed = text.trim();
+                        if (/json/i.test(ct) || trimmed.charAt(0) === "{" || trimmed.charAt(0) === "[") {
+                            try { data = JSON.parse(trimmed); } catch (e) { /* 保持原始文本 */ }
+                        }
+                        return finish(res.status, data, { finalUrl: res.url, redirected: !!res.redirected });
+                    });
                 }
 
                 function viaDirect() {
@@ -3502,45 +3521,164 @@
                 return viaDirect();
             }
 
+            // 代理可用性靠真实探活（GET /proxy），不再「协议是 http(s) 就当能用」——
+            // GitHub Pages 这类纯静态托管没有 Pages Functions，那种判断会 100% 谎报就绪。
+            var PROXY_PROBE_TIMEOUT_MS = 6000;
+            var _proxyProbe = { done: false, ok: false, reason: "" };
+
+            function probeProxy() {
+                return new Promise(function (resolve) {
+                    var base = getProxyBase();
+                    if (!base) {
+                        resolve({ ok: false, reason: "当前页面不是 http/https 环境" });
+                        return;
+                    }
+                    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+                    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, PROXY_PROBE_TIMEOUT_MS) : 0;
+                    var done = false;
+                    function settle(result) {
+                        if (done) return;
+                        done = true;
+                        if (timer) clearTimeout(timer);
+                        resolve(result);
+                    }
+                    fetch(base + "/proxy", { method: "GET", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
+                        .then(function (res) {
+                            var ct = res.headers.get("content-type") || "";
+                            return res.text().then(function (text) {
+                                if (res.ok && ct.indexOf("json") >= 0) {
+                                    try {
+                                        var data = JSON.parse(text);
+                                        if (data && data.ok) {
+                                            settle({ ok: true, reason: "" });
+                                            return;
+                                        }
+                                    } catch (e) { /* 落到下面按不可用处理 */ }
+                                }
+                                settle({
+                                    ok: false,
+                                    reason: "GET /proxy 返回 HTTP " + res.status + (ct ? "（" + ct.split(";")[0] + "）" : "")
+                                });
+                            });
+                        })
+                        .catch(function (err) {
+                            var aborted = err && (err.name === "AbortError" || /abort/i.test(err.message || ""));
+                            settle({ ok: false, reason: aborted ? "探活超时" : "探活失败：" + ((err && err.message) || err) });
+                        });
+                });
+            }
+
+            function markProxyUnavailable(reason) {
+                _proxyProbe = { done: true, ok: false, reason: reason || "" };
+                state.proxyAvailable = false;
+                updateProxyStatusUI();
+            }
+
             function updateProxyStatusUI() {
                 var el = $("proxy-status");
                 var btn = $("proxy-enable-btn");
+                if (!el) return;
+                if (!getProxyBase()) {
+                    el.textContent = "代理未开启（本地文件模式）";
+                    el.className = "proxy-status warn";
+                    if (btn) btn.hidden = true;
+                    return;
+                }
+                if (!_proxyProbe.done) {
+                    el.textContent = "代理检测中…";
+                    el.className = "proxy-status warn";
+                    if (btn) btn.hidden = true;
+                    return;
+                }
                 if (state.proxyAvailable) {
                     el.textContent = "服务端代理已就绪";
                     el.className = "proxy-status ok";
                     if (btn) btn.hidden = true;
                     return;
                 }
+                el.textContent = "代理不可用（将直接请求）";
+                el.className = "proxy-status warn";
                 if (btn) {
                     btn.hidden = false;
                     btn.disabled = false;
                 }
-                if (!getProxyBase()) {
-                    el.textContent = "代理未开启";
-                    el.className = "proxy-status warn";
-                    return;
-                }
-                el.textContent = "代理未开启";
-                el.className = "proxy-status warn";
             }
 
             function initProxyStatus() {
-                state.proxyAvailable = !!getProxyBase();
+                _proxyProbe = { done: false, ok: false, reason: "" };
+                state.proxyAvailable = false;
                 updateProxyStatusUI();
+                probeProxy().then(function (r) {
+                    _proxyProbe = { done: true, ok: r.ok, reason: r.reason || "" };
+                    state.proxyAvailable = r.ok;
+                    updateProxyStatusUI();
+                });
             }
 
             function manualEnableProxy() {
                 var btn = $("proxy-enable-btn");
                 if (!getProxyBase()) {
-                    setStatus("请通过 npm run serve 访问后再开启代理。", true);
+                    setStatus("当前以本地文件方式打开，没有服务端代理。请用 npm run serve 起本地服务，或部署到 Cloudflare Pages 后访问。", true);
                     updateProxyStatusUI();
                     return;
                 }
                 if (btn) btn.disabled = true;
-                state.proxyAvailable = true;
+                _proxyProbe = { done: false, ok: false, reason: "" };
                 updateProxyStatusUI();
-                setStatus("已手动开启服务端代理。", false);
-                if (btn) btn.disabled = false;
+                setStatus("正在重新检测服务端代理…", false);
+                probeProxy().then(function (r) {
+                    _proxyProbe = { done: true, ok: r.ok, reason: r.reason || "" };
+                    state.proxyAvailable = r.ok;
+                    if (btn) btn.disabled = false;
+                    updateProxyStatusUI();
+                    if (r.ok) {
+                        setStatus("服务端代理已就绪。", false);
+                    } else {
+                        setStatus("代理仍不可用：" + (r.reason || "未知原因") + "。GitHub Pages 没有服务端函数，只有 Cloudflare Pages / 本地 npm run serve 才提供代理。", true);
+                    }
+                });
+            }
+
+            /** 代理端点返回非 JSON（通常是 404 HTML 页）时，给出能看懂的诊断，而不是把引擎的 SyntaxError 抛给用户。 */
+            function buildProxyBrokenError(status, text) {
+                var snippet = String(text || "").replace(/\s+/g, " ").trim().slice(0, 160);
+                var looksHtml = snippet.charAt(0) === "<";
+                var msg = "服务端代理不可用：/proxy 返回 HTTP " + status + "，内容不是 JSON。";
+                if (looksHtml) {
+                    msg += "返回的是 HTML 页面 —— 当前站点没有部署服务端代理（GitHub Pages 无 Pages Functions），或该路径被静态 404 页接管。";
+                }
+                if (snippet) msg += "\n响应片段：" + snippet;
+                var err = new Error(msg);
+                err.proxyBroken = true;
+                err.proxyBrokenReason = "GET /proxy 返回 HTTP " + status + (looksHtml ? "（HTML 页面）" : "（非 JSON）");
+                err.response = snippet;
+                return err;
+            }
+
+            /** HTTP 非 2xx 时组装可读错误：区分「HTML 页面」与真实业务错误，并带上重定向后的最终地址。 */
+            function buildHttpErrorMessage(status, data, pack) {
+                var detail = typeof data === "string" ? data : (data == null ? "" : JSON.stringify(data));
+                var trimmed = String(detail || "").trim();
+                var looksHtml = trimmed.charAt(0) === "<";
+                var msg = "HTTP " + status;
+                if (looksHtml) {
+                    msg += "（服务端返回 HTML 页面而非 JSON —— 常见为登录跳转、404、网关/WAF 拦截）";
+                } else if (trimmed) {
+                    msg += "：" + trimmed.slice(0, 200);
+                }
+                if (pack && pack.finalUrl) {
+                    msg += (pack.redirected ? "\n最终地址（发生过重定向）：" : "\n目标地址：") + pack.finalUrl;
+                }
+                if (pack && pack.headers) {
+                    var loc = pack.headers.location || pack.headers.Location;
+                    if (loc && (status === 301 || status === 302 || status === 303 || status === 307 || status === 308)) {
+                        msg += "\n该地址被重定向到：" + loc + "（多半是未登录 / 会话失效，或接口地址已迁移）";
+                    }
+                }
+                if (looksHtml && trimmed.length > 400) {
+                    msg += "\n响应片段：" + trimmed.slice(0, 400) + " …（共 " + trimmed.length + " 字符）";
+                }
+                return msg;
             }
 
             function formatResponseData(data) {
@@ -3649,8 +3787,23 @@
                 setResponseDisplay(node.runResponse || "暂无响应数据");
             }
 
+            /** 判断响应体是不是 HTML 文档（登录页/网关错误页/WAF 拦截页），用来给「成功但拿到 HTML」加提示。 */
+            function isHtmlDocument(data) {
+                if (typeof data !== "string") return false;
+                var t = data.trim();
+                if (t.charAt(0) !== "<") return false;
+                return /^<\s*(!doctype|html|head|body|\?xml)/i.test(t) || /<html[\s>]/i.test(t.slice(0, 800));
+            }
+
             function saveNodeResponse(node, data) {
                 node.runResponse = formatResponseData(data);
+                if (isHtmlDocument(data)) {
+                    node.runMsg = "HTTP 成功，但返回 HTML 页面";
+                    node.runResponse =
+                        "注意：接口返回的是 HTML 页面，不是 JSON。若你期望拿到 JSON 数据，通常是被重定向到了登录页、" +
+                        "命中网关/WAF 拦截页，或接口地址写错了。下面是原始 HTML。\n\n" +
+                        node.runResponse;
+                }
                 if (state.selectedId === node.id) showResponseForNode(node);
             }
 
@@ -3686,12 +3839,15 @@
             function handleTestError(node, err) {
                 node.runState = "error";
                 node.runMsg = err.message;
+                // 错误主体用 message（已包含状态码/来源诊断）；原始响应只作附加信息，
+                // 否则像 "Unexpected token '<'" 这种底层报错会把真正原因挤掉。
                 var errText = err.message;
-                if (err.response != null) {
-                    errText = formatResponseData(err.response) || errText;
+                var raw = err.response == null ? "" : formatResponseData(err.response);
+                if (raw && raw !== err.message) {
+                    errText += "\n\n—— 原始响应 ——\n" + raw;
                 }
                 if (/Failed to fetch|NetworkError|CORS/i.test(err.message)) {
-                    errText += "\n\n提示：跨域被浏览器拦截。请使用 npm run serve 部署并通过该地址访问本页面。";
+                    errText += "\n\n提示：跨域被浏览器拦截。请通过 Cloudflare Pages 域名或本地 npm run serve 访问本页面，让请求走服务端代理。";
                 }
                 node.runResponse = errText;
                 renderCanvas();

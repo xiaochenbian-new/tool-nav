@@ -4,7 +4,8 @@
     "/*.html",
     "/pages/*.html",
     "/photo-background-change/*.html",
-    "/photo-background-change/*/*.html"
+    "/photo-background-change/*/*.html",
+    "/proxy"
   ],
   "exclude": ["/vendor/*"]
 }

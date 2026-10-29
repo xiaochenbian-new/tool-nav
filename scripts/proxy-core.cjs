@@ -102,6 +102,13 @@ function handleProxyApi(req, res, port) {
         res.end(JSON.stringify({ ok: true, port: port }));
         return true;
     }
+    // 与 Cloudflare Pages 的 functions/proxy.js 对齐：前端用 GET /proxy 探活，
+    // 只有真的返回 {ok:true} 才认为代理可用（否则会误报「服务端代理已就绪」）。
+    if (req.url === "/proxy" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ ok: true, service: "tool-nav-proxy", maxResponseKb: 4096 }));
+        return true;
+    }
     if (req.url === "/proxy" && req.method === "POST") {
         readBody(req).then(function (text) {
             var payload = JSON.parse(text || "{}");

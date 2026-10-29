@@ -24,3 +24,7 @@
 
 /sw.js
   Cache-Control: no-cache
+
+# 服务端代理（Pages Function）—— 结果不可缓存
+/proxy
+  Cache-Control: no-store
