@@ -2268,22 +2268,25 @@
                 }
             }
 
-            function mapSqlOutsideStringLiterals(sql, fn) {
-                var result = "";
+            /** 收集 '...' / "..." 字符串字面量的区间（含两端的引号），用于避免误改字符串内容。 */
+            function collectStringLiteralRanges(sql) {
+                var text = String(sql || "");
+                var ranges = [];
                 var i = 0;
-                while (i < sql.length) {
-                    if (sql.charAt(i) !== "'") {
-                        var start = i;
-                        while (i < sql.length && sql.charAt(i) !== "'") i++;
-                        result += fn(sql.slice(start, i));
+                var n = text.length;
+                while (i < n) {
+                    var ch = text.charAt(i);
+                    if (ch !== "'" && ch !== '"') {
+                        i++;
                         continue;
                     }
-                    var strStart = i;
+                    var quote = ch;
+                    var start = i;
                     i++;
-                    while (i < sql.length) {
-                        var c = sql.charAt(i);
-                        if (c === "'") {
-                            if (i + 1 < sql.length && sql.charAt(i + 1) === "'") {
+                    while (i < n) {
+                        var c = text.charAt(i);
+                        if (c === quote) {
+                            if (i + 1 < n && text.charAt(i + 1) === quote) {
                                 i += 2;
                                 continue;
                             }
@@ -2292,49 +2295,45 @@
                         }
                         i++;
                     }
-                    result += sql.slice(strStart, i);
+                    ranges.push([start, i]);
                 }
-                return result;
+                return ranges;
             }
 
-            function expandNumericEqualityChunk(chunk) {
-                var s = chunk;
-                function pairSq(col, num) {
-                    if (num.length > 1 && num.charAt(0) === "0") {
-                        return col + " = '" + num + "'";
-                    }
-                    return "(" + col + " = '" + num + "' OR " + col + " = " + num + ")";
+            /** 偏移是否落在某个字面量内部（正好在起始引号上不算，那是合法的 token 开头）。 */
+            function isInsideStringLiteral(ranges, pos) {
+                for (var i = 0; i < ranges.length; i++) {
+                    if (pos > ranges[i][0] && pos < ranges[i][1]) return true;
                 }
-                function pairDq(col, num) {
-                    if (num.length > 1 && num.charAt(0) === "0") {
-                        return col + " = \"" + num + "\"";
-                    }
-                    return "(" + col + " = \"" + num + "\" OR " + col + " = " + num + ")";
-                }
-                s = s.replace(/(\[[^\]]+\])\s*=\s*'(\d+)'/g, function (_, col, num) {
-                    return pairSq(col, num);
-                });
-                s = s.replace(/'(\d+)'\s*=\s*(\[[^\]]+\])/g, function (_, num, col) {
-                    if (num.length > 1 && num.charAt(0) === "0") {
-                        return "'" + num + "' = " + col;
-                    }
-                    return "(" + col + " = '" + num + "' OR " + col + " = " + num + ")";
-                });
-                s = s.replace(/(\[[^\]]+\])\s*=\s*"(\d+)"/g, function (_, col, num) {
-                    return pairDq(col, num);
-                });
-                s = s.replace(/"(\d+)"\s*=\s*(\[[^\]]+\])/g, function (_, num, col) {
-                    if (num.length > 1 && num.charAt(0) === "0") {
-                        return "\"" + num + "\" = " + col;
-                    }
-                    return "(" + col + " = \"" + num + "\" OR " + col + " = " + num + ")";
-                });
-                return s;
+                return false;
             }
 
-            /** Excel 数字列与带引号的数字比较时，AlaSQL 类型不一致会查不到行，这里自动展开为字符串或数字两种相等。 */
+            /**
+             * Excel 数字列与带引号的数字比较时，AlaSQL 类型不一致会查不到行，
+             * 这里把 `[列] = '150000'` 自动展开成 `([列] = '150000' OR [列] = 150000)`。
+             * 前导 0 的编号（如 '0150000'）保持字符串比较，避免被当数字抹掉前导 0。
+             */
             function expandNumericEqualityInSql(sql) {
-                return mapSqlOutsideStringLiterals(String(sql || ""), expandNumericEqualityChunk);
+                var text = String(sql || "");
+                var rules = [
+                    { re: /(\[[^\]]+\])\s*=\s*(['"])(\d+)\2/g, reversed: false },
+                    { re: /(['"])(\d+)\1\s*=\s*(\[[^\]]+\])/g, reversed: true }
+                ];
+                rules.forEach(function (rule) {
+                    var ranges = collectStringLiteralRanges(text);
+                    text = text.replace(rule.re, function (match, g1, g2, g3, offset) {
+                        if (isInsideStringLiteral(ranges, offset)) return match;
+                        var col = rule.reversed ? g3 : g1;
+                        var quote = rule.reversed ? g1 : g2;
+                        var num = rule.reversed ? g2 : g3;
+                        var literal = quote + num + quote;
+                        if (num.length > 1 && num.charAt(0) === "0") {
+                            return col + " = " + literal;
+                        }
+                        return "(" + col + " = " + literal + " OR " + col + " = " + num + ")";
+                    });
+                });
+                return text;
             }
 
             function adjustSqlHistoryPopupPosition(panel, btnEl) {
@@ -3129,6 +3128,83 @@
                 return out;
             }
 
+            /**
+             * AlaSQL 只接受 [中文标识符] 形式：`SELECT id AS 编号` 会 Parse error。
+             * 这里把代码区里裸写的中文/非 ASCII 标识符统一加上 []，`AS 编号`、`FROM 表名` 直接可用；
+             * 字符串字面量、`[...]`、`"..."` 内的内容保持不变。
+             */
+            function quoteNonAsciiIdentifiers(sql) {
+                var text = String(sql || "");
+                var out = "";
+                var i = 0;
+                var n = text.length;
+                var state = "normal";
+                while (i < n) {
+                    var ch = text.charAt(i);
+                    if (state === "normal") {
+                        if (ch === "'") {
+                            state = "single";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            state = "double";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "[") {
+                            state = "bracket";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "`") {
+                            state = "backtick";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (isIdentifierChar(ch)) {
+                            var wordEnd = i;
+                            while (wordEnd < n && isIdentifierChar(text.charAt(wordEnd))) wordEnd++;
+                            var word = text.slice(i, wordEnd);
+                            var after = wordEnd;
+                            while (after < n && /\s/.test(text.charAt(after))) after++;
+                            var isFunctionCall = text.charAt(after) === "(";
+                            if (!isFunctionCall && /[^\x00-\x7F]/.test(word)) {
+                                out += "[" + word + "]";
+                            } else {
+                                out += word;
+                            }
+                            i = wordEnd;
+                            continue;
+                        }
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    if (state === "single" && ch === "'") {
+                        if (i + 1 < n && text.charAt(i + 1) === "'") {
+                            out += "''";
+                            i += 2;
+                            continue;
+                        }
+                        state = "normal";
+                    } else if (state === "double" && ch === '"') {
+                        state = "normal";
+                    } else if (state === "bracket" && ch === "]") {
+                        state = "normal";
+                    } else if (state === "backtick" && ch === "`") {
+                        state = "normal";
+                    }
+                    out += ch;
+                    i++;
+                }
+                return out;
+            }
+
             function autoQuoteOneIdentifier(sql, identifier) {
                 if (!identifier) return sql;
                 // 保留字列名需用户手写 [col]，避免把 SELECT/DISTINCT/FROM 等关键字包进 []
@@ -3204,15 +3280,628 @@
                 return out;
             }
 
+            /** CAST(x AS TYPE) 的类型名与 SELECT/FROM 等，不能当别名加括号。 */
+            var AS_ALIAS_KEEP = new Set([
+                "SELECT", "VALUES", "WITH", "TABLE", "UNION", "ALL",
+                "INT", "INTEGER", "CHAR", "VARCHAR", "TEXT", "DATE", "DATETIME", "TIMESTAMP",
+                "DECIMAL", "NUMERIC", "FLOAT", "DOUBLE", "REAL", "SIGNED", "UNSIGNED",
+                "BINARY", "BOOLEAN", "BLOB", "MONEY", "STRING", "JSON"
+            ]);
+
+            /**
+             * AlaSQL 的关键字表里包含 TOTAL / COUNT / SUM / VALUE / DESC 等词，
+             * 直接写 `SUM(x) AS total` 会 Parse error。这里把 AS 后面紧跟的保留字别名
+             * 自动加上 []，让 `AS total`、`AS count` 这类常见写法直接可用。
+             */
+            function quoteReservedAliases(sql) {
+                var text = String(sql || "");
+                var reserved = getSqlReservedWords();
+                var out = "";
+                var i = 0;
+                var n = text.length;
+                var state = "normal";
+                while (i < n) {
+                    var ch = text.charAt(i);
+                    if (state === "normal") {
+                        if (ch === "'") {
+                            state = "single";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            state = "double";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "[") {
+                            state = "bracket";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "`") {
+                            state = "backtick";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (/[A-Za-z_]/.test(ch)) {
+                            var wordEnd = i;
+                            while (wordEnd < n && /[A-Za-z0-9_$]/.test(text.charAt(wordEnd))) wordEnd++;
+                            var word = text.slice(i, wordEnd);
+                            out += word;
+                            i = wordEnd;
+                            if (word.toUpperCase() !== "AS") continue;
+                            var cursor = i;
+                            while (cursor < n && /\s/.test(text.charAt(cursor))) cursor++;
+                            out += text.slice(i, cursor);
+                            i = cursor;
+                            var nextChar = text.charAt(i);
+                            if (nextChar === "[" || nextChar === '"' || nextChar === "`" || nextChar === "'") {
+                                continue;
+                            }
+                            var aliasEnd = i;
+                            while (aliasEnd < n && /[A-Za-z0-9_$]/.test(text.charAt(aliasEnd))) aliasEnd++;
+                            var alias = text.slice(i, aliasEnd);
+                            if (!alias) continue;
+                            var aliasUpper = alias.toUpperCase();
+                            if (reserved.has(aliasUpper) && !AS_ALIAS_KEEP.has(aliasUpper)) {
+                                out += "[" + alias + "]";
+                                i = aliasEnd;
+                            }
+                            continue;
+                        }
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    if (state === "single" && ch === "'") {
+                        if (i + 1 < n && text.charAt(i + 1) === "'") {
+                            out += "''";
+                            i += 2;
+                            continue;
+                        }
+                        state = "normal";
+                    } else if (state === "double" && ch === '"') {
+                        state = "normal";
+                    } else if (state === "bracket" && ch === "]") {
+                        state = "normal";
+                    } else if (state === "backtick" && ch === "`") {
+                        state = "normal";
+                    }
+                    out += ch;
+                    i++;
+                }
+                return out;
+            }
+
+            /* ------------------------------------------------------------------
+             * MySQL 函数兼容层
+             * 底层引擎是 AlaSQL，不少 MySQL 常用函数它没有实现（报
+             * "alasql.fn.XXX is not a function"），还有几个名字被语法占用了
+             * （LEFT / RIGHT / REPEAT / DATEDIFF，直接写会 Parse error）。
+             * 这里补上实现：没有冲突的直接挂到 alasql.fn，冲突的改名后由
+             * transformMysqlSql 重写。
+             * ------------------------------------------------------------------ */
+
+            /** MySQL 函数名 → AlaSQL 可用名。仅 MySQL 模式下重写。 */
+            var MYSQL_FN_RENAME = {
+                IFNULL: "COALESCE",
+                LCASE: "LOWER",
+                UCASE: "UPPER",
+                CHAR_LENGTH: "LENGTH",
+                SUBSTRING: "SUBSTR",
+                LEFT: "MYSQL_LEFT",
+                RIGHT: "MYSQL_RIGHT",
+                REPEAT: "MYSQL_REPEAT",
+                DATEDIFF: "MYSQL_DATEDIFF"
+            };
+
+            var MYSQL_MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"];
+            var MYSQL_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            var MYSQL_WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var MYSQL_WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            function mysqlPadZero(num, width) {
+                var s = String(Math.abs(Math.trunc(Number(num) || 0)));
+                while (s.length < width) s = "0" + s;
+                return s;
+            }
+
+            function mysqlIsBlank(v) {
+                return v === null || v === undefined;
+            }
+
+            /** 把 Excel 单元格里的各种日期形态（Date / 字符串 / 时间戳）统一成 Date。 */
+            function mysqlToDate(v) {
+                if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+                if (mysqlIsBlank(v) || v === "") return null;
+                if (typeof v === "number") {
+                    if (!isFinite(v)) return null;
+                    /** Excel 序列号兜底：小于 10 万按天处理，大于等于 1e11 按毫秒 */
+                    if (v > 0 && v < 100000) {
+                        return new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+                    }
+                    return new Date(v >= 1e11 ? v : v * 1000);
+                }
+                var s = String(v).trim();
+                var m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.(\d{1,3}))?)?)?$/.exec(s);
+                if (m) {
+                    var ms = m[7] ? Number((m[7] + "00").slice(0, 3)) : 0;
+                    return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0), ms);
+                }
+                var d = new Date(s);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
+            function mysqlSubstringIndex(str, delim, count) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(delim) || mysqlIsBlank(count)) return null;
+                var s = String(str);
+                var d = String(delim);
+                var c = Number(count);
+                if (!isFinite(c)) return null;
+                c = Math.trunc(c);
+                if (!d || c === 0) return "";
+                if (c > 0) {
+                    var pos = 0;
+                    for (var i = 0; i < c; i++) {
+                        var idx = s.indexOf(d, pos);
+                        if (idx < 0) return s;
+                        if (i === c - 1) return s.slice(0, idx);
+                        pos = idx + d.length;
+                    }
+                    return s;
+                }
+                var need = -c;
+                var tail = s.length;
+                for (var j = 0; j < need; j++) {
+                    var hit = s.lastIndexOf(d, tail - d.length);
+                    if (hit < 0) return s;
+                    if (j === need - 1) return s.slice(hit + d.length);
+                    tail = hit;
+                }
+                return s;
+            }
+
+            function mysqlLocate(sub, str, start) {
+                if (mysqlIsBlank(sub) || mysqlIsBlank(str)) return null;
+                var needle = String(sub);
+                var hay = String(str);
+                var from = mysqlIsBlank(start) ? 1 : Math.max(1, Math.trunc(Number(start) || 1));
+                if (!needle) return from;
+                var at = hay.indexOf(needle, from - 1);
+                return at < 0 ? 0 : at + 1;
+            }
+
+            function mysqlInstr(str, sub) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(sub)) return null;
+                var at = String(str).indexOf(String(sub));
+                return at < 0 ? 0 : at + 1;
+            }
+
+            function mysqlPad(str, len, pad, fromRight) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(len)) return null;
+                var s = String(str);
+                var n = Number(len);
+                if (!isFinite(n) || n < 0) return null;
+                n = Math.trunc(n);
+                if (s.length >= n) return s.slice(0, n);
+                var filler = String(mysqlIsBlank(pad) ? " " : pad);
+                if (!filler) return null;
+                var need = n - s.length;
+                var fill = "";
+                while (fill.length < need) fill += filler;
+                fill = fill.slice(0, need);
+                return fromRight ? s + fill : fill + s;
+            }
+
+            function mysqlLeft(str, len) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(len)) return null;
+                var chars = Array.from(String(str));
+                var n = Math.trunc(Number(len) || 0);
+                if (n <= 0) return "";
+                return chars.slice(0, n).join("");
+            }
+
+            function mysqlRight(str, len) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(len)) return null;
+                var chars = Array.from(String(str));
+                var n = Math.trunc(Number(len) || 0);
+                if (n <= 0) return "";
+                return chars.slice(Math.max(0, chars.length - n)).join("");
+            }
+
+            function mysqlReverse(str) {
+                if (mysqlIsBlank(str)) return null;
+                return Array.from(String(str)).reverse().join("");
+            }
+
+            function mysqlRepeat(str, times) {
+                if (mysqlIsBlank(str) || mysqlIsBlank(times)) return null;
+                var n = Math.trunc(Number(times) || 0);
+                if (n <= 0) return "";
+                return new Array(n + 1).join(String(str));
+            }
+
+            function mysqlFindInSet(str, list) {
+                if (mysqlIsBlank(list)) return null;
+                if (mysqlIsBlank(str)) return 0;
+                var items = String(list).split(",");
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i] === String(str)) return i + 1;
+                }
+                return 0;
+            }
+
+            function mysqlDateFormat(value, format) {
+                var d = mysqlToDate(value);
+                if (!d) return null;
+                var fmt = mysqlIsBlank(format) ? "%Y-%m-%d %H:%i:%s" : String(format);
+                var year = d.getFullYear();
+                var dayOfYear = Math.floor(
+                    (Date.UTC(year, d.getMonth(), d.getDate()) - Date.UTC(year, 0, 1)) / 86400000
+                ) + 1;
+                var h24 = d.getHours();
+                var h12 = h24 % 12 || 12;
+                var out = "";
+                var i = 0;
+                while (i < fmt.length) {
+                    var ch = fmt.charAt(i);
+                    if (ch !== "%") {
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    var code = fmt.charAt(i + 1);
+                    i += 2;
+                    switch (code) {
+                        case "Y": out += mysqlPadZero(year, 4); break;
+                        case "y": out += mysqlPadZero(year % 100, 2); break;
+                        case "m": out += mysqlPadZero(d.getMonth() + 1, 2); break;
+                        case "c": out += String(d.getMonth() + 1); break;
+                        case "d": out += mysqlPadZero(d.getDate(), 2); break;
+                        case "e": out += String(d.getDate()); break;
+                        case "H": out += mysqlPadZero(h24, 2); break;
+                        case "k": out += String(h24); break;
+                        case "h": case "I": out += mysqlPadZero(h12, 2); break;
+                        case "l": out += String(h12); break;
+                        case "i": out += mysqlPadZero(d.getMinutes(), 2); break;
+                        case "s": case "S": out += mysqlPadZero(d.getSeconds(), 2); break;
+                        case "f": out += mysqlPadZero(d.getMilliseconds() * 1000, 6); break;
+                        case "M": out += MYSQL_MONTH_NAMES[d.getMonth()]; break;
+                        case "b": out += MYSQL_MONTH_ABBR[d.getMonth()]; break;
+                        case "W": out += MYSQL_WEEKDAY_NAMES[d.getDay()]; break;
+                        case "a": out += MYSQL_WEEKDAY_ABBR[d.getDay()]; break;
+                        case "j": out += mysqlPadZero(dayOfYear, 3); break;
+                        case "p": out += h24 < 12 ? "AM" : "PM"; break;
+                        case "T":
+                            out += mysqlPadZero(h24, 2) + ":" + mysqlPadZero(d.getMinutes(), 2) + ":" + mysqlPadZero(d.getSeconds(), 2);
+                            break;
+                        case "r":
+                            out += mysqlPadZero(h12, 2) + ":" + mysqlPadZero(d.getMinutes(), 2) + ":" + mysqlPadZero(d.getSeconds(), 2)
+                                + " " + (h24 < 12 ? "AM" : "PM");
+                            break;
+                        case "%": out += "%"; break;
+                        case undefined: out += "%"; break;
+                        default: out += code;
+                    }
+                }
+                return out;
+            }
+
+            /** STR_TO_DATE 的格式占位符 → 字段名 + 对应正则片段（位数固定，避免贪婪匹配错位）。 */
+            var MYSQL_STR_TO_DATE_SPECS = {
+                Y: { key: "y4", re: "(\\d{4})" },
+                y: { key: "y2", re: "(\\d{2})" },
+                m: { key: "mon", re: "(\\d{1,2})" },
+                c: { key: "mon", re: "(\\d{1,2})" },
+                d: { key: "day", re: "(\\d{1,2})" },
+                e: { key: "day", re: "(\\d{1,2})" },
+                H: { key: "hour", re: "(\\d{1,2})" },
+                k: { key: "hour", re: "(\\d{1,2})" },
+                h: { key: "hour", re: "(\\d{1,2})" },
+                I: { key: "hour", re: "(\\d{1,2})" },
+                i: { key: "min", re: "(\\d{1,2})" },
+                s: { key: "sec", re: "(\\d{1,2})" },
+                S: { key: "sec", re: "(\\d{1,2})" }
+            };
+
+            function mysqlStrToDate(value, format) {
+                if (mysqlIsBlank(value) || value === "") return null;
+                var fmt = mysqlIsBlank(format) ? "%Y-%m-%d" : String(format);
+                var pattern = "";
+                var names = [];
+                var i = 0;
+                while (i < fmt.length) {
+                    var ch = fmt.charAt(i);
+                    if (ch === "%") {
+                        var code = fmt.charAt(i + 1);
+                        i += 2;
+                        var spec = MYSQL_STR_TO_DATE_SPECS[code];
+                        if (spec) {
+                            pattern += spec.re;
+                            names.push(spec.key);
+                        } else if (code === "%") {
+                            pattern += "%";
+                        }
+                        continue;
+                    }
+                    pattern += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    i++;
+                }
+                var matched = new RegExp("^\\s*" + pattern + "\\s*$").exec(String(value));
+                if (!matched) return null;
+                var parts = { mon: 1, day: 1, hour: 0, min: 0, sec: 0 };
+                var year = null;
+                for (var k = 0; k < names.length; k++) {
+                    var num = parseInt(matched[k + 1], 10);
+                    if (isNaN(num)) continue;
+                    if (names[k] === "y4") year = num;
+                    else if (names[k] === "y2") year = num >= 70 ? 1900 + num : 2000 + num;
+                    else parts[names[k]] = num;
+                }
+                if (year === null) return null;
+                return new Date(year, parts.mon - 1, parts.day, parts.hour, parts.min, parts.sec);
+            }
+
+            function mysqlFromUnixtime(ts, format) {
+                if (mysqlIsBlank(ts) || ts === "") return null;
+                var n = Number(ts);
+                if (!isFinite(n)) return null;
+                var d = new Date(Math.round(n * 1000));
+                if (isNaN(d.getTime())) return null;
+                if (mysqlIsBlank(format)) return d;
+                return mysqlDateFormat(d, format);
+            }
+
+            function mysqlUnixTimestamp(v) {
+                var d = mysqlIsBlank(v) || v === "" ? new Date() : mysqlToDate(v);
+                if (!d) return null;
+                return Math.floor(d.getTime() / 1000);
+            }
+
+            function mysqlDateDiff(a, b) {
+                var d1 = mysqlToDate(a);
+                var d2 = mysqlToDate(b);
+                if (!d1 || !d2) return null;
+                var u1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+                var u2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+                return Math.round((u1 - u2) / 86400000);
+            }
+
+            /** 兼容 AlaSQL 的 DATEDIFF(unit, a, b) 三参数写法，多余参数直接丢弃。 */
+            function mysqlDateDiffCompat() {
+                var args = Array.prototype.slice.call(arguments);
+                if (args.length > 2) args = args.slice(args.length - 2);
+                return mysqlDateDiff(args[0], args[1]);
+            }
+
+            function mysqlMod(a, b) {
+                if (mysqlIsBlank(a) || mysqlIsBlank(b)) return null;
+                var x = Number(a);
+                var y = Number(b);
+                if (!isFinite(x) || !isFinite(y) || y === 0) return null;
+                return x % y;
+            }
+
+            function mysqlLastDay(v) {
+                var d = mysqlToDate(v);
+                if (!d) return null;
+                return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+            }
+
+            function mysqlConv(n, fromBase, toBase) {
+                if (mysqlIsBlank(n)) return null;
+                var f = parseInt(fromBase, 10);
+                var t = parseInt(toBase, 10);
+                if (!(f >= 2 && f <= 36) || !(t >= 2 && t <= 36)) return null;
+                var s = String(n).trim();
+                var negative = s.charAt(0) === "-";
+                var digits = (negative ? s.slice(1) : s).replace(/^0[xX]/, "");
+                var value = parseInt(digits, f);
+                if (isNaN(value)) return null;
+                var out = value.toString(t).toUpperCase();
+                return negative && out !== "0" ? "-" + out : out;
+            }
+
+            function mysqlHex(v) {
+                if (mysqlIsBlank(v)) return null;
+                if (typeof v === "number" && isFinite(v)) {
+                    if (Number.isInteger(v) && v < 0) {
+                        try {
+                            return BigInt.asUintN(64, BigInt(v)).toString(16).toUpperCase();
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+                    return v.toString(16).toUpperCase();
+                }
+                var text = String(v);
+                var bytes = [];
+                if (typeof TextEncoder !== "undefined") {
+                    bytes = Array.prototype.slice.call(new TextEncoder().encode(text));
+                } else {
+                    for (var i = 0; i < text.length; i++) {
+                        var c = text.charCodeAt(i);
+                        if (c < 128) bytes.push(c);
+                        else if (c < 2048) bytes.push(192 | c >> 6, 128 | c & 63);
+                        else bytes.push(224 | c >> 12, 128 | c >> 6 & 63, 128 | c & 63);
+                    }
+                }
+                return bytes.map(function (b) {
+                    return ("0" + b.toString(16)).slice(-2);
+                }).join("").toUpperCase();
+            }
+
+            /** 只支持 $.a.b[0] 这类简单路径；对象/数组结果转 JSON 字符串便于表格展示。 */
+            function mysqlJsonExtract(doc, path) {
+                if (mysqlIsBlank(doc)) return null;
+                var data;
+                if (typeof doc === "string") {
+                    try {
+                        data = JSON.parse(doc);
+                    } catch (e) {
+                        return null;
+                    }
+                } else {
+                    data = doc;
+                }
+                var p = String(mysqlIsBlank(path) ? "$" : path).trim();
+                if (p.charAt(0) !== "$") return null;
+                var cur = data;
+                var i = 1;
+                while (i < p.length) {
+                    var ch = p.charAt(i);
+                    if (ch === ".") {
+                        var j = i + 1;
+                        var key = "";
+                        var quote = p.charAt(j);
+                        if (quote === '"' || quote === "'") {
+                            var k = j + 1;
+                            while (k < p.length && p.charAt(k) !== quote) {
+                                key += p.charAt(k);
+                                k++;
+                            }
+                            i = k + 1;
+                        } else {
+                            var k2 = j;
+                            while (k2 < p.length && /[A-Za-z0-9_$]/.test(p.charAt(k2))) k2++;
+                            key = p.slice(j, k2);
+                            i = k2;
+                        }
+                        cur = cur === null || cur === undefined ? null : cur[key];
+                    } else if (ch === "[") {
+                        var close = p.indexOf("]", i);
+                        if (close < 0) return null;
+                        var idxText = p.slice(i + 1, close).replace(/['"]/g, "").trim();
+                        i = close + 1;
+                        if (!/^-?\d+$/.test(idxText)) return null;
+                        var idx = parseInt(idxText, 10);
+                        if (Array.isArray(cur)) cur = cur[idx < 0 ? cur.length + idx : idx];
+                        else cur = null;
+                    } else {
+                        i++;
+                    }
+                    if (cur === undefined) return null;
+                }
+                if (cur === null || cur === undefined) return null;
+                if (typeof cur === "object") {
+                    try {
+                        return JSON.stringify(cur);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+                return cur;
+            }
+
+            var MYSQL_COMPAT_INSTALLED = false;
+            function installMysqlCompatFunctions() {
+                if (MYSQL_COMPAT_INSTALLED || !window.alasql || !window.alasql.fn) return;
+                var fn = window.alasql.fn;
+                fn.SUBSTRING_INDEX = mysqlSubstringIndex;
+                fn.LOCATE = mysqlLocate;
+                fn.INSTR = mysqlInstr;
+                fn.LPAD = function (str, len, pad) { return mysqlPad(str, len, pad, false); };
+                fn.RPAD = function (str, len, pad) { return mysqlPad(str, len, pad, true); };
+                fn.MYSQL_LEFT = mysqlLeft;
+                fn.MYSQL_RIGHT = mysqlRight;
+                fn.MYSQL_REPEAT = mysqlRepeat;
+                fn.MYSQL_DATEDIFF = mysqlDateDiffCompat;
+                fn.REVERSE = mysqlReverse;
+                fn.FIND_IN_SET = mysqlFindInSet;
+                fn.DATE_FORMAT = mysqlDateFormat;
+                fn.STR_TO_DATE = mysqlStrToDate;
+                fn.FROM_UNIXTIME = mysqlFromUnixtime;
+                fn.UNIX_TIMESTAMP = mysqlUnixTimestamp;
+                fn.LAST_DAY = mysqlLastDay;
+                fn.MOD = mysqlMod;
+                fn.CONV = mysqlConv;
+                fn.HEX = mysqlHex;
+                fn.JSON_EXTRACT = mysqlJsonExtract;
+                MYSQL_COMPAT_INSTALLED = true;
+            }
+
+            /**
+             * 按函数名重写（只改代码区，跳过 '...'、"..."、[标识符]、`标识符`）。
+             * 避免 SELECT 'LEFT(x' 这类字符串字面量被误改。
+             */
+            function rewriteMysqlFunctionNames(sql, renameMap) {
+                var text = String(sql || "");
+                var out = "";
+                var i = 0;
+                var n = text.length;
+                var state = "normal";
+                while (i < n) {
+                    var ch = text.charAt(i);
+                    if (state === "normal") {
+                        if (ch === "'") {
+                            state = "single";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === '"') {
+                            state = "double";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "[") {
+                            state = "bracket";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (ch === "`") {
+                            state = "backtick";
+                            out += ch;
+                            i++;
+                            continue;
+                        }
+                        if (/[A-Za-z_]/.test(ch)) {
+                            var wordEnd = i;
+                            while (wordEnd < n && /[A-Za-z0-9_$]/.test(text.charAt(wordEnd))) wordEnd++;
+                            var word = text.slice(i, wordEnd);
+                            var cursor = wordEnd;
+                            while (cursor < n && /\s/.test(text.charAt(cursor))) cursor++;
+                            var target = renameMap[word.toUpperCase()];
+                            out += target && text.charAt(cursor) === "(" ? target : word;
+                            i = wordEnd;
+                            continue;
+                        }
+                        out += ch;
+                        i++;
+                        continue;
+                    }
+                    if (state === "single" && ch === "'") {
+                        if (i + 1 < n && text.charAt(i + 1) === "'") {
+                            out += "''";
+                            i += 2;
+                            continue;
+                        }
+                        state = "normal";
+                    } else if (state === "double" && ch === '"') {
+                        state = "normal";
+                    } else if (state === "bracket" && ch === "]") {
+                        state = "normal";
+                    } else if (state === "backtick" && ch === "`") {
+                        state = "normal";
+                    }
+                    out += ch;
+                    i++;
+                }
+                return out;
+            }
+
             function transformMysqlSql(sql) {
                 // Keep common MySQL habits compatible with AlaSQL parser.
-                return String(sql || "")
-                    .replace(/`([^`]+)`/g, "[$1]")
-                    .replace(/\bIFNULL\s*\(/gi, "COALESCE(")
-                    .replace(/\bLCASE\s*\(/gi, "LOWER(")
-                    .replace(/\bUCASE\s*\(/gi, "UPPER(")
-                    .replace(/\bCHAR_LENGTH\s*\(/gi, "LENGTH(")
-                    .replace(/\bSUBSTRING\s*\(/gi, "SUBSTR(");
+                return rewriteMysqlFunctionNames(sql, MYSQL_FN_RENAME)
+                    .replace(/`([^`]+)`/g, "[$1]");
             }
 
             function tryParseNumberLike(v) {
@@ -3233,6 +3922,18 @@
             }
 
             /** 将 SQL 中日期字符串字面量统一为 yyyy-MM-dd HH:mm:ss，避免时间比较因格式差异失效。 */
+            /** 该引号是否是 STR_TO_DATE( 的第一个参数——它的原文要按用户给的格式解析，不能先归一化。 */
+            function isStrToDateSourceLiteral(text, quoteStart) {
+                var i = quoteStart - 1;
+                while (i >= 0 && /\s/.test(text.charAt(i))) i--;
+                if (i < 0 || text.charAt(i) !== "(") return false;
+                i--;
+                while (i >= 0 && /\s/.test(text.charAt(i))) i--;
+                var end = i + 1;
+                while (i >= 0 && /[A-Za-z0-9_$]/.test(text.charAt(i))) i--;
+                return /^STR_TO_DATE$/i.test(text.slice(i + 1, end));
+            }
+
             function normalizeDateLiteralsInSql(sql) {
                 var text = String(sql || "");
                 var out = "";
@@ -3244,6 +3945,7 @@
                         i++;
                         continue;
                     }
+                    var skipNormalize = isStrToDateSourceLiteral(text, i);
                     out += "'";
                     i++;
                     var token = "";
@@ -3260,7 +3962,7 @@
                         token += c;
                         i++;
                     }
-                    var parts = tryParseSortableOrIsoDateString(token);
+                    var parts = skipNormalize ? null : tryParseSortableOrIsoDateString(token);
                     var normalized = parts ? partsToSortable(parts) : token;
                     out += String(normalized).replace(/'/g, "''");
                     if (i < text.length && text.charAt(i) === "'") {
@@ -3291,6 +3993,8 @@
                 if (sqlMode === "mysql") {
                     sql = transformMysqlSql(sql);
                 }
+                sql = quoteReservedAliases(sql);
+                sql = quoteNonAsciiIdentifiers(sql);
                 sql = uppercaseSqlKeywords(sql);
                 sql = autoQuoteIdentifiers(sql, cols);
                 sql = expandNumericEqualityInSql(sql);
@@ -4610,25 +5314,42 @@
                     + "- CONCAT(a,b): 拼接字符串\n"
                     + "- LEFT(str,n) / RIGHT(str,n): 取左/右侧字符\n"
                     + "- SUBSTRING(str,pos,len): 截取字符串\n"
-                    + "- LENGTH(str): 字符串长度\n"
-                    + "- REPLACE(str,from,to): 替换文本\n\n"
+                    + "- SUBSTRING_INDEX(str,分隔符,n): 按分隔符取第 n 段之前/之后（n 为负则从右数）\n"
+                    + "- LOCATE(子串,str) / INSTR(str,子串): 子串位置（找不到为 0）\n"
+                    + "- LPAD(str,n,pad) / RPAD(str,n,pad): 左/右补位\n"
+                    + "- REVERSE(str): 反转\n"
+                    + "- REPEAT(str,n): 重复 n 次\n"
+                    + "- FIND_IN_SET(str,'a,b,c'): 在逗号列表中的位置\n"
+                    + "- LENGTH(str): 字符串长度（按字符计）\n"
+                    + "- REPLACE(str,from,to): 替换文本\n"
+                    + "- TRIM(str) / LOWER / UPPER: 去空格、大小写\n\n"
                     + "时间：\n"
                     + "- DATE(col): 取日期部分\n"
                     + "- YEAR(col), MONTH(col), DAY(col): 拆分年月日\n"
                     + "- DATE_FORMAT(col,'%Y-%m-%d %H:%i:%s'): 格式化\n"
-                    + "- NOW(): 当前时间\n"
-                    + "- DATEDIFF(d1,d2): 日期差（天）\n\n"
+                    + "- STR_TO_DATE(str,'%Y-%m-%d'): 字符串转日期\n"
+                    + "- NOW(), CURDATE(): 当前时间、今天\n"
+                    + "- DATEDIFF(d1,d2): 日期差（天，d1-d2）\n"
+                    + "- DATE_ADD(d, INTERVAL 1 DAY) / DATE_SUB(...): 日期加减\n"
+                    + "- LAST_DAY(d): 当月最后一天\n"
+                    + "- UNIX_TIMESTAMP(d) / FROM_UNIXTIME(ts): 时间戳互转\n\n"
                     + "数值：\n"
                     + "- ROUND(x,n): 四舍五入\n"
                     + "- FLOOR(x), CEIL(x): 向下/向上取整\n"
-                    + "- ABS(x): 绝对值\n\n"
+                    + "- ABS(x), POWER(x,y), SQRT(x), MOD(a,b): 绝对值/幂/开方/取余\n"
+                    + "- GREATEST(a,b), LEAST(a,b): 取大/小\n\n"
                     + "条件：\n"
                     + "- IF(cond,a,b): 条件判断\n"
                     + "- IFNULL(a,b): 空值替换\n"
+                    + "- NULLIF(a,b), COALESCE(a,b,...)\n"
                     + "- CASE WHEN ... THEN ... END: 多分支判断\n\n"
                     + "聚合：\n"
-                    + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x)\n\n"
-                    + "提示：当前工具底层是 AlaSQL，绝大部分常见 MySQL 写法可用。\n\n"
+                    + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x), GROUP_CONCAT(x)\n\n"
+                    + "其它：\n"
+                    + "- JSON_EXTRACT(列,'$.a.b'): 取 JSON 字段\n"
+                    + "- HEX(x), CONV(n,10,16): 进制/十六进制\n\n"
+                    + "提示：底层是 AlaSQL，上面列出的 MySQL 函数都已补齐；不在列表里的函数可能未实现，\n"
+                    + "报错会提示具体缺哪个函数。\n\n"
                     + "筛选提示：WHERE 里对纯数字加引号（如 地区='150000'）时，会自动同时匹配单元格为文本或数值两种情况，避免 Excel 数字列查不到行。";
                 document.getElementById("sql-help-popup").textContent = html;
                 document.getElementById("sql-help-mask").classList.add("show");
@@ -5373,10 +6094,26 @@
                         setStatus("执行成功。", false);
                     }
                 } catch (error) {
-                    setStatus("SQL 执行失败：" + (error && error.message ? error.message : "未知错误") + "（可尝试切换 SQL 语法类型）", true);
+                    setStatus(buildSqlErrorMessage(error), true);
                 } finally {
                     stopBusy();
                 }
+            }
+
+            /** 把 AlaSQL 的原始报错翻译成人能看懂的一句话，并给出可执行建议。 */
+            function buildSqlErrorMessage(error) {
+                var msg = error && error.message ? String(error.message) : "未知错误";
+                var missing = /alasql\.fn\.([A-Za-z0-9_$]+)\s+is not a function/i.exec(msg);
+                if (missing) {
+                    var name = missing[1].toUpperCase();
+                    return "SQL 执行失败：暂不支持函数 " + name
+                        + "（底层 AlaSQL 未实现）。可把它改写成等价表达式，或点左侧「!」查看已支持函数速查。";
+                }
+                if (/^Parse error/i.test(msg)) {
+                    return "SQL 执行失败：语法无法解析。" + msg.replace(/\s+/g, " ").slice(0, 400)
+                        + "（可切换到「AlaSQL 原生」语法对照检查）";
+                }
+                return "SQL 执行失败：" + msg + "（可尝试切换 SQL 语法类型）";
             }
 
             async function quickQueryCurrentTable() {
@@ -5522,6 +6259,7 @@
                     closeCsvModal();
                 }
             });
+            installMysqlCompatFunctions();
             renderCsvTabBar();
             updateCsvTextBtnState();
             window.addEventListener("message", function (e) {
