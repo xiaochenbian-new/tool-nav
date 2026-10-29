@@ -191,6 +191,147 @@
                 opacity: 0.45;
                 cursor: not-allowed;
             }
+            .sql-fav-head {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                padding: 4px 8px 8px;
+                border-bottom: 1px dashed #e7efff;
+                margin-bottom: 8px;
+            }
+            .sql-fav-title {
+                font-size: 14px;
+                font-weight: 700;
+                color: #c08a00;
+            }
+            .sql-fav-count {
+                font-size: 12px;
+                color: #6f7d96;
+            }
+            .sql-fav-hint {
+                font-size: 12px;
+                color: #9aa8c2;
+                margin-left: auto;
+            }
+            .sql-fav-empty {
+                font-size: 13px;
+                color: var(--muted);
+                padding: 2px 8px 10px;
+                line-height: 1.5;
+            }
+            .sql-fav-item {
+                border: 1px solid #ffe6a8;
+                border-radius: 8px;
+                background: #fffdf5;
+                padding: 8px 10px;
+                margin-bottom: 8px;
+            }
+            .sql-fav-row {
+                display: flex;
+                gap: 6px;
+                align-items: flex-start;
+            }
+            .sql-fav-sql {
+                flex: 1 1 auto;
+                min-width: 0;
+                text-align: left;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: #1f2a44;
+                font-size: 14px;
+                line-height: 1.45;
+                padding: 2px 4px;
+                cursor: pointer;
+                word-break: break-all;
+                font-weight: 400;
+            }
+            .sql-fav-sql:hover {
+                background: #fff4d6;
+            }
+            .sql-fav-del {
+                flex: 0 0 auto;
+                width: 22px;
+                height: 22px;
+                border: 1px solid #f0d9a8;
+                border-radius: 6px;
+                background: #fff;
+                color: #a8730a;
+                font-size: 12px;
+                line-height: 1;
+                padding: 0;
+                cursor: pointer;
+            }
+            .sql-fav-del:hover {
+                border-color: #e0a33a;
+                background: #fff6e0;
+            }
+            .sql-fav-note {
+                width: 100%;
+                box-sizing: border-box;
+                margin-top: 6px;
+                height: 28px;
+                padding: 0 8px;
+                border: 1px solid #f0e0b8;
+                border-radius: 6px;
+                background: #fff;
+                color: #1f2a44;
+                font-size: 13px;
+            }
+            .sql-fav-note:focus {
+                outline: none;
+                border-color: #e0a33a;
+                box-shadow: 0 0 0 2px rgba(224, 163, 58, 0.15);
+            }
+            .sql-history-row {
+                display: flex;
+                gap: 6px;
+                align-items: stretch;
+                margin-bottom: 8px;
+            }
+            .sql-history-row .sql-history-item {
+                margin-bottom: 0;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            .sql-history-star {
+                flex: 0 0 auto;
+                width: 34px;
+                border: 1px solid #e7efff;
+                border-radius: 8px;
+                background: #f8fbff;
+                color: #b9c6de;
+                font-size: 16px;
+                line-height: 1;
+                padding: 0;
+                cursor: pointer;
+            }
+            .sql-history-star:hover {
+                border-color: #e0a33a;
+                color: #e0a33a;
+                background: #fffdf5;
+            }
+            .sql-history-star.is-fav {
+                color: #e0a33a;
+                border-color: #f0d9a8;
+                background: #fffdf5;
+            }
+            .help-icon-btn.sql-fav-btn {
+                width: auto;
+                min-width: 40px;
+                padding: 0 8px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #a8730a;
+                border-color: #f0d9a8;
+                background: #fffdf5;
+            }
+            .help-icon-btn.sql-fav-btn.is-fav {
+                color: #fff;
+                border-color: #e0a33a;
+                background: linear-gradient(135deg, #f0b429, #e0a33a);
+            }
             .busy-overlay {
                 position: fixed;
                 inset: 0;
@@ -692,6 +833,44 @@
             }
             .table-col-name:hover {
                 background: #e8f0ff;
+            }
+            .table-item-head {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 2px;
+            }
+            .table-item-meta {
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 400;
+            }
+            .table-item-copy {
+                margin-left: auto;
+                border: 1px solid #d8e5ff;
+                border-radius: 5px;
+                background: #fff;
+                color: #3c4f78;
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1.4;
+                padding: 1px 6px;
+                cursor: pointer;
+                flex: 0 0 auto;
+            }
+            .table-item-copy:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #f4f8ff;
+            }
+            .table-cols {
+                color: #4a5978;
+                font-size: 12px;
+                line-height: 1.55;
+            }
+            .table-cols-label {
+                color: var(--muted);
             }
             .status {
                 margin-top: 6px;
@@ -1443,10 +1622,11 @@
                     <label for="sql-input" class="label-inline">
                         <span>SQL 语句</span>
                         <button id="sql-help-btn" class="help-icon-btn" type="button" title="查看 MySQL 常用函数">!</button>
-                        <button id="sql-history-btn" class="help-icon-btn" type="button" title="最近执行的 SQL（最多 30 条）" aria-label="最近执行的 SQL">
+                        <button id="sql-history-btn" class="help-icon-btn" type="button" title="收藏的 SQL 与最近执行记录（最近最多 30 条）" aria-label="收藏与最近执行的 SQL">
                             <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a6 6 0 1 1 6 6v-2h2v2a8 8 0 1 0-2.343-5.657L13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
                         </button>
                         <button id="sql-beautify-btn" class="help-icon-btn sql-beautify-btn" type="button" title="美化 SQL 语句">美化</button>
+                        <button id="sql-fav-btn" class="help-icon-btn sql-fav-btn" type="button" title="收藏当前 SQL：长期保留，可写备注说明用途">☆ 收藏</button>
                     </label>
                     <div id="sql-history-pop" class="sql-history-pop" aria-hidden="true"></div>
                     <textarea id="sql-input" placeholder="示例：SELECT * FROM [Sheet1];"></textarea>
@@ -1470,6 +1650,7 @@
                     </div>
                     <div class="result-tools">
                         <button id="copy-all-result-btn" class="result-tool-btn" type="button" title="复制全部查询结果（可直接粘贴到 Excel）">复制全部</button>
+                        <button id="copy-cols-btn" class="result-tool-btn" type="button" title="复制全部字段名（逗号分隔，可直接粘进 SELECT）">复制列名</button>
                         <button id="export-xlsx-btn" class="result-tool-btn" type="button">导出 Excel</button>
                         <button id="export-csv-btn" class="result-tool-btn" type="button">导出 CSV</button>
                         <button id="preview-csv-btn" class="result-tool-btn" type="button">预览 CSV</button>
@@ -1588,7 +1769,8 @@
             const SORT_PRIORITY_MARKS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
             let lastExecutedSql = "";
             let currentColWidths = {};
-            let resultHeadExpanded = false;
+            /** 表头默认展开：字段名完整换行显示，方便核对与复制；「行号」列上的按钮可切回单行。 */
+            let resultHeadExpanded = true;
             let currentPage = 1;
             let currentPageSize = 200;
             const FILTER_VALUE_PAGE_SIZE = 20;
@@ -1606,7 +1788,10 @@
             const SQL_HISTORY_KEY = "excelSqlQueryHistoryV1";
             const SQL_HISTORY_MAX = 30;
             const SQL_HISTORY_PAGE_SIZE = 10;
+            /** 收藏的 SQL 单独存，不受「最近 30 条」滚动淘汰影响。 */
+            const SQL_FAVORITE_KEY = "excelSqlFavoritesV1";
             let sqlHistoryPage = 1;
+            let lastSqlFavoriteList = [];
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
             const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
             const HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY = "tool-nav:handoff:excel-sql-to-json-excel";
@@ -2268,6 +2453,103 @@
                 }
             }
 
+            /** 收藏的 SQL：单独存储，永远不会被「最近 30 条」的滚动淘汰挤掉。 */
+            function loadSqlFavorites() {
+                try {
+                    var arr = JSON.parse(localStorage.getItem(SQL_FAVORITE_KEY));
+                    if (!Array.isArray(arr)) return [];
+                    return arr.filter(function (x) {
+                        return x && typeof x.sql === "string" && x.sql.trim();
+                    }).map(function (x) {
+                        return {
+                            id: String(x.id || ""),
+                            sql: String(x.sql),
+                            note: String(x.note || ""),
+                            updatedAt: Number(x.updatedAt) || 0
+                        };
+                    });
+                } catch (err) {
+                    return [];
+                }
+            }
+
+            function saveSqlFavorites(list) {
+                try {
+                    localStorage.setItem(SQL_FAVORITE_KEY, JSON.stringify(list));
+                    return true;
+                } catch (err) {
+                    setStatus("收藏保存失败：浏览器存储空间不足或处于隐私模式。", true);
+                    return false;
+                }
+            }
+
+            function newSqlFavoriteId() {
+                return "fav" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            }
+
+            function findSqlFavorite(sql) {
+                var key = normalizeSqlHistoryDedupKey(sql);
+                if (!key) return null;
+                var list = loadSqlFavorites();
+                for (var i = 0; i < list.length; i++) {
+                    if (normalizeSqlHistoryDedupKey(list[i].sql) === key) return list[i];
+                }
+                return null;
+            }
+
+            function addSqlFavorite(sql, note) {
+                var raw = String(sql || "").trim();
+                if (!raw) return null;
+                var key = normalizeSqlHistoryDedupKey(raw);
+                var list = loadSqlFavorites();
+                var old = null;
+                list = list.filter(function (x) {
+                    if (normalizeSqlHistoryDedupKey(x.sql) === key) {
+                        old = x;
+                        return false;
+                    }
+                    return true;
+                });
+                var item = {
+                    id: old && old.id ? old.id : newSqlFavoriteId(),
+                    sql: raw,
+                    note: note != null ? String(note) : (old ? old.note : ""),
+                    updatedAt: Date.now()
+                };
+                list.unshift(item);
+                saveSqlFavorites(list);
+                return item;
+            }
+
+            function removeSqlFavorite(id) {
+                saveSqlFavorites(loadSqlFavorites().filter(function (x) { return x.id !== id; }));
+            }
+
+            function updateSqlFavoriteNote(id, note) {
+                var list = loadSqlFavorites();
+                var hit = false;
+                list.forEach(function (x) {
+                    if (x.id === id) {
+                        x.note = String(note || "");
+                        x.updatedAt = Date.now();
+                        hit = true;
+                    }
+                });
+                if (hit) saveSqlFavorites(list);
+            }
+
+            function syncSqlFavBtnState() {
+                var btn = document.getElementById("sql-fav-btn");
+                if (!btn) return;
+                var hit = findSqlFavorite(document.getElementById("sql-input").value);
+                btn.classList.toggle("is-fav", !!hit);
+                btn.textContent = hit ? "★ 已收藏" : "☆ 收藏";
+                btn.title = hit
+                    ? "这条 SQL 已在收藏里，点击可修改备注"
+                    : "收藏当前 SQL：长期保留，可写备注说明用途";
+            }
+
+
             /** 收集 '...' / "..." 字符串字面量的区间（含两端的引号），用于避免误改字符串内容。 */
             function collectStringLiteralRanges(sql) {
                 var text = String(sql || "");
@@ -2364,39 +2646,95 @@
                 }
             }
 
+            /** 收藏区：长期保留 + 备注，永远排在历史记录上面。 */
+            function renderSqlFavoriteSection() {
+                lastSqlFavoriteList = loadSqlFavorites();
+                var html = "<div class=\"sql-fav-head\">"
+                    + "<span class=\"sql-fav-title\">★ 收藏</span>"
+                    + "<span class=\"sql-fav-count\">" + lastSqlFavoriteList.length + " 条</span>"
+                    + "<span class=\"sql-fav-hint\">一直保留，可写备注</span>"
+                    + "</div>";
+                if (!lastSqlFavoriteList.length) {
+                    return html + "<div class=\"sql-fav-empty\">还没有收藏。点 SQL 框上方的「☆ 收藏」，或历史记录右侧的 ☆。</div>";
+                }
+                html += lastSqlFavoriteList.map(function (item) {
+                    return "<div class=\"sql-fav-item\" data-fav-id=\"" + escapeHtml(item.id) + "\">"
+                        + "<div class=\"sql-fav-row\">"
+                        + "<button type=\"button\" class=\"sql-fav-sql\" data-fav-id=\"" + escapeHtml(item.id)
+                        + "\" title=\"点击填入 SQL\">" + escapeHtml(item.sql) + "</button>"
+                        + "<button type=\"button\" class=\"sql-fav-del\" data-fav-id=\"" + escapeHtml(item.id)
+                        + "\" title=\"取消收藏\">✕</button>"
+                        + "</div>"
+                        + "<input class=\"sql-fav-note\" type=\"text\" data-fav-id=\"" + escapeHtml(item.id) + "\""
+                        + " placeholder=\"备注：这个 SQL 是干嘛的\" value=\"" + escapeHtml(item.note) + "\" />"
+                        + "</div>";
+                }).join("");
+                return html;
+            }
+
             function renderSqlHistoryPop() {
                 var pop = document.getElementById("sql-history-pop");
                 var btn = document.getElementById("sql-history-btn");
                 if (!pop) return;
                 lastSqlHistoryList = loadSqlHistory();
-                if (!lastSqlHistoryList.length) {
-                    pop.innerHTML = "<div class=\"sql-history-empty\">暂无执行记录（执行成功后会自动保存）。</div>";
-                    return;
-                }
+                var html = renderSqlFavoriteSection();
                 var total = lastSqlHistoryList.length;
-                var totalPages = Math.max(1, Math.ceil(total / SQL_HISTORY_PAGE_SIZE));
-                if (sqlHistoryPage > totalPages) sqlHistoryPage = totalPages;
-                if (sqlHistoryPage < 1) sqlHistoryPage = 1;
-                var start = (sqlHistoryPage - 1) * SQL_HISTORY_PAGE_SIZE;
-                var pageItems = lastSqlHistoryList.slice(start, start + SQL_HISTORY_PAGE_SIZE);
-                var html = "<div class=\"sql-history-title\">最近 " + total + " 条（已去重，最新在上）· 点击填入 SQL</div>"
-                    + pageItems.map(function (sql, i) {
-                        var idx = start + i;
-                        return "<button type=\"button\" class=\"sql-history-item\" data-idx=\"" + idx + "\">"
-                            + escapeHtml(sql) + "</button>";
-                    }).join("");
-                if (totalPages > 1) {
-                    html += "<div class=\"sql-history-pager\">"
-                        + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"prev\""
-                        + (sqlHistoryPage <= 1 ? " disabled" : "") + ">‹</button>"
-                        + "<span class=\"sql-history-page-info\">第 " + sqlHistoryPage + "/" + totalPages + " 页</span>"
-                        + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"next\""
-                        + (sqlHistoryPage >= totalPages ? " disabled" : "") + ">›</button>"
-                        + "</div>";
+                if (!total) {
+                    html += "<div class=\"sql-history-empty\">暂无执行记录（执行成功后会自动保存）。</div>";
+                } else {
+                    var totalPages = Math.max(1, Math.ceil(total / SQL_HISTORY_PAGE_SIZE));
+                    if (sqlHistoryPage > totalPages) sqlHistoryPage = totalPages;
+                    if (sqlHistoryPage < 1) sqlHistoryPage = 1;
+                    var start = (sqlHistoryPage - 1) * SQL_HISTORY_PAGE_SIZE;
+                    var pageItems = lastSqlHistoryList.slice(start, start + SQL_HISTORY_PAGE_SIZE);
+                    var favKeys = {};
+                    lastSqlFavoriteList.forEach(function (f) {
+                        favKeys[normalizeSqlHistoryDedupKey(f.sql)] = true;
+                    });
+                    html += "<div class=\"sql-history-title\">最近 " + total + " 条（已去重，最新在上）· 点击填入 SQL</div>"
+                        + pageItems.map(function (sql, i) {
+                            var idx = start + i;
+                            var starred = favKeys[normalizeSqlHistoryDedupKey(sql)] ? " is-fav" : "";
+                            return "<div class=\"sql-history-row\">"
+                                + "<button type=\"button\" class=\"sql-history-item\" data-idx=\"" + idx + "\">"
+                                + escapeHtml(sql) + "</button>"
+                                + "<button type=\"button\" class=\"sql-history-star" + starred + "\" data-idx=\"" + idx
+                                + "\" title=\"" + (starred ? "已收藏，点击取消" : "收藏这条 SQL") + "\">"
+                                + (starred ? "★" : "☆") + "</button>"
+                                + "</div>";
+                        }).join("");
+                    if (totalPages > 1) {
+                        html += "<div class=\"sql-history-pager\">"
+                            + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"prev\""
+                            + (sqlHistoryPage <= 1 ? " disabled" : "") + ">‹</button>"
+                            + "<span class=\"sql-history-page-info\">第 " + sqlHistoryPage + "/" + totalPages + " 页</span>"
+                            + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"next\""
+                            + (sqlHistoryPage >= totalPages ? " disabled" : "") + ">›</button>"
+                            + "</div>";
+                    }
                 }
                 pop.innerHTML = html;
                 if (btn && pop.classList.contains("show")) {
                     adjustSqlHistoryPopupPosition(pop, btn);
+                }
+            }
+
+            /** 打开历史/收藏面板；传 favId 时把焦点落到那条收藏的备注输入框。 */
+            function openSqlHistoryPopFor(favId) {
+                var pop = document.getElementById("sql-history-pop");
+                var btn = document.getElementById("sql-history-btn");
+                if (!pop || !btn) return;
+                sqlHistoryPage = 1;
+                renderSqlHistoryPop();
+                pop.classList.add("show");
+                pop.setAttribute("aria-hidden", "false");
+                adjustSqlHistoryPopupPosition(pop, btn);
+                if (favId) {
+                    var input = pop.querySelector(".sql-fav-note[data-fav-id=\"" + favId + "\"]");
+                    if (input) {
+                        input.focus();
+                        input.select();
+                    }
                 }
             }
 
@@ -2931,22 +3269,20 @@
                     const div = document.createElement("div");
                     div.className = "table-item";
                     var cols = item.columns || [];
-                    var parts = [];
-                    var plainLen = 0;
-                    for (var ci = 0; ci < cols.length; ci++) {
-                        var sep = parts.length ? 2 : 0;
-                        if (plainLen + sep + String(cols[ci]).length > 400) break;
-                        parts.push(
-                            "<span class=\"table-col-name\" title=\"双击选中字段名\">"
-                            + escapeHtml(cols[ci]) + "</span>"
-                        );
-                        plainLen += sep + String(cols[ci]).length;
-                    }
-                    var colHtml = parts.join(", ") + (parts.length < cols.length ? "…" : "");
+                    var colHtml = cols.map(function (c) {
+                        return "<span class=\"table-col-name\" title=\"双击选中字段名\">"
+                            + escapeHtml(c) + "</span>";
+                    }).join(", ");
                     var rowHint = item.rows && item.rows.length >= 1
-                        ? "，约 " + item.rows.length + " 行"
-                        : "";
-                    div.innerHTML = "<b>" + escapeHtml(item.tableName) + "</b>" + rowHint + "<br/>列: " + colHtml;
+                        ? "约 " + item.rows.length + " 行 · " + cols.length + " 列"
+                        : cols.length + " 列";
+                    div.innerHTML = "<div class=\"table-item-head\">"
+                        + "<b>" + escapeHtml(item.tableName) + "</b>"
+                        + "<span class=\"table-item-meta\">" + rowHint + "</span>"
+                        + "<button class=\"table-item-copy\" type=\"button\" data-table=\""
+                        + escapeHtml(item.tableName) + "\" title=\"复制该表全部字段名（逗号分隔）\">复制列名</button>"
+                        + "</div>"
+                        + "<div class=\"table-cols\"><span class=\"table-cols-label\">列: </span>" + colHtml + "</div>";
                     list.appendChild(div);
                 });
             }
@@ -3800,9 +4136,54 @@
             }
 
             var MYSQL_COMPAT_INSTALLED = false;
+            var MYSQL_AGG_INSTALLED = false;
+            /** GROUP_CONCAT 分隔符编码：MYSQL_GC 把「分隔符 + 值」编码成一个字符串，聚合时再解回来。 */
+            var MYSQL_GC_MARK = "\u0001";
+            var MYSQL_GC_NULL = "\u0002";
+
+            /** 标量包：把自定义分隔符塞进单值里，绕开 AlaSQL 聚合只能接一个参数的限制。 */
+            function mysqlGroupConcatValue(value, sep) {
+                var s = sep === null || sep === undefined ? "," : String(sep);
+                if (value === null || value === undefined) {
+                    return MYSQL_GC_MARK + s + MYSQL_GC_MARK + MYSQL_GC_NULL;
+                }
+                return MYSQL_GC_MARK + s + MYSQL_GC_MARK + String(value);
+            }
+
+            /** MySQL 语义的 GROUP_CONCAT：忽略 NULL，按分隔符连接（默认逗号）。
+             *  累加器必须是字符串：AlaSQL 对「复合表达式参数」会直接返回累加器本身，
+             *  用数组累加会把 ["a","b"] 原样吐到结果里。 */
+            function mysqlGroupConcatDecode(value) {
+                if (typeof value === "string" && value.charAt(0) === MYSQL_GC_MARK) {
+                    var cut = value.indexOf(MYSQL_GC_MARK, 1);
+                    if (cut > 0) {
+                        var payload = value.slice(cut + 1);
+                        return { sep: value.slice(1, cut), text: payload === MYSQL_GC_NULL ? null : payload };
+                    }
+                }
+                if (value === null || value === undefined) return { sep: ",", text: null };
+                return { sep: ",", text: String(value) };
+            }
+
+            function mysqlGroupConcatAggregate(value, acc, stage) {
+                var item = mysqlGroupConcatDecode(value);
+                var prev = acc === null || acc === undefined ? "" : String(acc);
+                if (item.text === null) return prev;
+                if (prev === "") return item.text;
+                return prev + item.sep + item.text;
+            }
+
+            function installMysqlGroupConcatAggregate() {
+                if (MYSQL_AGG_INSTALLED || !window.alasql || !window.alasql.aggr) return;
+                window.alasql.aggr.GROUP_CONCAT = mysqlGroupConcatAggregate;
+                window.alasql.aggr.group_concat = mysqlGroupConcatAggregate;
+                MYSQL_AGG_INSTALLED = true;
+            }
+
             function installMysqlCompatFunctions() {
                 if (MYSQL_COMPAT_INSTALLED || !window.alasql || !window.alasql.fn) return;
                 var fn = window.alasql.fn;
+                fn.MYSQL_GC = mysqlGroupConcatValue;
                 fn.SUBSTRING_INDEX = mysqlSubstringIndex;
                 fn.LOCATE = mysqlLocate;
                 fn.INSTR = mysqlInstr;
@@ -3823,7 +4204,180 @@
                 fn.CONV = mysqlConv;
                 fn.HEX = mysqlHex;
                 fn.JSON_EXTRACT = mysqlJsonExtract;
+                installMysqlGroupConcatAggregate();
                 MYSQL_COMPAT_INSTALLED = true;
+            }
+
+            /** 位置是否落在某个字符串字面量区间内。 */
+            function findLiteralRangeAt(ranges, pos) {
+                for (var i = 0; i < ranges.length; i++) {
+                    if (pos >= ranges[i][0] && pos < ranges[i][1]) return ranges[i];
+                }
+                return null;
+            }
+
+            /** 从 `(` 出发找配对的 `)`（跳过字符串字面量里的括号）。 */
+            function findMatchingParenIndex(text, openIdx, literals) {
+                var depth = 0;
+                var i = openIdx;
+                while (i < text.length) {
+                    var lit = findLiteralRangeAt(literals, i);
+                    if (lit) {
+                        i = lit[1];
+                        continue;
+                    }
+                    var ch = text.charAt(i);
+                    if (ch === "(") {
+                        depth++;
+                    } else if (ch === ")") {
+                        depth--;
+                        if (depth === 0) return i;
+                    }
+                    i++;
+                }
+                return -1;
+            }
+
+            /** 在 depth 0、字面量之外按逗号切分参数。 */
+            function splitTopLevelArgs(text) {
+                var src = String(text || "");
+                var literals = collectStringLiteralRanges(src);
+                var args = [];
+                var depth = 0;
+                var start = 0;
+                var i = 0;
+                while (i < src.length) {
+                    var lit = findLiteralRangeAt(literals, i);
+                    if (lit) {
+                        i = lit[1];
+                        continue;
+                    }
+                    var ch = src.charAt(i);
+                    if (ch === "(") depth++;
+                    else if (ch === ")") depth--;
+                    else if (ch === "," && depth === 0) {
+                        args.push(src.slice(start, i));
+                        start = i + 1;
+                    }
+                    i++;
+                }
+                args.push(src.slice(start));
+                return args;
+            }
+
+            /** 找 depth 0、字面量之外的某个关键字（返回起始下标，找不到返回 -1）。 */
+            function findTopLevelWord(text, word) {
+                var src = String(text || "");
+                var literals = collectStringLiteralRanges(src);
+                var lower = src.toLowerCase();
+                var key = String(word).toLowerCase();
+                var depth = 0;
+                var i = 0;
+                while (i < src.length) {
+                    var lit = findLiteralRangeAt(literals, i);
+                    if (lit) {
+                        i = lit[1];
+                        continue;
+                    }
+                    var ch = src.charAt(i);
+                    if (ch === "(") depth++;
+                    else if (ch === ")") depth--;
+                    else if (depth === 0 && lower.substr(i, key.length) === key) {
+                        var before = src.charAt(i - 1);
+                        var after = src.charAt(i + key.length);
+                        if (!/[A-Za-z0-9_$]/.test(before) && !/[A-Za-z0-9_$]/.test(after)) return i;
+                    }
+                    i++;
+                }
+                return -1;
+            }
+
+            function isStringLiteralToken(text) {
+                var s = String(text || "").trim();
+                return /^'(?:[^']|'')*'$/.test(s) || /^"(?:[^"]|"")*"$/.test(s);
+            }
+
+            /** 去掉聚合内部的 ORDER BY（AlaSQL 不支持 GROUP_CONCAT 内排序）。 */
+            function stripTopLevelOrderBy(expr) {
+                var src = String(expr || "");
+                var idx = findTopLevelWord(src, "order by");
+                if (idx < 0) return src.trim();
+                if (!/^ORDER\s+BY\b/i.test(src.slice(idx).trim())) return src.trim();
+                return src.slice(0, idx).trim();
+            }
+
+            function buildGroupConcatReplacement(innerRaw) {
+                var inner = String(innerRaw || "");
+                var distinct = false;
+                var dm = /^\s*DISTINCT\s+/i.exec(inner);
+                if (dm) {
+                    distinct = true;
+                    inner = inner.slice(dm[0].length);
+                }
+                var sepLit = null;
+                var expr = inner;
+                var sepIdx = findTopLevelWord(inner, "separator");
+                if (sepIdx >= 0) {
+                    expr = inner.slice(0, sepIdx);
+                    sepLit = inner.slice(sepIdx + "separator".length).trim();
+                } else {
+                    var args = splitTopLevelArgs(inner);
+                    if (args.length > 1) {
+                        var last = args[args.length - 1].trim();
+                        if (isStringLiteralToken(last)) {
+                            sepLit = last;
+                            expr = args.slice(0, -1).join(",");
+                        } else {
+                            // MySQL 里 GROUP_CONCAT(a, b) 是把多个表达式拼起来
+                            expr = "CONCAT(" + args.join(", ") + ")";
+                        }
+                    }
+                }
+                expr = stripTopLevelOrderBy(String(expr || "").trim());
+                if (!expr) expr = "''";
+                var head = "GROUP_CONCAT(" + (distinct ? "DISTINCT " : "");
+                var isDefaultSep = sepLit == null || /^','$/.test(sepLit) || /^","$/.test(sepLit);
+                if (isDefaultSep) return head + expr + ")";
+                return head + "MYSQL_GC(" + expr + ", " + sepLit + "))";
+            }
+
+            /**
+             * 把 MySQL 写法的 GROUP_CONCAT 改成 AlaSQL 能跑的形式：
+             *  - GROUP_CONCAT(x) / GROUP_CONCAT(DISTINCT x)              → 原样
+             *  - GROUP_CONCAT([DISTINCT] x, ',')                         → 丢掉多余的逗号参数（默认就是逗号）
+             *  - GROUP_CONCAT([DISTINCT] x SEPARATOR '|') / (x, '|')     → 分隔符编进值里，聚合时还原
+             *  - GROUP_CONCAT(x ORDER BY y ...)                          → 去掉聚合内部排序（AlaSQL 不支持）
+             * 不这么改的话 AlaSQL 会把「最后一个参数」当成要聚合的值，
+             * 于是 GROUP_CONCAT(DISTINCT upload_area, ',') 只会返回一串逗号。
+             */
+            function rewriteGroupConcatSql(sql) {
+                var text = String(sql || "");
+                if (!/group_concat/i.test(text)) return text;
+                var literals = collectStringLiteralRanges(text);
+                var out = "";
+                var i = 0;
+                while (i < text.length) {
+                    var lit = findLiteralRangeAt(literals, i);
+                    if (lit) {
+                        out += text.slice(i, lit[1]);
+                        i = lit[1];
+                        continue;
+                    }
+                    var m = /^GROUP_CONCAT\s*\(/i.exec(text.slice(i));
+                    var prev = text.charAt(i - 1);
+                    if (m && !/[A-Za-z0-9_$]/.test(prev)) {
+                        var open = i + m[0].length - 1;
+                        var close = findMatchingParenIndex(text, open, literals);
+                        if (close > open) {
+                            out += buildGroupConcatReplacement(text.slice(open + 1, close));
+                            i = close + 1;
+                            continue;
+                        }
+                    }
+                    out += text.charAt(i);
+                    i++;
+                }
+                return out;
             }
 
             /**
@@ -3900,7 +4454,7 @@
 
             function transformMysqlSql(sql) {
                 // Keep common MySQL habits compatible with AlaSQL parser.
-                return rewriteMysqlFunctionNames(sql, MYSQL_FN_RENAME)
+                return rewriteMysqlFunctionNames(rewriteGroupConcatSql(sql), MYSQL_FN_RENAME)
                     .replace(/`([^`]+)`/g, "[$1]");
             }
 
@@ -5344,7 +5898,11 @@
                     + "- NULLIF(a,b), COALESCE(a,b,...)\n"
                     + "- CASE WHEN ... THEN ... END: 多分支判断\n\n"
                     + "聚合：\n"
-                    + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x), GROUP_CONCAT(x)\n\n"
+                    + "- COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x)\n"
+                    + "- GROUP_CONCAT(x): 把一组值用逗号连成一个字符串（自动跳过 NULL）\n"
+                    + "- GROUP_CONCAT(DISTINCT x): 去重后再连\n"
+                    + "- GROUP_CONCAT(x, '|') 或 GROUP_CONCAT(x SEPARATOR '|'): 自定义分隔符\n"
+                    + "- 注意：GROUP_CONCAT 里的 ORDER BY 会被忽略（引擎不支持组内排序）\n\n"
                     + "其它：\n"
                     + "- JSON_EXTRACT(列,'$.a.b'): 取 JSON 字段\n"
                     + "- HEX(x), CONV(n,10,16): 进制/十六进制\n\n"
@@ -6592,6 +7150,18 @@
                 if (!files.length) return;
                 loadExcelFiles(files);
             });
+            document.getElementById("table-list").addEventListener("click", function (e) {
+                var btn = e.target.closest(".table-item-copy");
+                if (!btn) return;
+                var name = btn.getAttribute("data-table");
+                var db = dbStore[UNIFIED_DB_KEY];
+                var t = db && db.tables.find(function (x) { return x.tableName === name; });
+                if (!t || !t.columns || !t.columns.length) {
+                    setStatus("该表没有字段可复制。", true);
+                    return;
+                }
+                writeClipboardText(t.columns.join(", "), "已复制 " + t.columns.length + " 个字段名");
+            });
             document.getElementById("table-list").addEventListener("dblclick", function (e) {
                 var colEl = e.target.closest(".table-col-name");
                 if (!colEl) return;
@@ -6700,6 +7270,10 @@
             installMysqlCompatFunctions();
             renderCsvTabBar();
             updateCsvTextBtnState();
+            syncSqlFavBtnState();
+            document.getElementById("sql-input").addEventListener("input", function () {
+                syncSqlFavBtnState();
+            });
             void bootCsvSheetsPersist();
             window.addEventListener("message", function (e) {
                 var d = e.data;
@@ -6837,6 +7411,13 @@
                 URL.revokeObjectURL(url);
                 setStatus("已导出 CSV（" + fileName + "）。", false);
             });
+            document.getElementById("copy-cols-btn").addEventListener("click", function () {
+                if (!currentCols.length) {
+                    setStatus("还没有查询结果，没有可复制的字段名。", true);
+                    return;
+                }
+                writeClipboardText(currentCols.join(", "), "已复制 " + currentCols.length + " 个字段名");
+            });
             document.getElementById("copy-all-result-btn").addEventListener("click", function () {
                 if (!currentViewRows.length) {
                     setStatus("没有可复制的查询结果。", true);
@@ -6875,12 +7456,50 @@
             });
             document.getElementById("sql-history-pop").addEventListener("click", function (e) {
                 e.stopPropagation();
+                var favSqlBtn = e.target.closest(".sql-fav-sql");
+                if (favSqlBtn) {
+                    var favId = favSqlBtn.getAttribute("data-fav-id");
+                    var fav = lastSqlFavoriteList.find(function (x) { return x.id === favId; });
+                    if (fav) {
+                        document.getElementById("sql-input").value = fav.sql;
+                        syncSqlFavBtnState();
+                        closeSqlHistoryPop();
+                    }
+                    return;
+                }
+                var favDelBtn = e.target.closest(".sql-fav-del");
+                if (favDelBtn) {
+                    removeSqlFavorite(favDelBtn.getAttribute("data-fav-id"));
+                    renderSqlHistoryPop();
+                    syncSqlFavBtnState();
+                    setStatus("已取消收藏。", false);
+                    return;
+                }
+                var starBtn = e.target.closest(".sql-history-star");
+                if (starBtn) {
+                    var sIdx = Number(starBtn.getAttribute("data-idx"));
+                    var sSql = lastSqlHistoryList[sIdx];
+                    if (sSql != null) {
+                        var existFav = findSqlFavorite(sSql);
+                        if (existFav) {
+                            removeSqlFavorite(existFav.id);
+                            setStatus("已取消收藏。", false);
+                        } else {
+                            addSqlFavorite(sSql, "");
+                            setStatus("已收藏，可在收藏区写一句备注。", false);
+                        }
+                        renderSqlHistoryPop();
+                        syncSqlFavBtnState();
+                    }
+                    return;
+                }
                 var itemBtn = e.target.closest(".sql-history-item");
                 if (itemBtn) {
                     var idx = Number(itemBtn.getAttribute("data-idx"));
                     var raw = lastSqlHistoryList[idx];
                     if (raw != null) {
                         document.getElementById("sql-input").value = raw;
+                        syncSqlFavBtnState();
                         closeSqlHistoryPop();
                     }
                     return;
@@ -6897,6 +7516,35 @@
                     return;
                 }
                 renderSqlHistoryPop();
+            });
+            document.getElementById("sql-history-pop").addEventListener("input", function (e) {
+                var noteInput = e.target.closest(".sql-fav-note");
+                if (!noteInput) return;
+                e.stopPropagation();
+                updateSqlFavoriteNote(noteInput.getAttribute("data-fav-id"), noteInput.value);
+            });
+            document.getElementById("sql-history-pop").addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    closeSqlHistoryPop();
+                }
+            });
+            document.getElementById("sql-fav-btn").addEventListener("click", function (e) {
+                e.stopPropagation();
+                var sql = document.getElementById("sql-input").value.trim();
+                if (!sql) {
+                    setStatus("请先写上要收藏的 SQL。", true);
+                    return;
+                }
+                var exist = findSqlFavorite(sql);
+                if (exist) {
+                    openSqlHistoryPopFor(exist.id);
+                    setStatus("这条 SQL 已收藏，可直接修改备注。", false);
+                    return;
+                }
+                var item = addSqlFavorite(sql, "");
+                syncSqlFavBtnState();
+                openSqlHistoryPopFor(item && item.id);
+                setStatus("已收藏，补一句备注就知道它是干嘛的了。", false);
             });
             document.getElementById("result-wrap").addEventListener("mousedown", function (e) {
                 if (e.button !== 0) return;
