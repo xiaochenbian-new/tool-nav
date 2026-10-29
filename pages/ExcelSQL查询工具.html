@@ -106,29 +106,130 @@
                 font-size: 12px;
                 font-weight: 600;
             }
+            /* 收藏 / 最近 用页签切换：固定高度，页签头不动，内容区独立滚动 */
             .sql-history-pop {
                 display: none;
                 position: fixed;
                 z-index: 5100;
-                min-width: min(440px, calc(100vw - 24px));
-                max-width: min(720px, calc(100vw - 24px));
-                max-height: min(480px, 62vh);
-                overflow: auto;
+                width: min(560px, calc(100vw - 24px));
+                min-height: 168px;
+                max-height: min(460px, 66vh);
+                box-sizing: border-box;
+                overflow: hidden;
                 border: 1px solid #d8e5ff;
                 border-radius: 10px;
                 background: #fff;
                 box-shadow: 0 8px 22px rgba(36, 90, 190, 0.16);
-                padding: 10px 12px;
             }
             .sql-history-pop.show {
-                display: block;
+                display: flex;
+                flex-direction: column;
+            }
+            .sql-pop-tabs {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                gap: 2px;
+                padding: 8px 10px 0;
+                border-bottom: 1px solid #e2ebfb;
+                background: #f4f8ff;
+            }
+            .sql-pop-tab {
+                position: relative;
+                margin-bottom: -1px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                height: 34px;
+                padding: 0 12px;
+                border: 1px solid transparent;
+                border-radius: 8px 8px 0 0;
+                background: transparent;
+                color: #6f7d96;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .sql-pop-tab:hover {
+                color: #2559b8;
+                background: #f2f7ff;
+            }
+            .sql-pop-tab.is-active {
+                color: #1d4ea8;
+                font-weight: 700;
+                background: #fff;
+                border-color: #d8e5ff;
+                border-bottom-color: #fff;
+            }
+            .sql-pop-tab .tab-ico {
+                flex: 0 0 auto;
+                opacity: 0.85;
+            }
+            .sql-pop-tab .tab-star {
+                flex: 0 0 auto;
+                color: #d8b263;
+                font-size: 13px;
+            }
+            .sql-pop-tab.is-active .tab-star {
+                color: #e0a33a;
+            }
+            .sql-pop-tab-num {
+                min-width: 18px;
+                height: 18px;
+                padding: 0 5px;
+                box-sizing: border-box;
+                border-radius: 999px;
+                background: #eef3ff;
+                color: #6f7d96;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 18px;
+                text-align: center;
+            }
+            .sql-pop-tab.is-active .sql-pop-tab-num {
+                background: #e0ebff;
+                color: #2559b8;
+            }
+            .sql-pop-tab[data-tab="fav"] .sql-pop-tab-num {
+                background: #fff4d6;
+                color: #a8730a;
+            }
+            .sql-pop-tab-num.bump {
+                animation: sqlTabBump 0.9s ease-out;
+            }
+            @keyframes sqlTabBump {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(224, 163, 58, 0.5); }
+                35% { transform: scale(1.35); box-shadow: 0 0 0 4px rgba(224, 163, 58, 0.25); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(224, 163, 58, 0); }
+            }
+            .sql-pop-tab-hint {
+                margin-left: auto;
+                padding-right: 2px;
+                font-size: 11px;
+                color: #9aa8c2;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            @media (max-width: 520px) {
+                .sql-pop-tab-hint { display: none; }
+                .sql-pop-tab { padding: 0 10px; }
+            }
+            .sql-pop-body {
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 10px 12px 12px;
             }
             .sql-history-pop .sql-history-title {
-                font-size: 14px;
+                flex: 0 0 auto;
+                font-size: 12px;
                 font-weight: 600;
-                color: #4a5978;
-                padding: 6px 8px 10px;
-                line-height: 1.4;
+                color: #8492ab;
+                padding: 0 2px 8px;
+                line-height: 1.5;
             }
             .sql-history-item {
                 display: block;
@@ -138,9 +239,9 @@
                 border-radius: 8px;
                 background: #f8fbff;
                 color: #1f2a44;
-                font-size: 15px;
+                font-size: 14px;
                 line-height: 1.45;
-                padding: 10px 12px;
+                padding: 9px 11px;
                 margin-bottom: 8px;
                 cursor: pointer;
                 word-break: break-all;
@@ -149,20 +250,15 @@
                 border-color: #b8cdfb;
                 background: #eef4ff;
             }
-            .sql-history-empty {
-                font-size: 15px;
-                color: var(--muted);
-                padding: 12px;
-                line-height: 1.5;
-            }
             .sql-history-pager {
+                flex: 0 0 auto;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 gap: 10px;
-                padding: 4px 8px 2px;
+                padding: 6px 8px 0;
                 border-top: 1px solid #e7efff;
-                margin-top: 4px;
+                margin-top: 6px;
             }
             .sql-history-page-info {
                 font-size: 13px;
@@ -191,46 +287,39 @@
                 opacity: 0.45;
                 cursor: not-allowed;
             }
-            .sql-fav-head {
+            .sql-fav-empty,
+            .sql-history-empty {
+                flex: 1 1 auto;
                 display: flex;
-                align-items: baseline;
-                gap: 8px;
-                padding: 4px 8px 8px;
-                border-bottom: 1px dashed #e7efff;
-                margin-bottom: 8px;
-            }
-            .sql-fav-title {
-                font-size: 14px;
-                font-weight: 700;
-                color: #c08a00;
-            }
-            .sql-fav-count {
-                font-size: 12px;
-                color: #6f7d96;
-            }
-            .sql-fav-hint {
-                font-size: 12px;
-                color: #9aa8c2;
-                margin-left: auto;
-            }
-            .sql-fav-empty {
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                padding: 10px 16px;
                 font-size: 13px;
                 color: var(--muted);
-                padding: 2px 8px 10px;
-                line-height: 1.5;
+                line-height: 1.7;
+                text-align: center;
             }
-            .sql-fav-list {
-                max-height: 240px;
+            .sql-fav-list,
+            .sql-history-list {
+                flex: 1 1 auto;
+                min-height: 0;
                 overflow-y: auto;
                 padding-right: 2px;
-                margin-bottom: 2px;
             }
-            .sql-fav-list::-webkit-scrollbar {
+            .sql-fav-list::-webkit-scrollbar,
+            .sql-history-list::-webkit-scrollbar,
+            .sql-pop-body::-webkit-scrollbar {
                 width: 8px;
             }
-            .sql-fav-list::-webkit-scrollbar-thumb {
+            .sql-fav-list::-webkit-scrollbar-thumb,
+            .sql-history-list::-webkit-scrollbar-thumb {
                 background: #f3ddb0;
                 border-radius: 999px;
+            }
+            .sql-history-list::-webkit-scrollbar-thumb {
+                background: #dbe6fb;
             }
             .sql-fav-item {
                 border: 1px solid #ffe6a8;
@@ -1906,6 +1995,8 @@
             let favNoteDraft = "";
             /** 刚被收藏的 id，用于给对应卡片加一段高亮动画，让「联动」看得见。 */
             let justAddedFavId = "";
+            /** 弹窗当前页签："fav" 收藏 / "history" 最近执行；空串表示还没定，首次打开按内容自动挑 */
+            let sqlPopTab = "";
             const HANDOFF_TEXT_TO_EXCEL_SQL_KEY = "tool-nav:handoff:text-to-excel-sql";
             const HANDOFF_EXCEL_SQL_TO_TEXT_KEY = "tool-nav:handoff:excel-sql-to-text";
             const HANDOFF_EXCEL_SQL_TO_JSON_EXCEL_KEY = "tool-nav:handoff:excel-sql-to-json-excel";
@@ -2816,23 +2907,15 @@
                     + "</div></div>";
             }
 
-            /** 收藏区：长期保留 + 备注，永远排在历史记录上面。 */
-            function renderSqlFavoriteSection() {
-                lastSqlFavoriteList = loadSqlFavorites();
-                // 正在编辑的那条被删掉了：清掉编辑态，避免留下悬空草稿
-                if (editingFavId && !lastSqlFavoriteList.some(function (x) { return x.id === editingFavId; })) {
-                    editingFavId = null;
-                    favNoteDraft = "";
-                }
-                var html = "<div class=\"sql-fav-head\">"
-                    + "<span class=\"sql-fav-title\">★ 收藏</span>"
-                    + "<span class=\"sql-fav-count\">" + lastSqlFavoriteList.length + " 条</span>"
-                    + "<span class=\"sql-fav-hint\">长期有效 · 点「备注」可编辑</span>"
-                    + "</div>";
+            /** 收藏页签内容（页签头在 Tab 栏，这里只出卡片列表） */
+            function renderSqlFavoriteTab() {
                 if (!lastSqlFavoriteList.length) {
-                    return html + "<div class=\"sql-fav-empty\">还没有收藏。点 SQL 框上方的「☆ 收藏」，或历史记录右侧的 ☆。</div>";
+                    return "<div class=\"sql-fav-empty\">"
+                        + "<span>还没有收藏的 SQL。</span>"
+                        + "<span>写一条 SQL 后点框上方的「☆ 收藏」，或在「最近」页签点右侧的 ☆。</span>"
+                        + "</div>";
                 }
-                html += "<div class=\"sql-fav-list\">" + lastSqlFavoriteList.map(function (item) {
+                return "<div class=\"sql-fav-list\">" + lastSqlFavoriteList.map(function (item) {
                     var id = escapeHtml(item.id);
                     var editing = editingFavId === item.id;
                     var pulse = justAddedFavId === item.id ? " just-added" : "";
@@ -2849,80 +2932,137 @@
                             : renderFavNoteView(item.id, item.note))
                         + "</div>";
                 }).join("") + "</div>";
+            }
+
+            /** 最近执行页签内容：标题 + 列表（内部滚动）+ 分页条固定在底部 */
+            function renderSqlHistoryTab() {
+                var total = lastSqlHistoryList.length;
+                if (!total) {
+                    return "<div class=\"sql-history-empty\">"
+                        + "<span>暂无执行记录。</span>"
+                        + "<span>SQL 执行成功后会自动记进这里，最多保留 " + SQL_HISTORY_MAX + " 条。</span>"
+                        + "</div>";
+                }
+                var totalPages = Math.max(1, Math.ceil(total / SQL_HISTORY_PAGE_SIZE));
+                if (sqlHistoryPage > totalPages) sqlHistoryPage = totalPages;
+                if (sqlHistoryPage < 1) sqlHistoryPage = 1;
+                var start = (sqlHistoryPage - 1) * SQL_HISTORY_PAGE_SIZE;
+                var pageItems = lastSqlHistoryList.slice(start, start + SQL_HISTORY_PAGE_SIZE);
+                var favKeys = {};
+                lastSqlFavoriteList.forEach(function (f) {
+                    favKeys[normalizeSqlHistoryDedupKey(f.sql)] = true;
+                });
+                var html = "<div class=\"sql-history-title\">最近 " + total
+                    + " 条（已去重，最新在上）· 点一条填入 SQL 框，右侧 ☆ 收藏</div>"
+                    + "<div class=\"sql-history-list\">"
+                    + pageItems.map(function (sql, i) {
+                        var idx = start + i;
+                        var starred = favKeys[normalizeSqlHistoryDedupKey(sql)] ? " is-fav" : "";
+                        return "<div class=\"sql-history-row" + starred + "\">"
+                            + "<button type=\"button\" class=\"sql-history-item\" data-idx=\"" + idx + "\">"
+                            + escapeHtml(sql) + "</button>"
+                            + "<button type=\"button\" class=\"sql-history-star" + starred + "\" data-idx=\"" + idx
+                            + "\" title=\"" + (starred ? "已收藏，点击取消" : "收藏这条 SQL") + "\">"
+                            + (starred ? "★" : "☆") + "</button>"
+                            + "</div>";
+                    }).join("")
+                    + "</div>";
+                if (totalPages > 1) {
+                    html += "<div class=\"sql-history-pager\">"
+                        + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"prev\""
+                        + (sqlHistoryPage <= 1 ? " disabled" : "") + ">‹</button>"
+                        + "<span class=\"sql-history-page-info\">第 " + sqlHistoryPage + "/" + totalPages + " 页</span>"
+                        + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"next\""
+                        + (sqlHistoryPage >= totalPages ? " disabled" : "") + ">›</button>"
+                        + "</div>";
+                }
                 return html;
             }
 
-            /** 编辑备注时 textarea 跟随内容长高（最多 4 行左右，超出滚动） */
-            function autosizeFavNoteInput(ta) {
-                if (!ta) return;
-                var maxH = 96;
-                ta.style.height = "auto";
-                var h = Math.min(maxH, Math.max(30, ta.scrollHeight));
-                ta.style.height = h + "px";
-                ta.style.overflowY = ta.scrollHeight > maxH ? "auto" : "hidden";
+            var SQL_POP_CLOCK_SVG = "<svg class=\"tab-ico\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\""
+                + " aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a6 6 0"
+                + " 1 1 6 6v-2h2v2a8 8 0 1 0-2.343-5.657L13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z\"/></svg>";
+
+            /** 当前页签：用户点过就以用户选择为准；没点过时按内容自动挑一次（有收藏就看收藏）。 */
+            function resolveSqlPopTab() {
+                if (sqlPopTab === "fav" || sqlPopTab === "history") return sqlPopTab;
+                sqlPopTab = lastSqlFavoriteList.length ? "fav" : "history";
+                return sqlPopTab;
             }
 
-            /** 进入备注编辑：光标落在末尾（不要全选，否则一打字原备注就被整条替换） */
-            function focusFavNoteInput(pop) {
-                if (!pop) return;
-                var ta = pop.querySelector(".sql-fav-note-input");
-                if (!ta) return;
-                autosizeFavNoteInput(ta);
-                ta.focus();
-                var len = ta.value.length;
-                try {
-                    ta.setSelectionRange(len, len);
-                } catch (err) {
-                    // ignore
-                }
-                var item = ta.closest(".sql-fav-item");
-                if (item && typeof item.scrollIntoView === "function") {
-                    item.scrollIntoView({ block: "nearest" });
-                }
+            function renderSqlPopTabs() {
+                var active = resolveSqlPopTab();
+                var hint = active === "history"
+                    ? "点 SQL 直接填入语句框"
+                    : "长期有效 · 点「备注」可编辑";
+                return "<div class=\"sql-pop-tabs\" role=\"tablist\">"
+                    + "<button type=\"button\" class=\"sql-pop-tab" + (active === "fav" ? " is-active" : "")
+                    + "\" data-tab=\"fav\" role=\"tab\" aria-selected=\"" + (active === "fav") + "\">"
+                    + "<span class=\"tab-star\">★</span>收藏"
+                    + "<span class=\"sql-pop-tab-num\">" + lastSqlFavoriteList.length + "</span>"
+                    + "</button>"
+                    + "<button type=\"button\" class=\"sql-pop-tab" + (active === "history" ? " is-active" : "")
+                    + "\" data-tab=\"history\" role=\"tab\" aria-selected=\"" + (active === "history") + "\">"
+                    + SQL_POP_CLOCK_SVG + "最近"
+                    + "<span class=\"sql-pop-tab-num\">" + lastSqlHistoryList.length + "</span>"
+                    + "</button>"
+                    + "<span class=\"sql-pop-tab-hint\">" + hint + "</span>"
+                    + "</div>";
             }
 
-            function renderSqlHistoryPop() {
+            /** 页签内部列表的滚动位置：重渲染（保存备注、收藏、翻页）时保持不跳 */
+            function captureSqlPopScroll() {
+                var pop = document.getElementById("sql-history-pop");
+                var el = pop && pop.querySelector(".sql-fav-list, .sql-history-list");
+                return el ? el.scrollTop : 0;
+            }
+
+            function setSqlPopScroll(top) {
+                var pop = document.getElementById("sql-history-pop");
+                var el = pop && pop.querySelector(".sql-fav-list, .sql-history-list");
+                if (el) el.scrollTop = Math.max(0, top || 0);
+            }
+
+            /** 在「最近」页签收藏时，给收藏页签的数字角标来一下脉冲，让联动看得见 */
+            function bumpFavTabBadge() {
+                var pop = document.getElementById("sql-history-pop");
+                var num = pop && pop.querySelector(".sql-pop-tab[data-tab=\"fav\"] .sql-pop-tab-num");
+                if (!num) return;
+                num.classList.remove("bump");
+                void num.offsetWidth;
+                num.classList.add("bump");
+            }
+
+            function switchSqlPopTab(tab) {
+                var next = tab === "history" ? "history" : "fav";
+                if (next === sqlPopTab && document.getElementById("sql-history-pop").classList.contains("show")) {
+                    return;
+                }
+                // 离开备注编辑视为「编辑完成」，与切换编辑自动保存保持一致
+                var saved = flushFavNoteDraft();
+                sqlPopTab = next;
+                renderSqlHistoryPop();
+                setSqlPopScroll(0);
+                if (saved) syncSqlFavBtnState();
+            }
+
+            function renderSqlHistoryPop(keepScroll) {
                 var pop = document.getElementById("sql-history-pop");
                 var btn = document.getElementById("sql-history-btn");
                 if (!pop) return;
                 lastSqlHistoryList = loadSqlHistory();
-                var html = renderSqlFavoriteSection();
-                var total = lastSqlHistoryList.length;
-                if (!total) {
-                    html += "<div class=\"sql-history-empty\">暂无执行记录（执行成功后会自动保存）。</div>";
-                } else {
-                    var totalPages = Math.max(1, Math.ceil(total / SQL_HISTORY_PAGE_SIZE));
-                    if (sqlHistoryPage > totalPages) sqlHistoryPage = totalPages;
-                    if (sqlHistoryPage < 1) sqlHistoryPage = 1;
-                    var start = (sqlHistoryPage - 1) * SQL_HISTORY_PAGE_SIZE;
-                    var pageItems = lastSqlHistoryList.slice(start, start + SQL_HISTORY_PAGE_SIZE);
-                    var favKeys = {};
-                    lastSqlFavoriteList.forEach(function (f) {
-                        favKeys[normalizeSqlHistoryDedupKey(f.sql)] = true;
-                    });
-                    html += "<div class=\"sql-history-title\">最近 " + total + " 条（已去重，最新在上）· 点击填入 SQL，右侧 ☆ 收藏</div>"
-                        + pageItems.map(function (sql, i) {
-                            var idx = start + i;
-                            var starred = favKeys[normalizeSqlHistoryDedupKey(sql)] ? " is-fav" : "";
-                            return "<div class=\"sql-history-row" + starred + "\">"
-                                + "<button type=\"button\" class=\"sql-history-item\" data-idx=\"" + idx + "\">"
-                                + escapeHtml(sql) + "</button>"
-                                + "<button type=\"button\" class=\"sql-history-star" + starred + "\" data-idx=\"" + idx
-                                + "\" title=\"" + (starred ? "已收藏，点击取消" : "收藏这条 SQL") + "\">"
-                                + (starred ? "★" : "☆") + "</button>"
-                                + "</div>";
-                        }).join("");
-                    if (totalPages > 1) {
-                        html += "<div class=\"sql-history-pager\">"
-                            + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"prev\""
-                            + (sqlHistoryPage <= 1 ? " disabled" : "") + ">‹</button>"
-                            + "<span class=\"sql-history-page-info\">第 " + sqlHistoryPage + "/" + totalPages + " 页</span>"
-                            + "<button type=\"button\" class=\"sql-history-page-btn\" data-act=\"next\""
-                            + (sqlHistoryPage >= totalPages ? " disabled" : "") + ">›</button>"
-                            + "</div>";
-                    }
+                lastSqlFavoriteList = loadSqlFavorites();
+                // 正在编辑的那条被删掉了：清掉编辑态，避免留下悬空草稿
+                if (editingFavId && !lastSqlFavoriteList.some(function (x) { return x.id === editingFavId; })) {
+                    editingFavId = null;
+                    favNoteDraft = "";
                 }
-                pop.innerHTML = html;
+                if (sqlPopTab !== "history" && sqlPopTab !== "fav") resolveSqlPopTab();
+                // 收藏页签下没有收藏、但历史里有记录时，不强行换页签（保留用户选择）
+                var scrollTop = keepScroll ? captureSqlPopScroll() : 0;
+                var bodyHtml = sqlPopTab === "history" ? renderSqlHistoryTab() : renderSqlFavoriteTab();
+                pop.innerHTML = renderSqlPopTabs() + "<div class=\"sql-pop-body\">" + bodyHtml + "</div>";
+                if (keepScroll) setSqlPopScroll(scrollTop);
                 var visible = pop.classList.contains("show");
                 if (btn && visible) {
                     adjustSqlHistoryPopupPosition(pop, btn);
@@ -2931,10 +3071,11 @@
                 if (editingFavId && visible) focusFavNoteInput(pop);
             }
 
-            function showSqlHistoryPop() {
+            function showSqlHistoryPop(tab) {
                 var pop = document.getElementById("sql-history-pop");
                 var btn = document.getElementById("sql-history-btn");
                 if (!pop || !btn) return;
+                if (tab) sqlPopTab = tab === "history" ? "history" : "fav";
                 closeAllFilterPopup();
                 hideCopyMenu();
                 sqlHistoryPage = 1;
@@ -2942,6 +3083,7 @@
                 pop.classList.add("show");
                 pop.setAttribute("aria-hidden", "false");
                 adjustSqlHistoryPopupPosition(pop, btn);
+                setSqlPopScroll(0);
                 if (editingFavId) focusFavNoteInput(pop);
             }
 
@@ -2949,6 +3091,7 @@
             function openSqlHistoryPopFor(favId, enterEdit) {
                 var pop = document.getElementById("sql-history-pop");
                 if (!pop) return;
+                if (favId) sqlPopTab = "fav";
                 if (favId && enterEdit) {
                     flushFavNoteDraft();
                     var fav = findSqlFavoriteById(favId);
@@ -2986,13 +3129,13 @@
                 if (!fav) return;
                 editingFavId = id;
                 favNoteDraft = String(fav.note || "");
-                renderSqlHistoryPop();
+                renderSqlHistoryPop(true);
             }
 
             function cancelFavNoteEdit() {
                 editingFavId = null;
                 favNoteDraft = "";
-                renderSqlHistoryPop();
+                renderSqlHistoryPop(true);
             }
 
             /** 保存备注：只在点「保存」/ Enter / 关闭面板时写盘一次。 */
@@ -3003,9 +3146,38 @@
                 editingFavId = null;
                 favNoteDraft = "";
                 updateSqlFavoriteNote(id, text);
-                renderSqlHistoryPop();
+                renderSqlHistoryPop(true);
                 syncSqlFavBtnState();
                 if (!silent) setStatus(text ? "备注已保存。" : "备注已清空。", false);
+            }
+
+            /** 编辑备注时 textarea 跟随内容长高（最多 4 行左右，超出滚动） */
+            function autosizeFavNoteInput(ta) {
+                if (!ta) return;
+                var maxH = 96;
+                ta.style.height = "auto";
+                var h = Math.min(maxH, Math.max(30, ta.scrollHeight));
+                ta.style.height = h + "px";
+                ta.style.overflowY = ta.scrollHeight > maxH ? "auto" : "hidden";
+            }
+
+            /** 进入备注编辑：光标落在末尾（不要全选，否则一打字原备注就被整条替换） */
+            function focusFavNoteInput(pop) {
+                if (!pop) return;
+                var ta = pop.querySelector(".sql-fav-note-input");
+                if (!ta) return;
+                autosizeFavNoteInput(ta);
+                ta.focus();
+                var len = ta.value.length;
+                try {
+                    ta.setSelectionRange(len, len);
+                } catch (err) {
+                    // ignore
+                }
+                var item = ta.closest(".sql-fav-item");
+                if (item && typeof item.scrollIntoView === "function") {
+                    item.scrollIntoView({ block: "nearest" });
+                }
             }
 
             function pad2(v) {
@@ -7711,6 +7883,11 @@
             });
             document.getElementById("sql-history-pop").addEventListener("click", function (e) {
                 e.stopPropagation();
+                var tabBtn = e.target.closest(".sql-pop-tab");
+                if (tabBtn) {
+                    switchSqlPopTab(tabBtn.getAttribute("data-tab"));
+                    return;
+                }
                 var saveBtn = e.target.closest(".sql-fav-note-save");
                 if (saveBtn) {
                     commitFavNoteEdit();
@@ -7748,7 +7925,7 @@
                     }
                     removeSqlFavorite(delId);
                     justAddedFavId = "";
-                    renderSqlHistoryPop();
+                    renderSqlHistoryPop(true);
                     syncSqlFavBtnState();
                     setStatus("已取消收藏。", false);
                     return;
@@ -7767,15 +7944,16 @@
                             }
                             removeSqlFavorite(existFav.id);
                             justAddedFavId = "";
-                            renderSqlHistoryPop();
+                            renderSqlHistoryPop(true);
                             syncSqlFavBtnState();
                             setStatus("已取消收藏。", false);
                         } else {
                             var added = addSqlFavorite(sSql, "");
                             justAddedFavId = added ? added.id : "";
-                            renderSqlHistoryPop();
+                            renderSqlHistoryPop(true);
                             syncSqlFavBtnState();
-                            setStatus("已收藏，点这条收藏的「备注」写一句说明。", false);
+                            bumpFavTabBadge();
+                            setStatus("已收藏，切到「收藏」页签可以直接写备注。", false);
                             if (justAddedFavId) {
                                 var newCard = document.getElementById("sql-history-pop")
                                     .querySelector(".sql-fav-item[data-fav-id=\"" + justAddedFavId + "\"]");
