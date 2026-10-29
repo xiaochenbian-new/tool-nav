@@ -5519,6 +5519,436 @@
                 }
             }
 
+            /* ---------- 工作表持久化：刷新后保留全部 CSV / Excel 工作表 ----------
+             * 以前只有当前文本框内容被 tool-form-persist 存下来，标签页数组只活在内存里，
+             * 刷新后只剩一个 "CSV 1"。这里把整个工作表集合（含大表 importRows）存进
+             * IndexedDB（容量大），无 IndexedDB 时回退 localStorage。
+             */
+            var CSV_SHEETS_DB_NAME = "tool-nav-excel-sql";
+            var CSV_SHEETS_STORE = "csvSheets";
+            var CSV_SHEETS_LS_KEY = "excelSqlCsvSheetsV1";
+            var CSV_SHEETS_SAVE_DELAY = 350;
+            var CSV_SHEETS_LS_MAX_CHARS = 3500000;
+            /** 自动重建数据表的行数上限，超过就只恢复标签、由用户手动点「加载」 */
+            var CSV_SHEETS_AUTO_REBUILD_ROWS = 300000;
+            var csvSheetsDbPromise = null;
+            var csvSheetsReady = false;
+            var csvSheetsRestored = false;
+            var csvSheetsHydrating = false;
+            var csvSheetsSaveTimer = 0;
+            var csvSheetsBusy = false;
+            var csvSheetsDirty = false;
+            var csvSheetsWritten = {};
+            var csvSheetsWrittenIds = {};
+            var csvSheetsWarned = false;
+
+            function openCsvSheetsDb() {
+                if (csvSheetsDbPromise) return csvSheetsDbPromise;
+                csvSheetsDbPromise = new Promise(function (resolve) {
+                    var settled = false;
+                    function done(db) {
+                        if (settled) return;
+                        settled = true;
+                        resolve(db || null);
+                    }
+                    try {
+                        if (typeof indexedDB === "undefined" || !indexedDB) {
+                            done(null);
+                            return;
+                        }
+                        var req = indexedDB.open(CSV_SHEETS_DB_NAME, 1);
+                        req.onupgradeneeded = function () {
+                            try {
+                                var db = req.result;
+                                if (!db.objectStoreNames.contains(CSV_SHEETS_STORE)) {
+                                    db.createObjectStore(CSV_SHEETS_STORE);
+                                }
+                            } catch (e) {
+                                // ignore
+                            }
+                        };
+                        req.onsuccess = function () {
+                            done(req.result);
+                        };
+                        req.onerror = function () {
+                            done(null);
+                        };
+                        req.onblocked = function () {
+                            done(null);
+                        };
+                        window.setTimeout(function () {
+                            done(null);
+                        }, 4000);
+                    } catch (e) {
+                        done(null);
+                    }
+                });
+                return csvSheetsDbPromise;
+            }
+
+            function csvIdbWrite(db, records, deleteKeys) {
+                return new Promise(function (resolve) {
+                    try {
+                        var tx = db.transaction(CSV_SHEETS_STORE, "readwrite");
+                        var store = tx.objectStore(CSV_SHEETS_STORE);
+                        records.forEach(function (r) {
+                            store.put(r.value, r.key);
+                        });
+                        (deleteKeys || []).forEach(function (k) {
+                            store.delete(k);
+                        });
+                        tx.oncomplete = function () {
+                            resolve(true);
+                        };
+                        tx.onerror = function () {
+                            resolve(false);
+                        };
+                        tx.onabort = function () {
+                            resolve(false);
+                        };
+                    } catch (e) {
+                        resolve(false);
+                    }
+                });
+            }
+
+            function csvIdbReadAll(db) {
+                return new Promise(function (resolve) {
+                    try {
+                        var tx = db.transaction(CSV_SHEETS_STORE, "readonly");
+                        var store = tx.objectStore(CSV_SHEETS_STORE);
+                        var out = [];
+                        var req = store.openCursor();
+                        req.onsuccess = function () {
+                            var cur = req.result;
+                            if (cur) {
+                                out.push({ key: cur.key, value: cur.value });
+                                cur.continue();
+                            } else {
+                                resolve(out);
+                            }
+                        };
+                        req.onerror = function () {
+                            resolve(null);
+                        };
+                    } catch (e) {
+                        resolve(null);
+                    }
+                });
+            }
+
+            /** 低成本指纹：用于跳过未变化条目的重复写入（大表 structuredClone 不便宜） */
+            function csvEntrySignature(entry) {
+                var text = entry.text || "";
+                return [
+                    entry.label || "",
+                    entry.name || "",
+                    text.length,
+                    text.slice(0, 16),
+                    text.slice(-16),
+                    entry.importRows && entry.importRows.length ? entry.importRows.length : 0
+                ].join("\u0001");
+            }
+
+            function csvSheetsSnapshot() {
+                var entries = csvPasteEntries.map(function (entry) {
+                    return {
+                        id: entry.id,
+                        label: entry.label || "",
+                        name: entry.name || "",
+                        text: typeof entry.text === "string" ? entry.text : "",
+                        importRows: entry.importRows && entry.importRows.length ? entry.importRows : null
+                    };
+                });
+                return {
+                    v: 1,
+                    activeId: activeCsvPasteId,
+                    nextId: nextCsvPasteId,
+                    ids: entries.map(function (e) {
+                        return e.id;
+                    }),
+                    entries: entries,
+                    savedAt: Date.now()
+                };
+            }
+
+            function writeCsvSheetsToLocal(snap) {
+                try {
+                    var json = JSON.stringify(snap);
+                    if (json.length > CSV_SHEETS_LS_MAX_CHARS) {
+                        json = JSON.stringify({
+                            v: snap.v,
+                            activeId: snap.activeId,
+                            nextId: snap.nextId,
+                            ids: snap.ids,
+                            savedAt: snap.savedAt,
+                            entries: snap.entries.map(function (e) {
+                                return { id: e.id, label: e.label, name: e.name, text: e.text, importRows: null };
+                            })
+                        });
+                    }
+                    localStorage.setItem(CSV_SHEETS_LS_KEY, json);
+                } catch (e) {
+                    if (!csvSheetsWarned) {
+                        csvSheetsWarned = true;
+                        setStatus("工作表内容过大，浏览器存储空间不足，刷新后可能无法完整恢复。", true);
+                    }
+                }
+            }
+
+            async function persistCsvSheets() {
+                if (!csvSheetsReady || csvSheetsHydrating) return;
+                if (csvSheetsBusy) {
+                    csvSheetsDirty = true;
+                    return;
+                }
+                csvSheetsBusy = true;
+                try {
+                    var snap = csvSheetsSnapshot();
+                    var db = await openCsvSheetsDb();
+                    if (!db) {
+                        writeCsvSheetsToLocal(snap);
+                        return;
+                    }
+                    var records = [{
+                        key: "meta",
+                        value: {
+                            v: snap.v,
+                            activeId: snap.activeId,
+                            nextId: snap.nextId,
+                            ids: snap.ids,
+                            savedAt: snap.savedAt
+                        }
+                    }];
+                    var liveIds = {};
+                    snap.entries.forEach(function (entry) {
+                        var idKey = String(entry.id);
+                        liveIds[idKey] = true;
+                        var sig = csvEntrySignature(entry);
+                        if (csvSheetsWritten[idKey] !== sig) {
+                            records.push({ key: "e:" + idKey, value: entry });
+                            csvSheetsWritten[idKey] = sig;
+                        }
+                        csvSheetsWrittenIds[idKey] = true;
+                    });
+                    var stale = [];
+                    Object.keys(csvSheetsWrittenIds).forEach(function (idKey) {
+                        if (!liveIds[idKey]) {
+                            stale.push("e:" + idKey);
+                            delete csvSheetsWrittenIds[idKey];
+                            delete csvSheetsWritten[idKey];
+                        }
+                    });
+                    var ok = await csvIdbWrite(db, records, stale);
+                    if (!ok) {
+                        csvSheetsWritten = {};
+                        csvSheetsWrittenIds = {};
+                        if (!csvSheetsWarned) {
+                            csvSheetsWarned = true;
+                            setStatus("工作表保存失败：浏览器本地存储空间可能不足，刷新后可能无法完整恢复。", true);
+                        }
+                    }
+                } catch (e) {
+                    // 存储失败不影响主流程
+                } finally {
+                    csvSheetsBusy = false;
+                    if (csvSheetsDirty) {
+                        csvSheetsDirty = false;
+                        scheduleCsvSheetsPersist();
+                    }
+                }
+            }
+
+            function scheduleCsvSheetsPersist() {
+                if (!csvSheetsReady || csvSheetsHydrating) return;
+                if (csvSheetsSaveTimer) window.clearTimeout(csvSheetsSaveTimer);
+                csvSheetsSaveTimer = window.setTimeout(function () {
+                    csvSheetsSaveTimer = 0;
+                    void persistCsvSheets();
+                }, CSV_SHEETS_SAVE_DELAY);
+            }
+
+            function normalizeCsvSheetsSnapshot(raw) {
+                if (!raw || typeof raw !== "object" || !Array.isArray(raw.entries)) return null;
+                var entries = [];
+                raw.entries.forEach(function (e) {
+                    if (!e || typeof e.id !== "number" || !isFinite(e.id)) return;
+                    entries.push({
+                        id: e.id,
+                        label: String(e.label || "CSV " + e.id),
+                        name: e.name || "",
+                        text: typeof e.text === "string" ? e.text : "",
+                        importRows: Array.isArray(e.importRows) && e.importRows.length ? e.importRows : null
+                    });
+                });
+                if (!entries.length) return null;
+                return {
+                    v: 1,
+                    activeId: raw.activeId,
+                    nextId: raw.nextId,
+                    ids: Array.isArray(raw.ids) && raw.ids.length
+                        ? raw.ids
+                        : entries.map(function (e) {
+                            return e.id;
+                        }),
+                    entries: entries
+                };
+            }
+
+            function readCsvSheetsFromLocal() {
+                try {
+                    var raw = localStorage.getItem(CSV_SHEETS_LS_KEY);
+                    if (!raw) return null;
+                    return normalizeCsvSheetsSnapshot(JSON.parse(raw));
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            async function readCsvSheetsSnapshot() {
+                var db = await openCsvSheetsDb();
+                if (!db) return readCsvSheetsFromLocal();
+                var rows = await csvIdbReadAll(db);
+                if (!rows || !rows.length) return readCsvSheetsFromLocal();
+                var meta = null;
+                var map = {};
+                rows.forEach(function (r) {
+                    if (r.key === "meta") {
+                        meta = r.value;
+                    } else if (typeof r.key === "string" && r.key.indexOf("e:") === 0) {
+                        map[r.key.slice(2)] = r.value;
+                    }
+                });
+                var ordered = [];
+                if (meta && Array.isArray(meta.ids)) {
+                    meta.ids.forEach(function (id) {
+                        var item = map[String(id)];
+                        if (item) {
+                            ordered.push(item);
+                            delete map[String(id)];
+                        }
+                    });
+                }
+                Object.keys(map).forEach(function (id) {
+                    ordered.push(map[id]);
+                });
+                if (!ordered.length) return readCsvSheetsFromLocal();
+                return normalizeCsvSheetsSnapshot({
+                    activeId: meta ? meta.activeId : null,
+                    nextId: meta ? meta.nextId : null,
+                    ids: meta ? meta.ids : null,
+                    entries: ordered
+                });
+            }
+
+            function applyCsvSheetsSnapshot(snap) {
+                if (!snap || !snap.entries.length) return false;
+                csvSheetsHydrating = true;
+                csvPasteEntries = snap.entries;
+                var maxId = 0;
+                csvPasteEntries.forEach(function (e) {
+                    if (e.id > maxId) maxId = e.id;
+                });
+                nextCsvPasteId = Math.max(Number(snap.nextId) || 0, maxId + 1);
+                var active = null;
+                csvPasteEntries.forEach(function (e) {
+                    if (e.id === snap.activeId) active = e;
+                });
+                activeCsvPasteId = active ? active.id : csvPasteEntries[0].id;
+                invalidateCsvPasteLoadedSnapshot();
+                renderCsvTabBar();
+                syncCsvTextAreaFromActiveEntry();
+                updateCsvTextBtnState();
+                csvSheetsHydrating = false;
+                csvPasteLoadedSnapshot = getCsvPasteSnapshot();
+                csvSheetsRestored = true;
+                return true;
+            }
+
+            function syncCsvTextAreaFromActiveEntry() {
+                var entry = getActiveCsvPasteEntry();
+                var text = entry ? entry.text || "" : "";
+                if (text === CSV_LAZY_MARKER) text = "";
+                var ta = document.getElementById("csv-paste-input");
+                if (ta && ta.value !== text) ta.value = text;
+            }
+
+            async function autoRestoreCsvTables() {
+                var todo = csvPasteEntries.filter(function (e) {
+                    return !!(e.text || "").trim() || (e.importRows && e.importRows.length);
+                });
+                if (!todo.length) return;
+                var estRows = 0;
+                todo.forEach(function (e) {
+                    estRows += e.importRows ? e.importRows.length : 0;
+                });
+                if (estRows > CSV_SHEETS_AUTO_REBUILD_ROWS) {
+                    setStatus("已恢复 " + csvPasteEntries.length + " 个工作表；数据量较大，点「加载」可重建数据表。", false);
+                    return;
+                }
+                setStatus("正在恢复上次的数据表…", false);
+                try {
+                    var result = await rebuildUnifiedDbFromSources({ updateSql: false });
+                    if (result && result.tableCount) {
+                        markCsvPasteLoaded();
+                        setStatus("已恢复 " + result.tableCount + " 张表、" + result.totalRows + " 行数据。", false);
+                    }
+                } catch (e) {
+                    setStatus("工作表已恢复，但数据表重建失败：" + (e && e.message ? e.message : "未知错误"), true);
+                }
+            }
+
+            async function bootCsvSheetsPersist() {
+                var restored = false;
+                try {
+                    var snap = await readCsvSheetsSnapshot();
+                    if (snap) restored = applyCsvSheetsSnapshot(snap);
+                } catch (e) {
+                    restored = false;
+                }
+                if (!restored) {
+                    // 无历史工作表：沿用文本框里（由 tool-form-persist 恢复的）内容
+                    saveActiveCsvPasteEntry();
+                    updateCsvTextBtnState();
+                }
+                csvSheetsReady = true;
+                if (restored) {
+                    csvPasteEntries.forEach(function (e) {
+                        var idKey = String(e.id);
+                        csvSheetsWritten[idKey] = csvEntrySignature(e);
+                        csvSheetsWrittenIds[idKey] = true;
+                    });
+                    scheduleCsvSheetsPersist();
+                    await autoRestoreCsvTables();
+                }
+            }
+
+            /** tool-form-persist 恢复表单后会调用，用于把文本框纠正回当前工作表的真实内容 */
+            window.toolNavRestoreForm = function () {
+                if (csvSheetsHydrating) return;
+                if (csvSheetsRestored) {
+                    syncCsvTextAreaFromActiveEntry();
+                    updateCsvTextBtnState();
+                    return;
+                }
+                saveActiveCsvPasteEntry();
+                updateCsvTextBtnState();
+            };
+
+            window.addEventListener("pagehide", function () {
+                if (!csvSheetsSaveTimer) return;
+                window.clearTimeout(csvSheetsSaveTimer);
+                csvSheetsSaveTimer = 0;
+                void persistCsvSheets();
+            });
+            document.addEventListener("visibilitychange", function () {
+                if (document.visibilityState !== "hidden") return;
+                if (!csvSheetsSaveTimer) return;
+                window.clearTimeout(csvSheetsSaveTimer);
+                csvSheetsSaveTimer = 0;
+                void persistCsvSheets();
+            });
+
             function getActiveCsvPasteEntry() {
                 return csvPasteEntries.find(function (e) {
                     return e.id === activeCsvPasteId;
@@ -5526,6 +5956,7 @@
             }
 
             function saveActiveCsvPasteEntry() {
+                if (csvSheetsHydrating) return;
                 var entry = getActiveCsvPasteEntry();
                 if (!entry) return;
                 entry.text = document.getElementById("csv-paste-input").value;
@@ -5691,6 +6122,7 @@
                 for (var i = 0; i < csvPasteEntries.length; i++) {
                     bar.appendChild(createCsvSheetTab(csvPasteEntries[i]));
                 }
+                scheduleCsvSheetsPersist();
             }
 
             function resetCsvPasteEntries() {
@@ -6235,7 +6667,12 @@
                 e.preventDefault();
                 addCsvPasteEntry();
             });
-            document.getElementById("csv-paste-input").addEventListener("input", function () {
+            document.getElementById("csv-paste-input").addEventListener("input", function (e) {
+                if (csvSheetsRestored && e && e.isTrusted === false) {
+                    // tool-form-persist 用上一轮的旧值回填文本框时，以恢复出来的工作表内容为准
+                    syncCsvTextAreaFromActiveEntry();
+                    return;
+                }
                 var entry = getActiveCsvPasteEntry();
                 if (entry) {
                     entry.text = this.value;
@@ -6243,6 +6680,7 @@
                 }
                 updateCsvTextBtnState();
                 scheduleAutoLoadCsvFromModal();
+                scheduleCsvSheetsPersist();
             });
             document.getElementById("csv-paste-input").addEventListener("keydown", function (e) {
                 if (e.key === "Escape") {
@@ -6262,6 +6700,7 @@
             installMysqlCompatFunctions();
             renderCsvTabBar();
             updateCsvTextBtnState();
+            void bootCsvSheetsPersist();
             window.addEventListener("message", function (e) {
                 var d = e.data;
                 if (!d || d.type !== "tool-nav:consume-handoff") return;
