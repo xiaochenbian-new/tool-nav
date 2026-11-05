@@ -242,6 +242,13 @@
                     <label>快捷</label>
                     <select id="preset">
                         <option value="">选择常用表达式</option>
+                        <optgroup label="Quartz（6 位，含 ? / L / #）">
+                            <option value="0 0/5 * * * ?">每 5 分钟（Quartz）</option>
+                            <option value="0 0 0 * * ?">每天 00:00（Quartz）</option>
+                            <option value="0 0 12 ? * MON-FRI">工作日 12:00（Quartz）</option>
+                            <option value="0 0 12 L * ?">每月最后一天 12:00</option>
+                            <option value="0 0 12 ? * 6#3">每月第 3 个周五 12:00</option>
+                        </optgroup>
                         <optgroup label="6 位（含秒）">
                             <option value="*/5 * * * * *">每 5 秒</option>
                             <option value="0 * * * * *">每分钟（第 0 秒）</option>
@@ -278,7 +285,7 @@
                         <li>时：0–23</li>
                         <li>日：1–31</li>
                         <li>月：1–12</li>
-                        <li>周：0–6（0=周日，7 视为周日）</li>
+                        <li>周：0–7（0 和 7 都是周日，1–6 为周一至周六，也可写 <code>SUN</code>–<code>SAT</code>）</li>
                     </ul>
                 </div>
                 <div class="card">
@@ -289,19 +296,25 @@
                     <h4>特殊符号</h4>
                     <ul>
                         <li><code>*</code> 任意值</li>
+                        <li><code>?</code> 不指定（Quartz 里「日」与「周」必须有一个写 <code>?</code>）</li>
                         <li><code>,</code> 枚举，如 <code>1,15,30</code></li>
                         <li><code>-</code> 范围，如 <code>9-18</code></li>
-                        <li><code>/</code> 步长，如 <code>*/5</code>、<code>1-10/2</code></li>
+                        <li><code>/</code> 步长，如 <code>*/5</code>、<code>0/5</code>、<code>1-10/2</code></li>
+                        <li><code>L</code> 最后：<code>L</code> 当月最后一天，<code>6L</code> 最后一个周五</li>
+                        <li><code>W</code> 最近工作日：<code>15W</code> 距 15 号最近的工作日，<code>LW</code> 当月最后一个工作日</li>
+                        <li><code>#</code> 第几个：<code>6#3</code> 第 3 个周五</li>
                     </ul>
                 </div>
                 <div class="card">
                     <h4>常见示例</h4>
                     <ul>
+                        <li><code>0 0/5 * * * ?</code> 每 5 分钟（Quartz 6 位）</li>
+                        <li><code>0 0 12 ? * MON-FRI</code> 工作日 12:00（Quartz）</li>
+                        <li><code>* * * * * ?</code> 每秒（Quartz）</li>
                         <li><code>*/5 * * * * *</code> 每 5 秒</li>
-                        <li><code>0 */10 * * * *</code> 每 10 分钟</li>
                         <li><code>0 0 12 * * *</code> 每天 12:00:00</li>
                         <li><code>30 8 * * 1-5</code> 工作日 08:30（5 位）</li>
-                        <li><code>0 0 1 * *</code> 每月 1 日 00:00（5 位）</li>
+                        <li><code>0 0 L * ?</code> 每月最后一天 00:00（Quartz）</li>
                     </ul>
                 </div>
             </div>
@@ -334,8 +347,15 @@
                         <li>分：0–59</li>
                         <li>时：0–23</li>
                         <li>日：1–31</li>
-                        <li>月：1–12</li>
-                        <li>周：0–6（0=周日，7 视为周日）</li>
+                        <li>月：1–12（或 <code>JAN</code>–<code>DEC</code>）</li>
+                        <li>周：0–7（0 和 7 都是周日，1–6 为周一至周六，也可写 <code>SUN</code>–<code>SAT</code>）</li>
+                    </ul>
+                    <h4>Quartz 扩展</h4>
+                    <ul>
+                        <li><code>?</code> 不指定：Quartz 要求「日」和「周」其中一个是 <code>?</code>，如 <code>0 0/5 * * * ?</code></li>
+                        <li><code>L</code> 最后一天 / 最后一个周几：<code>L</code>、<code>L-3</code>、<code>6L</code></li>
+                        <li><code>W</code> 最近工作日：<code>15W</code>、<code>LW</code></li>
+                        <li><code>#</code> 第几个周几：<code>6#3</code> 表示第 3 个周五</li>
                     </ul>
                     <h4>如何选择</h4>
                     <ul>
@@ -345,6 +365,8 @@
                     </ul>
                     <h4>常见示例</h4>
                     <ul>
+                        <li><code>0 0/5 * * * ?</code> — 每 5 分钟（Quartz 6 位）</li>
+                        <li><code>0 0 12 ? * MON-FRI</code> — 工作日 12:00（Quartz）</li>
                         <li><code>*/5 * * * * *</code> — 每 5 秒（6 位）</li>
                         <li><code>0 */10 * * * *</code> — 每 10 分钟（6 位）</li>
                         <li><code>*/5 * * * *</code> — 每 5 分钟（5 位）</li>
@@ -358,114 +380,256 @@
             const FIELD_LABELS_6 = ["秒", "分", "时", "日", "月", "周"];
             const FIELD_LABELS_5 = ["分", "时", "日", "月", "周"];
 
-            function parseFieldPart(part, min, max) {
-                if (part === "*") return { any: true, set: null };
-                const values = new Set();
-                const list = part.split(",");
-                for (let i = 0; i < list.length; i++) {
-                    const token = list[i].trim();
-                    if (!token) continue;
-                    if (token.indexOf("/") !== -1) {
-                        const split = token.split("/");
-                        const left = split[0];
-                        const step = Number(split[1]);
-                        if (!step || step < 1) return null;
-                        let start = min;
-                        let end = max;
-                        if (left !== "*") {
-                            if (left.indexOf("-") !== -1) {
-                                const rs = left.split("-");
-                                start = Number(rs[0]);
-                                end = Number(rs[1]);
-                            } else {
-                                start = Number(left);
-                            }
-                        }
-                        if (Number.isNaN(start) || Number.isNaN(end)) return null;
-                        for (let n = start; n <= end; n += step) {
-                            if (n >= min && n <= max) values.add(n);
-                        }
-                        continue;
-                    }
-                    if (token.indexOf("-") !== -1) {
-                        const range = token.split("-");
-                        const a = Number(range[0]);
-                        const b = Number(range[1]);
-                        if (Number.isNaN(a) || Number.isNaN(b)) return null;
-                        for (let n = a; n <= b; n++) {
-                            if (n >= min && n <= max) values.add(n);
-                        }
-                        continue;
-                    }
-                    const v = Number(token);
-                    if (Number.isNaN(v)) return null;
-                    if (max === 6 && (v === 7 || v === 0)) {
-                        values.add(0);
-                        continue;
-                    }
-                    if (v >= min && v <= max) values.add(v);
-                }
-                return { any: false, set: values };
+            const MONTH_NAMES = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
+            const WEEK_NAMES = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+
+            /** 最近一次解析失败的原因，用来把错误指到具体字段上。 */
+            let lastCronError = "";
+
+            function readFieldValue(token, kind) {
+                const t = String(token == null ? "" : token).trim().toUpperCase();
+                if (!t) return NaN;
+                if (/^\d+$/.test(t)) return Number(t);
+                if (kind === "month" && Object.prototype.hasOwnProperty.call(MONTH_NAMES, t)) return MONTH_NAMES[t];
+                if (kind === "week" && Object.prototype.hasOwnProperty.call(WEEK_NAMES, t)) return WEEK_NAMES[t];
+                return NaN;
             }
 
-            function fieldMatch(spec, value) {
+            /** 统一成 0–6（0=周日），与 Date#getDay 一致。 */
+            function normalizeWeekday(n) { return n === 7 ? 0 : n; }
+            function isWeekend(dow) { return dow === 0 || dow === 6; }
+
+            function contextOf(date) {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                return {
+                    year: year,
+                    month: month,
+                    dom: date.getDate(),
+                    lastDom: new Date(year, month, 0).getDate(),
+                    dow: date.getDay()
+                };
+            }
+
+            /** LW：当月最后一个工作日。 */
+            function lastWeekdayOfMonth(ctx) {
+                let d = ctx.lastDom;
+                let dow = new Date(ctx.year, ctx.month - 1, d).getDay();
+                while (isWeekend(dow)) {
+                    d -= 1;
+                    dow = (dow + 6) % 7;
+                }
+                return d;
+            }
+
+            /** 15W：离目标日最近的工作日，不跨月。 */
+            function nearestWeekday(target, ctx) {
+                if (target < 1 || target > ctx.lastDom) return -1;
+                const dow = new Date(ctx.year, ctx.month - 1, target).getDay();
+                if (!isWeekend(dow)) return target;
+                if (dow === 6) return target - 1 >= 1 ? target - 1 : target + 2;
+                return target + 1 <= ctx.lastDom ? target + 1 : target - 2;
+            }
+
+            /**
+             * 解析单个字段。返回 { any, set, tests, test(value, ctx) }，失败返回 null。
+             * 支持：* ? , - / 以及 Quartz 的 L、L-n、LW、nW、nL、n#k 和 MON/DEC 这类英文缩写。
+             */
+            function parseFieldPart(part, min, max, kind) {
+                const raw = String(part == null ? "" : part).trim();
+                if (!raw) return null;
+                if (raw === "*" || raw === "?") {
+                    return { any: true, set: null, tests: [], test: function () { return true; } };
+                }
+
+                const values = new Set();
+                const tests = [];
+                const tokens = raw.split(",");
+
+                for (let i = 0; i < tokens.length; i++) {
+                    const token = tokens[i].trim().toUpperCase();
+                    if (!token) return null;
+
+                    // —— 日字段的 Quartz 扩展：L / L-n / LW / nW ——
+                    if (kind === "day") {
+                        if (token === "L") {
+                            tests.push(function (v, ctx) { return v === ctx.lastDom; });
+                            continue;
+                        }
+                        if (token === "LW" || token === "WL") {
+                            tests.push(function (v, ctx) { return v === lastWeekdayOfMonth(ctx); });
+                            continue;
+                        }
+                        const mL = /^L-(\d{1,2})$/.exec(token);
+                        if (mL) {
+                            const back = Number(mL[1]);
+                            if (back < 1 || back > 30) return null;
+                            tests.push(function (v, ctx) { return v === ctx.lastDom - back; });
+                            continue;
+                        }
+                        const mW = /^(\d{1,2})W$/.exec(token);
+                        if (mW) {
+                            const target = Number(mW[1]);
+                            if (target < 1 || target > 31) return null;
+                            tests.push(function (v, ctx) { return v === nearestWeekday(target, ctx); });
+                            continue;
+                        }
+                    }
+
+                    // —— 周字段的 Quartz 扩展：L（周六）/ nL（最后一个周 n）/ n#k（第 k 个周 n）——
+                    if (kind === "week") {
+                        if (token === "L") {
+                            values.add(6);
+                            continue;
+                        }
+                        const mLast = /^([0-7])L$/.exec(token);
+                        if (mLast) {
+                            const wd = normalizeWeekday(Number(mLast[1]));
+                            tests.push(function (v, ctx) {
+                                return ctx.dow === wd && ctx.dom + 7 > ctx.lastDom;
+                            });
+                            continue;
+                        }
+                        const mNth = /^([0-7])#([1-5])$/.exec(token);
+                        if (mNth) {
+                            const wd = normalizeWeekday(Number(mNth[1]));
+                            const nth = Number(mNth[2]);
+                            tests.push(function (v, ctx) {
+                                return ctx.dow === wd && Math.ceil(ctx.dom / 7) === nth;
+                            });
+                            continue;
+                        }
+                    }
+
+                    // —— 步长：*/n、a/n（如 0/5）、a-b/n ——
+                    if (token.indexOf("/") !== -1) {
+                        const split = token.split("/");
+                        if (split.length !== 2) return null;
+                        const step = Number(split[1]);
+                        if (!Number.isInteger(step) || step < 1) return null;
+                        const left = split[0].trim();
+                        let start = min;
+                        let end = max;
+                        if (left !== "*" && left !== "?") {
+                            if (left.indexOf("-") !== -1) {
+                                const rs = left.split("-");
+                                if (rs.length !== 2) return null;
+                                start = readFieldValue(rs[0], kind);
+                                end = readFieldValue(rs[1], kind);
+                            } else {
+                                start = readFieldValue(left, kind);
+                            }
+                            if (Number.isNaN(start) || Number.isNaN(end)) return null;
+                            if (start < min || end > max || start > end) return null;
+                        }
+                        for (let n = start; n <= end; n += step) {
+                            values.add(kind === "week" ? normalizeWeekday(n) : n);
+                        }
+                        continue;
+                    }
+
+                    // —— 范围：a-b ——
+                    if (token.indexOf("-") !== -1) {
+                        const range = token.split("-");
+                        if (range.length !== 2) return null;
+                        const a = readFieldValue(range[0], kind);
+                        const b = readFieldValue(range[1], kind);
+                        if (Number.isNaN(a) || Number.isNaN(b)) return null;
+                        if (a < min || b > max || a > b) return null;
+                        for (let n = a; n <= b; n++) {
+                            values.add(kind === "week" ? normalizeWeekday(n) : n);
+                        }
+                        continue;
+                    }
+
+                    // —— 单值：数字或英文缩写 ——
+                    const v = readFieldValue(token, kind);
+                    if (Number.isNaN(v)) return null;
+                    if (v < min || v > max) return null;
+                    values.add(kind === "week" ? normalizeWeekday(v) : v);
+                }
+
+                if (!values.size && !tests.length) return null;
+
+                return {
+                    any: false,
+                    set: values.size ? values : null,
+                    tests: tests,
+                    test: function (value, ctx) {
+                        if (values.size && values.has(value)) return true;
+                        for (let i = 0; i < tests.length; i++) {
+                            if (tests[i](value, ctx)) return true;
+                        }
+                        return false;
+                    }
+                };
+            }
+
+            function fieldMatch(spec, value, ctx) {
                 if (!spec) return false;
                 if (spec.any) return true;
-                return spec.set.has(value);
+                return spec.test(value, ctx);
             }
 
             function buildRulesFromParts(parts, mode) {
-                if (mode === 6) {
-                    const rules = {
-                        sec: parseFieldPart(parts[0], 0, 59),
-                        min: parseFieldPart(parts[1], 0, 59),
-                        hour: parseFieldPart(parts[2], 0, 23),
-                        day: parseFieldPart(parts[3], 1, 31),
-                        month: parseFieldPart(parts[4], 1, 12),
-                        week: parseFieldPart(parts[5], 0, 6)
-                    };
-                    if (!rules.sec || !rules.min || !rules.hour || !rules.day || !rules.month || !rules.week) {
+                const defs = mode === 6
+                    ? [["sec", "秒", parts[0], 0, 59], ["min", "分", parts[1], 0, 59], ["hour", "时", parts[2], 0, 23],
+                       ["day", "日", parts[3], 1, 31], ["month", "月", parts[4], 1, 12], ["week", "周", parts[5], 0, 7]]
+                    : [["min", "分", parts[0], 0, 59], ["hour", "时", parts[1], 0, 23],
+                       ["day", "日", parts[2], 1, 31], ["month", "月", parts[3], 1, 12], ["week", "周", parts[4], 0, 7]];
+                const rules = {};
+                if (mode === 5) rules.sec = parseFieldPart("0", 0, 59, "sec");
+                for (let i = 0; i < defs.length; i++) {
+                    const d = defs[i];
+                    const spec = parseFieldPart(d[2], d[3], d[4], d[0]);
+                    if (!spec) {
+                        lastCronError = "第 " + (i + 1) + " 段「" + d[1] + "」无法识别：" + d[2];
                         return null;
                     }
-                    return rules;
-                }
-                const rules = {
-                    sec: parseFieldPart("0", 0, 59),
-                    min: parseFieldPart(parts[0], 0, 59),
-                    hour: parseFieldPart(parts[1], 0, 23),
-                    day: parseFieldPart(parts[2], 1, 31),
-                    month: parseFieldPart(parts[3], 1, 12),
-                    week: parseFieldPart(parts[4], 0, 6)
-                };
-                if (!rules.min || !rules.hour || !rules.day || !rules.month || !rules.week) {
-                    return null;
+                    rules[d[0]] = spec;
                 }
                 return rules;
             }
 
             function parseCron(expr) {
-                const parts = expr.trim().split(/\s+/).filter(Boolean);
-                if (parts.length === 5) {
-                    const rules = buildRulesFromParts(parts, 5);
-                    if (!rules) return null;
-                    return {
-                        mode: 5,
-                        parts: parts,
-                        rules: rules,
-                        labels: FIELD_LABELS_5
-                    };
+                lastCronError = "";
+                const parts = String(expr == null ? "" : expr).trim().split(/\s+/).filter(Boolean);
+                if (parts.length !== 5 && parts.length !== 6) {
+                    if (parts.length) lastCronError = "只给了 " + parts.length + " 段，需要 5 段或 6 段";
+                    return null;
                 }
-                if (parts.length === 6) {
-                    const rules = buildRulesFromParts(parts, 6);
-                    if (!rules) return null;
-                    return {
-                        mode: 6,
-                        parts: parts,
-                        rules: rules,
-                        labels: FIELD_LABELS_6
-                    };
-                }
-                return null;
+                const rules = buildRulesFromParts(parts, parts.length);
+                if (!rules) return null;
+                return {
+                    mode: parts.length,
+                    parts: parts,
+                    rules: rules,
+                    labels: parts.length === 6 ? FIELD_LABELS_6 : FIELD_LABELS_5
+                };
+            }
+
+            /**
+             * 日与周的组合规则：
+             * 5 位 Linux crontab 里两者都被指定时取「或」；
+             * 6 位 Quartz 里其中一个必须是 ?（等价 any），自然退化成「与」。
+             */
+            function isDayMatch(rules, date) {
+                const ctx = contextOf(date);
+                if (!fieldMatch(rules.month, ctx.month, ctx)) return false;
+                const dayIsAny = !rules.day || rules.day.any;
+                const weekIsAny = !rules.week || rules.week.any;
+                const dayOk = fieldMatch(rules.day, ctx.dom, ctx);
+                const weekOk = fieldMatch(rules.week, ctx.dow, ctx);
+                if (!dayIsAny && !weekIsAny) return dayOk || weekOk;
+                return dayOk && weekOk;
+            }
+
+            function isMatch(rules, date) {
+                const ctx = contextOf(date);
+                if (!fieldMatch(rules.sec, date.getSeconds(), ctx)) return false;
+                if (!fieldMatch(rules.min, date.getMinutes(), ctx)) return false;
+                if (!fieldMatch(rules.hour, date.getHours(), ctx)) return false;
+                return isDayMatch(rules, date);
             }
 
             function buildExprFromFields() {
@@ -480,41 +644,54 @@
                 return name + "： " + value;
             }
 
-            function isMatch(rules, date) {
-                return (
-                    fieldMatch(rules.sec, date.getSeconds()) &&
-                    fieldMatch(rules.min, date.getMinutes()) &&
-                    fieldMatch(rules.hour, date.getHours()) &&
-                    fieldMatch(rules.day, date.getDate()) &&
-                    fieldMatch(rules.month, date.getMonth() + 1) &&
-                    fieldMatch(rules.week, date.getDay())
-                );
+            /** 取可枚举的取值；L/W/# 这类算不出集合的字段只可能出现在日/周，不参与此处。 */
+            function fieldValues(spec, min, max) {
+                const arr = [];
+                if (!spec || spec.any || !spec.set) {
+                    for (let n = min; n <= max; n++) arr.push(n);
+                    return arr;
+                }
+                spec.set.forEach(function (n) {
+                    if (n >= min && n <= max) arr.push(n);
+                });
+                arr.sort(function (a, b) { return a - b; });
+                return arr;
             }
 
+            /**
+             * 按「天」推进 + 时/分/秒笛卡尔积，而不是逐秒试。
+             * 原来逐秒试探在「每年 1 月 1 日」这类表达式上要跑 3000 多万次，
+             * 直接撞上循环上限返回空，看着就像解析失败。
+             */
             function nextRunTimes(parsed, count) {
-                const result = [];
+                const out = [];
                 const now = new Date();
-                let cursor = new Date(now.getTime());
-                cursor.setMilliseconds(0);
-                cursor.setSeconds(cursor.getSeconds() + 1);
+                const nowMs = now.getTime();
+                const hours = fieldValues(parsed.rules.hour, 0, 23);
+                const mins = fieldValues(parsed.rules.min, 0, 59);
+                const secs = fieldValues(parsed.rules.sec, 0, 59);
+                if (!hours.length || !mins.length || !secs.length) return out;
 
-                const stepUnit = parsed.mode === 6 ? "second" : "minute";
-                let guard = 0;
-                const maxGuard = stepUnit === "second" ? 5000000 : 600000;
-
-                while (result.length < count && guard < maxGuard) {
-                    if (isMatch(parsed.rules, cursor)) {
-                        result.push(new Date(cursor.getTime()));
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                // 覆盖最坏间隔：2 月 29 日最多可以隔 8 年（2096 → 2104）
+                const maxDays = 366 * 9;
+                for (let d = 0; d < maxDays && out.length < count; d++) {
+                    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+                    if (!isDayMatch(parsed.rules, day)) continue;
+                    let full = false;
+                    for (let i = 0; i < hours.length && !full; i++) {
+                        for (let j = 0; j < mins.length && !full; j++) {
+                            for (let k = 0; k < secs.length; k++) {
+                                const t = new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                                    hours[i], mins[j], secs[k]);
+                                if (t.getTime() <= nowMs) continue;
+                                out.push(t);
+                                if (out.length >= count) { full = true; break; }
+                            }
+                        }
                     }
-                    if (stepUnit === "second") {
-                        cursor.setSeconds(cursor.getSeconds() + 1);
-                    } else {
-                        cursor.setSeconds(0);
-                        cursor.setMinutes(cursor.getMinutes() + 1);
-                    }
-                    guard++;
                 }
-                return result;
+                return out;
             }
 
             function formatDate(d, withSeconds) {
@@ -546,7 +723,9 @@
                 const expr = cronExpr.value.trim();
                 const parsed = parseCron(expr);
                 if (!parsed) {
-                    desc.textContent = "表达式无效：支持 5 位（分 时 日 月 周）或 6 位（秒 分 时 日 月 周），字段间用空格分隔，支持 * / - ,";
+                    desc.textContent = (lastCronError ? "表达式无效：" + lastCronError + "。" : "表达式无效。")
+                        + "支持 5 位（分 时 日 月 周）或 6 位（秒 分 时 日 月 周），"
+                        + "可用 * , - / ? L W #，月份与星期也支持 JAN–DEC / SUN–SAT";
                     formatTag.textContent = "格式未识别";
                     nextRuns.innerHTML = "";
                     return;
@@ -575,7 +754,7 @@
                 const list = nextRunTimes(parsed, 5);
                 nextRuns.innerHTML = list.length
                     ? list.map(function (d) { return "<li>" + formatDate(d, withSec) + "</li>"; }).join("")
-                    : "<li>未能在合理时间内计算出下次执行时间</li>";
+                    : "<li>未来 9 年内都不会触发，请检查日期组合（如 2 月 30 日）</li>";
             }
 
             const cronExpr = document.getElementById("cronExpr");
