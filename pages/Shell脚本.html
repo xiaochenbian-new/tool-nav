@@ -486,14 +486,9 @@ function checkDuplicateKey(input) {
                 return "'" + String(str).replace(/'/g, "'\\''") + "'";
             }
 
-            /** sed BRE 模式转义（含分隔符 #） */
-            function sedEscapePattern(str) {
-                return String(str).replace(/[\\\.^$*\[\]#]/g, "\\$&");
-            }
-
-            /** sed 替换侧转义：\ & # */
-            function sedEscapeReplacement(str) {
-                return String(str).replace(/[\\&#]/g, "\\$&");
+            /** awk -v 传参：shell 单引号包裹，并把反斜杠双写（awk -v 会解析 \n 等转义序列，\\ 才代表字面反斜杠） */
+            function awkVarValue(str) {
+                return shellSingleQuote(String(str).replace(/\\/g, "\\\\"));
             }
 
 function generateScript() {
@@ -550,22 +545,40 @@ function generateScript() {
 
                     scriptContent += `# 处理模型 ${modelId}\n`;
 
+                    // awk 程序体：精确匹配「key=」（比较第一个 = 前的字段），值取第一个 = 后全部（值可含 =）
+                    // 覆盖模式：整行替换为 key=value；追加模式：空值直接赋值、末尾已有分隔符则直接拼、否则加分隔符再拼
+                    const AWK_REPLACE_BODY = [
+                        '{',
+                        '  eq = index($0, "=")',
+                        '  if (eq > 0 && substr($0, 1, eq-1) == k) { print k "=" v; found = 1 } else { print }',
+                        '}',
+                        'END { if (!found) print k "=" v }',
+                    ].join("\n");
+                    const AWK_APPEND_BODY = [
+                        '{',
+                        '  eq = index($0, "=")',
+                        '  if (eq > 0 && substr($0, 1, eq-1) == k) {',
+                        '    cur = substr($0, eq+1)',
+                        '    if (cur == "") print k "=" v',
+                        '    else if (s != "" && substr(cur, length(cur)-length(s)+1) == s) print $0 v',
+                        '    else print $0 s v',
+                        '    found = 1',
+                        '  } else { print }',
+                        '}',
+                        'END { if (!found) print k "=" v }',
+                    ].join("\n");
+
                     configs.forEach(config => {
                         const { key, value, mode, sep } = config;
-                        const keyQ = shellSingleQuote(key);
-                        const lineQ = shellSingleQuote(key + "=" + value);
-                        // 追加模式：用 & 保留原值（整行匹配），再拼上「分隔符 + 新值」；覆盖模式：整行替换
-                        const sedExpr = mode === 'append'
-                            ? shellSingleQuote(
-                                "s#^" + sedEscapePattern(key) + "=.*#" + "&" + sedEscapeReplacement(sep + value) + "#g"
-                            )
-                            : shellSingleQuote(
-                                "s#" + "^" + sedEscapePattern(key) + "=.*" + "#" + sedEscapeReplacement(key + "=" + value) + "#g"
-                            );
+                        const vars = mode === 'append'
+                            ? `-v k=${awkVarValue(key)} -v v=${awkVarValue(value)} -v s=${awkVarValue(sep)}`
+                            : `-v k=${awkVarValue(key)} -v v=${awkVarValue(value)}`;
+                        const awkProg = shellSingleQuote(mode === 'append' ? AWK_APPEND_BODY : AWK_REPLACE_BODY);
+
                         filesWithConfigPath.forEach(file => {
                             const fileQ = shellSingleQuote(file);
-                            scriptContent += `grep -qF ${keyQ} ${fileQ} && sed -i ${sedExpr} ${fileQ}\n`;
-                            scriptContent += `grep -qF ${keyQ} ${fileQ} || echo ${lineQ} >> ${fileQ}\n\n`;
+                            const tmpQ = shellSingleQuote(file + ".tmp");
+                            scriptContent += `awk ${vars} ${awkProg} ${fileQ} > ${tmpQ} && mv ${tmpQ} ${fileQ}\n\n`;
                         });
                     });
 
