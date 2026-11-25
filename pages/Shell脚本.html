@@ -304,6 +304,14 @@
                                     placeholder="例如：application-prd,site_cm_common"
                                 />
                             </div>
+                            <div class="form-group">
+                                <label for="model1-configDir">配置目录（默认 config，可留空表示当前目录）:</label>
+                                <input
+                                    id="model1-configDir"
+                                    value="config"
+                                    placeholder="config"
+                                />
+                            </div>
                             <div id="model1-configItems">
                                 <div class="config-item">
                                     <div class="config-item-head">
@@ -382,6 +390,10 @@ function addModel() {
                     <div class="form-group">
                         <label for="model${modelCount}-configFiles">配置文件（多个文件用逗号分隔）:</label>
                         <input type="text" id="model${modelCount}-configFiles" placeholder="例如：application-prd,site_cm_common">
+                    </div>
+                    <div class="form-group">
+                        <label for="model${modelCount}-configDir">配置目录（默认 config，可留空表示当前目录）:</label>
+                        <input type="text" id="model${modelCount}-configDir" value="config" placeholder="config">
                     </div>
                     <div id="model${modelCount}-configItems">
                         <!-- 配置项将动态添加在此处 -->
@@ -496,6 +508,17 @@ function generateScript() {
                 resultDiv.innerHTML = '';
                 scriptContent = ''; // 重置脚本内容
 
+                // 脚本头部注释（含生成时间，方便排查）
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const genTs = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                scriptContent += '#!/bin/bash\n';
+                scriptContent += '# ============================================================\n';
+                scriptContent += '# 配置文件批量更新脚本\n';
+                scriptContent += `# 生成时间: ${genTs}\n`;
+                scriptContent += '# 功能: 按配置项逐条更新 properties 文件（覆盖或追加），不存在则新增\n';
+                scriptContent += '# ============================================================\n\n';
+
                 const allKeyInputs = document.querySelectorAll('.configKey');
                 const allKeysSet = new Set();
 
@@ -512,14 +535,19 @@ function generateScript() {
                 const models = document.querySelectorAll('.model-container');
 
                 models.forEach(model => {
-                    const modelId = model.querySelector('input').id.split('-')[0];
-                    const configFilesInput = document.getElementById(`${modelId}-configFiles`);
+                    const configFilesInput = model.querySelector('input[id$="-configFiles"]');
+                    const modelId = configFilesInput.id.split('-')[0];
                     const configFiles = configFilesInput.value.split(',')
                         .map(file => file.trim())
                         .filter(file => file !== '')
                         .map(file => {
                             return file.endsWith('.properties') ? file : `${file}.properties`;
                         });
+
+                    // 配置目录：默认 config，可留空表示当前目录；去掉首尾斜杠
+                    const configDirInput = model.querySelector('input[id$="-configDir"]');
+                    const configDir = (configDirInput ? configDirInput.value.trim() : '').replace(/^\/+|\/+$/g, '');
+                    const dirPrefix = configDir ? configDir + '/' : '';
 
                     const configItems = model.querySelectorAll('.config-item');
                     const configs = [];
@@ -541,9 +569,10 @@ function generateScript() {
                         return;
                     }
 
-                    const filesWithConfigPath = configFiles.map(file => `config/${file}`);
+                    const filesWithConfigPath = configFiles.map(file => dirPrefix + file);
 
-                    scriptContent += `# 处理模型 ${modelId}\n`;
+                    scriptContent += `# ========== 模型 ${modelId} ==========\n`;
+                    scriptContent += `# 配置目录: ${configDir || '(当前目录)'}\n\n`;
 
                     // awk 程序体：精确匹配「key=」（比较第一个 = 前的字段），值取第一个 = 后全部（值可含 =）
                     // 覆盖模式：整行替换为 key=value；追加模式：空值直接赋值、末尾已有分隔符则直接拼、否则加分隔符再拼
@@ -574,15 +603,20 @@ function generateScript() {
                             ? `-v k=${awkVarValue(key)} -v v=${awkVarValue(value)} -v s=${awkVarValue(sep)}`
                             : `-v k=${awkVarValue(key)} -v v=${awkVarValue(value)}`;
                         const awkProg = shellSingleQuote(mode === 'append' ? AWK_APPEND_BODY : AWK_REPLACE_BODY);
+                        const modeLabel = mode === 'append'
+                            ? `存在则追加（分隔符「${sep}」）`
+                            : '存在则覆盖';
 
                         filesWithConfigPath.forEach(file => {
                             const fileQ = shellSingleQuote(file);
                             const tmpQ = shellSingleQuote(file + ".tmp");
+                            scriptContent += `# [配置项] ${key} = ${value}  ——  ${modeLabel}\n`;
+                            scriptContent += `#   目标文件: ${file}\n`;
                             scriptContent += `awk ${vars} ${awkProg} ${fileQ} > ${tmpQ} && mv ${tmpQ} ${fileQ}\n\n`;
                         });
                     });
 
-                    scriptContent += '\n# 更新文件时间戳\n';
+                    scriptContent += '\n# ========== 更新文件时间戳 ==========\n';
                     filesWithConfigPath.forEach(file => {
                         scriptContent += `touch ${shellSingleQuote(file)}\n`;
                     });
@@ -606,6 +640,10 @@ function clearShellForm() {
                         <div class="form-group">
                             <label for="model1-configFiles">配置文件（多个文件用英文逗号分隔,例如：application-stg,application-prd,site_cm_common）:</label>
                             <input id="model1-configFiles" placeholder="例如：application-prd,site_cm_common">
+                        </div>
+                        <div class="form-group">
+                            <label for="model1-configDir">配置目录（默认 config，可留空表示当前目录）:</label>
+                            <input id="model1-configDir" value="config" placeholder="config">
                         </div>
                         <div id="model1-configItems">
                             <div class="config-item">
@@ -676,6 +714,7 @@ function downloadScript() {
 function readShellFormState() {
                 const models = Array.from(document.querySelectorAll('.model-container')).map((model) => {
                     const configFilesInput = model.querySelector('input[id$="-configFiles"]');
+                    const configDirInput = model.querySelector('input[id$="-configDir"]');
                     const configItems = Array.from(model.querySelectorAll('.config-item')).map((item) => {
                         const keyInput = item.querySelector('.configKey');
                         const valueInput = item.querySelector('.configValue');
@@ -690,6 +729,7 @@ function readShellFormState() {
                     });
                     return {
                         configFiles: configFilesInput ? configFilesInput.value : '',
+                        configDir: configDirInput ? configDirInput.value : '',
                         configItems: configItems
                     };
                 });
@@ -749,6 +789,10 @@ function restoreShellForm() {
                                 <div class="form-group">
                                     <label for="${modelId}-configFiles">配置文件（多个文件用逗号分隔）:</label>
                                     <input type="text" id="${modelId}-configFiles" placeholder="例如：application-prd,site_cm_common" value="${(modelState.configFiles || '').replace(/"/g, '&quot;')}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="${modelId}-configDir">配置目录（默认 config，可留空表示当前目录）:</label>
+                                    <input type="text" id="${modelId}-configDir" placeholder="config" value="${(modelState.configDir || 'config').replace(/"/g, '&quot;')}">
                                 </div>
                                 <div id="${modelId}-configItems">${configItemsHtml}</div>
                                 <button onclick="addConfigItem(this)">添加配置项</button>
