@@ -177,6 +177,26 @@
                 white-space: pre-wrap;
                 word-break: break-all;
             }
+            .shell-warning {
+                margin: 0 0 8px;
+                padding: 8px 10px;
+                background: #fff5f5;
+                border: 1px solid #ffd2d2;
+                border-radius: 8px;
+                color: var(--danger);
+                font-size: 12px;
+                line-height: 1.6;
+            }
+            .shell-warning-line {
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            .shell-empty {
+                padding: 28px 12px;
+                text-align: center;
+                color: #9aa7c7;
+                font-size: 13px;
+            }
             .model-container {
                 border: 1px solid #dbe7ff;
                 padding: 8px;
@@ -417,6 +437,7 @@ function addModel() {
                 `;
                 modelsDiv.appendChild(newModel);
                 persistShellForm();
+                scheduleAutoGenerate();
             }
 
 
@@ -424,6 +445,7 @@ function addModel() {
                 const modelContainer = button.parentElement.parentElement;
                 modelContainer.remove();
                 persistShellForm();
+                scheduleAutoGenerate();
             }
 
             function addConfigItem(button) {
@@ -449,12 +471,14 @@ function addModel() {
                 `;
                 configItemsDiv.appendChild(newItem);
                 persistShellForm();
+                scheduleAutoGenerate();
             }
   function removeConfigItem(button) {
                 const configItem = button.parentElement;
                 const configItemsDiv = configItem.parentElement;
                 configItem.remove();
                 persistShellForm();
+                scheduleAutoGenerate();
             }
 
 function checkDuplicateKey(input) {
@@ -474,7 +498,6 @@ function checkDuplicateKey(input) {
                 });
 
                 if (isDuplicate) {
-                    alert('警告：配置项 key 重复，请确保每个 key 唯一！');
                     input.classList.add('duplicate-key');
                 } else {
                     input.classList.remove('duplicate-key');
@@ -505,7 +528,7 @@ function checkDuplicateKey(input) {
 
 function generateScript() {
                 const resultDiv = document.getElementById('result');
-                resultDiv.innerHTML = '';
+                const problems = [];
                 scriptContent = ''; // 重置脚本内容
 
                 // 脚本头部注释（含生成时间，方便排查）
@@ -520,17 +543,18 @@ function generateScript() {
                 scriptContent += '# ============================================================\n\n';
 
                 const allKeyInputs = document.querySelectorAll('.configKey');
-                const allKeysSet = new Set();
+                const seenKeys = new Set();
 
-                // 检查是否有重复 key
-                for (let i = 0; i < allKeyInputs.length; i++) {
-                    const key = allKeyInputs[i].value.trim();
-                    if (key && allKeysSet.has(key)) {
-                        alert('存在重复的配置项 key，请先修正！');
-                        return;
-                    }
-                    if (key) allKeysSet.add(key);
-                }
+                // 检查是否有重复 key：静默收集问题，实时模式下不弹窗打断
+                allKeyInputs.forEach(inp => {
+                    const key = inp.value.trim();
+                    if (!key) return;
+                    if (seenKeys.has(key)) problems.push(`配置项 key「${key}」重复，请确保唯一`);
+                    seenKeys.add(key);
+                });
+
+                // 记录头部长度，用于判断是否存在有效模型内容
+                const headLen = scriptContent.length;
 
                 const models = document.querySelectorAll('.model-container');
 
@@ -565,7 +589,7 @@ function generateScript() {
                     });
 
                     if (configFiles.length === 0 || configs.length === 0) {
-                        alert('请填写所有必填信息');
+                        problems.push(`模型 ${modelId}：${configFiles.length === 0 ? '未填写配置文件' : '未填写配置项（key 与值均需填写）'}`);
                         return;
                     }
 
@@ -624,9 +648,40 @@ function generateScript() {
                     scriptContent += '\n';
                 });
 
-                const pre = document.createElement("pre");
-                pre.textContent = scriptContent;
-                resultDiv.appendChild(pre);
+                const hasContent = scriptContent.length > headLen;
+                if (!hasContent) scriptContent = '';
+
+                resultDiv.innerHTML = '';
+                if (problems.length) {
+                    const warn = document.createElement('div');
+                    warn.className = 'shell-warning';
+                    problems.forEach(p => {
+                        const line = document.createElement('div');
+                        line.className = 'shell-warning-line';
+                        line.textContent = '⚠ ' + p;
+                        warn.appendChild(line);
+                    });
+                    resultDiv.appendChild(warn);
+                }
+                if (scriptContent) {
+                    const pre = document.createElement("pre");
+                    pre.textContent = scriptContent;
+                    resultDiv.appendChild(pre);
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'shell-empty';
+                    empty.textContent = '填写配置文件与配置项后，脚本将在这里实时生成';
+                    resultDiv.appendChild(empty);
+                }
+            }
+
+            let autoGenTimer = null;
+            function scheduleAutoGenerate() {
+                if (autoGenTimer) clearTimeout(autoGenTimer);
+                autoGenTimer = setTimeout(function () {
+                    autoGenTimer = null;
+                    generateScript();
+                }, 250);
             }
 
 function clearShellForm() {
@@ -809,12 +864,14 @@ document.addEventListener('input', function (e) {
                 const t = e.target;
                 if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
                     persistShellForm();
+                    scheduleAutoGenerate();
                 }
             });
 document.addEventListener('change', function (e) {
                 const t = e.target;
                 if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
                     persistShellForm();
+                    scheduleAutoGenerate();
                 }
                 if (t && t.classList && t.classList.contains('configMode')) {
                     syncConfigItemMode(t.closest('.config-item'));
@@ -847,6 +904,7 @@ document.getElementById('btn-qr-result').addEventListener('click', function () {
 
 restoreShellForm();
 syncAllConfigItemModes();
+scheduleAutoGenerate();
 		</script>
         <script src="libs/tool-form-persist.js"></script>
     </body>
