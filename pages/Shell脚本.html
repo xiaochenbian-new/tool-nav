@@ -221,17 +221,30 @@
                 white-space: nowrap;
                 flex-shrink: 0;
             }
-            .config-mode {
+            .config-item-actions {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 6px;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            .configMode {
                 width: auto;
+                min-width: 104px;
                 margin-bottom: 0;
                 padding: 5px 8px;
                 cursor: pointer;
                 font-weight: 600;
+                flex-shrink: 0;
             }
             .configSep {
                 display: none;
-                margin-top: 2px;
+                width: 120px;
+                margin-bottom: 0;
+                padding: 5px 8px;
                 background: #fff;
+                flex-shrink: 0;
             }
             .config-item.is-append .configSep {
                 display: block;
@@ -295,10 +308,13 @@
                                 <div class="config-item">
                                     <div class="config-item-head">
                                         <label>配置项 1:</label>
-                                        <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
-                                            <option value="replace">存在则覆盖</option>
-                                            <option value="append">存在则追加</option>
-                                        </select>
+                                        <div class="config-item-actions">
+                                            <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
+                                                <option value="replace">存在则覆盖</option>
+                                                <option value="append">存在则追加</option>
+                                            </select>
+                                            <input placeholder="分隔符" class="configSep" title="追加时插在原值与新值之间，可留空" />
+                                        </div>
                                     </div>
                                     <input
                                         placeholder="键（例如：common.dp.conf.esg.ocr）"
@@ -308,10 +324,6 @@
                                     <input
                                         placeholder="值（例如：Y）"
                                         class="configValue"
-                                    />
-                                    <input
-                                        placeholder="分隔符（追加时插在原值与新值之间，可留空）"
-                                        class="configSep"
                                     />
                                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">
                                         删除配置项
@@ -376,14 +388,16 @@ function addModel() {
                         <div class="config-item">
                             <div class="config-item-head">
                                 <label>配置项 1:</label>
-                                <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
-                                    <option value="replace">存在则覆盖</option>
-                                    <option value="append">存在则追加</option>
-                                </select>
+                                <div class="config-item-actions">
+                                    <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
+                                        <option value="replace">存在则覆盖</option>
+                                        <option value="append">存在则追加</option>
+                                    </select>
+                                    <input type="text" placeholder="分隔符" class="configSep" title="追加时插在原值与新值之间，可留空">
+                                </div>
                             </div>
                             <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                             <input type="text" placeholder="值（例如：Y）" class="configValue">
-                            <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                             <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                         </div>
                     </div>
@@ -409,14 +423,16 @@ function addModel() {
                 newItem.innerHTML = `
                     <div class="config-item-head">
                         <label>配置项 ${configItemCount}:</label>
-                        <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
-                            <option value="replace">存在则覆盖</option>
-                            <option value="append">存在则追加</option>
-                        </select>
+                        <div class="config-item-actions">
+                            <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
+                                <option value="replace">存在则覆盖</option>
+                                <option value="append">存在则追加</option>
+                            </select>
+                            <input type="text" placeholder="分隔符" class="configSep" title="追加时插在原值与新值之间，可留空">
+                        </div>
                     </div>
                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                     <input type="text" placeholder="值（例如：Y）" class="configValue">
-                    <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                 `;
                 configItemsDiv.appendChild(newItem);
@@ -582,14 +598,16 @@ function clearShellForm() {
                             <div class="config-item">
                                 <div class="config-item-head">
                                     <label>配置项 1:</label>
-                                    <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
-                                        <option value="replace">存在则覆盖</option>
-                                        <option value="append">存在则追加</option>
-                                    </select>
+                                    <div class="config-item-actions">
+                                        <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
+                                            <option value="replace">存在则覆盖</option>
+                                            <option value="append">存在则追加</option>
+                                        </select>
+                                        <input placeholder="分隔符" class="configSep" title="追加时插在原值与新值之间，可留空">
+                                    </div>
                                 </div>
                                 <input placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                                 <input placeholder="值（例如：Y）" class="configValue">
-                                <input placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                                 <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                             </div>
                         </div>
@@ -694,14 +712,16 @@ function restoreShellForm() {
                                 <div class="config-item">
                                     <div class="config-item-head">
                                         <label>配置项 ${itemIndex + 1}:</label>
-                                        <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
-                                            <option value="replace" ${(item.mode || 'replace') === 'replace' ? 'selected' : ''}>存在则覆盖</option>
-                                            <option value="append" ${item.mode === 'append' ? 'selected' : ''}>存在则追加</option>
-                                        </select>
+                                        <div class="config-item-actions">
+                                            <select class="configMode" title="key 已存在时的处理方式：覆盖或把新值追加到原值后面">
+                                                <option value="replace" ${(item.mode || 'replace') === 'replace' ? 'selected' : ''}>存在则覆盖</option>
+                                                <option value="append" ${item.mode === 'append' ? 'selected' : ''}>存在则追加</option>
+                                            </select>
+                                            <input type="text" placeholder="分隔符" class="configSep" title="追加时插在原值与新值之间，可留空" value="${(item.sep || '').replace(/"/g, '&quot;')}">
+                                        </div>
                                     </div>
                                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" value="${(item.key || '').replace(/"/g, '&quot;')}" onblur="checkDuplicateKey(this)">
                                     <input type="text" placeholder="值（例如：Y）" class="configValue" value="${(item.value || '').replace(/"/g, '&quot;')}">
-                                    <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep" value="${(item.sep || '').replace(/"/g, '&quot;')}">
                                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                                 </div>
                             `)
