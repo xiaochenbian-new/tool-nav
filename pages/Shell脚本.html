@@ -128,6 +128,7 @@
                 color: var(--text);
             }
             input,
+            select,
             textarea {
                 width: 100%;
                 padding: 8px 10px;
@@ -137,8 +138,11 @@
                 outline: none;
                 font-size: 13px;
                 transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                background: #fff;
+                color: var(--text);
             }
             input:focus,
+            select:focus,
             textarea:focus {
                 border-color: var(--primary);
                 box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15);
@@ -214,20 +218,23 @@
             }
             .config-item-head label {
                 margin-bottom: 0;
+                white-space: nowrap;
+                flex-shrink: 0;
             }
             .config-mode {
-                border: 1px solid #cfdcf7;
-                border-radius: 6px;
-                background: #fff;
-                color: var(--text);
-                font-size: 12px;
-                font-weight: 600;
-                padding: 3px 6px;
+                width: auto;
+                margin-bottom: 0;
+                padding: 5px 8px;
                 cursor: pointer;
-                outline: none;
+                font-weight: 600;
             }
-            .config-mode:focus {
-                border-color: var(--primary);
+            .configSep {
+                display: none;
+                margin-top: 2px;
+                background: #fff;
+            }
+            .config-item.is-append .configSep {
+                display: block;
             }
             #models {
                 flex: 1;
@@ -302,6 +309,10 @@
                                         placeholder="值（例如：Y）"
                                         class="configValue"
                                     />
+                                    <input
+                                        placeholder="分隔符（追加时插在原值与新值之间，可留空）"
+                                        class="configSep"
+                                    />
                                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">
                                         删除配置项
                                     </button>
@@ -372,6 +383,7 @@ function addModel() {
                             </div>
                             <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                             <input type="text" placeholder="值（例如：Y）" class="configValue">
+                            <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                             <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                         </div>
                     </div>
@@ -404,6 +416,7 @@ function addModel() {
                     </div>
                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                     <input type="text" placeholder="值（例如：Y）" class="configValue">
+                    <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                 `;
                 configItemsDiv.appendChild(newItem);
@@ -438,6 +451,18 @@ function checkDuplicateKey(input) {
                 } else {
                     input.classList.remove('duplicate-key');
                 }
+            }
+
+            /** 根据处理方式切换分隔符输入框的显示：追加模式显示，覆盖模式隐藏 */
+            function syncConfigItemMode(itemEl) {
+                if (!itemEl) return;
+                const modeEl = itemEl.querySelector('.configMode');
+                const isAppend = modeEl && modeEl.value === 'append';
+                itemEl.classList.toggle('is-append', !!isAppend);
+            }
+
+            function syncAllConfigItemModes() {
+                document.querySelectorAll('.config-item').forEach(syncConfigItemMode);
             }
 
             /** 包裹为 shell 单引号字符串；内部 ' 写成 '\'' */
@@ -493,8 +518,10 @@ function generateScript() {
                         const value = item.querySelector('.configValue').value.trim();
                         const modeEl = item.querySelector('.configMode');
                         const mode = modeEl ? modeEl.value : 'replace';
+                        const sepEl = item.querySelector('.configSep');
+                        const sep = sepEl ? sepEl.value : '';
                         if (key && value) {
-                            configs.push({ key, value, mode });
+                            configs.push({ key, value, mode, sep });
                         }
                     });
 
@@ -508,13 +535,13 @@ function generateScript() {
                     scriptContent += `# 处理模型 ${modelId}\n`;
 
                     configs.forEach(config => {
-                        const { key, value, mode } = config;
+                        const { key, value, mode, sep } = config;
                         const keyQ = shellSingleQuote(key);
                         const lineQ = shellSingleQuote(key + "=" + value);
-                        // 追加模式：用反向引用 \1 保留原值，再拼上新值；覆盖模式：整行替换
+                        // 追加模式：用 & 保留原值（整行匹配），再拼上「分隔符 + 新值」；覆盖模式：整行替换
                         const sedExpr = mode === 'append'
                             ? shellSingleQuote(
-                                "s#^\\(" + sedEscapePattern(key) + "=.*\\)#" + "\\1" + sedEscapeReplacement(value) + "#g"
+                                "s#^" + sedEscapePattern(key) + "=.*#" + "&" + sedEscapeReplacement(sep + value) + "#g"
                             )
                             : shellSingleQuote(
                                 "s#" + "^" + sedEscapePattern(key) + "=.*" + "#" + sedEscapeReplacement(key + "=" + value) + "#g"
@@ -562,6 +589,7 @@ function clearShellForm() {
                                 </div>
                                 <input placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" onblur="checkDuplicateKey(this)">
                                 <input placeholder="值（例如：Y）" class="configValue">
+                                <input placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep">
                                 <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                             </div>
                         </div>
@@ -621,10 +649,12 @@ function readShellFormState() {
                         const keyInput = item.querySelector('.configKey');
                         const valueInput = item.querySelector('.configValue');
                         const modeInput = item.querySelector('.configMode');
+                        const sepInput = item.querySelector('.configSep');
                         return {
                             key: keyInput ? keyInput.value : '',
                             value: valueInput ? valueInput.value : '',
-                            mode: modeInput ? modeInput.value : 'replace'
+                            mode: modeInput ? modeInput.value : 'replace',
+                            sep: sepInput ? sepInput.value : ''
                         };
                     });
                     return {
@@ -671,6 +701,7 @@ function restoreShellForm() {
                                     </div>
                                     <input type="text" placeholder="键（例如：common.dp.conf.esg.ocr）" class="configKey" value="${(item.key || '').replace(/"/g, '&quot;')}" onblur="checkDuplicateKey(this)">
                                     <input type="text" placeholder="值（例如：Y）" class="configValue" value="${(item.value || '').replace(/"/g, '&quot;')}">
+                                    <input type="text" placeholder="分隔符（追加时插在原值与新值之间，可留空）" class="configSep" value="${(item.sep || '').replace(/"/g, '&quot;')}">
                                     <button class="danger-btn tool-btn-danger" onclick="removeConfigItem(this)">删除配置项</button>
                                 </div>
                             `)
@@ -708,6 +739,9 @@ document.addEventListener('change', function (e) {
                 if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
                     persistShellForm();
                 }
+                if (t && t.classList && t.classList.contains('configMode')) {
+                    syncConfigItemMode(t.closest('.config-item'));
+                }
             });
 
 function getResultText() {
@@ -735,6 +769,7 @@ document.getElementById('btn-qr-result').addEventListener('click', function () {
             });
 
 restoreShellForm();
+syncAllConfigItemModes();
 		</script>
         <script src="libs/tool-form-persist.js"></script>
     </body>
